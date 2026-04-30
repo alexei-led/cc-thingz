@@ -8,11 +8,11 @@
 [![Codex CLI](https://img.shields.io/badge/Codex_CLI-skill_export-10A37F)](https://developers.openai.com/codex/plugins)
 [![Gemini CLI](https://img.shields.io/badge/Gemini_CLI-skill_export-4285F4)](https://geminicli.com/docs/extensions)
 [![Plugins](https://img.shields.io/badge/plugins-9-green)](plugins/)
-[![Skills](https://img.shields.io/badge/skills-32-green)](plugins/)
+[![Skills](https://img.shields.io/badge/skills-33-green)](plugins/)
 
-A **Claude Code** plugin suite — 32 skills, 34 agents, 9 hooks, and 9 commands — with portable skill export for Codex CLI, Gemini CLI, and [AGENTS.md](https://agents.md)-compatible tools. Built over 6+ months of daily use and continuous refinement.
+A **Claude Code** plugin suite — 33 skills, 34 agents, 10 hooks, and 9 commands — with portable skill export for Codex CLI, Gemini CLI, and [AGENTS.md](https://agents.md)-compatible tools. Built over 6+ months of daily use and continuous refinement.
 
-Built for Claude Code, with all 32 skills exported as platform-optimized instructions for Codex CLI, Gemini CLI, and any tool supporting the AGENTS.md standard.
+Built for Claude Code, with all 33 skills exported as platform-optimized instructions for Codex CLI, Gemini CLI, and any tool supporting the AGENTS.md standard.
 
 ## Why This Exists
 
@@ -100,7 +100,7 @@ All agents and several skills optionally integrate with [claude-mem](https://git
 
 | Plugin                                                 | Skills | Agents | Description                                                                        |
 | ------------------------------------------------------ | ------ | ------ | ---------------------------------------------------------------------------------- |
-| [**dev-workflow**](plugins/dev-workflow/README.md)     | 7      | 25     | Code review, fixes, commits, linting hooks, and 24 language-specific review agents |
+| [**dev-workflow**](plugins/dev-workflow/README.md)     | 9      | 25     | Code review, fixes, commits, linting hooks, and 24 language-specific review agents |
 | [**go-dev**](plugins/go-dev/README.md)                 | 1      | 1      | Idiomatic Go development with stdlib-first patterns, testing, and CLI tooling      |
 | [**python-dev**](plugins/python-dev/README.md)         | 1      | 1      | Python 3.12+ development with uv/ruff/pyright toolchain                            |
 | [**typescript-dev**](plugins/typescript-dev/README.md) | 1      | 1      | TypeScript with strict typing, React patterns, and modern tooling                  |
@@ -110,7 +110,7 @@ All agents and several skills optionally integrate with [claude-mem](https://git
 | [**spec-system**](plugins/spec-system/README.md)       | 0      | 1      | Spec-driven development: requirements, tasks, and planning workflows               |
 | [**testing-e2e**](plugins/testing-e2e/README.md)       | 2      | 1      | E2E testing with Playwright: browser automation and test generation                |
 
-**Totals**: 32 skills, 34 agents, 9 hooks, 9 commands
+**Totals**: 33 skills, 34 agents, 10 hooks, 9 commands
 
 ## Skills
 
@@ -122,7 +122,7 @@ Invoke as `/skill-name` or let the skill enforcer suggest them.
 
 | Skill                  | What It Does                                      | Example Trigger                      |
 | ---------------------- | ------------------------------------------------- | ------------------------------------ |
-| `brainstorming-ideas`  | Collaborative design dialogue before coding       | "brainstorm", "design"               |
+| `brainstorming-ideas`  | Brainstorm ideas and stress-test draft plans      | "brainstorm", "grill plan"           |
 | `committing-code`      | Smart git commits with logical grouping           | "commit", "save changes"             |
 | `debating-ideas`       | Dialectic agents stress-test design decisions     | "debate", "pros and cons"            |
 | `deploying-infra`      | Validate + deploy K8s/Terraform/Helm              | "deploy to staging", "rollout"       |
@@ -187,6 +187,7 @@ These activate silently when relevant patterns are detected — no `/skill-name`
 | `session-start.sh`       | SessionStart     | Shows git branch, last commit, file context  |
 | `skill-enforcer.sh`      | UserPromptSubmit | Pattern-matches prompt and suggests skills   |
 | `file-protector.sh`      | PreToolUse       | Blocks edits to settings.json, secrets       |
+| `git-guardrails.sh`      | PreToolUse       | Blocks destructive git commands              |
 | `smart-lint.sh`          | PostToolUse      | Auto-runs linter after file edits            |
 | `test-runner.sh`         | PostToolUse      | Auto-runs tests after implementation changes |
 | `notify.sh`              | Notification     | Desktop notifications for long operations    |
@@ -202,9 +203,9 @@ All skills are authored for Claude Code and exported via a build system (`script
 
 | Component        | Claude Code                                   | Skill Export (Codex, Gemini, AGENTS.md)             |
 | ---------------- | --------------------------------------------- | --------------------------------------------------- |
-| **Skills** (32)  | Full — CC source with orchestration           | Optimized — stripped frontmatter + agentic preamble |
+| **Skills** (33)  | Full — CC source with orchestration           | Optimized — stripped frontmatter + agentic preamble |
 | **Agents** (34)  | Full — multi-agent review, parallel execution | Claude Code only                                    |
-| **Hooks** (9)    | Full — lint, test, protect, suggest           | Claude Code only                                    |
+| **Hooks** (10)   | Full — lint, test, protect, suggest           | Claude Code only                                    |
 | **Commands** (9) | Full — spec-driven development                | Claude Code only                                    |
 
 ### Skill Tiers
@@ -213,7 +214,7 @@ Skills are classified by how much adaptation they need:
 
 | Tier       | Count | Strategy                                                      | Example                              |
 | ---------- | ----- | ------------------------------------------------------------- | ------------------------------------ |
-| **GREEN**  | 15    | Shared body, CC frontmatter stripped, platform preamble added | `writing-go`, `using-modern-cli`     |
+| **GREEN**  | 18    | Shared body, CC frontmatter stripped, platform preamble added | `writing-go`, `using-modern-cli`     |
 | **YELLOW** | 9     | CC-ONLY body sections stripped, frontmatter cleaned           | `looking-up-docs`, `exploring-repos` |
 | **RED**    | 6     | Hand-authored overlays optimized for o3/codex-1               | `reviewing-code`, `fixing-code`      |
 

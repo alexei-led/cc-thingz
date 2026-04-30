@@ -14,7 +14,7 @@ allowed-tools:
   - Bash(make *)
   - Bash(git *)
   - Bash(specctl *)
-description: Mark task complete (with optional discovery)
+description: Mark task complete with verification, evidence, handoff, and optional discovery
 ---
 
 # Spec Done
@@ -59,13 +59,25 @@ rg '^status:' TASK_FILE
 
 **If already done**: "Already complete." Stop.
 
-### Step 3: Update status
+### Step 3: Verify completion evidence
+
+Before marking done, collect or confirm:
+
+- acceptance criteria satisfied
+- tests/lint/build evidence, or explicit reason they were not run
+- files changed
+- unresolved follow-up work
+- any domain term, ADR, or out-of-scope decision discovered
+
+If evidence is missing, ask before marking done.
+
+### Step 4: Update status
 
 ```
 Edit: status: todo → status: done
 ```
 
-### Step 4: Log
+### Step 5: Log
 
 ```bash
 echo "$(date +%H:%M) DONE TASK-{id}" >> .spec/PROGRESS.md
@@ -79,7 +91,7 @@ echo "$(date +%H:%M) DONE TASK-{id}" >> .spec/PROGRESS.md
 Marked complete: TASK-{id}
 ```
 
-### Step 5: Land the Plane
+### Step 6: Land the Plane
 
 **Check for uncommitted work:**
 
@@ -88,6 +100,12 @@ git status --porcelain
 ```
 
 If output is non-empty: offer to commit via `Skill(skill="committing-code")`.
+
+**Record durable decisions if needed:**
+
+- New domain term → update `CONTEXT.md` or relevant context file.
+- Hard-to-reverse, surprising trade-off → offer an ADR under `docs/adr/`.
+- Rejected enhancement/approach → update `.out-of-scope/<concept>.md`.
 
 **Generate handoff:**
 
@@ -102,6 +120,8 @@ Print the output — this is context for the next session.
 | Header | Question                   | Options                                                                                           |
 | ------ | -------------------------- | ------------------------------------------------------------------------------------------------- |
 | Push   | Push branch and create PR? | 1. **Yes, push now** - `git push -u origin $(git branch --show-current)`<br>2. **Not yet** - Skip |
+
+Plain push is allowed. Force push is not part of this workflow.
 
 ---
 

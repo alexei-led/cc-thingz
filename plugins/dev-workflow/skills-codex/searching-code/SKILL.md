@@ -3,9 +3,10 @@ allowed-tools:
 - Read
 - Grep
 - Glob
-description: Intelligent codebase search via WarpGrep. Use when user asks "how does
-  X work", "trace flow", "find all implementations", "understand codebase", or needs
-  cross-file exploration in large repos (1000+ files).
+description: Intelligent codebase search and zoom-out mapping via WarpGrep. Use when
+  user asks "how does X work", "trace flow", "find all implementations", "understand
+  codebase", "zoom out", "map this area", or needs cross-file exploration in large
+  repos (1000+ files).
 name: searching-code
 ---
 
@@ -18,7 +19,7 @@ name: searching-code
 
 # Intelligent Code Search with WarpGrep
 
-WarpGrep is an RL-trained search agent that reasons about code, not just pattern matches.
+WarpGrep is an RL-trained search agent that reasons about code, not just pattern matches. Use zoom-out mode when the user needs a higher-level map before touching code.
 
 ## How It Works
 
@@ -58,9 +59,24 @@ WarpGrep is an RL-trained search agent that reasons about code, not just pattern
 ## Workflow
 
 1. **Formulate query**: Describe WHAT you want to understand, not just WHAT to find
-2. **Run WarpGrep**: `mcp__morphllm__warpgrep_codebase_search`
-3. **Interpret results**: Ranked snippets with file paths and line numbers
-4. **Follow up**: Read specific files for deeper understanding
+2. **Load domain docs when present**: `CONTEXT.md`, `CONTEXT-MAP.md`, and relevant ADRs
+3. **Run WarpGrep**: `mcp__morphllm__warpgrep_codebase_search`
+4. **Interpret results**: Ranked snippets with file paths and line numbers
+5. **Follow up**: Read specific files for deeper understanding
+
+## Zoom-Out Mode
+
+Use when the user says "zoom out", "map this area", "go up a layer", or sounds lost in local details.
+
+Return a map, not a dump:
+
+- relevant modules and callers
+- data/control flow across seams
+- domain terms from `CONTEXT.md`
+- ADR constraints that shape the design
+- where to read next, limited to the top 3 files
+
+Avoid line-by-line explanations unless asked. The point is orientation, not drowning the user in snippets.
 
 ## Parameters
 

@@ -1,6 +1,6 @@
 ---
 name: brainstorming-ideas
-description: Turn ideas into designs through collaborative dialogue. Use when user wants to brainstorm, design features, explore approaches, or think through implementation before coding.
+description: Brainstorm ideas and stress-test draft plans before coding. Use when user wants to brainstorm, explore approaches, design a feature/API/flow, grill a plan, challenge assumptions, or resolve terminology that blocks the design. NOT for breaking approved requirements into implementation tasks; use /spec:plan. NOT for general documentation updates; use documenting-code or learning-patterns.
 user-invocable: true
 context: fork
 allowed-tools:
@@ -18,12 +18,12 @@ allowed-tools:
   - mcp__plugin_claude-mem_mcp-search__search
   - WebFetch
   - Bash(git *)
-argument-hint: "[<topic>]"
+argument-hint: "[idea|plan|grill] <topic-or-plan>"
 ---
 
-# Brainstorming Ideas Into Designs
+# Brainstorming Ideas
 
-Transform vague ideas into fully-formed designs through structured collaborative dialogue.
+Turn a vague idea or draft plan into a clear design before coding. In grill mode, stress-test a plan until every important branch of the decision tree is resolved.
 
 **Use TaskCreate / TaskUpdate** to track these 7 phases:
 
@@ -33,7 +33,7 @@ Transform vague ideas into fully-formed designs through structured collaborative
 4. Research similar solutions (if requested)
 5. Present approaches with recommendation
 6. Validate design incrementally
-7. Document and next steps
+7. Capture outcome and next steps
 
 ---
 
@@ -46,8 +46,17 @@ Transform vague ideas into fully-formed designs through structured collaborative
 - **YAGNI ruthlessly** - Challenge every feature's necessity
 - **Incremental validation** - Present design in 200-300 word sections
 - **Agents on request** - Only explore/research when user chooses it
+- **Code over questions** - If the codebase can answer a question, inspect it instead of asking
+- **Domain vocabulary matters** - Use `CONTEXT.md` / `CONTEXT-MAP.md` terms when present; resolve conflicts explicitly
+- **ADRs are rare** - Offer one only for hard-to-reverse, surprising, real trade-off decisions
 
 ---
+
+## Phase 0: Load Domain Context
+
+Before asking design questions, check for project knowledge when relevant. Use Glob/Read to find the nearest relevant `CONTEXT.md`, `CONTEXT-MAP.md`, and `docs/adr/` files. If present, read them and use that vocabulary in questions and designs.
+
+If no domain docs exist, create them lazily only when a term or decision is actually resolved. Do not generate empty documentation.
 
 ## Phase 1: Understand the Idea
 
@@ -59,7 +68,7 @@ Use AskUserQuestion:
 
 | Header    | Question                           | Options                                                                                                                                                                                       |
 | --------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Idea type | What would you like to brainstorm? | 1. **New feature** - Add new functionality 2. **Modification** - Change existing behavior 3. **Integration** - Connect with external system 4. **Exploration** - Not sure yet, let's discover |
+| Idea type | What would you like to brainstorm? | 1. **New feature** - Add new functionality 2. **Modification** - Change existing behavior 3. **Integration** - Connect with an external system 4. **Plan grill** - Stress-test an existing plan 5. **Exploration** - Not sure yet, let's discover |
 
 ### 1b. Follow-up (based on response)
 
@@ -92,7 +101,27 @@ Ask questions **one at a time** using AskUserQuestion. Adapt based on idea type.
 - If user seems uncertain, explore deeper with sub-questions
 - Use "Other" option to allow custom responses
 
-### 2b. Surface Assumptions
+### 2b. Plan Grill Mode
+
+If the user passed `plan`, `grill`, or asked to stress-test/challenge a plan, interrogate the plan one decision at a time. Keep it focused on design quality and assumptions, not task breakdown; use `/spec:plan` for implementation tasks.
+
+For each question:
+
+- Provide your recommended answer.
+- Explain why the branch matters.
+- If the answer is discoverable from code, inspect code instead of asking.
+- If a term conflicts with `CONTEXT.md`, call it out: "Your glossary defines X as A, but this plan uses X as B — which is it?"
+- Use concrete scenarios and edge cases to force precision.
+
+When a domain term is resolved, confirm before writing and update `CONTEXT.md` inline if the user approves the wording. Keep definitions one sentence. List aliases to avoid.
+
+Offer an ADR only when all three are true:
+
+1. Hard to reverse.
+2. Surprising without context.
+3. Result of a real trade-off.
+
+### 2c. Surface Assumptions
 
 Before moving on, explicitly list the assumptions embedded in the idea so far:
 
@@ -240,22 +269,39 @@ At each section, actively challenge:
 
 ---
 
-## Phase 7: Document and Next Steps
+## Phase 7: Capture Outcome and Next Steps
 
-### 7a. Write Design Document
+### 7a. Update Domain Docs Only When Needed
 
+If the brainstorm resolved domain language, update `CONTEXT.md` or the relevant context file:
+
+```markdown
+## Language
+
+**Term**:
+One-sentence definition.
+_Avoid_: fuzzy synonym, overloaded alias
 ```
-Write(
-  file_path="docs/plans/YYYY-MM-DD-<topic>-design.md",
-  content="# [Feature] Design\n\n## Problem\n...\n## Solution\n...\n## Architecture\n..."
-)
+
+If a qualifying architectural/product decision crystallized, create a short ADR under `docs/adr/NNNN-slug.md`:
+
+```markdown
+# Decision title
+
+One to three sentences: context, decision, why.
 ```
 
-### 7b. Commit Design
+Skip ADRs for easy-to-reverse, obvious, or no-real-alternative decisions.
 
-```bash
-git add docs/plans/*.md && git commit -m "docs: add [feature] design document"
+### 7b. Write Design Notes If Useful
+
+If the outcome is more than a short answer, offer to write a concise design note:
+
+```text
+docs/plans/YYYY-MM-DD-<topic>-design.md
 ```
+
+Include only: Problem, Chosen approach, Trade-offs, Open questions, Testing strategy.
 
 ### 7c. Implementation Handoff
 
@@ -284,9 +330,9 @@ This skill incorporates proven brainstorming techniques:
 ## Examples
 
 ```
-/brainstorming-ideas                    # Start open-ended brainstorm
-/brainstorming-ideas user notifications # Brainstorm notification feature
-/brainstorming-ideas auth flow          # Brainstorm authentication changes
+/brainstorming-ideas user notifications # Explore a feature idea
+/brainstorming-ideas plan auth flow     # Shape a draft plan
+/brainstorming-ideas grill migration    # Stress-test an existing plan
 ```
 
 **Execute this collaborative brainstorming workflow now.**

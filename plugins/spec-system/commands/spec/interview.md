@@ -1,6 +1,6 @@
 ---
 model: sonnet
-description: Deep requirement gathering via structured questioning
+description: Deep requirement gathering via structured questioning, domain language, out-of-scope checks, and PRD-quality requirements
 argument-hint: <idea> | <doc-path> | REQ-xxx
 allowed-tools:
   - AskUserQuestion
@@ -18,7 +18,7 @@ allowed-tools:
 Deep requirement extraction through structured questioning. Creates comprehensive REQ-\*.md files.
 
 **Role**: Requirements analyst
-**Goal**: Extract complete requirements through 30-40 questions, output REQ-\*.md
+**Goal**: Extract complete requirements through structured questions, domain language alignment, and PRD-quality output in REQ-\*.md
 
 ## Input
 
@@ -59,9 +59,21 @@ Start fresh interview.
 **CRITICAL**: Use AskUserQuestion tool for EVERY question.
 
 - DO NOT output questions as text
-- Group 2-4 related questions per AskUserQuestion call
-- Expect 30-40 questions total
-- Ask follow-up questions based on answers
+- Ask one question per AskUserQuestion call
+- Usually ask 8-15 questions; go longer only for genuinely complex requirements
+- Stop when success criteria, scope, constraints, and blockers are clear
+
+### Before Questions: Load Durable Context
+
+Read relevant project docs when present:
+
+- `CONTEXT.md` / `CONTEXT-MAP.md` — domain language
+- `docs/adr/*.md` — architectural decisions
+- `.out-of-scope/*.md` — rejected enhancements
+
+If the new requirement resembles an `.out-of-scope/` record, surface it before continuing: "This resembles a previously rejected concept because X. Reconsider, narrow scope, or stop?"
+
+Use the domain vocabulary from `CONTEXT.md`. If the user uses an overloaded term, resolve it before writing the REQ.
 
 ### Question Categories
 
@@ -195,9 +207,28 @@ created: { date }
 
 - {unresolved items needing research}
 
+## Implementation Decisions
+
+- {modules/interfaces likely touched, if known}
+- {technical constraints or decisions already made}
+
+## Testing Decisions
+
+- {critical behaviors to test}
+- {public interfaces or integration seams to verify}
+- {edge/error cases that matter}
+
 ## Out of Scope
 
 - {explicitly excluded items}
+
+## Domain Language
+
+- {terms resolved or added to CONTEXT.md}
+
+## Prior Decisions and Rejections
+
+- {relevant ADRs or .out-of-scope records}
 ```
 
 ### Write the file
@@ -218,6 +249,8 @@ Show summary:
 
 - Questions asked: {count}
 - Key decisions captured
+- Out-of-scope items captured
+- Domain terms resolved
 - File written: `.spec/reqs/REQ-{slug}.md`
 
 Suggest next step:

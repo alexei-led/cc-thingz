@@ -1,6 +1,6 @@
 {
   "name": "dev-tools",
-  "version": "1.7.1",
+  "version": "1.8.0",
   "description": "Developer utilities: modern CLI tools, git worktrees, docs lookup, web research, brainstorming",
   "author": {
     "name": "Alexei Ledenev"

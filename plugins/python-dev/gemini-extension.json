@@ -1,5 +1,5 @@
 {
   "name": "python-dev",
-  "version": "1.6.1",
+  "version": "1.8.0",
   "description": "Python 3.12+ with uv/ruff/pyright toolchain and modern patterns"
 }

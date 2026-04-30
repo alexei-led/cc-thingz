@@ -1,9 +1,10 @@
 ---
 name: reviewing-code
 description: >-
-  Multi-agent code review for security, quality, and architecture. Use when
+  Multi-agent code review for security, quality, architecture, and deep-module design. Use when
   user says "review code", "check code", "code review", "review my changes",
-  "review this PR", or wants feedback on their source code. NOT for Claude
+  "review this PR", "improve architecture", "find refactoring opportunities",
+  "deep modules", or wants feedback on source code/design. NOT for Claude
   Code configuration review (use reviewing-cc-config for skills/agents/hooks/
   CLAUDE.md review).
 user-invocable: true
@@ -27,7 +28,7 @@ allowed-tools:
   - Bash(wc *)
   - mcp__plugin_claude-mem_mcp-search__search
   - mcp__plugin_claude-mem_mcp-search__get_observations
-argument-hint: "[deep] [team] [external]"
+argument-hint: "[deep] [team] [external] [architecture]"
 ---
 
 # Multi-Agent Code Review
@@ -46,6 +47,7 @@ argument-hint: "[deep] [team] [external]"
 - `deep` → 6-12 specialized Claude sub-agents (language-specific reviewers)
 - `team` → **Agent team mode**: Reviewers challenge each other's findings
 - `external` → Add external AI reviewers (Codex + Gemini). **Only if explicitly requested.**
+- `architecture` → Focus on module depth, seams, adapters, testability, and locality.
 
 **IMPORTANT:** Without `external` flag, run ONLY Claude agents. Never run Codex or Gemini unless `external` is in arguments.
 
@@ -74,6 +76,24 @@ Look for past review findings, gotchas (`type: "gotcha"`), and decisions on thos
 Skip this step silently if claude-mem tools are not available.
 
 ---
+
+## Architecture Review Vocabulary
+
+Use these terms exactly when `architecture` is set or the request asks for design/refactoring opportunities:
+
+- **Module** — anything with an interface and implementation: function, class, package, or slice.
+- **Interface** — everything callers must know: types, invariants, ordering, error modes, config, performance.
+- **Seam** — where an interface lives; a place behavior can change without editing in place.
+- **Adapter** — a concrete thing satisfying an interface at a seam.
+- **Depth** — leverage at the interface: lots of behavior behind a small interface.
+- **Leverage** — caller value from depth.
+- **Locality** — change, bugs, and verification concentrated in one place.
+
+Apply the deletion test: if deleting a module makes complexity vanish, it was a pass-through. If complexity reappears across callers, the module was earning its keep.
+
+Seam rule: one adapter means a hypothetical seam; two adapters means a real seam. Do not propose ports without real variation.
+
+When `CONTEXT.md`, `CONTEXT-MAP.md`, or `docs/adr/` exist, read the relevant docs before naming architecture findings. If a candidate contradicts an ADR, flag it only when the friction is real enough to justify reopening the decision.
 
 ## Step 1: Detect Language & Ask Scope
 
@@ -123,6 +143,17 @@ For each detected language, spawn ONE Task:
 ### Deep Mode: Specialized Sub-Agents
 
 Invoke agents by their `subagent_type` (models defined in agent metadata):
+
+If `architecture` is set, add this instruction to every reviewer prompt:
+
+```text
+Architecture focus:
+- Find shallow modules, pass-through abstractions, poor seams, fake ports, hidden coupling, and untestable interfaces.
+- Use module/interface/seam/adapter/depth/leverage/locality vocabulary.
+- Apply the deletion test.
+- Propose deepening opportunities, not cosmetic refactors.
+- Explain how tests improve after the change.
+```
 
 **Go agents** (if Go files detected):
 
@@ -279,6 +310,12 @@ Task(subagent_type="gemini-consultant", prompt="review: Review architecture of {
 | Issue | Flagged By | Confidence |
 | ----- | ---------- | ---------- |
 | ...   | ...        | High       |
+
+### Architecture Opportunities (if requested)
+
+| Candidate | Files | Problem | Deepening Move | Test Benefit |
+|-----------|-------|---------|----------------|--------------|
+| ...       | ...   | ...     | ...            | ...          |
 
 ### Recommended Actions
 

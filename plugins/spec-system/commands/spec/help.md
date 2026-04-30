@@ -25,7 +25,7 @@ description: Quick methodology guide for spec-driven development
 │   /spec:interview REQ-xxx   Refine existing requirement         │
 │                                                                 │
 │ PHASE 2: PLAN (HOW)                                             │
-│   /spec:plan REQ-xxx        Create EPIC + TASK files            │
+│   /spec:plan REQ-xxx        Create EPIC + vertical TASK files   │
 │   /spec:plan EPIC-xxx       Refine existing epic                │
 │                                                                 │
 │ PHASE 3: IMPLEMENT                                              │
@@ -61,7 +61,7 @@ description: Quick methodology guide for spec-driven development
 │   .spec/                                                        │
 │   ├── reqs/REQ-*.md      Requirements (WHAT) - from interview   │
 │   ├── epics/EPIC-*.md    Epics grouping tasks                   │
-│   ├── tasks/TASK-*.md    Tasks with dependencies                │
+│   ├── tasks/TASK-*.md    Vertical tasks with dependencies       │
 │   ├── memory/            Pitfalls, conventions, decisions       │
 │   ├── SESSION.yaml       Current session (task, step, commit)   │
 │   └── PROGRESS.md        Activity log (last 10 entries)         │
@@ -69,7 +69,8 @@ description: Quick methodology guide for spec-driven development
 ├─────────────────────────────────────────────────────────────────┤
 │ KEY PRINCIPLES                                                  │
 │   • REQ = WHAT/WHY (business requirements, success criteria)    │
-│   • TASK = HOW (implementation steps, acceptance criteria)      │
+│   • TASK = vertical slice with acceptance criteria              │
+│   • Unresolved human decisions become blockers/open questions   │
 │   • One task per session - complete before starting next        │
 │   • Quality gates: make build && make test && make lint         │
 │   • You approve every edit - no hidden automation               │

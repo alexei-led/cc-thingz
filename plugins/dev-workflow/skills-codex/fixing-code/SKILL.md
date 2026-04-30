@@ -1,124 +1,128 @@
 ---
 name: fixing-code
-description: Sequential fix workflow — identify all failing checks (lint, tests, type errors), root-cause each issue, apply fixes one at a time, and verify each fix passes. Keep going until all checks are green.
+description: Fix code problems with disciplined diagnosis — run checks, build a repro for bugs, rank falsifiable hypotheses, fix one issue at a time, and verify until clean. Use when fixing, debugging, diagnosing, or resolving lint/test/build failures.
 ---
 
-# Fix All Issues
+# Fix and Diagnose Code
 
-Identify every failing check, root-cause it, fix it, and verify the fix. Repeat until the build, tests, and linter are all clean. Do not declare done until every check passes.
+Fix until clean. For hard bugs, diagnose before editing. No guessing. Confirm before any destructive command; never use `git reset --hard`, `git clean`, or force push as a fix.
 
-## Step 1: Run all checks
+## Step 1: Build a feedback loop
 
-Run the full validation suite and capture output. If a Makefile exists, prefer `make`:
+For lint/build/test failures, run validation first:
 
 ```bash
 make lint 2>&1 | head -150
 make test 2>&1 | head -150
 ```
 
-No Makefile? Detect language and run directly:
-
-**Go:**
+No Makefile? Detect language:
 
 ```bash
+# Go
 golangci-lint run ./... 2>&1 | head -150
 go test -race ./... 2>&1 | head -150
-```
 
-**Python:**
-
-```bash
+# Python
 ruff check . 2>&1 | head -150
 pytest --tb=short 2>&1 | head -150
-```
 
-**TypeScript:**
-
-```bash
+# TypeScript
 bun lint 2>&1 | head -150
 bun test 2>&1 | head -150
 ```
 
-**Web:**
+If all checks pass, report `All checks pass` and stop.
 
-```bash
-bunx eslint "**/*.js" 2>&1 | head -100
-bunx stylelint "**/*.css" 2>&1 | head -100
+For reported bugs, first build a fast pass/fail signal that reproduces the user's symptom:
+
+1. Failing test at the right seam.
+2. CLI or HTTP script with fixture input.
+3. Browser script for UI bugs.
+4. Replay captured payload/log/trace.
+5. Throwaway harness around the smallest real code path.
+6. Property/fuzz loop for intermittent wrong output.
+7. `git bisect run` harness for regressions.
+
+Do not proceed to fixes until the loop reproduces the symptom. If no loop is possible, stop and ask for access, logs, captured payloads, or permission to add temporary instrumentation.
+
+## Step 2: Analyze root causes
+
+Catalog every distinct issue:
+
+- file:line
+- exact error/test failure
+- tool that reported it
+- priority: critical / important / minor
+
+For hard bugs, write **3–5 ranked falsifiable hypotheses** before testing one:
+
+```text
+If <cause> is true, then <probe/change> will make <specific symptom> disappear or change.
 ```
 
-If all checks pass, report "All checks pass" and stop.
+Read files and tool output. Do not guess at code content.
 
-## Step 2: Catalog issues
+## Step 3: Instrument carefully
 
-Read the full output from Step 1. List every distinct issue:
+Probe one hypothesis at a time.
 
-- File and line number
-- Error message or test failure description
-- Which tool reported it (lint / test / type-check)
+- Prefer debugger/REPL inspection when available.
+- Otherwise add targeted logs at boundaries that distinguish hypotheses.
+- Tag temporary logs with a unique prefix like `[DEBUG-a4f2]`.
+- For performance regressions: measure baseline first, then bisect/profile.
 
-Group by priority:
+## Step 4: Fix one issue at a time
 
-1. **Critical** — compilation errors, panics, test failures
-2. **Important** — lint errors, type errors
-3. **Minor** — style warnings
+For each issue, in priority order:
 
-Reflect on the full list before proceeding. Make sure you understand each issue before attempting a fix.
+1. Read the exact code path.
+2. Apply the smallest root-cause fix.
+3. Add or update a regression test at the correct seam when possible.
+4. Run the narrow check.
+5. Run broader lint/test before moving on.
 
-## Step 3: Root-cause each issue
+If the only available test seam is too shallow, report that. Do not write fake-confidence tests against helpers while the real bug path stays uncovered.
 
-For each issue in priority order, read the relevant file and surrounding context. Identify the root cause — not just the symptom. Ask: what condition allows this error to exist? A missing nil check, a wrong type, an untested code path?
+If a fix causes new failures, revert or adjust it before touching the next issue.
 
-For recurring or mysterious issues, apply 5-Why thinking:
+## Step 5: Final verification and cleanup
 
-1. Why did it fail? (immediate symptom)
-2. Why was that possible? (missing guard or contract)
-3. Why was the guard missing? (design gap)
-4. Why was there a design gap? (systemic cause)
-5. Why was that systemic cause present? (root cause)
+Required before done:
 
-Use tool calls to read files — do not guess at code content.
+- Original repro no longer reproduces.
+- Regression test passes, or missing test seam is explicitly reported.
+- Full validation passes.
+- All `[DEBUG-...]` probes are removed.
+- Throwaway harnesses are deleted or moved into test fixtures.
 
-## Step 4: Fix issues one at a time
-
-Work through the issue list in priority order. For each issue:
-
-1. Read the file at the relevant line.
-2. Apply the minimal fix that addresses the root cause.
-3. Immediately verify the fix did not introduce new failures:
-   ```bash
-   make lint 2>&1 | head -50
-   make test 2>&1 | head -50
-   ```
-   Or run the language-specific commands from Step 1.
-4. If the fix causes new failures, revert it and try an alternative approach before moving on.
-
-Fix one issue at a time. Do not batch edits across unrelated files in a single step.
-
-## Step 5: Final verification
-
-After all fixes are applied, run the full suite once more:
+Run:
 
 ```bash
 make lint && make test
 ```
 
-Or language equivalents. All checks must pass with zero errors.
-
-If issues remain, return to Step 3 with the new output. Keep going until clean.
+Or language equivalents. Loop back to root-cause analysis if anything still fails.
 
 ## Output format
 
-```
+```text
 FIX COMPLETE
 ============
+Mode: standard | diagnose
 Issues found: X
-Issues fixed: Y
-Remaining: Z (list if non-zero)
+Fixed: Y
+Remaining: Z
 Status: CLEAN | NEEDS ATTENTION
 
+Root cause:
+- <short verified cause>
+
 Changes:
-- file:line — description of fix
-- file:line — description of fix
+- file:line — fix
+
+Verification:
+- <command> — pass/fail
 ```
 
-Report the final status directly. If any issues remain unresolved, explain why (e.g., requires external change, test environment missing) and what the user needs to do.
+If unresolved, state the blocker and exact artifact/access needed. Do not pretend clean.

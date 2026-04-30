@@ -7,9 +7,9 @@ allowed-tools:
 - Glob
 argument-hint: '[topic] [--dry-run]'
 description: Extract learnings and generate project-specific customizations (CLAUDE.md,
-  commands, skills, hooks). Use when user says "learn", "extract learnings", "what
-  did we learn", "save learnings", "adapt config", or wants to improve Claude Code
-  based on conversation patterns.
+  CONTEXT.md, ADRs, commands, skills, hooks). Use when user says "learn", "extract
+  learnings", "what did we learn", "save learnings", "adapt config", "capture domain
+  language", or wants to improve Claude Code based on conversation patterns.
 name: learning-patterns
 ---
 
@@ -22,7 +22,7 @@ name: learning-patterns
 
 # Learn from Session
 
-Extract actionable learnings and generate project-specific customizations. Adapts Claude Code to project patterns over time.
+Extract actionable learnings and generate project-specific customizations. Adapts Claude Code to project patterns over time. Ground changes in actual conversation/tool output and ask one question at a time when confirmation is needed.
 
 
 1. Discover existing customizations
@@ -47,6 +47,8 @@ Find ALL project customization files:
 .claude/skills/*/SKILL.md               # Skills
 .claude/settings.json                    # Hooks
 .claude/rules/*.md                       # Rules
+CONTEXT.md / CONTEXT-MAP.md              # Domain language
+docs/adr/*.md                            # Durable decisions
 ```
 
 **Record counts** for budget tracking later.
@@ -77,6 +79,17 @@ Analyze conversation for these signal types:
 | Template request    | "create a new X like we discussed"       | MEDIUM     |
 | Workflow mention    | "my workflow is X then Y then Z"         | HIGH       |
 
+### Domain Signals -> CONTEXT.md / docs/adr/
+
+| Signal               | Artifact     | Look For                                      |
+| -------------------- | ------------ | --------------------------------------------- |
+| Term resolution      | CONTEXT.md   | "call this X", "X means", overloaded jargon |
+| Ambiguity resolved   | CONTEXT.md   | "not account, customer", "avoid Y"          |
+| Durable trade-off    | ADR          | hard-to-reverse, surprising, real alternative |
+| Scope rejection      | .out-of-scope | "we will not support X because..."          |
+
+Only record domain concepts meaningful to domain experts. General implementation terms do not belong in `CONTEXT.md`.
+
 ### Skill Signals -> .claude/skills/
 
 | Signal              | Look For                                        | Confidence |
@@ -106,6 +119,7 @@ Sort extractions into buckets:
 
 ```
 Instructions: [list of instruction candidates]
+Domain docs: [CONTEXT.md / ADR / out-of-scope candidates]
 Commands: [list of command candidates with names]
 Skills: [list of skill candidates with names]
 Hooks: [list of hook candidates with events]
@@ -154,6 +168,28 @@ argument-hint: { optional args }
 {Any relevant @ references or bash context}
 ```
 
+### Domain Docs
+
+`CONTEXT.md` entries:
+
+```markdown
+**Term**:
+One-sentence definition.
+_Avoid_: overloaded synonym, fuzzy alias
+```
+
+ADR entries under `docs/adr/NNNN-slug.md`:
+
+```markdown
+# Decision title
+
+One to three sentences: context, decision, why.
+```
+
+Write ADRs only when the decision is hard to reverse, surprising without context, and a real trade-off.
+
+Out-of-scope records under `.out-of-scope/<concept>.md` capture rejected enhancements with reasoning and prior requests.
+
 ### Skills -> .claude/skills/{name}/SKILL.md
 
 ```markdown
@@ -179,6 +215,15 @@ allowed-tools: { restrictions if any }
 1. {step 1}
 2. {step 2}
 ```
+
+### Skill Authoring Rules
+
+- Description must explain what the skill does and when to use it.
+- Prefer `SKILL.md` under ~150 lines.
+- Move deep reference material to sibling files.
+- Add scripts for deterministic repeated operations.
+- Keep one level of references; nested docs become a treasure hunt without the treasure.
+- Use specific triggers, not "helps with things" mush.
 
 ### Hooks -> settings.json addition
 
@@ -227,12 +272,14 @@ For each artifact type:
 
 Recommended limits:
 
-| Artifact  | Limit     | Why                   |
-| --------- | --------- | --------------------- |
-| CLAUDE.md | 200 lines | Context efficiency    |
-| Commands  | 10        | Discoverability       |
-| Skills    | 5         | Complexity management |
-| Hooks     | 5         | Debugging simplicity  |
+| Artifact    | Limit     | Why                   |
+| ----------- | --------- | --------------------- |
+| CLAUDE.md   | 200 lines | Context efficiency    |
+| CONTEXT.md  | concise   | Domain terms only     |
+| ADRs        | sparse    | Decisions, not diary  |
+| Commands    | 10        | Discoverability       |
+| Skills      | 5         | Complexity management |
+| Hooks       | 5         | Debugging simplicity  |
 
 If exceeding budget:
 
@@ -296,7 +343,8 @@ Based on confirmation:
 1. **CLAUDE.md**: Edit existing lines, add new at appropriate sections
 2. **Commands**: Write new .md files, edit existing for merges
 3. **Skills**: Create directory + SKILL.md, add reference files if needed
-4. **Hooks**: Merge into existing settings.json `hooks` object
+4. **Domain docs**: Update `CONTEXT.md`, ADRs, or `.out-of-scope/` only for durable knowledge
+5. **Hooks**: Merge into existing settings.json `hooks` object
 
 ### Section Placement (CLAUDE.md)
 
@@ -326,10 +374,14 @@ Commands: (commands/)
 Skills: (skills/)
   + auth-patterns - OAuth2 and JWT handling
 
+Domain docs:
+  + CONTEXT.md: "Materialization" term
+  + docs/adr/0003-use-events-for-materialization.md
+
 Hooks: (settings.json)
   + PostToolUse[Edit]: prettier --write
 
-Budget: 45/200 instructions | 3/10 commands | 1/5 skills | 1/5 hooks
+Budget: 45/200 instructions | concise context | sparse ADRs | 3/10 commands | 1/5 skills | 1/5 hooks
 ```
 
 ---

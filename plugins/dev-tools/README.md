@@ -6,7 +6,7 @@ Developer utilities: modern CLI tools, git worktrees, docs lookup, web research,
 
 | Skill                 | Invocable | What It Does                                     |
 | --------------------- | --------- | ------------------------------------------------ |
-| `brainstorming-ideas` | yes       | Collaborative design dialogue before coding      |
+| `brainstorming-ideas` | yes       | Brainstorm ideas and stress-test draft plans     |
 | `debating-ideas`      | yes       | Dialectic agents stress-test design decisions    |
 | `looking-up-docs`     | yes       | Library documentation via Context7               |
 | `researching-web`     | yes       | Web research via Perplexity AI                   |
@@ -14,6 +14,7 @@ Developer utilities: modern CLI tools, git worktrees, docs lookup, web research,
 | `evolving-config`     | yes       | Audit config against latest Claude Code features |
 | `using-gemini`        | yes       | Consult Gemini CLI for second opinions           |
 | `learning-patterns`   | auto      | Extract learnings and generate customizations    |
+| `linting-instructions` | yes       | Lint skill and agent instruction quality         |
 | `reviewing-cc-config` | yes       | Review CC config for context efficiency          |
 | `exploring-repos`     | yes       | Explore GitHub repos via DeepWiki AI wiki        |
 | `smart-explore`       | auto      | AST code navigation via claude-mem               |

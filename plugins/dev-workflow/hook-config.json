@@ -25,6 +25,18 @@
     ],
     "allowed_paths": []
   },
+  "git-guardrails": {
+    "enabled": true,
+    "allow_force_push": false,
+    "block_patterns": [
+      "(^|[;&|[:space:]])git[[:space:]]+reset[[:space:]]+--hard([[:space:]]|$)",
+      "(^|[;&|[:space:]])git[[:space:]]+clean[[:space:]][^;&|]*(-f|--force)",
+      "(^|[;&|[:space:]])git[[:space:]]+branch[[:space:]]+-D([[:space:]]|$)",
+      "(^|[;&|[:space:]])git[[:space:]]+checkout[[:space:]]+\\.([[:space:]]|$)",
+      "(^|[;&|[:space:]])git[[:space:]]+restore[[:space:]]+\\.([[:space:]]|$)",
+      "(^|[;&|[:space:]])git[[:space:]]+push[[:space:]][^;&|]*(--force|-f)([[:space:]]|$)"
+    ]
+  },
   "smart-lint": {
     "enabled": true,
     "auto_fix": true,

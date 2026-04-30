@@ -112,6 +112,8 @@ Read task file. Check for epic link and requirement link.
 
 - Epic file (if `epic:` field exists)
 - Requirement file (if `implements:` in epic)
+- Relevant `CONTEXT.md`, `CONTEXT-MAP.md`, and ADRs if present
+- `.out-of-scope/` records if the task touches a previously rejected concept
 
 **Mark in-progress:**
 
@@ -157,6 +159,10 @@ specctl start TASK-xxx
 specctl session step planning
 ```
 
+**Check for missing human context:**
+
+If the task needs a product/design decision, credentials, external access, or manual validation before safe implementation, ask the user before spawning agents.
+
 **Spawn spec-planner:**
 
 ```
@@ -166,7 +172,9 @@ Task(
   Task: {task content}
   Epic: {epic content}
   Requirement: {requirement content}
-  Learn codebase style, return actionable plan."
+  Learn codebase style, domain vocabulary, and relevant ADRs.
+  Surface missing human decisions or access as blockers.
+  Return actionable plan with tests for success and error/edge cases."
 )
 ```
 
@@ -332,7 +340,7 @@ specctl done TASK-xxx \
   --summary "Brief summary of what was done" \
   --files "file1.ts,file2.ts" \
   --commits "abc123" \
-  --tests "make test passed"
+  --tests "make test passed; acceptance criteria verified"
 ```
 
 ---
@@ -341,21 +349,15 @@ specctl done TASK-xxx \
 
 **Ask user about learnings:**
 
-| Header | Question                                                  | Options                                                                                                                                                                                                                     |
-| ------ | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Memory | Any pitfalls or conventions to remember for future tasks? | 1. **Yes, record pitfall** - Something went wrong to avoid<br>2. **Yes, record convention** - Pattern to follow<br>3. **Yes, file discovered task** - New task found during work<br>4. **No, continue** - Nothing to record |
+| Header | Question                              | Options                                                                                                                        |
+| ------ | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Memory | Record any lesson or follow-up task? | 1. **Record note** - Pitfall, convention, domain term, or out-of-scope decision<br>2. **File task** - New task found<br>3. **No** - Continue |
 
-**If recording:**
+**If recording note:** ask for the note and save it where it belongs:
 
-```bash
-mkdir -p .spec/memory
-
-# For pitfall
-echo -e "\n## $(date +%Y-%m-%d) - $task_id\n{user's pitfall}" >> .spec/memory/pitfalls.md
-
-# For convention
-echo -e "\n## $(date +%Y-%m-%d) - $task_id\n{user's convention}" >> .spec/memory/conventions.md
-```
+- Pitfall or convention → `.spec/memory/`
+- Domain term → `CONTEXT.md` if the user approves the wording
+- Rejected enhancement/approach → `.out-of-scope/<concept>.md`
 
 **If filing discovered task:**
 

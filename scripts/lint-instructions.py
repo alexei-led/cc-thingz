@@ -46,6 +46,8 @@ class InstructionFile:
     effort: str | None = None
     user_invocable: bool = False
     body: str = ""
+    description: str = ""
+    support_files: int = 0
     metadata: dict = field(default_factory=dict)
 
     @property
@@ -53,8 +55,28 @@ class InstructionFile:
         return any("Bash" in t for t in self.tools)
 
     @property
+    def has_risky_bash(self) -> bool:
+        risky = (
+            "Bash",
+            "Bash(*)",
+            "Bash(git *)",
+            "Bash(make *)",
+            "Bash(kubectl *)",
+            "Bash(terraform *)",
+            "Bash(helm *)",
+            "Bash(gcloud *)",
+            "Bash(aws *)",
+            "Bash(rm *)",
+        )
+        return any(t in risky for t in self.tools)
+
+    @property
     def has_write_tools(self) -> bool:
         return any(t in self.tools for t in ("Edit", "Write", "MultiEdit"))
+
+    @property
+    def has_ask_user_question(self) -> bool:
+        return any(t == "AskUserQuestion" for t in self.tools)
 
     @property
     def is_knowledge_skill(self) -> bool:
@@ -113,6 +135,17 @@ def _load(path: Path, kind: str) -> InstructionFile | None:
     tools = [str(t) for t in tools_raw] if isinstance(tools_raw, list) else []
 
     effort_val = meta.get("effort")
+    support_files = 0
+    if kind == "skill":
+        support_files = len(
+            [
+                p
+                for p in path.parent.iterdir()
+                if p.name not in {"SKILL.md", "SKILL.codex.md"}
+                and not p.name.startswith(".")
+            ]
+        )
+
     return InstructionFile(
         path=path,
         rel=str(path.relative_to(ROOT)),
@@ -122,6 +155,8 @@ def _load(path: Path, kind: str) -> InstructionFile | None:
         effort=str(effort_val) if effort_val else None,
         user_invocable=bool(meta.get("user-invocable", False)),
         body=post.content,
+        description=str(meta.get("description", "")),
+        support_files=support_files,
         metadata=meta,
     )
 
@@ -271,7 +306,7 @@ def check_u_ground(f: InstructionFile) -> Finding | None:
 
 def check_u_no_destroy(f: InstructionFile) -> Finding | None:
     """Destructive action warning — only for write-capable agents."""
-    if not (f.has_bash or f.has_write_tools):
+    if not (f.has_risky_bash or f.has_write_tools):
         return None
     # Propose-only agents are safe
     if _any(f.body, [_P(r"(?i)propose\s*only")]):
@@ -368,6 +403,9 @@ def check_s_anti_eager(f: InstructionFile) -> Finding | None:
         _P(r"(?i)beyond\s*(?:the\s*)?(?:stated|task)"),
         _P(r"(?i)only\s*(?:when|if)\s*(?:user|asked)"),
         _P(r"(?i)explicit.*request"),
+        _P(r"(?i)\bdo\s+not\b"),
+        _P(r"(?i)ONLY\s+these"),
+        _P(r"(?i)propose\s+only"),
     ]
     if _any(f.body, pats):
         return None
@@ -376,6 +414,91 @@ def check_s_anti_eager(f: InstructionFile) -> Finding | None:
         "S-ANTI-EAGER",
         "warning",
         "Sonnet without anti-eagerness clause.",
+    )
+
+
+# -------------------------------------------------------------------
+# Skill structure rules
+# -------------------------------------------------------------------
+
+
+def check_skill_name_clear(f: InstructionFile) -> Finding | None:
+    """Skill names should be kebab-case and explainable."""
+    if f.kind != "skill":
+        return None
+    name = str(f.metadata.get("name", f.path.parent.name))
+    if not re.match(r"^[a-z][a-z0-9]*(-[a-z0-9]+)*$", name):
+        return Finding(
+            f.rel,
+            "K-NAME",
+            "warning",
+            f"Skill name '{name}' is not kebab-case.",
+        )
+    parts = name.split("-")
+    if len(name) < 4 or any(len(part) == 1 for part in parts):
+        return Finding(
+            f.rel,
+            "K-NAME",
+            "warning",
+            f"Skill name '{name}' is too cryptic for broad reuse.",
+        )
+    return None
+
+
+def check_skill_description_triggers(f: InstructionFile) -> Finding | None:
+    """Skill descriptions drive activation; they need trigger language."""
+    if f.kind != "skill":
+        return None
+    pats = [
+        _P(r"(?i)use\s+when"),
+        _P(r"(?i)use\s+for"),
+        _P(r"(?i)auto-?activates?"),
+        _P(r"(?i)triggers?"),
+        _P(r"(?i)when\s+(?:working|user|writing|running|creating)"),
+    ]
+    if _any(f.description, pats):
+        return None
+    return Finding(
+        f.rel,
+        "K-DESC",
+        "warning",
+        "Skill description lacks clear trigger language.",
+    )
+
+
+def check_progressive_disclosure(f: InstructionFile) -> Finding | None:
+    """Large skills should move detail into sibling reference files."""
+    if f.kind != "skill":
+        return None
+    line_count = len(f.body.splitlines())
+    if line_count <= 220 or f.support_files > 0:
+        return None
+    return Finding(
+        f.rel,
+        "K-PROGRESSIVE",
+        "warning",
+        f"Skill body is {line_count} lines with no support files; "
+        "split reference material.",
+    )
+
+
+def check_one_question_at_a_time(f: InstructionFile) -> Finding | None:
+    """Interactive skills should avoid batched interrogation."""
+    if not f.has_ask_user_question:
+        return None
+    pats = [
+        _P(r"(?i)one\s+question\s+at\s+a\s+time"),
+        _P(r"(?i)ask\s+.*one\s+.*at\s+a\s+time"),
+        _P(r"(?i)ask\s+sequential"),
+    ]
+    if _any(f.body, pats):
+        return None
+    return Finding(
+        f.rel,
+        "I-ONE-QUESTION",
+        "warning",
+        "Uses AskUserQuestion but does not require one-question-at-a-time "
+        "or sequential questioning.",
     )
 
 
@@ -393,6 +516,10 @@ ALL_CHECKS = [
     check_o_efficiency,
     check_o_scope_only,
     check_s_anti_eager,
+    check_skill_name_clear,
+    check_skill_description_triggers,
+    check_progressive_disclosure,
+    check_one_question_at_a_time,
 ]
 
 

@@ -57,7 +57,7 @@ implements:
 ---
 # {Title}
 
-(describe implementation)
+(describe the vertical slice, acceptance criteria, and out-of-scope boundaries)
 ```
 
 **Req:**

@@ -12,11 +12,11 @@ A Claude Code plugin suite with portable skill export for Codex CLI, Gemini CLI,
 | coding | Implementation process discipline for all languages |
 | committing-code | Smart git commits with logical grouping |
 | documenting-code | Update project documentation based on recent changes |
-| fixing-code | Sequential fix workflow |
-| improving-tests | Sequential test improvement |
+| fixing-code | Fix code problems with disciplined diagnosis |
+| improving-tests | Improve test design and coverage, including TDD/red-green-refactor guidance |
 | refactoring-code | Batch refactoring via MorphLLM edit_file |
-| reviewing-code | Sequential code review for security, quality, and architecture |
-| searching-code | Intelligent codebase search via WarpGrep |
+| reviewing-code | Sequential code review for security, quality, tests, and architecture |
+| searching-code | Intelligent codebase search and zoom-out mapping via WarpGrep |
 
 ## Go Development
 
@@ -55,11 +55,11 @@ A Claude Code plugin suite with portable skill export for Codex CLI, Gemini CLI,
 | Skill | Description |
 |-------|-------------|
 | analyzing-usage | Analyze Claude Code usage, cost, efficiency, and burn rate using ccusage and termgraph |
-| brainstorming-ideas | Collaborative design workflow |
+| brainstorming-ideas | Brainstorm ideas and stress-test draft plans before coding |
 | debating-ideas | Dialectic thinking |
 | evolving-config | Audit Claude Code configuration against latest features and best practices |
 | exploring-repos | Explore public GitHub repositories via DeepWiki AI-generated documentation |
-| learning-patterns | Extract learnings and generate project-specific customizations (CLAUDE.md, commands, skills, hooks) |
+| learning-patterns | Extract learnings and generate project-specific customizations (CLAUDE.md, CONTEXT.md, ADRs,... |
 | linting-instructions | Lint plugin agent/skill prompts against rules derived from Anthropic model cards (Opus 4.6,... |
 | looking-up-docs | Library documentation via Context7 |
 | mem-history | Query project history, past decisions, and known gotchas from claude-mem observations |

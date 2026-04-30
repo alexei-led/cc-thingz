@@ -1,9 +1,9 @@
 ---
 name: fixing-code
-description: Fix ALL issues via parallel agents with zero tolerance quality enforcement. Use when user says "fix", "fix issues", "fix errors", "fix all", "fix bugs", "fix lint", "fix tests", or wants to resolve code problems.
+description: Fix code problems with disciplined diagnosis — run checks, build a repro for bugs, rank falsifiable hypotheses, fix one issue at a time, and verify until clean. Use when user says "fix", "debug", "diagnose", "broken", "failing", "throws", "performance regression", "make tests pass", or wants lint/test/build failures resolved.
 user-invocable: true
 context: fork
-argument-hint: "[investigate] [team]"
+argument-hint: "[diagnose|investigate] [team]"
 allowed-tools:
   - Task
   - TaskOutput
@@ -22,254 +22,137 @@ allowed-tools:
   - mcp__plugin_claude-mem_mcp-search__get_observations
 ---
 
-# Fix All Issues
+# Fix and Diagnose Code
 
-Execute until clean. Parallel analysis, sequential fixes.
+Fix until clean. For hard bugs, diagnose before editing. No guessing. Confirm before any destructive command; never use `git reset --hard`, `git clean`, or force push as a fix.
 
 **Parse `$ARGUMENTS`:**
 
-- `investigate` → 5-Why root cause analysis before fixing (for recurring or mysterious bugs)
-- `team` → Agent team mode: Analysts compete to find root causes and debate solutions
+- `diagnose` or `investigate` → hard-bug workflow: feedback loop, repro, hypotheses, probes, regression test.
+- `team` → parallel analysis agents challenge root causes before fixes.
 
-**Use TaskCreate / TaskUpdate** to track these 6 phases:
+Use TaskCreate / TaskUpdate to track:
 
-1. Run validation
-2. Parallel analysis (spawn agents or team)
-   2a. 5-Why investigation (if `investigate`)
-3. Collect analysis results
-4. Sequential fixes
-5. Final verification
+1. Run validation or build a repro
+2. Analyze root causes
+3. Fix one issue at a time
+4. Verify after each fix
+5. Final verification and cleanup
 
----
+## Phase 1: Feedback Loop First
 
-## Phase 1: Run Validation
+For lint/build/test failures, run validation:
 
 ```bash
-make lint 2>&1 | head -100
-make test 2>&1 | head -100
+make lint 2>&1 | head -150
+make test 2>&1 | head -150
 ```
 
-No Makefile? Detect language and run:
+No Makefile? Detect language:
 
-- **Go**: `golangci-lint run ./... 2>&1 | head -100 && go test -race ./... 2>&1 | head -100`
-- **Python**: `ruff check . 2>&1 | head -100 && pytest 2>&1 | head -100`
-- **TypeScript**: `bun lint 2>&1 | head -100 && bun test 2>&1 | head -100`
-- **Web (HTML/CSS/JS)**: `bunx html-validate "**/*.html" 2>&1 | head -50 && bunx stylelint "**/*.css" 2>&1 | head -50 && bunx eslint "**/*.js" 2>&1 | head -50`
+- Go: `golangci-lint run ./... 2>&1 | head -150 && go test -race ./... 2>&1 | head -150`
+- Python: `ruff check . 2>&1 | head -150 && pytest --tb=short 2>&1 | head -150`
+- TypeScript: `bun lint 2>&1 | head -150 && bun test 2>&1 | head -150`
+- Web: `bunx eslint "**/*.js" 2>&1 | head -100 && bunx stylelint "**/*.css" 2>&1 | head -100`
 
-**If all pass**: Report "All checks pass" → stop.
+If all checks pass: report `All checks pass` and stop.
 
----
+For reported bugs or `diagnose`/`investigate`, build a fast, deterministic pass/fail signal before editing. Try, in order:
 
-## Pre-Phase 2: Check History (if claude-mem available)
+1. Failing unit/integration/e2e test at the right seam.
+2. CLI or HTTP script with fixture input.
+3. Playwright/headless browser script for UI bugs.
+4. Replay captured payload/log/trace.
+5. Throwaway harness around the smallest real code path.
+6. Property/fuzz loop for intermittent wrong output.
+7. `git bisect run` harness for regressions.
+8. Human-in-the-loop script if manual steps are unavoidable.
 
-If `mcp__plugin_claude-mem_mcp-search__search` is available, query for known issues on failing files:
+Do not proceed to fixes until the loop reproduces the user's symptom. If no loop is possible, stop and ask for access, logs, HAR/core dump, screen recording with timestamps, or permission to add temporary instrumentation.
 
-```
-search({ query: "<failing file paths>", type: "gotcha OR problem-solution", limit: 5 })
-```
+## Phase 2: Analyze Root Causes
 
-If relevant past observations exist, fetch with `get_observations` and attach findings to Phase 2 agent prompts. Skip silently if unavailable.
+Read the failing output and relevant files. If claude-mem is available, search for prior gotchas on failing files.
 
----
+For straightforward check failures, catalog every distinct issue:
 
-## Phase 2: Parallel Analysis (Read-Only)
+- file:line
+- exact error/test failure
+- tool that reported it
+- priority: critical / important / minor
 
-### Analysis Mode
+For hard bugs, generate **3–5 ranked falsifiable hypotheses** before testing any one of them:
 
-**If `team` NOT in `$ARGUMENTS`** (Subagent mode - default):
-
-Spawn ALL relevant language agents IN ONE MESSAGE for parallel execution.
-
-**If `team` in `$ARGUMENTS`** (Team mode):
-
-Create an agent team where analysts compete to find root causes and debate solutions. This mode is better for complex or mysterious issues where multiple perspectives help.
-
----
-
-### Subagent Mode (Default)
-
-Based on detected languages with issues, spawn analysis agents:
-
-```
-Task(
-  subagent_type="go-qa",
-  run_in_background=true,
-  description="Go issue analysis",
-  prompt="Analyze these Go issues. DO NOT FIX - analysis only.
-  Issues:
-  {lint/test output}
-
-  Return structured analysis:
-  - Root cause for each issue
-  - Suggested fix approach
-  - File:line references
-  - Priority (critical/important/minor)"
-)
-
-Task(
-  subagent_type="py-qa",
-  run_in_background=true,
-  description="Python issue analysis",
-  prompt="Analyze these Python issues. DO NOT FIX - analysis only.
-  Issues:
-  {lint/test output}
-
-  Return structured analysis:
-  - Root cause for each issue
-  - Suggested fix approach
-  - File:line references
-  - Priority (critical/important/minor)"
-)
-
-Task(
-  subagent_type="web-qa",
-  run_in_background=true,
-  description="Web frontend issue analysis",
-  prompt="Analyze these web frontend issues. DO NOT FIX - analysis only.
-  Issues:
-  {lint/test output}
-
-  Return structured analysis:
-  - Root cause for each issue
-  - Suggested fix approach
-  - File:line references
-  - Priority (critical/important/minor)"
-)
+```text
+If <cause> is true, then <probe/change> will make <specific symptom> disappear or change.
 ```
 
-### Team Mode (If `team` in Arguments)
+Avoid testing only the first plausible hypothesis; that anchors the fix on guesswork.
 
-Create an agent team for competing analysis:
+If `team` is set, spawn relevant language QA/test/implementation agents in parallel. Agents analyze only; they must not edit. Ask them for root cause, evidence, suggested fix, priority, and confidence.
 
-```
-Create an agent team to analyze these issues. Spawn analysts for each language:
+## Phase 3: Instrument Carefully
 
-{If Go issues}:
-- go-qa: Analyze Go issues from security/performance angle
-- go-impl: Analyze from implementation/architecture angle
-- go-tests: Analyze from testability angle
+Probe one hypothesis at a time.
 
-{If Python issues}:
-- py-qa: Analyze Python issues from security/performance angle
-- py-impl: Analyze from implementation angle
-- py-tests: Analyze from test perspective
+- Prefer debugger/REPL inspection when available.
+- Otherwise add targeted logs at boundaries that distinguish hypotheses.
+- Tag temporary logs with a unique prefix like `[DEBUG-a4f2]`.
+- For performance regressions: measure baseline first, then bisect/profile. Do not fix from guesswork.
 
-{If TypeScript issues}:
-- ts-qa: Analyze TypeScript issues from security/performance angle
-- ts-impl: Analyze from implementation angle
-- ts-tests: Analyze from test perspective
+## Phase 4: Fix One Issue at a Time
 
-{If Web issues}:
-- web-qa: Analyze from security/performance/a11y angle
-- web-impl: Analyze from implementation angle
+For each issue, in priority order:
 
-Have analysts:
-1. Independently diagnose root causes
-2. Compete to find the most likely explanation
-3. Debate proposed solutions
-4. Challenge each other's assumptions
-5. Converge on consensus root cause + fix approach
+1. Read the exact code path.
+2. Apply the smallest root-cause fix.
+3. Add or update a regression test at the correct seam when possible.
+4. Run the narrow check.
+5. Run broader lint/test before moving on.
 
-Return prioritized list with confidence levels and dissenting opinions.
-```
+If the only available test seam is too shallow, say so. Do not write a fake-confidence test that only proves a helper works while the real bug path stays uncovered.
 
-The team lead will synthesize competing analyses into prioritized action plan.
+If a fix causes new failures, revert or adjust it before touching the next issue.
 
----
+## Phase 5: Final Verification and Cleanup
 
-## Phase 2a: 5-Why Investigation (If `investigate` in Arguments)
+Required before done:
 
-**Skip this phase unless `investigate` is in `$ARGUMENTS`.**
+- Original repro no longer reproduces.
+- Regression test passes, or missing test seam is explicitly reported.
+- Full validation passes.
+- All `[DEBUG-...]` probes are removed.
+- Throwaway harnesses are deleted or clearly moved into test fixtures.
 
-For each critical issue from Phase 2, apply 5-Why root cause analysis:
-
-1. **Why** did this fail? → Immediate cause (e.g., "nil pointer dereference")
-2. **Why** was that possible? → Missing guard (e.g., "no nil check before access")
-3. **Why** was the guard missing? → Design gap (e.g., "function contract unclear")
-4. **Why** was the contract unclear? → Systemic cause (e.g., "no interface defining expectations")
-5. **Why** was there no interface? → Root cause (e.g., "grew organically without design review")
-
-**Output per issue:**
-
-- Chain of 5 whys with concrete answers
-- Root cause category: `design | process | knowledge | tooling`
-- Preventive action: what would stop this class of bug permanently
-
-Attach the 5-Why analysis to the issue before proceeding to fixes. This ensures fixes address root causes, not just symptoms.
-
----
-
-## Phase 3: Collect Analysis Results
-
-```
-TaskOutput(task_id=<go_qa_id>, block=true)
-TaskOutput(task_id=<py_qa_id>, block=true)
-TaskOutput(task_id=<web_qa_id>, block=true)
-```
-
-Merge and prioritize issues:
-
-1. Critical (blocking): Fix first
-2. Important (quality): Fix second
-3. Minor (style): Fix if time permits
-
----
-
-## Phase 4: Sequential Fixes
-
-**Fix issues ONE AT A TIME to avoid conflicts:**
-
-For each issue (prioritized order):
-
-1. Read the file
-2. Apply fix using Edit tool
-3. Verify fix didn't break anything: `make lint && make test` or equivalent
-
-**If fix causes new issues**: Revert and try alternative approach.
-
----
-
-## Phase 5: Final Verification
+Run:
 
 ```bash
 make lint && make test
 ```
 
-**Loop back to Phase 2** if issues remain.
+Or language equivalents.
 
----
-
-## Exit Criteria
-
-- Build passes
-- All tests pass
-- Zero lint errors
+Loop back to Phase 2 if anything still fails.
 
 ## Output
 
-```
+```text
 FIX COMPLETE
 ============
-Mode: {Subagent Analysis | Team Analysis}
-Analysis: {N} issues identified by {M} agents
-Fixed: {X} issues
-Remaining: {Y} non-blocking (if any)
+Mode: standard | diagnose | team | diagnose+team
+Issues found: X
+Fixed: Y
+Remaining: Z
 Status: CLEAN | NEEDS ATTENTION
 
+Root cause:
+- <short verified cause>
+
 Changes:
-- file1.go:42 - Fixed null pointer check
-- file2.py:15 - Added missing type hint
+- file:line — fix
+
+Verification:
+- <command> — pass/fail
 ```
 
-## Examples
-
-```
-/fixing-code                # Subagent mode: parallel analysis
-/fixing-code investigate    # Deep root cause analysis with 5-Why
-/fixing-code team           # Team mode: competing analysis with debate
-/fixing-code investigate team  # Both: 5-Why + competing analysts
-```
-
----
-
-**Execute validation now.**
+If unresolved, state the blocker and the exact artifact/access needed. Do not pretend clean.

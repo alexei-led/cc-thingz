@@ -1,7 +1,7 @@
 {
   "name": "python-dev",
   "description": "Python 3.12+ development with uv/ruff/pyright toolchain and modern patterns",
-  "version": "1.7.1",
+  "version": "1.8.0",
   "author": {
     "name": "Alexei Ledenev",
     "email": "alexei.led@gmail.com",

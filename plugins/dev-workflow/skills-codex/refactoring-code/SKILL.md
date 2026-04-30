@@ -4,8 +4,8 @@ allowed-tools:
 - Grep
 - Glob
 description: Batch refactoring via MorphLLM edit_file. Use for "refactor across files",
-  "batch rename", "update pattern everywhere", large files (500+ lines), or 5+ edits
-  in same file.
+  "batch rename", "update pattern everywhere", large files (500+ lines), 5+ edits
+  in same file, or applying an approved architecture-deepening refactor.
 name: refactoring-code
 ---
 
@@ -18,7 +18,7 @@ name: refactoring-code
 
 # Fast Refactoring with MorphLLM
 
-MorphLLM edit_file provides semantic code merging at 10,500+ tokens/sec with 98% accuracy.
+MorphLLM edit_file provides semantic code merging at 10,500+ tokens/sec with 98% accuracy. Refactoring here means behavior-preserving change or architecture deepening, not cosmetic churn.
 
 ## When to Use edit_file
 
@@ -37,14 +37,34 @@ MorphLLM edit_file provides semantic code merging at 10,500+ tokens/sec with 98%
 - **Accuracy**: 98% success rate on edge cases
 - **dryRun**: Preview changes before applying
 
+## Architecture Deepening
+
+When the request is architectural, use this vocabulary:
+
+- **Module** — anything with an interface and implementation.
+- **Interface** — everything callers must know: types, invariants, error modes, config, performance.
+- **Seam** — where an interface lives.
+- **Adapter** — concrete thing satisfying an interface at a seam.
+- **Depth** — lots of behavior behind a small interface.
+- **Leverage** — caller value from depth.
+- **Locality** — change and verification concentrated in one place.
+
+Apply the deletion test before editing: if deleting a module makes complexity vanish, it was a pass-through. If complexity reappears across callers, the module was earning its keep.
+
+Seam rule: one adapter means a hypothetical seam; two adapters means a real seam. Do not add interfaces without real variation.
+
+Read relevant `CONTEXT.md`, `CONTEXT-MAP.md`, and ADRs when present. Preserve domain names.
+
 ## Workflow
 
 ### Standard Refactoring
 
 ```
 1. Use WarpGrep to find all locations needing change
-2. For each file: call edit_file with changes
-3. Verify with lint/test
+2. State intended behavior preservation or deepening move
+3. For each file: call edit_file with changes
+4. Verify with lint/test
+5. Delete obsolete shallow tests once deeper interface tests cover the behavior
 ```
 
 ### High-Stakes Changes (dryRun)
@@ -106,3 +126,5 @@ code_edit: Shows all locations with changes
 - Preserve exact indentation in code_edit
 - Use WarpGrep first to understand scope
 - Run tests after each file to catch issues early
+- Keep old public behavior stable unless the user explicitly requested behavior change
+- Prefer tests through the deepened module interface over tests of extracted helpers

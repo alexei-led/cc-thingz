@@ -44,7 +44,7 @@ ls .spec/ 2>/dev/null && echo "SPEC_EXISTS"
 
 ### Step 2: Brainstorm
 
-Use brainstorming skill:
+Use the brainstorming skill:
 
 ```
 Skill(skill="brainstorming-ideas", args="What are we building? Let's explore requirements.")
@@ -97,7 +97,7 @@ implements: REQ-{topic}
 ---
 # {Title}
 
-{ Implementation steps }
+{Vertical slice description, acceptance criteria, and out-of-scope boundaries}
 ```
 
 ### Step 5: Summary

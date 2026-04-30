@@ -2,10 +2,11 @@
 
 Core development loop: code review, fixes, commits, linting hooks, and 24 language-specific review agents. Skills available for both Claude Code and Codex CLI; agents, hooks, and commands are Claude Code-only.
 
-## Skills (8)
+## Skills (9)
 
 | Skill              | Invocable | What It Does                                                                   |
 | ------------------ | --------- | ------------------------------------------------------------------------------ |
+| `ccgram-messaging` | yes       | Inter-agent messaging via ccgram swarm                                         |
 | `committing-code`  | yes       | Smart git commits with logical grouping                                        |
 | `reviewing-code`   | yes       | Multi-agent review (security, quality, idioms)                                 |
 | `fixing-code`      | yes       | Parallel agents fix all issues, zero tolerance                                 |
@@ -23,12 +24,13 @@ Core development loop: code review, fixes, commits, linting hooks, and 24 langua
 - 6 TypeScript review agents: `ts-qa`, `ts-tests`, `ts-idioms`, `ts-impl`, `ts-simplify`, `ts-docs`
 - 6 Web review agents: `web-qa`, `web-tests`, `web-idioms`, `web-impl`, `web-simplify`, `web-docs`
 
-## Hooks (7)
+## Hooks (8)
 
 | Hook                     | Event            | What It Does                                 |
 | ------------------------ | ---------------- | -------------------------------------------- |
 | `skill-enforcer.sh`      | UserPromptSubmit | Pattern-matches prompt and suggests skills   |
 | `file-protector.sh`      | PreToolUse       | Blocks edits to settings.json, secrets       |
+| `git-guardrails.sh`      | PreToolUse       | Blocks destructive git commands              |
 | `smart-lint.sh`          | PostToolUse      | Auto-runs linter after file edits            |
 | `test-runner.sh`         | PostToolUse      | Auto-runs tests after implementation changes |
 | `session-start.sh`       | SessionStart     | Shows git branch, last commit, file context  |

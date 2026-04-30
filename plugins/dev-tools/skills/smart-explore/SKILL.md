@@ -1,6 +1,6 @@
 ---
 name: smart-explore
-description: Token-efficient code navigation via AST parsing. Use smart_outline for file structure, smart_search for cross-file discovery, smart_unfold for targeted function extraction. 10-20x fewer tokens than reading full files.
+description: Token-efficient code navigation via AST parsing. Use when exploring file structure, cross-file symbol discovery, or targeted function extraction with smart_outline, smart_search, and smart_unfold. 10-20x fewer tokens than reading full files.
 user-invocable: false
 context: fork
 allowed-tools:

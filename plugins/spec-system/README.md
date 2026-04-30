@@ -1,15 +1,15 @@
 # spec-system
 
-Spec-driven development: structured requirements, tasks, and planning workflows. Agent and commands are Claude Code-only; Codex CLI users get the spec-planner agent's knowledge via skills.
+Spec-driven development: structured requirements, vertical-slice tasks, and evidence-based completion workflows. Agent and commands are Claude Code-only; Codex CLI users get the spec-planner agent's knowledge via skills.
 
 ## Commands (8)
 
 | Command           | Purpose                                              |
 | ----------------- | ---------------------------------------------------- |
 | `/spec:init`      | Initialize `.spec/` or add reqs from docs            |
-| `/spec:interview` | Deep requirement gathering via questioning           |
-| `/spec:plan`      | Create EPIC + TASK files from requirement            |
-| `/spec:work`      | Main loop: select → plan → implement → verify → done |
+| `/spec:interview` | Deep requirement gathering with domain/out-of-scope checks |
+| `/spec:plan`      | Create EPIC + vertical-slice TASK files                           |
+| `/spec:work`      | Main loop: select → plan → implement → verify → done       |
 | `/spec:status`    | Progress overview (`--list`, `--todo`, `--check`)    |
 | `/spec:new`       | Create new task or requirement                       |
 | `/spec:done`      | Mark complete (`--discover`, `--verify`)             |

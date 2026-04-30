@@ -1,9 +1,9 @@
 ---
-description: Implementation process discipline for all languages — surface assumptions
-  before coding, define verifiable success criteria, plan before writing. Use when
-  implementing features, writing functions/classes/modules, or adding new code in
-  any language. Complements language-specific skills (writing-go, writing-python,
-  etc.) with process guardrails.
+description: Implementation process discipline for all languages — surface assumptions,
+  define verifiable success criteria, and ground work in project domain docs. Use
+  when implementing features, writing functions/classes/modules, or adding code. Complements
+  language-specific skills and includes test-first guidance when implementation is
+  explicitly TDD.
 name: coding
 ---
 
@@ -18,33 +18,59 @@ name: coding
 
 ## Before Writing Code
 
-**State your assumptions. Don't pick an interpretation silently.**
+State assumptions. Do not pick an interpretation silently.
 
-- If the request is ambiguous, name the interpretations and ask — one clarifying question beats one wrong implementation.
-- If something is unclear, stop. Name what's confusing. Ask.
-- If a simpler approach exists than what was asked, say so before proceeding.
+- Ambiguous request → name the interpretations and ask one clarifying question.
+- Simpler approach exists → say so before coding.
+- Existing project glossary or ADRs exist → read them before naming concepts or changing architecture:
+  - `CONTEXT.md`
+  - `CONTEXT-MAP.md`
+  - `docs/adr/`
+  - nearest `*/CONTEXT.md` or `*/docs/adr/`
 
 ## Define Success Criteria First
 
-**Transform the task into verifiable goals before starting.**
+Transform the task into verifiable goals.
 
 | Vague            | Verifiable                                          |
 | ---------------- | --------------------------------------------------- |
-| "Add validation" | Write tests for invalid inputs, then make them pass |
-| "Fix the bug"    | Write a test that reproduces it, then make it pass  |
-| "Refactor X"     | Tests pass before and after, diff is minimal        |
+| "Add validation" | Write invalid-input tests, then make them pass      |
+| "Fix the bug"    | Reproduce with a test or script, then make it pass  |
+| "Refactor X"     | Tests pass before and after, diff stays minimal     |
 
-For multi-step work, state a brief plan upfront:
+For multi-step work, state a brief plan:
 
-```
+```text
 1. [Step] → verify: [check]
 2. [Step] → verify: [check]
 ```
 
-Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+## Test-First Mode
+
+Use this when the user asks for TDD, test-first, or red-green-refactor.
+
+- Test behavior through public interfaces. Do not test private helpers.
+- Write one failing test for one behavior.
+- Add only enough code to pass that test.
+- Repeat one vertical slice at a time. Do not write all tests first.
+- Refactor only when green.
+- Mock only system boundaries: network, time, randomness, filesystem, external services.
+
+Cycle:
+
+```text
+RED: one behavior test fails
+GREEN: minimal implementation passes
+REFACTOR: simplify without changing behavior
+```
 
 ## During Implementation
 
-**Every changed line must trace directly to the request.**
+Every changed line must trace to the request.
 
-When done, check: does the diff contain anything the user didn't ask for? If yes, remove it.
+When done, check the diff:
+
+- Extra feature? Remove it.
+- Speculative abstraction? Delete it.
+- Name conflicts with `CONTEXT.md` vocabulary? Rename to match the domain language.
+- Decision is hard to reverse, surprising, and a real trade-off? Offer an ADR.

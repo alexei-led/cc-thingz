@@ -19,7 +19,7 @@ name: linting-instructions
 
 # Instruction Lint (Model-Based Review)
 
-Review agent and skill instructions against rules derived from the Claude Opus 4.6 and Sonnet 4.6 system cards. Combines a fast regex pre-pass with deep model-based semantic review.
+Review agent and skill instructions against rules derived from the Claude Opus 4.6 and Sonnet 4.6 system cards. Combines a fast regex pre-pass with deep model-based semantic review. Do not fabricate compliance; report impossible or missing evidence directly.
 
 ---
 
@@ -31,11 +31,12 @@ Read the lint rules rubric:
 Read docs/instruction-lint-rules.md
 ```
 
-This contains 12 rules in 3 tiers:
+This contains model-behavior and skill-structure rules:
 
 - **Universal (U-\*)**: Apply to all agents/skills regardless of model
 - **Opus-specific (O-\*)**: Address Opus 4.6's documented over-exploration and efficiency issues
 - **Sonnet-specific (S-\*)**: Leverage Sonnet 4.6's documented steerability advantages
+- **Skill structure (K-\*, I-\*)**: Check names, trigger descriptions, progressive disclosure, and sequential interaction
 
 ---
 
@@ -89,6 +90,12 @@ rules derived from the Opus 4.6 and Sonnet 4.6 system cards.
 - S-DECISIVE: Should include decisive action language
 - S-ANTI-EAGER: Should include anti-over-eagerness (Sonnet is steerable here)
 
+### Skill structure
+- K-NAME: Skill names should be kebab-case and clear
+- K-DESC: Skill descriptions should include trigger language
+- K-PROGRESSIVE: Large skills should use support files
+- I-ONE-QUESTION: Interactive skills should ask sequentially
+
 ## Review these files
 
 [list of file paths]
@@ -99,6 +106,7 @@ For each file:
 3. Apply the matching rules SEMANTICALLY — check intent, not just keywords
 4. Rate each applicable rule: PASS / WARN / FAIL
 5. For WARN/FAIL: explain specifically what's missing and suggest a fix
+6. Prefer enriching existing skills over recommending new near-duplicates
 
 ## Output Format
 

@@ -1,7 +1,7 @@
 ---
 model: sonnet
 context: fork
-description: Create epic with tasks from requirement
+description: Create epic with vertical-slice tasks from a requirement
 argument-hint: REQ-xxx | <idea>
 allowed-tools:
   - Task
@@ -19,10 +19,10 @@ allowed-tools:
 
 # Spec Plan
 
-Turn a requirement into an epic with sized tasks and dependencies.
+Turn a requirement into an epic with independently grabbable vertical-slice tasks and dependencies.
 
 **Role**: Technical planner
-**Goal**: Create EPIC-_.md + TASK-_.md files with dependencies
+**Goal**: Create EPIC-_.md + TASK-_.md files with dependencies, blockers, and acceptance criteria
 
 ## Input
 
@@ -101,6 +101,18 @@ Capture:
 
 ## Step 3: Create Plan
 
+### Vertical Slice Rules
+
+Tasks should be tracer bullets, not horizontal layers.
+
+- Each task delivers a narrow but complete path through the system.
+- A completed task is demoable or independently verifiable.
+- Prefer many thin slices over one thick slice.
+- Avoid "schema task", then "API task", then "UI task" unless one layer is the whole product.
+- Include tests in the same slice as the behavior.
+
+If a slice needs a human decision, external access, or manual validation before it can be completed safely, capture that as a blocker or open question. Do not add a task taxonomy for it.
+
 ### Task Sizing Guide
 
 | Size  | Files | Criteria | Action               |
@@ -121,10 +133,11 @@ Capture:
 
 Create mental model:
 
-1. What tasks are needed?
+1. What vertical slices are needed?
 2. What order (dependencies)?
 3. What size is each task?
 4. Which can run in parallel?
+5. Which unresolved questions block implementation?
 
 ---
 
@@ -144,16 +157,22 @@ Before writing files, show the plan:
    - Size: M
    - Files: {expected files}
    - Blocked by: none
+   - Open questions: none | {specific blocker}
+   - Verifiable: {demo/check/test}
 
 2. **TASK-{slug}-2**: {title}
    - Size: M
    - Files: {expected files}
    - Blocked by: TASK-{slug}-1
+   - Open questions: none | {specific blocker}
+   - Verifiable: {demo/check/test}
 
 3. **TASK-{slug}-3**: {title}
    - Size: S
    - Files: {expected files}
    - Blocked by: none (can run parallel with task 2)
+   - Open questions: none | {specific blocker}
+   - Verifiable: {demo/check/test}
 
 Does this plan look right?
 ```
@@ -249,7 +268,12 @@ size: M
 # {Task Title}
 
 ## Description
-{What to build - WHAT not HOW}
+{What to build - WHAT not HOW. Describe the end-to-end behavior this vertical slice delivers.}
+
+## Notes
+
+- Blockers or open questions: {none | specific human decision/access/manual check needed}
+- Out of scope: {adjacent behavior not included}
 
 ## Files
 - `path/to/file.ts` - {what changes}
@@ -260,8 +284,10 @@ size: M
 {Reference patterns: "Follow pattern at src/example.ts:15"}
 
 ## Acceptance
-- [ ] {criterion 1}
-- [ ] {criterion 2}
+- [ ] {specific observable criterion 1}
+- [ ] {specific observable criterion 2}
+- [ ] Success path test exists if code behavior changed
+- [ ] Error or edge case test exists when relevant
 - [ ] Tests pass
 ````
 

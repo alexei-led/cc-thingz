@@ -55,7 +55,7 @@ REQUIRED_FIELDS: dict[str, dict[str, str | list[str]]] = {
 }
 
 EXPECTED_JSON_KEYS = {
-    "hook-config.json": ["file-protector", "smart-lint"],
+    "hook-config.json": ["file-protector", "git-guardrails", "smart-lint"],
 }
 
 # Codex CLI plugin validation constants

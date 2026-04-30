@@ -55,7 +55,7 @@ Both models reduce hallucination when explicitly told to cite tool results.
 ### U-NO-DESTROY: Destructive action warnings
 
 **Severity**: warning
-**Applies to**: Agents/skills with `Bash` in tools list
+**Applies to**: Agents/skills with write tools or broad/risky `Bash` permissions
 **Check**: Body contains caution language ("force", "destructive", "careful", "caution",
 "dangerous", "irreversible")
 **Why**: "Safety and destructive action avoidance" is a key behavioral dimension.
@@ -126,3 +126,38 @@ extensive investigation when the user asked it to perform an explicit non-explor
 agentic actions" (Sonnet SC p.73-74) — unlike Opus where "prompting does not decrease
 this behavior" (Opus SC p.92). This makes anti-eagerness instructions particularly
 effective for Sonnet agents.
+
+## Skill Structure Rules
+
+### K-NAME: Clear skill names
+
+**Severity**: warning
+**Applies to**: Skills
+**Check**: Frontmatter `name` is kebab-case and not cryptic
+**Why**: Skill names are surfaced to users and generated AGENTS.md catalogs. Opaque names
+increase routing mistakes and make slash-command suggestions harder to understand.
+
+### K-DESC: Trigger-rich descriptions
+
+**Severity**: warning
+**Applies to**: Skills
+**Check**: Frontmatter `description` includes trigger language such as "Use when", "Use for",
+"Auto-activates", or concrete activation contexts
+**Why**: The description is the model's routing surface. A capability description without
+triggers forces the model to infer when to load it, which increases routing mistakes.
+
+### K-PROGRESSIVE: Progressive disclosure
+
+**Severity**: warning
+**Applies to**: Skills
+**Check**: Skill body over 220 lines with no sibling support files
+**Why**: Large monolithic skills dilute activation context. Keep `SKILL.md` focused on the
+workflow and move rare reference detail into sibling files.
+
+### I-ONE-QUESTION: Sequential interaction
+
+**Severity**: warning
+**Applies to**: Files using `AskUserQuestion`
+**Check**: Body instructs one-question-at-a-time or sequential questioning
+**Why**: Batched clarification questions create low-quality answers and hidden ambiguity.
+Sequential prompts are slower in wall time, faster in reality.

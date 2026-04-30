@@ -6,6 +6,27 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
 major = breaking config/hook changes, minor = new skills/features, patch = fixes.
 
+## [Unreleased]
+
+## [1.8.0] - 2026-04-30
+
+### Added
+
+- **Git guardrails**: new `git-guardrails.sh` hook blocks destructive git commands such as hard resets, force pushes, branch deletion, destructive checkout/restore, and forced cleans while allowing normal push workflows.
+
+### Changed
+
+- **Workflow skills**: enriched existing skills with diagnosis, TDD, test quality, architecture review, domain vocabulary, and zoom-out guidance instead of adding overlapping new skills.
+- **`brainstorming-ideas`**: clarified that it brainstorms ideas and stress-tests draft plans before coding; implementation task breakdown remains `/spec:plan`.
+- **Spec commands**: simplified planning around vertical slices, blockers/open questions, out-of-scope checks, and durable completion evidence; removed noisy task taxonomy and stale evidence flags.
+- **Skill routing**: updated `skill-enforcer.sh` triggers for debugging, TDD, plan grilling, domain terms, zoom-out search, and architecture review without duplicating intent across skills.
+- **Instruction quality checks**: expanded the advisory linter with rules for clear names, trigger-rich descriptions, progressive disclosure, and sequential user questions.
+- **Docs and exports**: refreshed README/plugin counts, AGENTS.md, flat symlinks, and Codex/Gemini skill overlays for 33 skills, 34 agents, 10 hooks, and 9 commands.
+
+### Fixed
+
+- **Spec completion docs**: removed references to unsupported `specctl done --evidence` usage and aligned examples with the actual CLI flags.
+
 ## [1.7.1] - 2026-04-19
 
 ### Changed

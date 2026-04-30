@@ -1,6 +1,6 @@
 ---
 name: playwright-skill
-description: Internal Playwright automation library. Provides helpers for dev server detection, script execution, and browser automation primitives. Not directly invoked — use testing-e2e skill for E2E test workflows or playwright-tester agent for subagent delegation.
+description: Internal Playwright automation library. Use when loaded by testing-e2e or playwright-tester for dev server detection, script execution, and browser automation primitives. Not directly invoked by users.
 user-invocable: false
 context: fork
 ---

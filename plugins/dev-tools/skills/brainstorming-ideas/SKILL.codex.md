@@ -1,126 +1,147 @@
 ---
 name: brainstorming-ideas
-description: Collaborative design workflow — gather context through prose dialogue, explore the codebase for existing patterns, propose 2-3 approaches with trade-offs, ask the user to choose, then detail the chosen approach and write a design document.
+description: Brainstorm ideas and stress-test draft plans before coding. Use when brainstorming, exploring approaches, designing a feature/API/flow, grilling a plan, challenging assumptions, or resolving terminology that blocks the design. NOT for implementation task breakdown; use /spec:plan. NOT for general documentation updates; use documenting-code or learning-patterns.
 ---
 
-# Brainstorming Ideas Into Designs
+# Brainstorming Ideas
 
-Turn a vague idea into a well-formed design through structured dialogue and codebase exploration. Work through the phases in order. Ask questions as natural prose — one question at a time. Do not move to the next phase until you have a clear answer from the user.
+Turn a vague idea or draft plan into a well-formed design. Ask one question at a time. If the answer is discoverable from code, inspect code instead of asking.
 
 ## Core principles
 
-- Ask before exploring — understand the idea first, then look at code
-- One question at a time — never bundle multiple questions together
-- YAGNI at every step — actively challenge whether each piece is needed now
-- Present design in small sections (~200 words each) and confirm before continuing
-- Propose 2-3 concrete options with trade-offs; let the user pick
+- One question at a time.
+- YAGNI at every step.
+- Present design in small sections and confirm before continuing.
+- Propose 2-3 concrete options with trade-offs.
+- Use project domain language from `CONTEXT.md` / `CONTEXT-MAP.md` when present.
+- Offer ADRs only for hard-to-reverse, surprising, real trade-off decisions.
+
+## Step 0: Load domain context
+
+Before design questions, look for relevant project docs:
+
+- `CONTEXT.md`
+- `CONTEXT-MAP.md`
+- `docs/adr/`
+- nearest `*/CONTEXT.md` or `*/docs/adr/`
+
+Read them when present. Use those terms in questions and designs. If no docs exist, create them lazily only when a real term or decision is resolved.
 
 ## Step 1: Understand the idea
 
-Ask the user to describe what they want to brainstorm. A simple open question works: "What's the idea you'd like to explore?" Wait for their answer.
+Ask: "What's the idea or plan you'd like to explore?"
 
-Based on their response, ask targeted follow-up questions one at a time:
+Follow up one question at a time:
 
-- What triggered this idea — is there a concrete pain point it addresses?
-- Who will use it (end users, internal tooling, API consumers)?
-- Is there an existing feature this builds on or replaces?
+- What pain triggered this?
+- Who uses it?
+- What existing feature does it build on or replace?
+- What is explicitly out of scope?
 
-Stop when you can state the problem in one sentence and move on.
+Stop when you can state the problem in one sentence.
 
-## Step 2: Surface requirements (5WH)
+## Step 2: Grill the plan when requested
 
-Work through these questions in order, skipping any whose answer is already clear. Ask each as plain conversational prose — not as a list of options.
+If the user passed `plan`, `grill`, or asked to challenge/stress-test a plan, walk the decision tree. Keep it focused on design quality and assumptions, not implementation task breakdown; use `/spec:plan` for tasks.
 
-1. **WHO** — who uses this feature?
-2. **WHY** — what does it solve that isn't solved today?
-3. **WHAT** — what is the core capability, in one sentence?
-4. **WHERE** — where in the system does it live?
-5. **HOW** — any strong preferences on implementation approach?
+For each question:
 
-After gathering answers, state the assumptions you are carrying forward explicitly:
+- Provide your recommended answer.
+- Explain why the branch matters.
+- Inspect code instead of asking when possible.
+- Flag vocabulary conflicts with `CONTEXT.md`.
+- Use concrete edge-case scenarios.
 
-> "Based on what you've described, I'm assuming: (1) ... (2) ... (3) ..."
+When a domain term is resolved, propose a tight `CONTEXT.md` entry:
 
-Ask: "Are any of these wrong?" Adjust before continuing if needed.
+```markdown
+**Term**:
+One-sentence definition.
+_Avoid_: overloaded synonym
+```
 
-## Step 3: Explore the codebase
+Offer an ADR only when all three are true:
 
-Now that you understand the idea, use Glob and Read to explore relevant parts of the codebase. Do not assume what exists — look.
+1. Hard to reverse.
+2. Surprising without context.
+3. Result of a real trade-off.
+
+## Step 3: Surface requirements and assumptions
+
+Use 5WH, skipping anything already clear:
+
+1. WHO uses it?
+2. WHY is it needed?
+3. WHAT is the core capability?
+4. WHERE does it live?
+5. HOW should it work, if there is a strong constraint?
+
+Then state assumptions explicitly and ask which are wrong.
+
+## Step 4: Explore the codebase
 
 Find:
 
-- Similar features or modules that do something adjacent
-- The tech stack and conventions in use (frameworks, data access, testing patterns)
-- Integration points the new feature would need to touch
-- Any prior attempts at solving this, even incomplete ones
+- similar modules or flows
+- conventions and testing patterns
+- integration points
+- constraints from ADRs or existing architecture
 
-Summarize in 3-5 bullet points what you found and what it means for the design. Call out constraints (e.g., "the auth layer uses middleware X, so new routes should follow the same pattern").
+Summarize in 3-5 bullets. Use project vocabulary.
 
-If the user asked to research external solutions, go to Step 4. Otherwise skip to Step 5.
+## Step 5: Research external solutions only if requested
 
-## Step 4: Research external solutions (only if requested)
+Compare patterns, trade-offs, and common failure modes. Summarize before proposing approaches.
 
-Look up how comparable products or open-source projects solve this problem. Focus on:
+## Step 6: Propose approaches
 
-- Architectural patterns that apply to this tech stack
-- Known trade-offs and common failure modes
-- Anything that would change your approach
+Present 2-3 options. For each:
 
-Summarize in a short paragraph before moving to approaches.
+- **What**: one-sentence approach
+- **Trade-offs**: complexity vs flexibility
+- **Best when**: scenario where it wins
 
-## Step 5: Propose 2-3 approaches
+Mark one as recommended. Ask which fits best.
 
-Present distinct options. For each:
+## Step 7: Detail the chosen design
 
-- **What**: one sentence describing the approach
-- **Trade-offs**: complexity vs. simplicity, flexibility vs. speed to ship
-- **Best when**: the scenario where this option wins
+Present ~200-word sections and confirm after each:
 
-Mark one as recommended and explain briefly why it fits the current context. Then ask: "Which of these fits best, or would you like to adjust one of them?"
+1. Architecture overview
+2. Data flow
+3. API or interface
+4. Error handling
+5. Testing strategy
 
-Wait for the user's choice before continuing.
+Apply YAGNI at each section. Cut speculative pieces.
 
-## Step 6: Detail the chosen design
+## Step 8: Capture outcome
 
-Present the design in sections of ~200 words each. After each section, ask "Does this look right?" and wait for confirmation before continuing.
+If the outcome is more than a short answer, offer to write a concise design note:
 
-Cover these sections in order:
-
-1. **Architecture overview** — components, responsibilities, and how they relate
-2. **Data flow** — how information moves through the system end-to-end
-3. **API or interface** — external contracts and how callers interact
-4. **Error handling** — failure modes and recovery strategies
-5. **Testing strategy** — what to test and how
-
-At each section apply a YAGNI check: "Is this piece needed now, or can it be deferred?" Cut anything speculative.
-
-## Step 7: Write design document and propose next steps
-
-Write the completed design to:
-
-```
+```text
 docs/plans/YYYY-MM-DD-<topic>-design.md
 ```
 
-Include: Problem, Solution, Architecture, Data Flow, API, Error Handling, Testing Strategy, Open Questions.
+Include only: Problem, Chosen approach, Trade-offs, Open questions, Testing strategy.
 
-Then ask the user: "Ready to move to implementation? I can set up a git worktree for isolated work, write a detailed task plan, or just leave you with the saved design."
+If domain terms or decisions crystallized, update `CONTEXT.md` or create a short ADR only with user approval.
 
 ## Output format
 
-The design document is the primary artifact. In the chat, summarize:
-
-```
-DESIGN COMPLETE
-===============
+```text
+BRAINSTORM COMPLETE
+===================
 Topic: <topic>
 Approach chosen: <name>
-Document: docs/plans/YYYY-MM-DD-<topic>-design.md
+Design note: docs/plans/YYYY-MM-DD-<topic>-design.md or none
 
 Key decisions:
-- <decision 1>
-- <decision 2>
+- <decision>
+
+Domain docs:
+- <CONTEXT/ADR updates or none>
 
 Open questions:
-- <anything left unresolved>
+- <unresolved>
 ```

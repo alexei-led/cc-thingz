@@ -1,6 +1,6 @@
 {
   "name": "typescript-dev",
-  "version": "1.7.1",
+  "version": "1.8.0",
   "description": "TypeScript development with strict typing, React patterns, and modern tooling",
   "author": {
     "name": "Alexei Ledenev"

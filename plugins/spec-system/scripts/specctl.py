@@ -9,7 +9,7 @@ Usage:
     specctl init                    Create .spec/ structure
     specctl ready [--epic ID]       Show unblocked tasks in dependency order
     specctl start <id>              Mark task in-progress
-    specctl done <id> [--evidence]  Mark task done with evidence
+    specctl done <id> [--summary/--files/--commits/--tests]  Mark task done
     specctl validate [--all]        Check for issues
     specctl status [ID]             Show progress overview
     specctl dep add <task> <dep>    Add dependency (task blocked by dep)

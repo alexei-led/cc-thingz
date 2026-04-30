@@ -1,5 +1,14 @@
 # Python Testing Reference
 
+## Test Design
+
+- Test behavior through public interfaces, not private helpers.
+- Prefer integration-style tests when they give a stable signal.
+- Mock only system boundaries: external APIs, time, randomness, filesystem, subprocesses.
+- Do not mock internal collaborators just to assert call counts.
+- Use red-green-refactor for risky changes: one failing test, minimal code, refactor only when green.
+- Delete shallow tests once deeper interface tests cover the behavior.
+
 ## Framework: pytest
 
 ```bash
