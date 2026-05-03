@@ -8,6 +8,19 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [1.9.1] - 2026-05-03
+
+### Added
+
+- **Architecture-tier linting** in `smart-lint.sh` (`dev-workflow`): wires `knip` (unused exports / files / deps) and `dependency-cruiser` (boundary rules and import cycles) for TypeScript / JavaScript projects. Both opt-in by their own config-file presence (`knip.json`, `.dependency-cruiser.cjs`, etc.) — no env var to enable. Falls back through `bunx` and `npx` when the binary isn't on `PATH`; emits a stdout install hint (does not block) when no runner is available.
+- **Layered hook config** in `smart-lint.sh`: sources `~/.claude/.claude-hooks-config.sh` (global defaults) then `./.claude-hooks-config.sh` (project overrides) so per-project settings override per-user defaults. Per-tool linters keep reading their own project configs (`.golangci.yml`, `pyproject.toml`, `.prettierrc`, `knip.json`, `.dependency-cruiser.cjs`).
+- **`SKIP_ARCH=1` env var and `.nolint-arch` marker file** to skip just the architecture tier without disabling fast-tier linters. Existing `SKIP_LINT=1` and `.nolint` continue to skip everything.
+- **`plugins/dev-workflow/docs/lint-tools.md`**: new reference doc with install commands (brew / uv / bun) for every tool the hook touches, architecture-tier opt-in instructions, skip recipes, and a pointer to `.golangci.yml` for Go architecture enforcement (`depguard`, `gomodguard`, `cyclop`, `revive`).
+
+### Fixed
+
+- `lint_shell()` now skips `.claude-hooks-config.sh` files. They are sourced (not executed) and routinely written without shebangs, so shellcheck's `SC2148` was incorrectly blocking edits when a project added per-project hook config.
+
 ## [1.9.0] - 2026-05-03
 
 ### Added
@@ -38,6 +51,8 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 - **Spec completion docs**: removed references to unsupported `specctl done --evidence` usage and aligned examples with the actual CLI flags.
 
+## [1.9.1] - 2026-05-03
+
 ## [1.7.1] - 2026-04-19
 
 ### Changed
@@ -59,6 +74,8 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 - All 9 plugins bumped to 1.7.1 to align with marketplace tag
 - PR #6 (yogesh-tessl) closed without merge: the "frontmatter validation fix" was based on a third-party Tessl validator, not the Claude Code spec — which explicitly accepts both YAML lists and space-separated strings for `allowed-tools`. Useful prose changes (verify loops) cherry-picked manually
 
+## [1.9.1] - 2026-05-03
+
 ## [1.7.0] - 2026-04-17
 
 ### Added
@@ -71,12 +88,16 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 - **Plugin manifests**: All `plugin.json` and `marketplace.json` files enriched with full metadata — `author.email`, `author.url`, `homepage` URLs, expanded `keywords` arrays across all 9 plugins
 - **`make push`**: Simplified to plain dual-push (`origin` + mirror remotes); CI on mirror repos handles manifest rewrites automatically
 
+## [1.9.1] - 2026-05-03
+
 ## [1.6.3] - 2026-04-16
 
 ### Added
 
 - **`coding` skill**: Language-agnostic process discipline for all implementation tasks — surfaces assumptions before coding, defines verifiable success criteria first. Complements writing-go/python/typescript/web with process guardrails. Auto-activates on implement/write/create/build/add/develop intent; wired into go-engineer, python-engineer, typescript-engineer, web-engineer agents.
 - **`smart-lint.sh` skip gate**: Skip auto-linting via `SKIP_LINT=1 <command>` (transient) or `.nolint` file in project root (persistent, add to `.gitignore`). Useful when editing repos you don't own and want to avoid auto-formatting side-effects.
+
+## [1.9.1] - 2026-05-03
 
 ## [1.6.2] - 2026-04-12
 
@@ -94,6 +115,8 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 - **Skill descriptions**: Added trigger phrases and NOT-for exclusions to `looking-up-docs`, `researching-web`, `writing-web`, `reviewing-code` for cleaner routing
 - **skill-enforcer.sh**: Added negative patterns for 3 overlapping pairs (code/config review, docs/research, web/typescript) — all disambiguation tests pass
 
+## [1.9.1] - 2026-05-03
+
 ## [1.6.0] - 2026-04-07
 
 ### Added
@@ -103,6 +126,8 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 - Spawns up to 4 parallel review agents per component type with token-capped structured output
 - Skill-enforcer trigger patterns for "review config", "config review", "context review", "review skills/agents/hooks"
 - Skill count: 31 → 32 (dev-tools: 14 → 15)
+
+## [1.9.1] - 2026-05-03
 
 ## [1.5.0] - 2026-04-03
 
@@ -116,6 +141,8 @@ New skill: explore public GitHub repositories via DeepWiki AI-generated document
 - Tiered fallback chain: DeepWiki → GitHub CLI → Context7 → Perplexity → local clone
 - Clear DeepWiki vs Context7 decision table (architecture understanding vs API references)
 - Skill-enforcer trigger patterns for "explore repo", "deepwiki", "repo architecture", "how does owner/repo work"
+
+## [1.9.1] - 2026-05-03
 
 ## [1.4.0] - 2026-04-02
 
@@ -141,6 +168,8 @@ AGENTS.md adoption and CC-first rebrand.
 ### Fixed
 
 - GEMINI.md skill drift: added 6 missing skills (`evolving-config`, `learning-patterns`, `linting-instructions`, `mem-history`, `smart-explore`, `using-gemini`) — now lists all 29 skills
+
+## [1.9.1] - 2026-05-03
 
 ## [1.3.0] - 2026-04-02
 
@@ -176,6 +205,8 @@ Cross-platform plugin support for OpenAI Codex CLI and Google Gemini CLI.
 - README structure diagram expanded to show dual-manifest layout
 - CONTRIBUTING directory structure shows all 3 platform manifests
 
+## [1.9.1] - 2026-05-03
+
 ## [1.2.2] - 2026-04-01
 
 Documentation accuracy fixes for README.
@@ -189,6 +220,8 @@ Documentation accuracy fixes for README.
 - Update dev-tools skill count: 13 → 14
 - Narrow linting-instructions enforcer triggers to skill/agent authoring context
 - Clarify linting-instructions description: references Anthropic model cards
+
+## [1.9.1] - 2026-05-03
 
 ## [1.2.1] - 2026-04-01
 
@@ -221,6 +254,8 @@ System card-derived instruction hardening for all agents and skills.
 - Skill count: 29 → 30 (new linting-instructions in dev-tools)
 - All instruction fixes derived from Claude Opus 4.6 and Sonnet 4.6 system cards
 
+## [1.9.1] - 2026-05-03
+
 ## [1.2.0] - 2026-03-31
 
 Optional claude-mem integration for AST-based code navigation and cross-session memory.
@@ -241,6 +276,8 @@ Optional claude-mem integration for AST-based code navigation and cross-session 
 - Skill count: 27 → 29 (2 new skills in dev-tools plugin)
 - All review agent frontmatter converted to multi-line tools format
 - Engineer agents gain `### Memory (claude-mem)` body section
+
+## [1.9.1] - 2026-05-03
 
 ## [1.1.1] - 2026-03-31
 
@@ -280,6 +317,8 @@ Full repository review and cleanup.
 - Orphaned root files: claude-powerline.json, MCP_Sequential.md, .claude-hooks-config.sh, .claude-hooks-ignore
 - install-tools.sh (user-specific, not marketplace-related)
 
+## [1.9.1] - 2026-05-03
+
 ## [1.1.0] - 2026-03-30
 
 Restructured as a 9-plugin marketplace for community sharing.
@@ -296,6 +335,8 @@ Restructured as a 9-plugin marketplace for community sharing.
 - 26 skills, 34 agents, 9 hooks, 9 commands across all plugins
 - Updated README with correct installation syntax per official plugin docs
 - Updated GUIDE with plugin-relative paths and companion tool notes
+
+## [1.9.1] - 2026-05-03
 
 ## [1.0.0] - 2026-02-28
 

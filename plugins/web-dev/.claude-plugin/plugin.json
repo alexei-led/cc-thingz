@@ -1,7 +1,7 @@
 {
   "name": "web-dev",
   "description": "Web frontend development with vanilla HTML, CSS, JavaScript, and HTMX",
-  "version": "1.9.0",
+  "version": "1.9.1",
   "author": {
     "name": "Alexei Ledenev",
     "email": "alexei.led@gmail.com",
