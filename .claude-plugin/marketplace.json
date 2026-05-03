@@ -5,8 +5,8 @@
     "email": "alexei.led@gmail.com"
   },
   "metadata": {
-    "description": "A Claude Code plugin suite for development workflows, language tooling, infrastructure ops, and more \u2014 with portable skill export for Codex CLI and Gemini CLI",
-    "version": "1.8.0",
+    "description": "A Claude Code plugin suite for development workflows, language tooling, infrastructure ops, and more — with portable skill export for Codex CLI and Gemini CLI",
+    "version": "1.9.0",
     "homepage": "https://github.com/alexei-led/cc-thingz",
     "repository": "https://github.com/alexei-led/cc-thingz",
     "license": "MIT"
@@ -23,7 +23,7 @@
         "commit",
         "hooks"
       ],
-      "version": "1.8.0",
+      "version": "1.9.0",
       "author": {
         "name": "Alexei Ledenev",
         "email": "alexei.led@gmail.com",
@@ -55,7 +55,7 @@
         "go",
         "golang"
       ],
-      "version": "1.8.0",
+      "version": "1.9.0",
       "author": {
         "name": "Alexei Ledenev",
         "email": "alexei.led@gmail.com",
@@ -85,7 +85,7 @@
         "uv",
         "ruff"
       ],
-      "version": "1.8.0",
+      "version": "1.9.0",
       "author": {
         "name": "Alexei Ledenev",
         "email": "alexei.led@gmail.com",
@@ -115,7 +115,7 @@
         "react",
         "nodejs"
       ],
-      "version": "1.8.0",
+      "version": "1.9.0",
       "author": {
         "name": "Alexei Ledenev",
         "email": "alexei.led@gmail.com",
@@ -146,7 +146,7 @@
         "javascript",
         "htmx"
       ],
-      "version": "1.8.0",
+      "version": "1.9.0",
       "author": {
         "name": "Alexei Ledenev",
         "email": "alexei.led@gmail.com",
@@ -179,7 +179,7 @@
         "aws",
         "gcp"
       ],
-      "version": "1.8.0",
+      "version": "1.9.0",
       "author": {
         "name": "Alexei Ledenev",
         "email": "alexei.led@gmail.com",
@@ -213,7 +213,7 @@
         "research",
         "documentation"
       ],
-      "version": "1.8.0",
+      "version": "1.9.0",
       "author": {
         "name": "Alexei Ledenev",
         "email": "alexei.led@gmail.com",
@@ -245,7 +245,7 @@
         "requirements",
         "tasks"
       ],
-      "version": "1.8.0",
+      "version": "1.9.0",
       "author": {
         "name": "Alexei Ledenev",
         "email": "alexei.led@gmail.com",
@@ -276,7 +276,7 @@
         "e2e",
         "browser-automation"
       ],
-      "version": "1.8.0",
+      "version": "1.9.0",
       "author": {
         "name": "Alexei Ledenev",
         "email": "alexei.led@gmail.com",

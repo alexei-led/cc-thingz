@@ -2,7 +2,7 @@
 
 A Claude Code plugin suite with portable skill export for Codex CLI, Gemini CLI, and AGENTS.md-compatible tools.
 
-33 skills across 8 plugins — code review, language tooling, infrastructure, testing, and developer utilities.
+35 skills across 8 plugins — code review, language tooling, infrastructure, testing, and developer utilities.
 
 ## Development Workflow
 
@@ -13,6 +13,7 @@ A Claude Code plugin suite with portable skill export for Codex CLI, Gemini CLI,
 | committing-code | Smart git commits with logical grouping |
 | documenting-code | Update project documentation based on recent changes |
 | fixing-code | Fix code problems with disciplined diagnosis |
+| improve-codebase-architecture | Find deepening opportunities in a codebase, informed by the domain language in CONTEXT.md and... |
 | improving-tests | Improve test design and coverage, including TDD/red-green-refactor guidance |
 | refactoring-code | Batch refactoring via MorphLLM edit_file |
 | reviewing-code | Sequential code review for security, quality, tests, and architecture |
@@ -59,6 +60,7 @@ A Claude Code plugin suite with portable skill export for Codex CLI, Gemini CLI,
 | debating-ideas | Dialectic thinking |
 | evolving-config | Audit Claude Code configuration against latest features and best practices |
 | exploring-repos | Explore public GitHub repositories via DeepWiki AI-generated documentation |
+| grill-me | Interview the user relentlessly about a plan or design until reaching shared understanding,... |
 | learning-patterns | Extract learnings and generate project-specific customizations (CLAUDE.md, CONTEXT.md, ADRs,... |
 | linting-instructions | Lint plugin agent/skill prompts against rules derived from Anthropic model cards (Opus 4.6,... |
 | looking-up-docs | Library documentation via Context7 |

@@ -2,19 +2,20 @@
 
 Core development loop: code review, fixes, commits, linting hooks, and 24 language-specific review agents. Skills available for both Claude Code and Codex CLI; agents, hooks, and commands are Claude Code-only.
 
-## Skills (9)
+## Skills (10)
 
-| Skill              | Invocable | What It Does                                                                   |
-| ------------------ | --------- | ------------------------------------------------------------------------------ |
-| `ccgram-messaging` | yes       | Inter-agent messaging via ccgram swarm                                         |
-| `committing-code`  | yes       | Smart git commits with logical grouping                                        |
-| `reviewing-code`   | yes       | Multi-agent review (security, quality, idioms)                                 |
-| `fixing-code`      | yes       | Parallel agents fix all issues, zero tolerance                                 |
-| `documenting-code` | yes       | Update docs based on recent changes                                            |
-| `improving-tests`  | yes       | Refactor tests: combine to tabular, fill gaps                                  |
-| `refactoring-code` | auto      | Multi-file batch changes via MorphLLM                                          |
-| `searching-code`   | auto      | Intelligent codebase search via WarpGrep                                       |
-| `coding`           | auto      | Process discipline: surface assumptions, define verifiable goals before coding |
+| Skill                           | Invocable | What It Does                                                                   |
+| ------------------------------- | --------- | ------------------------------------------------------------------------------ |
+| `ccgram-messaging`              | yes       | Inter-agent messaging via ccgram swarm                                         |
+| `committing-code`               | yes       | Smart git commits with logical grouping                                        |
+| `reviewing-code`                | yes       | Multi-agent review (security, quality, idioms)                                 |
+| `fixing-code`                   | yes       | Parallel agents fix all issues, zero tolerance                                 |
+| `documenting-code`              | yes       | Update docs based on recent changes                                            |
+| `improving-tests`               | yes       | Refactor tests: combine to tabular, fill gaps                                  |
+| `improve-codebase-architecture` | yes       | Find deepening opportunities; module/seam/depth vocabulary                     |
+| `refactoring-code`              | auto      | Multi-file batch changes via MorphLLM                                          |
+| `searching-code`                | auto      | Intelligent codebase search via WarpGrep                                       |
+| `coding`                        | auto      | Process discipline: surface assumptions, define verifiable goals before coding |
 
 ## Agents (25)
 

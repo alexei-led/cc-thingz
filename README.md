@@ -100,17 +100,17 @@ All agents and several skills optionally integrate with [claude-mem](https://git
 
 | Plugin                                                 | Skills | Agents | Description                                                                        |
 | ------------------------------------------------------ | ------ | ------ | ---------------------------------------------------------------------------------- |
-| [**dev-workflow**](plugins/dev-workflow/README.md)     | 9      | 25     | Code review, fixes, commits, linting hooks, and 24 language-specific review agents |
+| [**dev-workflow**](plugins/dev-workflow/README.md)     | 10     | 25     | Code review, fixes, commits, linting hooks, and 24 language-specific review agents |
 | [**go-dev**](plugins/go-dev/README.md)                 | 1      | 1      | Idiomatic Go development with stdlib-first patterns, testing, and CLI tooling      |
 | [**python-dev**](plugins/python-dev/README.md)         | 1      | 1      | Python 3.12+ development with uv/ruff/pyright toolchain                            |
 | [**typescript-dev**](plugins/typescript-dev/README.md) | 1      | 1      | TypeScript with strict typing, React patterns, and modern tooling                  |
 | [**web-dev**](plugins/web-dev/README.md)               | 1      | 1      | Web frontend with vanilla HTML, CSS, JavaScript, and HTMX                          |
 | [**infra-ops**](plugins/infra-ops/README.md)           | 3      | 1      | Kubernetes, Terraform, Helm, GitHub Actions, AWS, GCP                              |
-| [**dev-tools**](plugins/dev-tools/README.md)           | 15     | 2      | Modern CLI, git worktrees, docs lookup, web research, config review, brainstorming |
+| [**dev-tools**](plugins/dev-tools/README.md)           | 16     | 2      | Modern CLI, git worktrees, docs lookup, web research, config review, brainstorming |
 | [**spec-system**](plugins/spec-system/README.md)       | 0      | 1      | Spec-driven development: requirements, tasks, and planning workflows               |
 | [**testing-e2e**](plugins/testing-e2e/README.md)       | 2      | 1      | E2E testing with Playwright: browser automation and test generation                |
 
-**Totals**: 33 skills, 34 agents, 10 hooks, 9 commands
+**Totals**: 35 skills, 34 agents, 10 hooks, 9 commands
 
 ## Skills
 
@@ -120,28 +120,30 @@ Skills teach the AI model domain-specific knowledge and workflows. All skills ar
 
 Invoke as `/skill-name` or let the skill enforcer suggest them.
 
-| Skill                  | What It Does                                      | Example Trigger                      |
-| ---------------------- | ------------------------------------------------- | ------------------------------------ |
-| `brainstorming-ideas`  | Brainstorm ideas and stress-test draft plans      | "brainstorm", "grill plan"           |
-| `committing-code`      | Smart git commits with logical grouping           | "commit", "save changes"             |
-| `debating-ideas`       | Dialectic agents stress-test design decisions     | "debate", "pros and cons"            |
-| `deploying-infra`      | Validate + deploy K8s/Terraform/Helm              | "deploy to staging", "rollout"       |
-| `documenting-code`     | Update docs based on recent changes               | "update docs", "document"            |
-| `evolving-config`      | Audit config against latest Claude Code features  | "evolve", "audit config"             |
-| `exploring-repos`      | Explore GitHub repos via DeepWiki AI wiki         | "explore repo", "deepwiki"           |
-| `fixing-code`          | Parallel agents fix all issues, zero tolerance    | "fix errors", "make it pass"         |
-| `improving-tests`      | Refactor tests: combine to tabular, fill gaps     | "improve tests", "coverage"          |
-| `looking-up-docs`      | Library documentation via Context7                | "look up docs", "API ref"            |
-| `mem-history`          | Query past sessions and decisions (claude-mem)    | "last session", "what happened"      |
-| `researching-web`      | Web research via Perplexity AI                    | "research", "X vs Y"                 |
-| `reviewing-code`       | Multi-agent review (security, quality, idioms)    | "review code", "check this"          |
-| `testing-e2e`          | Playwright browser automation and test gen        | "e2e test", "playwright"             |
-| `analyzing-usage`      | Analyze Claude Code usage, cost, and efficiency   | "usage", "cost", "spending"          |
-| `learning-patterns`    | Extract learnings and generate customizations     | "learn", "extract learnings"         |
-| `linting-instructions` | Lint plugin prompts against Anthropic model cards | "lint instructions", "audit prompts" |
-| `reviewing-cc-config`  | Review CC config for context efficiency           | "review config", "config review"     |
-| `using-gemini`         | Consult Gemini CLI for second opinions            | "ask gemini", "gemini search"        |
-| `using-git-worktrees`  | Isolated git worktrees for parallel development   | "worktree", "isolate"                |
+| Skill                           | What It Does                                      | Example Trigger                          |
+| ------------------------------- | ------------------------------------------------- | ---------------------------------------- |
+| `brainstorming-ideas`           | Brainstorm ideas and stress-test draft plans      | "brainstorm", "design feature"           |
+| `grill-me`                      | Relentless decision-tree interview on one plan    | "grill me", "stress-test this plan"      |
+| `improve-codebase-architecture` | Find deepening opportunities, module/seam vocab   | "improve architecture", "deepen modules" |
+| `committing-code`               | Smart git commits with logical grouping           | "commit", "save changes"                 |
+| `debating-ideas`                | Dialectic agents stress-test design decisions     | "debate", "pros and cons"                |
+| `deploying-infra`               | Validate + deploy K8s/Terraform/Helm              | "deploy to staging", "rollout"           |
+| `documenting-code`              | Update docs based on recent changes               | "update docs", "document"                |
+| `evolving-config`               | Audit config against latest Claude Code features  | "evolve", "audit config"                 |
+| `exploring-repos`               | Explore GitHub repos via DeepWiki AI wiki         | "explore repo", "deepwiki"               |
+| `fixing-code`                   | Parallel agents fix all issues, zero tolerance    | "fix errors", "make it pass"             |
+| `improving-tests`               | Refactor tests: combine to tabular, fill gaps     | "improve tests", "coverage"              |
+| `looking-up-docs`               | Library documentation via Context7                | "look up docs", "API ref"                |
+| `mem-history`                   | Query past sessions and decisions (claude-mem)    | "last session", "what happened"          |
+| `researching-web`               | Web research via Perplexity AI                    | "research", "X vs Y"                     |
+| `reviewing-code`                | Multi-agent review (security, quality, idioms)    | "review code", "check this"              |
+| `testing-e2e`                   | Playwright browser automation and test gen        | "e2e test", "playwright"                 |
+| `analyzing-usage`               | Analyze Claude Code usage, cost, and efficiency   | "usage", "cost", "spending"              |
+| `learning-patterns`             | Extract learnings and generate customizations     | "learn", "extract learnings"             |
+| `linting-instructions`          | Lint plugin prompts against Anthropic model cards | "lint instructions", "audit prompts"     |
+| `reviewing-cc-config`           | Review CC config for context efficiency           | "review config", "config review"         |
+| `using-gemini`                  | Consult Gemini CLI for second opinions            | "ask gemini", "gemini search"            |
+| `using-git-worktrees`           | Isolated git worktrees for parallel development   | "worktree", "isolate"                    |
 
 ### Auto-Activated
 

@@ -1,5 +1,5 @@
 {
   "name": "testing-e2e",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "End-to-end testing with Playwright for browser automation and UI testing"
 }

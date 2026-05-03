@@ -1,7 +1,7 @@
 {
   "name": "testing-e2e",
   "description": "End-to-end testing with Playwright: browser automation, test generation, and UI testing",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "author": {
     "name": "Alexei Ledenev",
     "email": "alexei.led@gmail.com",

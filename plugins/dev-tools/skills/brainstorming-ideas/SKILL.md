@@ -1,6 +1,6 @@
 ---
 name: brainstorming-ideas
-description: Brainstorm ideas and stress-test draft plans before coding. Use when user wants to brainstorm, explore approaches, design a feature/API/flow, grill a plan, challenge assumptions, or resolve terminology that blocks the design. NOT for breaking approved requirements into implementation tasks; use /spec:plan. NOT for general documentation updates; use documenting-code or learning-patterns.
+description: Brainstorm ideas and stress-test draft plans before coding. Use when user wants to brainstorm, explore approaches, design a feature/API/flow, challenge assumptions, or resolve terminology that blocks the design. NOT for pure decision-tree interviews on a single existing plan ("grill me"); use grill-me. NOT for breaking approved requirements into implementation tasks; use /spec:plan. NOT for general documentation updates; use documenting-code or learning-patterns.
 user-invocable: true
 context: fork
 allowed-tools:
@@ -66,8 +66,8 @@ Start with dialogue, not agents. Ask the user directly.
 
 Use AskUserQuestion:
 
-| Header    | Question                           | Options                                                                                                                                                                                       |
-| --------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Header    | Question                           | Options                                                                                                                                                                                                                                           |
+| --------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Idea type | What would you like to brainstorm? | 1. **New feature** - Add new functionality 2. **Modification** - Change existing behavior 3. **Integration** - Connect with an external system 4. **Plan grill** - Stress-test an existing plan 5. **Exploration** - Not sure yet, let's discover |
 
 ### 1b. Follow-up (based on response)

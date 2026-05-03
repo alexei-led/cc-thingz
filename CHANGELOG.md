@@ -8,6 +8,17 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-05-03
+
+### Added
+
+- **`grill-me`** skill (`dev-tools`): focused decision-tree interview on a single existing plan — one question at a time, recommended answer per question, codebase exploration over questions when answerable. Adapted from [mattpocock/skills](https://github.com/mattpocock/skills) (MIT). See `plugins/dev-tools/skills/grill-me/CREDITS.md`.
+- **`improve-codebase-architecture`** skill (`dev-workflow`): surface architectural friction and propose deepening opportunities (shallow → deep modules) using a strict module/interface/seam/adapter/leverage/locality vocabulary. Includes `LANGUAGE.md` glossary, `DEEPENING.md` (4 dependency categories: in-process, local-substitutable, remote-owned, true-external), and `INTERFACE-DESIGN.md` ("Design It Twice" parallel sub-agent pattern). Adapted from [mattpocock/skills](https://github.com/mattpocock/skills) (MIT). See `plugins/dev-workflow/skills/improve-codebase-architecture/CREDITS.md`.
+
+### Changed
+
+- **`brainstorming-ideas`** description: routes pure "grill me" requests on a single plan to the new `grill-me` skill; brainstorming-ideas remains the broader brainstorm/design/grill flow.
+
 ## [1.8.0] - 2026-04-30
 
 ### Added

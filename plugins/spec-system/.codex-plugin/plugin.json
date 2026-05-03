@@ -1,6 +1,6 @@
 {
   "name": "spec-system",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "Spec-driven development: structured requirements, tasks, and planning workflows",
   "author": {
     "name": "Alexei Ledenev"
