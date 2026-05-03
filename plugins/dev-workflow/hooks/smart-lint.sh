@@ -29,11 +29,14 @@ command_exists() { command -v "$1" &>/dev/null; }
 
 # --- SKIP CHECK ---
 # Skip linting via env var (transient: SKIP_LINT=1 <command>)
-# or via .nolint file in project root (persistent; add to .gitignore)
+# or via .nolint file in project root (persistent; add to .gitignore).
+# Skip just the architecture-tier tools (knip, dependency-cruiser, …) via
+# .nolint-arch or SKIP_ARCH=1 — fast linters still run.
 if [[ "${SKIP_LINT:-}" == "1" ]] || [[ -f ".nolint" ]]; then
 	echo -e "${CYAN}⏭ Linting skipped${NC}" >&2
 	exit 0
 fi
+[[ -f ".nolint-arch" ]] && SKIP_ARCH=1
 
 # --- ERROR & SUMMARY ---
 declare -a ERRORS=()
@@ -354,6 +357,40 @@ lint_javascript() {
 		# Note: npm run lint typically runs on whole project, might need package.json config for file-specific linting
 		run_linter "JS Linter (eslint)" "$pm" run lint --if-present
 	fi
+
+	# Architecture tier — opt-in by config-file presence. Skipped via SKIP_ARCH=1
+	# or .nolint-arch. Project-wide tools, so they don't take the file list.
+	[[ "${SKIP_ARCH:-0}" == "1" ]] && return 0
+
+	# knip — unused exports, files, deps. Triggers on its own config file.
+	# --max-issues 0 ensures non-zero exit on any finding (knip's default tolerates one).
+	if [[ -f knip.json || -f knip.jsonc || -f knip.ts || -f knip.js ]]; then
+		if command_exists knip; then
+			run_linter "Knip" knip --reporter compact --no-progress --max-issues 0
+		elif command_exists bunx; then
+			run_linter "Knip" bunx knip --reporter compact --no-progress --max-issues 0
+		elif command_exists npx; then
+			run_linter "Knip" npx knip --reporter compact --no-progress --max-issues 0
+		else
+			echo -e "${CYAN}ℹ knip config present but no runner found. Install:${NC} bun add -g knip"
+		fi
+	fi
+
+	# dependency-cruiser — boundary rules and import cycles. CLI is `depcruise`.
+	# `-T err` reporter exits non-zero on violations (default reporter does not).
+	if [[ -f .dependency-cruiser.cjs || -f .dependency-cruiser.js || -f .dependency-cruiser.json || -f .dependency-cruiser.mjs ]]; then
+		local dc_target="."
+		[[ -d src ]] && dc_target="src"
+		if command_exists depcruise; then
+			run_linter "Dependency-Cruiser" depcruise -T err "$dc_target"
+		elif command_exists bunx; then
+			run_linter "Dependency-Cruiser" bunx depcruise -T err "$dc_target"
+		elif command_exists npx; then
+			run_linter "Dependency-Cruiser" npx depcruise -T err "$dc_target"
+		else
+			echo -e "${CYAN}ℹ dependency-cruiser config present but no runner found. Install:${NC} bun add -g dependency-cruiser"
+		fi
+	fi
 }
 
 lint_yaml() {
@@ -420,11 +457,26 @@ lint_shell() {
 		return 0
 	fi
 
+	# Filter out hook config files — they are sourced, not executed, and
+	# users routinely write them without shebangs (one-liners like
+	# `export SKIP_ARCH=1`). Linting them would block edits.
+	local filtered=()
+	for file in "${files[@]}"; do
+		if [[ "$(basename "$file")" == ".claude-hooks-config.sh" ]]; then
+			log_debug "Skipping hook config file: $file"
+			continue
+		fi
+		filtered+=("$file")
+	done
+	if [[ "${#filtered[@]}" -eq 0 ]]; then
+		return 0
+	fi
+
 	if command_exists shellcheck; then
-		run_linter "Shell Linter (shellcheck)" shellcheck "${files[@]}"
+		run_linter "Shell Linter (shellcheck)" shellcheck "${filtered[@]}"
 	fi
 	if command_exists shfmt; then
-		run_formatter_on_files "Shell Formatter (shfmt)" "shfmt -w" "shfmt -d" "${files[@]}"
+		run_formatter_on_files "Shell Formatter (shfmt)" "shfmt -w" "shfmt -d" "${filtered[@]}"
 	fi
 }
 
@@ -527,7 +579,9 @@ lint_markdown() {
 # --- MAIN EXECUTION ---
 [[ "$1" == "--debug" ]] && export CLAUDE_HOOKS_DEBUG=1
 
-# Project-specific config overrides
+# Layered config: global defaults, then project overrides.
+# shellcheck source=/dev/null
+[[ -f "$HOME/.claude/.claude-hooks-config.sh" ]] && source "$HOME/.claude/.claude-hooks-config.sh"
 # shellcheck source=/dev/null
 [[ -f ".claude-hooks-config.sh" ]] && source ".claude-hooks-config.sh"
 

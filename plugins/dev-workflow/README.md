@@ -40,7 +40,9 @@ Core development loop: code review, fixes, commits, linting hooks, and 24 langua
 
 ### Hook Configuration
 
-`smart-lint.sh` sources `.claude-hooks-config.sh` from the project root if present, allowing per-project overrides for linter settings, language toggles, and quality thresholds.
+`smart-lint.sh` sources `~/.claude/.claude-hooks-config.sh` (global defaults) then `./.claude-hooks-config.sh` (project overrides). The per-tool linters read their own project configs (`.golangci.yml`, `pyproject.toml`, `.prettierrc`, `knip.json`, `.dependency-cruiser.cjs`, …).
+
+See [`docs/lint-tools.md`](docs/lint-tools.md) for the full tool list, install commands, architecture-tier opt-in (knip, dependency-cruiser), and skip recipes (`SKIP_LINT`, `SKIP_ARCH`, `.nolint`, `.nolint-arch`).
 
 ## MCP Servers
 
