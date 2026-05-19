@@ -8,6 +8,21 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [4.9.0] - 2026-05-19
+
+### Added
+
+- Added focused hook execution for edited files across lint, format, and tests.
+- Added compact linter/test output for AI-agent feedback loops.
+- Added project fallback support for package scripts and Makefile targets.
+
+### Changed
+
+- Moved focused tests to agent-stop time and kept post-edit work lint/format-only.
+- Updated Python, Go, and JavaScript test commands for faster failure feedback.
+- Documented hook controls, fallback order, and exit-code behavior.
+- Plugin and marketplace versions bumped to 4.9.0.
+
 ## [4.8.3] - 2026-05-18
 
 ### Fixed
