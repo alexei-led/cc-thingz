@@ -8,6 +8,11 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+### Changed
+
+- GitHub release notes now render from the curated `CHANGELOG.md` section for
+  the tag, then append the plugin table and install snippet.
+
 ## [4.9.0] - 2026-05-19
 
 ### Added
