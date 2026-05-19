@@ -29,9 +29,9 @@ lint_shell() {
 	fi
 
 	if command_exists shellcheck; then
-		run_linter "Shell Linter (shellcheck)" shellcheck "${filtered[@]}"
+		run_linter_compact "Shell Linter (shellcheck)" shellcheck "${filtered[@]}"
 	fi
 	if command_exists shfmt; then
-		run_formatter_on_files "Shell Formatter (shfmt)" "shfmt -w" "shfmt -d" "${filtered[@]}"
+		run_formatter_on_files --format-only "Shell Formatter (shfmt)" "shfmt -w" "" "${filtered[@]}"
 	fi
 }

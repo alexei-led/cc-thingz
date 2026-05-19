@@ -16,8 +16,8 @@ Per-target output shape:
 - gemini: scripts copied to `dist/gemini/hooks/<script>` (flat). One
   aggregated manifest `dist/gemini/hooks/hooks.json` with
   `${extensionPath}/hooks/<script>` substitution.
-- pi:     scripts copied to `dist/pi/hooks/<script>` (flat). No manifest
-  (Pi consumes hooks via the script files only).
+- pi:     scripts copied to `dist/pi/hooks/<script>` (flat). One generated
+  manifest `dist/pi/extensions/hooks.json` merged with external Pi entries.
 
 Hooks not owned by any plugin in `src/plugins/*/plugin.yaml` land at the flat
 hook path even for plugin-grouped targets (`claude`, `codex`). This matches
@@ -82,6 +82,12 @@ EVENT_MAP: dict[str, dict[str, tuple[str, str | None] | None]] = {
         "codex": ("PostToolUse", None),
         "pi": ("PostToolUse", None),
     },
+    "agentstop": {
+        "claude": ("Stop", None),
+        "gemini": ("AfterAgent", None),
+        "codex": ("Stop", None),
+        "pi": ("Stop", None),
+    },
     "userpromptsubmit": {
         "claude": ("UserPromptSubmit", None),
         "gemini": ("BeforeAgent", None),
@@ -120,9 +126,15 @@ GEMINI_EVENT_ORDER: tuple[str, ...] = (
     "AfterTool",
     "SessionStart",
     "BeforeAgent",
+    "AfterAgent",
     "Notification",
 )
-CODEX_EVENT_ORDER: tuple[str, ...] = ("PreToolUse", "PostToolUse", "SessionStart")
+CODEX_EVENT_ORDER: tuple[str, ...] = (
+    "PreToolUse",
+    "PostToolUse",
+    "Stop",
+    "SessionStart",
+)
 CLAUDE_EVENT_ORDER: tuple[str, ...] = (
     "Setup",
     "SessionStart",

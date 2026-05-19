@@ -29,6 +29,8 @@ exclude_lines = [
 ]
 
 [tool.ruff]
+# Keep below py314. Ruff py314 applies PEP 758 and removes parentheses
+# from multi-type except clauses; repo policy requires except (A, B):.
 target-version = "py312"
 
 [tool.ruff.lint]

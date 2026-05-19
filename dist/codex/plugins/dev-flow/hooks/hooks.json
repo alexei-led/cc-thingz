@@ -32,12 +32,18 @@
             "command": "\"$PLUGIN_ROOT/hooks/smart-lint.sh\"",
             "timeout": 60,
             "statusMessage": "Running smart-lint"
-          },
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
           {
             "type": "command",
             "command": "\"$PLUGIN_ROOT/hooks/test-runner.sh\"",
-            "timeout": 120,
-            "statusMessage": "Running tests"
+            "timeout": 60,
+            "statusMessage": "Running targeted tests"
           }
         ]
       }

@@ -52,11 +52,6 @@
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/smart-lint.sh",
             "timeout": 60
-          },
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/test-runner.sh",
-            "timeout": 120
           }
         ]
       }
@@ -68,6 +63,17 @@
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/notify.sh",
             "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/test-runner.sh",
+            "timeout": 60
           }
         ]
       }

@@ -20,8 +20,8 @@ Pi and the rest of cc-thingz.
 | `before_agent_start`       | `skill-enforcer.sh` | Suggests relevant skills before each prompt                   |
 | `tool_call` (Write/Edit)   | `file-protector.py` | Blocks writes to protected paths                              |
 | `tool_call` (Bash)         | `git-guardrails.sh` | Blocks destructive git commands                               |
-| `tool_result` (Write/Edit) | `smart-lint.sh`     | Injects lint errors into tool result (LLM feedback loop)      |
-| `tool_result` (Write/Edit) | `test-runner.sh`    | Runs tests after edits (async, notifies on failure)           |
+| `tool_result` (Write/Edit) | `smart-lint.sh`     | Injects focused lint errors into tool result (LLM feedback)   |
+| `agent_end` (`Stop`)       | `test-runner.sh`    | Runs focused tests once after the agent turn                  |
 | `agent_end`                | `ccgram hook`       | Tracks session end in ccgram (async)                          |
 | `agent_end`                | `notify.sh`         | Fires a macOS idle-prompt notification on every `agent_end`   |
 | `input` (slash commands)   | user-configured     | Emits `UserPromptExpansion` hooks before command expansion    |
@@ -98,6 +98,21 @@ Disable bundled defaults while keeping user/project hooks by adding this to
   },
 }
 ```
+
+`smart-lint.sh` is scoped to the edited file set from hook stdin and falls
+back to git diff only for small changed-file sets. It formats and lints focused
+files first, then uses project fallbacks only for the missing side: package
+scripts (`fmt` / `format`, `lint`) before Makefile targets (`fmt`, `lint`).
+Disable project fallbacks with `HOOK_PROJECT_FALLBACK=0` or a
+`.nohooks-project` file.
+
+`test-runner.sh` runs on `Stop`, using the edited-file state from
+`smart-lint.sh`; it runs focused tests only unless `TEST_RUNNER_FULL=1` is set.
+Focused tests use pytest, Go packages, Vitest related tests, Jest related tests,
+Bun tests, or Bats where applicable. If no focused test runs, package scripts
+(`test`, `tests`, `check`, `verify`) run before nearest non-root Makefile test
+targets. `TEST_RUNNER_FULL=1` runs one project-level target: root Makefile,
+then Go/Python runners, then package scripts selected by yarn/bun/npm lockfiles.
 
 Mute individual hooks (bundled or user) by basename without disabling the
 whole bundled set:

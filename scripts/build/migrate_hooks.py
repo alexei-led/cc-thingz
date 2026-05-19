@@ -106,9 +106,9 @@ def legacy_registry(root: Path) -> list[LegacyHook]:
         LegacyHook(
             name="test-runner",
             source=dw_hooks / "test-runner.sh",
-            event="postedit",
-            timeout=120,
-            status_message="Running tests",
+            event="agentstop",
+            timeout=60,
+            status_message="Running targeted tests",
         ),
         LegacyHook(
             name="worktree-create",

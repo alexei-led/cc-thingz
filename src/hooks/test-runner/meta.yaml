@@ -1,6 +1,4 @@
 name: test-runner
-event: postedit
-timeout: 120
-status_message: Running tests
-pi:
-  async: true
+event: agentstop
+timeout: 60
+status_message: Running targeted tests

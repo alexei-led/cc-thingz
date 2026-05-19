@@ -11,6 +11,8 @@ source "$SCRIPT_DIR/lib.sh"
 
 # --- MAIN EXECUTION ---
 [[ "$1" == "--debug" ]] && export CLAUDE_HOOKS_DEBUG=1
+init_hook_input
+record_hook_edited_files
 
 # Layered config: global defaults, then project overrides.
 # shellcheck source=/dev/null
@@ -119,4 +121,5 @@ for type in "${types[@]}"; do
 	esac
 done
 
+run_lint_fallbacks
 print_summary_and_exit

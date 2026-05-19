@@ -14,6 +14,7 @@ lint_yaml() {
 	fi
 
 	if command_exists yq; then
+		mark_tool_ran
 		# Process each file individually to prevent content merging
 		for file in "${files[@]}"; do
 			if ! yq eval -P -i "$file" 2>/dev/null; then
@@ -22,7 +23,7 @@ lint_yaml() {
 		done
 	fi
 	if command_exists yamllint; then
-		run_linter "YAML Linter (yamllint)" yamllint -d '{extends: default, rules: {line-length: disable, document-start: disable, indentation: disable, truthy: disable, comments: disable}}' "${files[@]}"
+		run_linter_compact "YAML Linter (yamllint)" yamllint -d '{extends: default, rules: {line-length: disable, document-start: disable, indentation: disable, truthy: disable, comments: disable}}' "${files[@]}"
 	fi
 }
 
@@ -39,6 +40,7 @@ lint_json() {
 	fi
 
 	if command_exists jq; then
+		mark_tool_ran
 		log_debug "Running JSON formatter on files: ${files[*]}"
 		for file in "${files[@]}"; do
 			if ! jq . "$file" >"${file}.tmp" 2>/dev/null; then
@@ -49,12 +51,12 @@ lint_json() {
 				add_error "JSON Formatter (jq)" "Failed to write $file"
 			fi
 		done
-	elif command_exists prettier; then
-		run_formatter_on_files "JSON Formatter (prettier)" "prettier --write" "prettier --check" "${files[@]}"
-	elif command_exists bunx; then
-		run_formatter_on_files "JSON Formatter (prettier)" "bunx prettier --write" "bunx prettier --check" "${files[@]}"
-	elif command_exists npx; then
-		run_formatter_on_files "JSON Formatter (prettier)" "npx prettier --write" "npx prettier --check" "${files[@]}"
+	else
+		local prettier_bin
+		prettier_bin=$(resolve_node_tool prettier || true)
+		if [[ -n "$prettier_bin" ]]; then
+			run_formatter_on_files --format-only "JSON Formatter (prettier)" "$prettier_bin --write" "" "${files[@]}"
+		fi
 	fi
 }
 
@@ -76,7 +78,7 @@ lint_github_actions() {
 	fi
 
 	if command_exists actionlint; then
-		run_linter "GitHub Actions Linter (actionlint)" actionlint "${files[@]}"
+		run_linter_compact "GitHub Actions Linter (actionlint)" actionlint "${files[@]}"
 	fi
 }
 
@@ -93,19 +95,11 @@ lint_terraform() {
 	fi
 
 	if command_exists terraform; then
-		log_debug "Found changed Terraform files, running terraform fmt"
-		if ! terraform fmt >/dev/null 2>&1; then
-			add_error "Terraform Formatter" "terraform fmt failed"
-		elif ! output=$(terraform fmt -check 2>&1); then
-			add_error "Terraform Formatter needs fixing" "$output"
+		mark_tool_ran
+		log_debug "Found changed Terraform files, running terraform fmt on edited files"
+		if ! output=$(terraform fmt "${files[@]}" 2>&1); then
+			add_error "Terraform Formatter" "$(compact_output "$output")"
 		fi
-		# Run validate if any .tf files exist in current directory
-		if compgen -G "*.tf" >/dev/null 2>&1; then
-			run_linter "Terraform Validator" terraform validate
-		fi
-	fi
-	if command_exists tflint; then
-		run_linter "Terraform Linter (tflint)" tflint
 	fi
 }
 
@@ -143,16 +137,14 @@ lint_markdown() {
 		absolute_files+=("$(pwd)/${file}")
 	done
 
-	if command_exists prettier; then
-		run_formatter_on_files "Markdown Formatter (prettier)" "prettier --write" "prettier --check" "${absolute_files[@]}"
-	elif command_exists bunx; then
-		run_formatter_on_files "Markdown Formatter (prettier)" "bunx prettier --write" "bunx prettier --check" "${absolute_files[@]}"
-	elif command_exists npx; then
-		run_formatter_on_files "Markdown Formatter (prettier)" "npx prettier --write" "npx prettier --check" "${absolute_files[@]}"
+	local prettier_bin
+	prettier_bin=$(resolve_node_tool prettier || true)
+	if [[ -n "$prettier_bin" ]]; then
+		run_formatter_on_files --format-only "Markdown Formatter (prettier)" "$prettier_bin --write" "" "${absolute_files[@]}"
 	elif command_exists mdformat; then
-		run_formatter_on_files "Markdown Formatter (mdformat)" "mdformat" "mdformat --check" "${filtered_files[@]}"
+		run_formatter_on_files --format-only "Markdown Formatter (mdformat)" "mdformat" "" "${filtered_files[@]}"
 	fi
 	if command_exists markdownlint; then
-		run_linter "Markdown Linter (markdownlint)" markdownlint --disable MD013 MD026 MD033 MD040 MD041 -- "${filtered_files[@]}"
+		run_linter_compact "Markdown Linter (markdownlint)" markdownlint --disable MD013 MD026 MD033 MD040 MD041 -- "${filtered_files[@]}"
 	fi
 }

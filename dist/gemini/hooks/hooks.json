@@ -36,12 +36,6 @@
             "name": "smart-lint",
             "command": "${extensionPath}/hooks/smart-lint.sh",
             "timeout": 60000
-          },
-          {
-            "type": "command",
-            "name": "test-runner",
-            "command": "${extensionPath}/hooks/test-runner.sh",
-            "timeout": 120000
           }
         ]
       }
@@ -66,6 +60,18 @@
             "name": "skill-enforcer",
             "command": "${extensionPath}/hooks/skill-enforcer.sh",
             "timeout": 15000
+          }
+        ]
+      }
+    ],
+    "AfterAgent": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "name": "test-runner",
+            "command": "${extensionPath}/hooks/test-runner.sh",
+            "timeout": 60000
           }
         ]
       }

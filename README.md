@@ -87,8 +87,8 @@ per-plugin skill directory directly:
 | `SessionStart` | —               | `session-start.py`  | Prints branch, last commit, project type |
 | `PreToolUse`   | `^apply_patch$` | `file-protector.py` | Blocks writes to `.env`, keys, secrets   |
 | `PreToolUse`   | `^Bash$`        | `git-guardrails.sh` | Blocks destructive git commands          |
-| `PostToolUse`  | `^apply_patch$` | `smart-lint.sh`     | Auto-format and lint changed files       |
-| `PostToolUse`  | `^apply_patch$` | `test-runner.sh`    | Runs tests for changed files             |
+| `PostToolUse`  | `^apply_patch$` | `smart-lint.sh`     | Auto-format and lint edited files        |
+| `Stop`         | —               | `test-runner.sh`    | Runs focused tests for edited files      |
 
 Plugin hooks require two feature flags in `~/.codex/config.toml`:
 
@@ -129,8 +129,8 @@ compiler regenerates these symlinks on every `make build`.
 | `BeforeAgent`  | —                     | `skill-enforcer.sh` | Suggests relevant skills from prompt     |
 | `BeforeTool`   | `write_file\|replace` | `file-protector.py` | Blocks writes to `.env`, keys, secrets   |
 | `BeforeTool`   | `run_shell_command`   | `git-guardrails.sh` | Blocks destructive git commands          |
-| `AfterTool`    | `write_file\|replace` | `smart-lint.sh`     | Auto-format and lint changed files       |
-| `AfterTool`    | `write_file\|replace` | `test-runner.sh`    | Runs tests for changed files             |
+| `AfterTool`    | `write_file\|replace` | `smart-lint.sh`     | Auto-format and lint edited files        |
+| `AfterAgent`   | —                     | `test-runner.sh`    | Runs focused tests for edited files      |
 | `Notification` | —                     | `notify.sh`         | macOS notification on agent completion   |
 
 All paths resolve via `${extensionPath}`, Gemini's substitution variable for
@@ -259,10 +259,10 @@ Claude Code agents can also use optional MCP servers for enhanced capabilities.
 These are optional — plugins degrade gracefully without them. Pi exports do not
 assume MCP tools.
 
-| MCP Server                                                   | Purpose                                     | Used By                                                    |
-| ------------------------------------------------------------ | ------------------------------------------- | ---------------------------------------------------------- |
-| [DeepWiki](https://cognition.ai/blog/deepwiki-mcp-server)    | AI-generated wiki for public GitHub repos   | Claude Code dev-tools                                      |
-| [Perplexity](https://github.com/ppl-ai/modelcontextprotocol) | Web research and technical comparisons      | Claude Code dev-flow, dev-tools, infra-ops                 |
+| MCP Server                                                   | Purpose                                     | Used By                                                             |
+| ------------------------------------------------------------ | ------------------------------------------- | ------------------------------------------------------------------- |
+| [DeepWiki](https://cognition.ai/blog/deepwiki-mcp-server)    | AI-generated wiki for public GitHub repos   | Claude Code dev-tools                                               |
+| [Perplexity](https://github.com/ppl-ai/modelcontextprotocol) | Web research and technical comparisons      | Claude Code dev-flow, dev-tools, infra-ops                          |
 | [MorphLLM](https://github.com/morphllm/morph-claude-code)    | Fast codebase search and batch file editing | Claude Code `engineer` role via dev-flow, language, infra, spec-dev |
 
 > Stepwise reasoning previously came from the
@@ -292,17 +292,17 @@ All agents and several skills optionally integrate with [claude-mem](https://git
 
 ## Plugins
 
-| Plugin                                                       | Skills | Agents | Description                                                                        |
-| ------------------------------------------------------------ | ------ | ------ | ---------------------------------------------------------------------------------- |
-| [**dev-flow**](src/plugins/dev-flow/plugin.yaml)             | 10     | 2      | Fix, refactor, review, document, commit; `engineer` and `reviewer` roles; 7 hooks |
-| [**go-dev**](src/plugins/go-dev/plugin.yaml)                 | 1      | 1      | Idiomatic Go development with stdlib-first patterns, testing, and CLI tooling      |
-| [**py-dev**](src/plugins/py-dev/plugin.yaml)                 | 1      | 1      | Python 3.12+ development with uv/ruff/pyright toolchain                            |
-| [**ts-dev**](src/plugins/ts-dev/plugin.yaml)                 | 1      | 1      | TypeScript with strict typing, React patterns, and modern tooling                  |
-| [**web-dev**](src/plugins/web-dev/plugin.yaml)               | 1      | 1      | Web frontend with vanilla HTML, CSS, JavaScript, and HTMX                          |
-| [**infra-ops**](src/plugins/infra-ops/plugin.yaml)           | 3      | 1      | Kubernetes, Terraform, Helm, GitHub Actions, AWS, GCP                              |
-| [**dev-tools**](src/plugins/dev-tools/plugin.yaml)           | 17     | 1      | Modern CLI, git worktrees, docs lookup, web research, config review, brainstorming |
-| [**spec-dev**](src/plugins/spec-dev/plugin.yaml)             | 7      | 2      | Spec-driven development: requirements, tasks, and planning workflows               |
-| [**test-e2e**](src/plugins/test-e2e/plugin.yaml)             | 2      | 1      | E2E testing with Playwright: browser automation and test generation                |
+| Plugin                                             | Skills | Agents | Description                                                                        |
+| -------------------------------------------------- | ------ | ------ | ---------------------------------------------------------------------------------- |
+| [**dev-flow**](src/plugins/dev-flow/plugin.yaml)   | 10     | 2      | Fix, refactor, review, document, commit; `engineer` and `reviewer` roles; 7 hooks  |
+| [**go-dev**](src/plugins/go-dev/plugin.yaml)       | 1      | 1      | Idiomatic Go development with stdlib-first patterns, testing, and CLI tooling      |
+| [**py-dev**](src/plugins/py-dev/plugin.yaml)       | 1      | 1      | Python 3.12+ development with uv/ruff/pyright toolchain                            |
+| [**ts-dev**](src/plugins/ts-dev/plugin.yaml)       | 1      | 1      | TypeScript with strict typing, React patterns, and modern tooling                  |
+| [**web-dev**](src/plugins/web-dev/plugin.yaml)     | 1      | 1      | Web frontend with vanilla HTML, CSS, JavaScript, and HTMX                          |
+| [**infra-ops**](src/plugins/infra-ops/plugin.yaml) | 3      | 1      | Kubernetes, Terraform, Helm, GitHub Actions, AWS, GCP                              |
+| [**dev-tools**](src/plugins/dev-tools/plugin.yaml) | 17     | 1      | Modern CLI, git worktrees, docs lookup, web research, config review, brainstorming |
+| [**spec-dev**](src/plugins/spec-dev/plugin.yaml)   | 7      | 2      | Spec-driven development: requirements, tasks, and planning workflows               |
+| [**test-e2e**](src/plugins/test-e2e/plugin.yaml)   | 2      | 1      | E2E testing with Playwright: browser automation and test generation                |
 
 **Totals**: 43 skills, 2 plugin-owned role agents (`engineer`, `reviewer`), 9 hooks
 
@@ -314,29 +314,29 @@ Skills teach the AI model domain-specific knowledge and workflows. All skills ar
 
 Invoke as `/skill-name` or let the skill enforcer suggest them.
 
-| Skill                           | What It Does                                                          | Example Trigger                          |
-| ------------------------------- | --------------------------------------------------------------------- | ---------------------------------------- |
-| `brainstorming-ideas`           | Brainstorm ideas and stress-test draft plans                          | "brainstorm", "design feature"           |
-| `improving-codebase-architecture` | Find deepening opportunities, module/seam vocab                     | "improve architecture", "deepen modules" |
-| `committing-code`               | Smart git commits with logical grouping                               | "commit", "save changes"                 |
-| `debating-ideas`                | Dialectic agents stress-test design decisions                         | "debate", "pros and cons"                |
-| `deploying-infra`               | Validate + deploy K8s/Terraform/Helm                                  | "deploy to staging", "rollout"           |
-| `documenting-code`              | Update docs based on recent changes                                   | "update docs", "document"                |
-| `evolving-config`               | Audit config against latest Claude Code features                      | "evolve", "audit config"                 |
-| `exploring-repos`               | Explore public GitHub repos and architecture                          | "explore repo", "how does repo work"     |
-| `fixing-code`                   | Parallel agents fix all issues, zero tolerance                        | "fix errors", "make it pass"             |
-| `improving-tests`               | Refactor tests: combine to tabular, fill gaps                         | "improve tests", "coverage"              |
-| `context7-cli`                  | Current library docs via ctx7 CLI; docs/API lookup                    | "ctx7", "look up docs", "API ref"        |
-| `looking-up-docs`               | Find current docs via fallback chain: ctx7 → Perplexity → web tools  | "find docs", "latest API", "look up"     |
-| `mem-history`                   | Query project history and prior decisions                             | "last session", "what happened"          |
-| `researching-web`               | Web research via Perplexity AI                                        | "research", "X vs Y"                     |
-| `reviewing-code`                | Multi-agent review (security, quality, idioms)                        | "review code", "check this"              |
-| `testing-e2e`                   | Playwright browser automation and test gen                            | "e2e test", "playwright"                 |
-| `analyzing-usage`               | Analyze AI agent usage, cost, and efficiency (Claude Code, Codex, Pi) | "usage", "cost", "spending"              |
-| `learning-patterns`             | Extract learnings and generate customizations                         | "learn", "extract learnings"             |
-| `reviewing-instructions`        | Review and score AI agent/skill instructions (8-dimension quality)    | "lint instructions", "audit prompts"     |
-| `reviewing-cc-config`           | Review CC config for context efficiency                               | "review config", "config review"         |
-| `using-git-worktrees`           | Isolated git worktrees for parallel development                       | "worktree", "isolate"                    |
+| Skill                             | What It Does                                                          | Example Trigger                          |
+| --------------------------------- | --------------------------------------------------------------------- | ---------------------------------------- |
+| `brainstorming-ideas`             | Brainstorm ideas and stress-test draft plans                          | "brainstorm", "design feature"           |
+| `improving-codebase-architecture` | Find deepening opportunities, module/seam vocab                       | "improve architecture", "deepen modules" |
+| `committing-code`                 | Smart git commits with logical grouping                               | "commit", "save changes"                 |
+| `debating-ideas`                  | Dialectic agents stress-test design decisions                         | "debate", "pros and cons"                |
+| `deploying-infra`                 | Validate + deploy K8s/Terraform/Helm                                  | "deploy to staging", "rollout"           |
+| `documenting-code`                | Update docs based on recent changes                                   | "update docs", "document"                |
+| `evolving-config`                 | Audit config against latest Claude Code features                      | "evolve", "audit config"                 |
+| `exploring-repos`                 | Explore public GitHub repos and architecture                          | "explore repo", "how does repo work"     |
+| `fixing-code`                     | Parallel agents fix all issues, zero tolerance                        | "fix errors", "make it pass"             |
+| `improving-tests`                 | Refactor tests: combine to tabular, fill gaps                         | "improve tests", "coverage"              |
+| `context7-cli`                    | Current library docs via ctx7 CLI; docs/API lookup                    | "ctx7", "look up docs", "API ref"        |
+| `looking-up-docs`                 | Find current docs via fallback chain: ctx7 → Perplexity → web tools   | "find docs", "latest API", "look up"     |
+| `mem-history`                     | Query project history and prior decisions                             | "last session", "what happened"          |
+| `researching-web`                 | Web research via Perplexity AI                                        | "research", "X vs Y"                     |
+| `reviewing-code`                  | Multi-agent review (security, quality, idioms)                        | "review code", "check this"              |
+| `testing-e2e`                     | Playwright browser automation and test gen                            | "e2e test", "playwright"                 |
+| `analyzing-usage`                 | Analyze AI agent usage, cost, and efficiency (Claude Code, Codex, Pi) | "usage", "cost", "spending"              |
+| `learning-patterns`               | Extract learnings and generate customizations                         | "learn", "extract learnings"             |
+| `reviewing-instructions`          | Review and score AI agent/skill instructions (8-dimension quality)    | "lint instructions", "audit prompts"     |
+| `reviewing-cc-config`             | Review CC config for context efficiency                               | "review config", "config review"         |
+| `using-git-worktrees`             | Isolated git worktrees for parallel development                       | "worktree", "isolate"                    |
 
 ### Auto-Activated
 
@@ -360,11 +360,11 @@ These activate silently when relevant patterns are detected — no `/skill-name`
 
 Three role agents: a capability envelope plus a reasoning stance no skill can supply. Consolidated from 39 → 3 — see `docs/agent-audit-2026-05-16.md` and the executed plan in `docs/plans/completed/`. Domain procedure and output format live in skills; language specifics live in each skill's `references/<lang>.md`. Role × skill × references compose — language is not a routing key. Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allowlist (Gemini via its subagent frontmatter `tools:` field); Codex blocks writes via `sandbox_mode: read-only`; Pi has no tool-allowlist primitive, so the envelope there is a system-prompt directive. Gemini frontmatter has no read-only sandbox primitive, so `advisor` is granted `run_shell_command` and held read-only by its body directive, the same tradeoff as Pi.
 
-| Role       | Envelope                       | Stance                                                           | Claude model | Pi model               |
-| ---------- | ------------------------------ | ---------------------------------------------------------------- | ------------ | ---------------------- |
-| `engineer` | Read + write + execute         | Sole mutator: applies changes, runs the build/test/lint gate     | sonnet              | gpt-5.4 thinking:high   |
+| Role       | Envelope                         | Stance                                                           | Claude model        | Pi model                |
+| ---------- | -------------------------------- | ---------------------------------------------------------------- | ------------------- | ----------------------- |
+| `engineer` | Read + write + execute           | Sole mutator: applies changes, runs the build/test/lint gate     | sonnet              | gpt-5.4 thinking:high   |
 | `reviewer` | Read, Grep, Glob, LS — no writes | Adversarial evaluator: emits findings/proposals, applies nothing | sonnet              | gpt-5.4 thinking:medium |
-| `advisor`  | Read + read-only Bash          | Strategic escalation: verdict, ranked risks, next actions        | built-in (Opus 4.7) | gpt-5.5 thinking:xhigh  |
+| `advisor`  | Read + read-only Bash            | Strategic escalation: verdict, ranked risks, next actions        | built-in (Opus 4.7) | gpt-5.5 thinking:xhigh  |
 
 `engineer` is the fork target for `writing-{go,python,typescript,web}` and `managing-infra`. `reviewer` absorbs the review family, code search, and planning (via `spec`). `advisor` ships to Codex, Gemini, and Pi; Claude is excluded because it has a built-in advisor. On Pi, `advisor` is invoked via transcript forwarding; on Gemini and Codex it is spawned as a normal custom subagent under its tool/sandbox envelope.
 
@@ -372,41 +372,67 @@ Model tiers are matched per role across vendors. `engineer`/`reviewer` use Claud
 
 Pi model names use the `openai-codex/` provider prefix (e.g. `openai-codex/gpt-5.4`) to avoid ambiguous fuzzy matching when multiple providers expose the same model ID.
 
-## Hooks (Claude Code only)
+## Hooks
 
-| Hook                 | Event            | What It Does                                 |
-| -------------------- | ---------------- | -------------------------------------------- |
-| `session-start.sh`   | SessionStart     | Shows git branch, last commit, file context  |
-| `skill-enforcer.sh`  | UserPromptSubmit | Pattern-matches prompt and suggests skills   |
-| `file-protector.py`  | PreToolUse       | Blocks edits to settings.json, secrets       |
-| `git-guardrails.sh`  | PreToolUse       | Blocks destructive git commands              |
-| `smart-lint.sh`      | PostToolUse      | Auto-runs linter after file edits            |
-| `test-runner.sh`     | PostToolUse      | Auto-runs tests after implementation changes |
-| `notify.sh`          | Notification     | Desktop notifications for long operations    |
-| `worktree-create.sh` | WorktreeCreate   | Sets up isolated git worktree environment    |
-| `worktree-remove.sh` | WorktreeRemove   | Cleans up worktree on exit                   |
+| Hook                 | Event            | What It Does                                |
+| -------------------- | ---------------- | ------------------------------------------- |
+| `session-start.sh`   | SessionStart     | Shows git branch, last commit, file context |
+| `skill-enforcer.sh`  | UserPromptSubmit | Pattern-matches prompt and suggests skills  |
+| `file-protector.py`  | PreToolUse       | Blocks edits to settings.json, secrets      |
+| `git-guardrails.sh`  | PreToolUse       | Blocks destructive git commands             |
+| `smart-lint.sh`      | PostToolUse      | Auto-runs focused lint after file edits     |
+| `test-runner.sh`     | Stop             | Auto-runs focused tests after agent turns   |
+| `notify.sh`          | Notification     | Desktop notifications for long operations   |
+| `worktree-create.sh` | WorktreeCreate   | Sets up isolated git worktree environment   |
+| `worktree-remove.sh` | WorktreeRemove   | Cleans up worktree on exit                  |
 
 ### Hook Prerequisites
 
-`smart-lint.sh` and `test-runner.sh` auto-detect your project type and pick the best available tool. Missing tools produce a warning, not a failure.
+`smart-lint.sh` and `test-runner.sh` auto-detect project type and prefer focused tools. Missing optional tools warn or fall through; tool failures block.
 
-**Makefile escape hatch** — `test-runner.sh` checks for a Makefile _before_ any language detection. If it finds a `test`, `tests`, `check`, or `verify` target it runs `make <target>` and stops. This lets any project wire any tool or configuration without touching the hook. To opt out: add a `.nomake` file to the repo root (commit it for the whole team, or add to `.gitignore` for a local-only override), or set `SKIP_MAKE=1` in the environment for a one-off run.
+#### Focused path
 
-| Ecosystem       | Detection signal                                 | Test runner (fallback order)                                                      | Linter / Formatter               |
-| --------------- | ------------------------------------------------ | --------------------------------------------------------------------------------- | -------------------------------- |
-| Any             | `Makefile` with `test`/`tests`/`check`/`verify`  | `make <target>` — wins unconditionally                                            | —                                |
-| Python          | `pyproject.toml`, `setup.py`, `requirements.txt` | `uv run pytest` → `.venv/bin/pytest` → `python3 -m pytest`                        | `ruff` → `black` + `flake8`      |
-| JavaScript / TS | `package.json`                                   | `"test"` script → `vitest.config.*` → `jest.config.*` → `.mocharc.*` → `bun test` | `eslint` + `prettier`            |
-| Go              | `go.mod`                                         | `gotestsum ./...` → `go test ./...`                                               | `golangci-lint` + `go fmt`       |
-| Rust            | `Cargo.toml`                                     | `cargo test`                                                                      | `cargo clippy` + `rustfmt`       |
-| Ruby            | `Gemfile`                                        | `bundle exec rspec` → `bundle exec rake test`                                     | `rubocop`                        |
-| Java (Maven)    | `pom.xml`                                        | `mvn test`                                                                        | checkstyle / spotless via plugin |
-| Java (Gradle)   | `build.gradle[.kts]`                             | `./gradlew test` → `gradle test`                                                  | ktlint / spotless via plugin     |
-| .NET / C#       | `*.csproj`, `*.sln`                              | `dotnet test`                                                                     | `dotnet format`                  |
-| Elixir          | `mix.exs`                                        | `mix test`                                                                        | `credo` + `mix format`           |
-| PHP             | `composer.json`                                  | `vendor/bin/pest` → `vendor/bin/phpunit`                                          | `php-cs-fixer` + `phpstan`       |
-| Swift           | `Package.swift`                                  | `swift test`                                                                      | `swiftlint` + `swiftformat`      |
-| Shell / Bash    | `*.bats` files                                   | `bats .`                                                                          | `shellcheck` + `shfmt`           |
+`smart-lint.sh` runs after edits. It reads hook stdin first, records the edited file set, then formats and lints only matching files. If hook input lacks paths, it falls back to git diff only when the changed-file count is at or below `SMART_LINT_DIFF_FALLBACK_LIMIT` (default: 5).
+
+`test-runner.sh` runs at agent-finish time (`Stop` for Claude/Codex/Pi, `AfterAgent` for Gemini). It uses the edited-file state recorded by `smart-lint.sh`, then falls back to git diff. Full project tests require `TEST_RUNNER_FULL=1`.
+
+Focused checks matter. Project-wide scripts are slower, burn context, and often produce unrelated failures. Keep package and Makefile fallbacks as safety nets, not the normal path. Smart-lint tracks formatting and linting separately: a focused formatter does not suppress a project-level lint fallback.
+
+#### Tool order
+
+| Ecosystem       | Format / lint path                                                   | Test path                                                                      |
+| --------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Python          | `ruff` format once, `ruff check --fix`; `black` / `flake8` fallback  | matching `test_*.py` / `*_test.py` via `pytest -q --maxfail=1 --tb=short`      |
+| Pyright         | `pyright --outputjson`; `reportMissingImports` filtered structurally | —                                                                              |
+| JavaScript / TS | local/global `prettier --write`, local/global `eslint --fix`         | Vitest `related <sources> --run`, Jest `--findRelatedTests`, direct test files |
+| Bun             | package-script fallback via `bun run <script>` when selected by lock | `bun test <tests>` or package-script fallback                                  |
+| Go              | `gofmt -w`, package-scoped `golangci-lint --fix` / `go vet`          | `go test -failfast ./changed/pkg`                                              |
+| Shell / Bash    | `shfmt -w`, `shellcheck`                                             | matching `.bats` files                                                         |
+| Package scripts | last fallback for missing side: `fmt` / `format`, then `lint`        | last fallback: `test`, `tests`, `check`, `verify` scripts                      |
+| Makefile        | last fallback for missing side: root `fmt`, then `lint`              | last fallback: nearest non-root `test`, `tests`, `check`, `verify` target      |
+
+Package-script selection: `yarn.lock` → `yarn run`, `bun.lock` / `bun.lockb` → `bun run`, otherwise `npm run --silent` when npm is available. npm and Yarn run package scripts and expose local binaries on the script PATH; Bun `run` can run package scripts and local executables.
+
+Fallbacks fill gaps only. If focused formatting ran but no focused linter ran, smart-lint may still run project `lint`. If focused linting ran, it skips project `lint`. `TEST_RUNNER_FULL=1` is the explicit project-level test path: root Makefile target first, then Go/Python project runners, then package scripts by the same yarn/bun/npm selection.
+
+#### Fallback controls
+
+| Control                      | Effect                                                     |
+| ---------------------------- | ---------------------------------------------------------- |
+| `SKIP_LINT=1` or `.nolint`   | skip smart-lint completely                                 |
+| `SKIP_TESTS=1` or `.notests` | skip test-runner completely                                |
+| `HOOK_PROJECT_FALLBACK=0`    | disable package-script and Makefile fallbacks              |
+| `.nohooks-project`           | repo-local file form of `HOOK_PROJECT_FALLBACK=0`          |
+| `TEST_RUNNER_FULL=1`         | run one project-level test target instead of focused tests |
+
+#### Output and exit codes
+
+Hooks write concise diagnostics to stderr for agent consumption.
+
+- Exit `0`: checks passed, skipped, or no relevant focused target found.
+- Exit `2`: blocking lint/test failure. Agents should fix the shown issue before retrying.
+- Compact output keeps the first relevant lines and truncates long logs. This preserves context budget and makes the failing file, line, and command visible.
+- Formatters run once. Post-format “check” passes are avoided in the interactive path to stop formatter/linter ping-pong.
 
 Recommended installs for tools that don't ship with their language runtime:
 

@@ -72,11 +72,26 @@
             "type": "command",
             "command": "${PI_HOOKS_DIR}/smart-lint.sh",
             "timeout": 60
-          },
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
           {
             "type": "command",
             "command": "${PI_HOOKS_DIR}/test-runner.sh",
-            "timeout": 120,
+            "timeout": 60
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "ccgram hook",
+            "timeout": 5,
             "async": true
           }
         ]
@@ -119,18 +134,6 @@
       }
     ],
     "SubagentStop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "ccgram hook",
-            "timeout": 5,
-            "async": true
-          }
-        ]
-      }
-    ],
-    "Stop": [
       {
         "hooks": [
           {

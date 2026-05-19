@@ -1,17 +1,8 @@
 #!/usr/bin/env bash
-# test-runner.sh - Automated test execution after code changes
+# test-runner.sh - Focused test execution at agent-finish time.
 #
-# DESCRIPTION
-#   Auto-detects project type and runs appropriate tests.
-#   Falls back gracefully when preferred tools are absent.
-#
-#   Makefile targets are the universal escape hatch: if Makefile has a
-#   recognised test target it wins regardless of language, letting projects
-#   wire any tool or configuration without modifying this script.
-#
-# EXIT CODES
-#   0 - All tests passed (or no framework found)
-#   1 - Test failures or errors
+# Runs tests causally related to edited files. Never runs a full project test
+# suite unless TEST_RUNNER_FULL=1 is set explicitly.
 
 set +e
 
@@ -19,273 +10,666 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m'
 
-echo "" >&2
-echo "🧪 Running tests..." >&2
-echo "──────────────────" >&2
+HOOK_INPUT_JSON="${HOOK_INPUT_JSON:-}"
+TEST_RUNNER_DIFF_FALLBACK_LIMIT="${TEST_RUNNER_DIFF_FALLBACK_LIMIT:-50}"
+TEST_RUNNER_FULL="${TEST_RUNNER_FULL:-0}"
+TEST_RUNNER_DEBUG="${TEST_RUNNER_DEBUG:-0}"
+TEST_RUNNER_COMPACT_LINES=120
+HOOK_PROJECT_FALLBACK="${HOOK_PROJECT_FALLBACK:-1}"
+TESTS_RAN=0
 
-# --- UNIVERSAL MAKEFILE ESCAPE HATCH ---
-# If the project has wired a Makefile test target, use it unconditionally.
-# This lets any tool or configuration be used without touching this script.
-#
-# Opt out per-project with a .nomake file in the repo root (add to .gitignore
-# for a local-only override, or commit it to disable for the whole team).
-# Opt out transiently with SKIP_MAKE=1 in the environment.
-if [[ "${SKIP_MAKE:-}" != "1" ]] && [[ ! -f ".nomake" ]] && [[ -f "Makefile" ]]; then
-	for target in test tests check verify; do
-		if grep -qE "^${target}[[:space:]]*:" Makefile 2>/dev/null; then
-			echo -e "${BLUE}[INFO]${NC} Running: make $target" >&2
-			make "$target"
-			EXIT_CODE=$?
-			echo "" >&2
-			if [[ $EXIT_CODE -eq 0 ]]; then
-				echo -e "${GREEN}✅ Tests passed${NC}" >&2
-			else
-				echo -e "${RED}❌ Tests failed!${NC}" >&2
-			fi
-			exit $EXIT_CODE
+log_debug() { [[ "$TEST_RUNNER_DEBUG" == "1" ]] && echo -e "${CYAN}[DEBUG]${NC} $*" >&2; }
+log_info() { echo -e "${BLUE}[INFO]${NC} $*" >&2; }
+log_warn() { echo -e "${YELLOW}[WARN]${NC} $*" >&2; }
+command_exists() { command -v "$1" &>/dev/null; }
+project_fallback_enabled() { [[ "$HOOK_PROJECT_FALLBACK" == "1" && ! -f ".nohooks-project" ]]; }
+
+find_local_node_bin() {
+	local name="$1" dir="$PWD"
+	while [[ -n "$dir" && "$dir" != "/" ]]; do
+		if [[ -x "$dir/node_modules/.bin/$name" ]]; then
+			printf '%s\n' "$dir/node_modules/.bin/$name"
+			return 0
 		fi
+		dir=$(dirname "$dir")
 	done
-fi
-
-# --- LANGUAGE DETECTION ---
-detect_project_type() {
-	# Ordered by specificity — first match wins.
-	if [[ -f "go.mod" ]]; then
-		echo "go"
-	elif [[ -f "Cargo.toml" ]]; then
-		echo "rust"
-	elif [[ -f "mix.exs" ]]; then
-		echo "elixir"
-	elif [[ -f "pom.xml" ]]; then
-		echo "java"
-	elif [[ -f "build.gradle" ]] || [[ -f "build.gradle.kts" ]]; then
-		echo "gradle"
-	elif find . -maxdepth 2 \( -name "*.csproj" -o -name "*.sln" \) -print -quit 2>/dev/null | grep -q .; then
-		echo "dotnet"
-	elif [[ -f "Package.swift" ]]; then
-		echo "swift"
-	elif [[ -f "Gemfile" ]]; then
-		echo "ruby"
-	elif [[ -f "composer.json" ]]; then
-		echo "php"
-	elif [[ -f "pyproject.toml" ]] || [[ -f "setup.py" ]] || [[ -f "requirements.txt" ]]; then
-		echo "python"
-	elif [[ -f "package.json" ]]; then
-		echo "javascript"
-	elif find . -maxdepth 3 -name "*.bats" -print -quit 2>/dev/null | grep -q .; then
-		echo "shell"
-	else
-		echo "unknown"
-	fi
+	return 1
 }
 
-# --- LANGUAGE-SPECIFIC RUNNERS ---
-
-run_python_tests() {
-	# uv run respects the project lockfile and interpreter — avoids stale PATH wrappers.
-	# .venv/bin/pytest is a direct-path fallback when uv is absent.
-	# python3 -m pytest is safer than bare pytest (no shebang interpreter mismatch).
-	if command -v uv &>/dev/null && [[ -f "pyproject.toml" ]]; then
-		echo -e "${BLUE}[INFO]${NC} Running: uv run pytest" >&2
-		uv run pytest -v
-	elif [[ -x ".venv/bin/pytest" ]]; then
-		echo -e "${BLUE}[INFO]${NC} Running: .venv/bin/pytest" >&2
-		.venv/bin/pytest -v
-	elif python3 -c "import pytest" 2>/dev/null; then
-		echo -e "${BLUE}[INFO]${NC} Running: python3 -m pytest" >&2
-		python3 -m pytest -v
-	else
-		echo -e "${YELLOW}[WARN]${NC} pytest not found — install: uv add --dev pytest" >&2
+resolve_node_tool() {
+	local name="$1" bin
+	bin=$(find_local_node_bin "$name" || true)
+	if [[ -n "$bin" ]]; then
+		printf '%s\n' "$bin"
 		return 0
 	fi
+	if command_exists "$name"; then
+		printf '%s\n' "$name"
+		return 0
+	fi
+	return 1
 }
 
-run_javascript_tests() {
-	# Detect package manager from lockfile — matches smart-lint.sh convention.
-	local pm="npm"
-	[[ -f "yarn.lock" ]] && pm="yarn"
-	[[ -f "pnpm-lock.yaml" ]] && pm="pnpm"
-	{ [[ -f "bun.lockb" ]] || [[ -f "bun.lock" ]]; } && pm="bun"
+package_json_has_script() {
+	local script="$1"
+	[[ -f package.json ]] || return 1
+	command_exists python3 || return 1
+	python3 -c '
+import json
+import sys
+from pathlib import Path
 
-	local exec_cmd="npx"
-	[[ "$pm" == "bun" ]] && exec_cmd="bunx"
-	[[ "$pm" == "yarn" ]] && exec_cmd="yarn dlx"
-	[[ "$pm" == "pnpm" ]] && exec_cmd="pnpm exec"
+script = sys.argv[1]
+try:
+    data = json.loads(Path("package.json").read_text())
+except (OSError, json.JSONDecodeError):
+    sys.exit(1)
+scripts = data.get("scripts", {})
+if isinstance(scripts, dict) and isinstance(scripts.get(script), str):
+    sys.exit(0)
+sys.exit(1)
+' "$script" 2>/dev/null
+}
 
-	# package.json "test" script is the project's explicit configuration — always honour it.
-	if grep -q '"test"' package.json 2>/dev/null; then
-		echo -e "${BLUE}[INFO]${NC} Running: $pm test" >&2
-		$pm test
-		return $?
+package_script_runner() {
+	[[ -f package.json ]] || return 1
+	if [[ -f yarn.lock ]] && command_exists yarn; then
+		printf 'yarn|yarn\n'
+		return 0
 	fi
+	if { [[ -f bun.lock ]] || [[ -f bun.lockb ]]; } && command_exists bun; then
+		printf 'bun|bun\n'
+		return 0
+	fi
+	if command_exists npm; then
+		printf 'npm|npm\n'
+		return 0
+	fi
+	if command_exists yarn; then
+		printf 'yarn|yarn\n'
+		return 0
+	fi
+	if command_exists bun; then
+		printf 'bun|bun\n'
+		return 0
+	fi
+	return 1
+}
 
-	# No test script — infer framework from config files present in the repo.
-	if find . -maxdepth 2 -name "vitest.config.*" -print -quit 2>/dev/null | grep -q .; then
-		echo -e "${BLUE}[INFO]${NC} Running: $exec_cmd vitest run" >&2
-		$exec_cmd vitest run
-		return $?
+init_hook_input() {
+	if [[ -z "$HOOK_INPUT_JSON" && ! -t 0 ]]; then
+		HOOK_INPUT_JSON=$(cat 2>/dev/null || true)
 	fi
-	if find . -maxdepth 2 -name "jest.config.*" -print -quit 2>/dev/null | grep -q .; then
-		echo -e "${BLUE}[INFO]${NC} Running: $exec_cmd jest" >&2
-		$exec_cmd jest
-		return $?
-	fi
-	if find . -maxdepth 2 -name ".mocharc*" -print -quit 2>/dev/null | grep -q .; then
-		echo -e "${BLUE}[INFO]${NC} Running: $exec_cmd mocha" >&2
-		$exec_cmd mocha
-		return $?
-	fi
+}
 
-	# bun can discover *.test.{ts,js} files natively without any config or script.
-	if [[ "$pm" == "bun" ]] && command -v bun &>/dev/null; then
-		echo -e "${BLUE}[INFO]${NC} Running: bun test" >&2
-		bun test
-		return $?
-	fi
+json_field() {
+	local field="$1"
+	[[ -n "$HOOK_INPUT_JSON" ]] || return 1
+	command_exists python3 || return 1
+	python3 -c 'import json,sys
+field=sys.argv[1]
+try:
+    data=json.loads(sys.stdin.read() or "{}")
+except Exception:
+    sys.exit(1)
+value=data.get(field) if isinstance(data, dict) else None
+if value is None:
+    sys.exit(1)
+print(str(value))
+' "$field" <<<"$HOOK_INPUT_JSON" 2>/dev/null
+}
 
-	echo -e "${YELLOW}[WARN]${NC} No test script or framework config found — add a 'test' script to package.json" >&2
+maybe_cd_to_hook_cwd() {
+	local hook_cwd
+	hook_cwd=$(json_field cwd || true)
+	if [[ -n "$hook_cwd" && -d "$hook_cwd" ]]; then
+		cd "$hook_cwd" || return 0
+	fi
+}
+
+repo_root() {
+	git rev-parse --show-toplevel 2>/dev/null || pwd
+}
+
+hook_session_id() {
+	local sid
+	sid=$(json_field session_id || true)
+	[[ -n "$sid" ]] && printf '%s\n' "$sid" || printf '%s\n' default
+}
+
+hook_state_path() {
+	git rev-parse --git-dir >/dev/null 2>&1 || return 1
+	local session_id safe_session_id
+	session_id=$(hook_session_id)
+	safe_session_id=$(printf '%s' "$session_id" | tr -c 'A-Za-z0-9_.-' '_')
+	git rev-parse --git-path "cc-thingz/hook-files-${safe_session_id:-default}" 2>/dev/null
+}
+
+clear_hook_state() {
+	local state_path
+	state_path=$(hook_state_path 2>/dev/null || true)
+	[[ -n "$state_path" ]] && rm -f "$state_path"
+}
+
+path_is_excluded() {
+	local file="$1"
+	local exclude_patterns=(
+		"node_modules/"
+		"vendor/"
+		"venv/"
+		".venv/"
+		"env/"
+		"virtualenv/"
+		"dist/"
+		"build/"
+		"target/"
+		".tox/"
+		".eggs/"
+		"__pycache__/"
+		".pytest_cache/"
+		".mypy_cache/"
+		".cargo/"
+		".next/"
+		".nuxt/"
+		"coverage/"
+	)
+	local pattern
+	for pattern in "${exclude_patterns[@]}"; do
+		if [[ "$file" == *"$pattern"* ]]; then
+			return 0
+		fi
+	done
+	return 1
+}
+
+has_code_extension() {
+	case "$1" in
+	*.py | *.go | *.js | *.jsx | *.ts | *.tsx | *.mjs | *.cjs | *.mts | *.cts | *.sh | *.bash | *.bats) return 0 ;;
+	*) return 1 ;;
+	esac
+}
+
+diff_fallback_files() {
+	git rev-parse --git-dir >/dev/null 2>&1 || return 0
+	{
+		git diff --name-only --diff-filter=ACMRTUXB --cached HEAD 2>/dev/null || true
+		git diff --name-only --diff-filter=ACMRTUXB 2>/dev/null || true
+		git ls-files --others --exclude-standard 2>/dev/null || true
+	} | sort -u
+}
+
+collect_focus_files() {
+	local state_path file count source="session state"
+	local tmp_raw tmp_filtered
+	state_path=$(hook_state_path 2>/dev/null || true)
+	tmp_raw=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-focus-raw.%s' "$$")
+	tmp_filtered=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-focus-filtered.%s' "$$")
+	if [[ -n "$state_path" && -s "$state_path" ]]; then
+		cat "$state_path" >"$tmp_raw"
+	else
+		source="git diff fallback"
+		diff_fallback_files >"$tmp_raw"
+	fi
+	while IFS= read -r file; do
+		[[ -n "$file" && -f "$file" ]] || continue
+		path_is_excluded "$file" && continue
+		has_code_extension "$file" || continue
+		printf '%s\n' "$file"
+	done <"$tmp_raw" | sort -u >"$tmp_filtered"
+	count=$(wc -l <"$tmp_filtered" 2>/dev/null | tr -d ' ')
+	if [[ "$source" == "git diff fallback" && "$count" -gt "$TEST_RUNNER_DIFF_FALLBACK_LIMIT" ]]; then
+		log_warn "Skipping focused tests: diff fallback exceeded TEST_RUNNER_DIFF_FALLBACK_LIMIT=$TEST_RUNNER_DIFF_FALLBACK_LIMIT"
+		rm -f "$tmp_raw" "$tmp_filtered"
+		return 0
+	fi
+	cat "$tmp_filtered"
+	rm -f "$tmp_raw" "$tmp_filtered"
+	log_debug "Focus-file source: $source"
+}
+
+unique_lines() {
+	sort -u | sed '/^$/d'
+}
+
+make_target_for_file() {
+	local file="$1"
+	local root dir target
+	root=$(repo_root)
+	dir=$(dirname "$file")
+	while [[ -n "$dir" && "$dir" != "." && "$dir" != "/" ]]; do
+		if [[ -f "$dir/Makefile" ]]; then
+			if [[ "$(cd "$dir" 2>/dev/null && pwd)" == "$root" ]]; then
+				return 1
+			fi
+			for target in test tests check verify; do
+				if grep -qE "^[[:space:]]*${target}[[:space:]]*:" "$dir/Makefile" 2>/dev/null; then
+					printf '%s|%s\n' "$dir" "$target"
+					return 0
+				fi
+			done
+		fi
+		dir=$(dirname "$dir")
+	done
+	return 1
+}
+
+MAKE_ROOTS=()
+run_make_targets() {
+	project_fallback_enabled || return 0
+	local focus_files=("$@")
+	local targets=()
+	local entry file dir target tmp
+	for file in "${focus_files[@]}"; do
+		entry=$(make_target_for_file "$file" || true)
+		[[ -n "$entry" ]] && targets+=("$entry")
+	done
+	[[ "${#targets[@]}" -gt 0 ]] || return 0
+	tmp=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-test-runner.%s' "$$")
+	printf '%s\n' "${targets[@]}" | unique_lines >"$tmp"
+	local status=0
+	while IFS= read -r entry; do
+		[[ -n "$entry" ]] || continue
+		dir=${entry%|*}
+		target=${entry##*|}
+		MAKE_ROOTS+=("$dir")
+		run_test_compact "make $target" make -C "$dir" "$target" || status=2
+	done <"$tmp"
+	rm -f "$tmp"
+	return "$status"
+}
+
+under_make_root() {
+	local file="$1"
+	local root
+	for root in "${MAKE_ROOTS[@]}"; do
+		case "$file" in
+		"$root" | "$root"/*) return 0 ;;
+		esac
+	done
+	return 1
+}
+
+run_package_test_script() {
+	local script="$1" runner kind bin
+	package_json_has_script "$script" || return 1
+	runner=$(package_script_runner || true)
+	[[ -n "$runner" ]] || return 1
+	kind=${runner%%|*}
+	bin=${runner#*|}
+	case "$kind" in
+	yarn) run_test_compact "yarn $script" "$bin" run "$script" ;;
+	bun) run_test_compact "bun $script" "$bin" run "$script" ;;
+	npm) run_test_compact "npm $script" "$bin" run --silent "$script" ;;
+	*) return 1 ;;
+	esac
+}
+
+run_package_test_fallback() {
+	project_fallback_enabled || return 0
+	[[ "$TESTS_RAN" -eq 0 ]] || return 0
+	local script
+	for script in test tests check verify; do
+		package_json_has_script "$script" || continue
+		run_package_test_script "$script"
+		return $?
+	done
+	log_debug "No test/tests/check/verify package scripts found"
 	return 0
 }
 
-run_ruby_tests() {
-	if command -v bundle &>/dev/null; then
-		if [[ -d "spec" ]]; then
-			echo -e "${BLUE}[INFO]${NC} Running: bundle exec rspec" >&2
-			bundle exec rspec
-		elif [[ -d "test" ]]; then
-			echo -e "${BLUE}[INFO]${NC} Running: bundle exec rake test" >&2
-			bundle exec rake test
+compact_output() {
+	local max_lines="$TEST_RUNNER_COMPACT_LINES"
+	awk -v max="$max_lines" '
+		/^[[:space:]]*$/ { next }
+		{ lines[++count] = $0 }
+		END {
+			limit = count < max ? count : max
+			for (i = 1; i <= limit; i++) print lines[i]
+			if (count > max) printf("... truncated %d line(s) ...\n", count - max)
+		}
+	' <<<"$1"
+}
+
+run_test_compact() {
+	local label="$1"
+	shift
+	TESTS_RAN=1
+	log_info "Running: $*"
+	local output
+	if output=$("$@" 2>&1); then
+		log_debug "$label passed"
+		return 0
+	fi
+	local code=$?
+	[[ -n "$output" ]] && compact_output "$output" >&2
+	log_warn "$label failed with exit $code"
+	return 2
+}
+
+run_and_capture() {
+	run_test_compact "$@"
+}
+
+add_existing_file() {
+	local candidate="$1"
+	[[ -f "$candidate" ]] && printf '%s\n' "$candidate"
+}
+
+find_python_tests_for_source() {
+	local file="$1" dir base
+	dir=$(dirname "$file")
+	base=$(basename "$file" .py)
+	add_existing_file "$dir/test_${base}.py"
+	add_existing_file "$dir/${base}_test.py"
+	for test_dir in tests test; do
+		[[ -d "$test_dir" ]] || continue
+		find "$test_dir" -type f \( -name "test_${base}.py" -o -name "${base}_test.py" \) 2>/dev/null
+	done
+}
+
+run_python_tests() {
+	local focus_files=("$@")
+	local tests=()
+	local file base tmp runner=()
+	for file in "${focus_files[@]}"; do
+		[[ "$file" == *.py ]] || continue
+		under_make_root "$file" && continue
+		base=$(basename "$file")
+		if [[ "$base" == test_*.py || "$base" == *_test.py || "$file" == */tests/* || "$file" == tests/* || "$file" == */test/* || "$file" == test/* ]]; then
+			tests+=("$file")
 		else
-			echo -e "${YELLOW}[WARN]${NC} No spec/ or test/ directory found" >&2
+			while IFS= read -r candidate; do
+				[[ -n "$candidate" ]] && tests+=("$candidate")
+			done < <(find_python_tests_for_source "$file")
+		fi
+	done
+	[[ "${#tests[@]}" -gt 0 ]] || return 0
+	tmp=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-python-tests.%s' "$$")
+	printf '%s\n' "${tests[@]}" | unique_lines >"$tmp"
+	tests=()
+	while IFS= read -r file; do tests+=("$file"); done <"$tmp"
+	rm -f "$tmp"
+	if command_exists uv && [[ -f pyproject.toml ]]; then
+		runner=(uv run pytest -q --maxfail=1 --tb=short)
+	elif [[ -x .venv/bin/pytest ]]; then
+		runner=(.venv/bin/pytest -q --maxfail=1 --tb=short)
+	elif python3 -c "import pytest" 2>/dev/null; then
+		runner=(python3 -m pytest -q --maxfail=1 --tb=short)
+	else
+		log_warn "pytest not found — skipping focused Python tests"
+		return 0
+	fi
+	run_and_capture "Python tests" "${runner[@]}" "${tests[@]}"
+}
+
+run_go_tests() {
+	local focus_files=("$@")
+	local dirs=()
+	local file dir tmp pkg
+	for file in "${focus_files[@]}"; do
+		[[ "$file" == *.go ]] || continue
+		under_make_root "$file" && continue
+		dir=$(dirname "$file")
+		[[ "$dir" == "." ]] && dirs+=(".") || dirs+=("./$dir")
+	done
+	[[ "${#dirs[@]}" -gt 0 ]] || return 0
+	command_exists go || {
+		log_warn "go not found — skipping focused Go tests"
+		return 0
+	}
+	tmp=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-go-tests.%s' "$$")
+	printf '%s\n' "${dirs[@]}" | unique_lines >"$tmp"
+	local status=0
+	while IFS= read -r pkg; do
+		[[ -n "$pkg" ]] || continue
+		run_and_capture "Go tests" go test -failfast "$pkg" || status=2
+	done <"$tmp"
+	rm -f "$tmp"
+	return "$status"
+}
+
+is_js_test_file() {
+	case "$1" in
+	*.test.js | *.test.jsx | *.test.ts | *.test.tsx | *.spec.js | *.spec.jsx | *.spec.ts | *.spec.tsx | */__tests__/* | */tests/* | tests/* | */test/* | test/*) return 0 ;;
+	*) return 1 ;;
+	esac
+}
+
+find_js_tests_for_source() {
+	local file="$1" dir stem
+	dir=$(dirname "$file")
+	stem=$(basename "$file")
+	stem=${stem%.*}
+	find "$dir" -maxdepth 1 -type f \( -name "${stem}.test.*" -o -name "${stem}.spec.*" -o -name "test_${stem}.*" \) 2>/dev/null
+	for test_dir in tests test src; do
+		[[ -d "$test_dir" ]] || continue
+		find "$test_dir" -type f \( -name "${stem}.test.*" -o -name "${stem}.spec.*" -o -name "test_${stem}.*" \) 2>/dev/null
+	done
+}
+
+js_runner_command() {
+	local bin
+	if find . -maxdepth 3 -name 'vitest.config.*' -print -quit 2>/dev/null | grep -q .; then
+		bin=$(resolve_node_tool vitest || true)
+		if [[ -n "$bin" ]]; then
+			printf 'vitest|%s\n' "$bin"
 			return 0
 		fi
-	elif command -v rspec &>/dev/null; then
-		echo -e "${BLUE}[INFO]${NC} Running: rspec" >&2
-		rspec
-	else
-		echo -e "${YELLOW}[WARN]${NC} bundler not found — install: gem install bundler" >&2
+	fi
+	if find . -maxdepth 3 -name 'jest.config.*' -print -quit 2>/dev/null | grep -q .; then
+		bin=$(resolve_node_tool jest || true)
+		if [[ -n "$bin" ]]; then
+			printf 'jest|%s\n' "$bin"
+			return 0
+		fi
+	fi
+	if command_exists bun && { [[ -f bun.lockb ]] || [[ -f bun.lock ]]; }; then
+		printf '%s\n' "bun|bun"
 		return 0
 	fi
+	return 1
 }
 
-run_php_tests() {
-	# Pest is the modern PHP test runner; PHPUnit is the classic fallback.
-	# Config files (phpunit.xml, phpunit.xml.dist, Pest.php) are read automatically
-	# by the runner — no need to detect them here.
-	if [[ -x "vendor/bin/pest" ]]; then
-		echo -e "${BLUE}[INFO]${NC} Running: vendor/bin/pest" >&2
-		vendor/bin/pest
-	elif [[ -x "vendor/bin/phpunit" ]]; then
-		echo -e "${BLUE}[INFO]${NC} Running: vendor/bin/phpunit" >&2
-		vendor/bin/phpunit
-	else
-		echo -e "${YELLOW}[WARN]${NC} No test runner found — install: composer require --dev pestphp/pest" >&2
+run_javascript_tests() {
+	local focus_files=("$@")
+	local tests=()
+	local mapped_tests=()
+	local sources=()
+	local file tmp runner kind bin candidate status
+	for file in "${focus_files[@]}"; do
+		case "$file" in
+		*.js | *.jsx | *.ts | *.tsx | *.mjs | *.cjs | *.mts | *.cts) ;;
+		*) continue ;;
+		esac
+		under_make_root "$file" && continue
+		if is_js_test_file "$file"; then
+			tests+=("$file")
+		else
+			sources+=("$file")
+			while IFS= read -r candidate; do
+				[[ -n "$candidate" ]] && mapped_tests+=("$candidate")
+			done < <(find_js_tests_for_source "$file")
+		fi
+	done
+	[[ "${#sources[@]}" -gt 0 || "${#tests[@]}" -gt 0 || "${#mapped_tests[@]}" -gt 0 ]] || return 0
+
+	runner=$(js_runner_command || true)
+	if [[ -z "$runner" ]]; then
+		log_warn "No focused JS test runner found — skipping JS tests"
 		return 0
 	fi
+
+	tmp=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-js-tests.%s' "$$")
+	printf '%s\n' "${sources[@]}" | unique_lines >"$tmp.sources"
+	printf '%s\n' "${tests[@]}" | unique_lines >"$tmp.tests"
+	printf '%s\n' "${mapped_tests[@]}" | unique_lines >"$tmp.mapped"
+	sources=()
+	tests=()
+	mapped_tests=()
+	while IFS= read -r file; do sources+=("$file"); done <"$tmp.sources"
+	while IFS= read -r file; do tests+=("$file"); done <"$tmp.tests"
+	while IFS= read -r file; do mapped_tests+=("$file"); done <"$tmp.mapped"
+	rm -f "$tmp" "$tmp.sources" "$tmp.tests" "$tmp.mapped"
+
+	kind=${runner%%|*}
+	bin=${runner#*|}
+	status=0
+	case "$kind" in
+	vitest)
+		if [[ "${#sources[@]}" -gt 0 ]]; then
+			run_and_capture "JS related tests (vitest)" "$bin" related "${sources[@]}" --run || status=2
+		fi
+		if [[ "${#tests[@]}" -gt 0 ]]; then
+			run_and_capture "JS tests (vitest)" "$bin" run "${tests[@]}" || status=2
+		fi
+		;;
+	jest)
+		if [[ "${#sources[@]}" -gt 0 ]]; then
+			run_and_capture "JS related tests (jest)" "$bin" --findRelatedTests "${sources[@]}" || status=2
+		fi
+		if [[ "${#tests[@]}" -gt 0 ]]; then
+			run_and_capture "JS tests (jest)" "$bin" "${tests[@]}" || status=2
+		fi
+		;;
+	bun)
+		tests+=("${mapped_tests[@]}")
+		[[ "${#tests[@]}" -gt 0 ]] || return 0
+		run_and_capture "JS tests (bun)" bun test "${tests[@]}" || status=2
+		;;
+	esac
+	return "$status"
 }
 
-# --- DISPATCH ---
+find_shell_tests_for_source() {
+	local file="$1" base
+	base=$(basename "$file")
+	base=${base%.*}
+	for test_dir in tests test; do
+		[[ -d "$test_dir" ]] || continue
+		find "$test_dir" -type f \( -name "test_${base}.bats" -o -name "${base}_test.bats" \) 2>/dev/null
+	done
+}
 
-PROJECT_TYPE=$(detect_project_type)
-EXIT_CODE=0
+run_shell_tests() {
+	local focus_files=("$@")
+	local tests=()
+	local file tmp
+	for file in "${focus_files[@]}"; do
+		case "$file" in
+		*.bats) tests+=("$file") ;;
+		*.sh | *.bash)
+			under_make_root "$file" && continue
+			while IFS= read -r candidate; do
+				[[ -n "$candidate" ]] && tests+=("$candidate")
+			done < <(find_shell_tests_for_source "$file")
+			;;
+		esac
+	done
+	[[ "${#tests[@]}" -gt 0 ]] || return 0
+	command_exists bats || {
+		log_warn "bats not found — skipping focused shell tests"
+		return 0
+	}
+	tmp=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-shell-tests.%s' "$$")
+	printf '%s\n' "${tests[@]}" | unique_lines >"$tmp"
+	tests=()
+	while IFS= read -r file; do tests+=("$file"); done <"$tmp"
+	rm -f "$tmp"
+	run_and_capture "Shell tests" bats "${tests[@]}"
+}
 
-case "$PROJECT_TYPE" in
-"go")
-	if command -v gotestsum &>/dev/null; then
-		# gotestsum gives cleaner output and better failure summaries than go test
-		echo -e "${BLUE}[INFO]${NC} Running: gotestsum ./..." >&2
-		gotestsum ./...
-	else
-		echo -e "${BLUE}[INFO]${NC} Running: go test ./..." >&2
-		go test ./... -v
+run_full_override() {
+	log_warn "TEST_RUNNER_FULL=1 set — running project-level tests"
+	if [[ -f "Makefile" ]]; then
+		local target
+		for target in test tests check verify; do
+			if grep -qE "^[[:space:]]*${target}[[:space:]]*:" Makefile 2>/dev/null; then
+				run_and_capture "make $target" make "$target"
+				return $?
+			fi
+		done
 	fi
-	EXIT_CODE=$?
-	;;
-
-"javascript")
-	run_javascript_tests
-	EXIT_CODE=$?
-	;;
-
-"python")
-	run_python_tests
-	EXIT_CODE=$?
-	;;
-
-"rust")
-	echo -e "${BLUE}[INFO]${NC} Running: cargo test" >&2
-	cargo test
-	EXIT_CODE=$?
-	;;
-
-"ruby")
-	run_ruby_tests
-	EXIT_CODE=$?
-	;;
-
-"java")
-	echo -e "${BLUE}[INFO]${NC} Running: mvn test" >&2
-	mvn test -q
-	EXIT_CODE=$?
-	;;
-
-"gradle")
-	if [[ -x "./gradlew" ]]; then
-		echo -e "${BLUE}[INFO]${NC} Running: ./gradlew test" >&2
-		./gradlew test
-	else
-		echo -e "${BLUE}[INFO]${NC} Running: gradle test" >&2
-		gradle test
+	if [[ -f go.mod ]] && command_exists go; then
+		run_and_capture "go test" go test -failfast ./...
+		return $?
 	fi
-	EXIT_CODE=$?
-	;;
-
-"dotnet")
-	echo -e "${BLUE}[INFO]${NC} Running: dotnet test" >&2
-	dotnet test
-	EXIT_CODE=$?
-	;;
-
-"elixir")
-	echo -e "${BLUE}[INFO]${NC} Running: mix test" >&2
-	mix test
-	EXIT_CODE=$?
-	;;
-
-"swift")
-	echo -e "${BLUE}[INFO]${NC} Running: swift test" >&2
-	swift test
-	EXIT_CODE=$?
-	;;
-
-"php")
-	run_php_tests
-	EXIT_CODE=$?
-	;;
-
-"shell")
-	if command -v bats &>/dev/null; then
-		echo -e "${BLUE}[INFO]${NC} Running: bats ." >&2
-		bats .
-	else
-		echo -e "${YELLOW}[WARN]${NC} bats not found — install: brew install bats-core" >&2
+	if [[ -f pyproject.toml ]] && command_exists uv; then
+		run_and_capture "pytest" uv run pytest -q --maxfail=1 --tb=short
+		return $?
 	fi
-	EXIT_CODE=$?
-	;;
+	if [[ -f package.json ]]; then
+		local script
+		for script in test tests check verify; do
+			package_json_has_script "$script" || continue
+			run_package_test_script "$script"
+			return $?
+		done
+		if command_exists bun && { [[ -f bun.lockb ]] || [[ -f bun.lock ]]; }; then
+			run_and_capture "bun test" bun test
+			return $?
+		fi
+	fi
+	log_warn "No full project test runner found"
+	return 0
+}
 
-*)
-	echo -e "${YELLOW}[WARN]${NC} Unknown project type, cannot run tests" >&2
-	EXIT_CODE=0
-	;;
-esac
+main() {
+	init_hook_input
+	maybe_cd_to_hook_cwd
 
-echo "" >&2
-if [[ $EXIT_CODE -eq 0 ]]; then
-	echo -e "${GREEN}✅ Tests passed (or no test framework found)${NC}" >&2
-else
-	echo -e "${RED}❌ Tests failed!${NC}" >&2
-fi
+	if [[ "${SKIP_TESTS:-}" == "1" ]] || [[ -f ".notests" ]]; then
+		echo -e "${CYAN}⏭ Tests skipped${NC}" >&2
+		clear_hook_state
+		exit 0
+	fi
 
-exit $EXIT_CODE
+	echo "" >&2
+	echo "🧪 Running focused tests..." >&2
+	echo "─────────────────────────" >&2
+
+	if [[ "$TEST_RUNNER_FULL" == "1" ]]; then
+		run_full_override
+		status=$?
+		[[ "$status" -eq 0 ]] && clear_hook_state
+		exit "$status"
+	fi
+
+	local focus_files=()
+	local file
+	while IFS= read -r file; do
+		[[ -n "$file" ]] && focus_files+=("$file")
+	done < <(collect_focus_files)
+
+	if [[ "${#focus_files[@]}" -eq 0 ]]; then
+		log_info "No changed code files with focused test support"
+		clear_hook_state
+		exit 0
+	fi
+
+	log_debug "Focus files: ${focus_files[*]}"
+	local status=0
+	run_python_tests "${focus_files[@]}" || status=2
+	run_go_tests "${focus_files[@]}" || status=2
+	run_javascript_tests "${focus_files[@]}" || status=2
+	run_shell_tests "${focus_files[@]}" || status=2
+	if [[ "$status" -eq 0 && "$TESTS_RAN" -eq 0 ]]; then
+		run_package_test_fallback || status=2
+	fi
+	if [[ "$status" -eq 0 && "$TESTS_RAN" -eq 0 ]]; then
+		run_make_targets "${focus_files[@]}" || status=2
+	fi
+
+	echo "" >&2
+	if [[ "$status" -eq 0 ]]; then
+		echo -e "${GREEN}✅ Focused tests passed or no targeted tests found${NC}" >&2
+		clear_hook_state
+	else
+		echo -e "${RED}❌ Focused tests failed${NC}" >&2
+	fi
+	exit "$status"
+}
+
+main "$@"

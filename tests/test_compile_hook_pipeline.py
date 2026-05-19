@@ -5,15 +5,15 @@ Covers:
 - HookSpec loading from `meta.yaml` + lone `hook.*` resolution and validation
 - Script placement per target (flat vs plugin-grouped) with mode preservation
 - Support-dir mirroring alongside the script
-- Gemini aggregated `hooks.json` shape (BeforeTool/AfterTool/SessionStart,
-  sequential markers, `${extensionPath}/hooks/<script>` substitution)
-- Codex per-plugin `hooks.json` shape (PreToolUse/PostToolUse/
+- Gemini aggregated `hooks.json` shape (BeforeTool/AfterTool/AfterAgent/
+  SessionStart, `${extensionPath}/hooks/<script>` substitution)
+- Codex per-plugin `hooks.json` shape (PreToolUse/PostToolUse/Stop/
   SessionStart, `$PLUGIN_ROOT/hooks/<script>` substitution, statusMessage)
-- Claude per-plugin `hooks.json` shape (PreToolUse/PostToolUse/SessionStart,
-  `${CLAUDE_PLUGIN_ROOT}/hooks/<script>` substitution)
+- Claude per-plugin `hooks.json` shape (PreToolUse/PostToolUse/Stop/
+  SessionStart, `${CLAUDE_PLUGIN_ROOT}/hooks/<script>` substitution)
 - Pi manifest generated from meta.yaml + merged with hooks-external.json
-- CC-only events (notification, worktreecreate, worktreeremove) are dropped
-  from Gemini/Codex manifests
+- CC-only events (worktreecreate, worktreeremove) are dropped from
+  Gemini/Codex manifests
 """
 
 from __future__ import annotations
@@ -284,14 +284,17 @@ def test_gemini_manifest_aggregates_events(ch, tmp_path):
     src = tmp_path / "src"
     h_pre = _write_hook(src, "file-protector", "preedit", timeout=10)
     h_post = _write_hook(src, "smart-lint", "postedit", timeout=60)
+    h_stop = _write_hook(src, "test-runner", "agentstop", timeout=60)
     h_session = _write_hook(src, "session-start", "sessionstart", timeout=5)
-    results = _compile_all(ch, [h_pre, h_post, h_session], "gemini", {}, tmp_path)
+    results = _compile_all(
+        ch, [h_pre, h_post, h_stop, h_session], "gemini", {}, tmp_path
+    )
     written = ch.write_hook_manifests(results, "gemini", tmp_path)
     assert len(written) == 1
     manifest = json.loads(written[0].read_text())
 
     events = manifest["hooks"]
-    assert set(events) == {"BeforeTool", "AfterTool", "SessionStart"}
+    assert set(events) == {"BeforeTool", "AfterTool", "SessionStart", "AfterAgent"}
 
     # BeforeTool: write_file|replace matcher present, sequential=True
     before = events["BeforeTool"][0]
@@ -312,6 +315,11 @@ def test_gemini_manifest_aggregates_events(ch, tmp_path):
     assert "matcher" not in session
     assert "sequential" not in session
     assert session["hooks"][0]["command"] == "${extensionPath}/hooks/session-start.sh"
+
+    after_agent = events["AfterAgent"][0]
+    assert "matcher" not in after_agent
+    assert "sequential" not in after_agent
+    assert after_agent["hooks"][0]["command"] == "${extensionPath}/hooks/test-runner.sh"
 
 
 def test_gemini_manifest_drops_cc_only_events(ch, tmp_path):
@@ -358,11 +366,15 @@ def test_codex_manifest_per_plugin(ch, tmp_path):
         status_message="Checking git",
     )
     h_post = _write_hook(src, "smart-lint", "postedit", timeout=60)
+    h_stop = _write_hook(src, "test-runner", "agentstop", timeout=60)
     plugin_index = {
         "git-guardrails": ["dev-workflow"],
         "smart-lint": ["dev-workflow"],
+        "test-runner": ["dev-workflow"],
     }
-    results = _compile_all(ch, [h_prebash, h_post], "codex", plugin_index, tmp_path)
+    results = _compile_all(
+        ch, [h_prebash, h_post, h_stop], "codex", plugin_index, tmp_path
+    )
     written = ch.write_hook_manifests(results, "codex", tmp_path)
     assert len(written) == 1
     assert written[0] == (
@@ -375,7 +387,7 @@ def test_codex_manifest_per_plugin(ch, tmp_path):
         / "hooks.json"
     )
     manifest = json.loads(written[0].read_text())
-    assert set(manifest["hooks"]) == {"PreToolUse", "PostToolUse"}
+    assert set(manifest["hooks"]) == {"PreToolUse", "PostToolUse", "Stop"}
 
     pre = manifest["hooks"]["PreToolUse"][0]
     assert pre["matcher"] == "^Bash$"
@@ -386,6 +398,10 @@ def test_codex_manifest_per_plugin(ch, tmp_path):
     post = manifest["hooks"]["PostToolUse"][0]
     assert post["matcher"] == "^apply_patch$"
     assert "statusMessage" not in post["hooks"][0]
+
+    stop = manifest["hooks"]["Stop"][0]
+    assert "matcher" not in stop
+    assert stop["hooks"][0]["command"] == '"$PLUGIN_ROOT/hooks/test-runner.sh"'
 
 
 def test_codex_manifest_skips_when_no_plugin(ch, tmp_path):
@@ -436,6 +452,7 @@ def test_claude_manifest_per_plugin(ch, tmp_path):
     h_pre = _write_hook(src, "file-protector", "preedit", timeout=10)
     h_prebash = _write_hook(src, "git-guardrails", "prebash", timeout=10)
     h_post = _write_hook(src, "smart-lint", "postedit", timeout=60)
+    h_stop = _write_hook(src, "test-runner", "agentstop", timeout=60)
     h_notify = _write_hook(src, "notify", "notification", timeout=10)
     h_session = _write_hook(src, "session-start", "sessionstart", timeout=5)
     h_ups = _write_hook(src, "skill-enforcer", "userpromptsubmit", timeout=15)
@@ -443,13 +460,14 @@ def test_claude_manifest_per_plugin(ch, tmp_path):
         "file-protector": ["dev-workflow"],
         "git-guardrails": ["dev-workflow"],
         "smart-lint": ["dev-workflow"],
+        "test-runner": ["dev-workflow"],
         "notify": ["dev-workflow"],
         "session-start": ["dev-workflow"],
         "skill-enforcer": ["dev-workflow"],
     }
     results = _compile_all(
         ch,
-        [h_pre, h_prebash, h_post, h_notify, h_session, h_ups],
+        [h_pre, h_prebash, h_post, h_stop, h_notify, h_session, h_ups],
         "claude",
         plugin_index,
         tmp_path,
@@ -472,6 +490,7 @@ def test_claude_manifest_per_plugin(ch, tmp_path):
         "PreToolUse",
         "PostToolUse",
         "Notification",
+        "Stop",
     }
 
     session = events["SessionStart"][0]
@@ -492,6 +511,10 @@ def test_claude_manifest_per_plugin(ch, tmp_path):
     assert post["matcher"] == "Write|Edit|MultiEdit"
     assert post["hooks"][0]["command"] == ("${CLAUDE_PLUGIN_ROOT}/hooks/smart-lint.sh")
     assert post["hooks"][0]["timeout"] == 60
+
+    stop = events["Stop"][0]
+    assert "matcher" not in stop
+    assert stop["hooks"][0]["command"] == ("${CLAUDE_PLUGIN_ROOT}/hooks/test-runner.sh")
 
 
 def test_claude_manifest_skips_when_no_plugin(ch, tmp_path):
@@ -556,11 +579,11 @@ def test_pi_manifest_merges_external(ch, tmp_path):
 def test_pi_manifest_honors_pi_async(ch, tmp_path):
     """meta.yaml `pi: { async: true }` flows through to the Pi entry."""
     src = tmp_path / "src"
-    hook_dir = src / "hooks" / "test-runner"
+    hook_dir = src / "hooks" / "async-lint"
     hook_dir.mkdir(parents=True, exist_ok=True)
     (hook_dir / "hook.sh").write_text("#!/bin/sh\nexit 0\n")
     (hook_dir / "meta.yaml").write_text(
-        "name: test-runner\nevent: postedit\ntimeout: 120\npi:\n  async: true\n"
+        "name: async-lint\nevent: postedit\ntimeout: 120\npi:\n  async: true\n"
     )
     spec = ch.load_hook(hook_dir)
     assert spec.pi_async is True
@@ -569,6 +592,17 @@ def test_pi_manifest_honors_pi_async(ch, tmp_path):
     manifest = json.loads(written[0].read_text())
     entry = manifest["hooks"]["PostToolUse"][0]["hooks"][0]
     assert entry["async"] is True
+
+
+def test_pi_manifest_agentstop_routes_to_stop(ch, tmp_path):
+    src = tmp_path / "src"
+    hook = _write_hook(src, "test-runner", "agentstop", timeout=60)
+    results = _compile_all(ch, [hook], "pi", {}, tmp_path)
+    written = ch.write_hook_manifests(results, "pi", tmp_path)
+    manifest = json.loads(written[0].read_text())
+    stop = manifest["hooks"]["Stop"][0]
+    assert "matcher" not in stop
+    assert stop["hooks"][0]["command"] == "${PI_HOOKS_DIR}/test-runner.sh"
 
 
 def test_pi_manifest_fails_loud_when_event_missing_from_order(
@@ -708,5 +742,6 @@ def test_real_src_hooks_claude_manifest(ch, tmp_path):
     by_plugin = {p.parent.parent.name: json.loads(p.read_text()) for p in written}
     assert "PreToolUse" in by_plugin["dev-workflow"]["hooks"]
     assert "PostToolUse" in by_plugin["dev-workflow"]["hooks"]
+    assert "Stop" in by_plugin["dev-workflow"]["hooks"]
     assert "WorktreeCreate" in by_plugin["dev-tools"]["hooks"]
     assert "WorktreeRemove" in by_plugin["dev-tools"]["hooks"]
