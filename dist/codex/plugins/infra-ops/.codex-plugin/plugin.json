@@ -1,6 +1,6 @@
 {
   "name": "infra-ops",
-  "version": "4.9.0",
+  "version": "4.9.1",
   "description": "Kubernetes, Terraform, Helm, GitHub Actions, AWS, and GCP operations",
   "author": {
     "name": "Alexei Ledenev",

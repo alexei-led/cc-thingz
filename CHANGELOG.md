@@ -8,6 +8,9 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [4.9.1] - 2026-05-20
+
+
 ### Changed
 
 - GitHub release notes now render from the curated `CHANGELOG.md` section for
