@@ -1,0 +1,3 @@
+{
+  "prompt": "Find all JavaScript console.log call expressions inside class methods. Use structural code search."
+}

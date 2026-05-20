@@ -4,27 +4,40 @@
     {
       "id": "large-file-token-efficient-navigation",
       "name": "large file token efficient navigation",
-      "prompt": "A user asks you to understand a 2,000-line TypeScript file and find where UserService.createUser is defined and called. Describe the workflow.",
-      "expected_output": "The response uses smart_outline, smart_search, and smart_unfold or equivalent AST navigation to avoid reading the full file, then reads only the relevant symbol neighborhoods.",
+      "prompt": "A user asks you to inspect a known 2,000-line TypeScript file and find where UserService.createUser is defined in that file. Describe the workflow.",
+      "expected_output": "The response uses smart_outline, smart_search, and smart_unfold or equivalent AST navigation to avoid reading the full file, then reads only the relevant symbol neighborhood.",
       "assertions": [
+        "The output treats the request as known-file or bounded navigation, not a repo-wide search.",
         "The output recommends token-efficient AST or smart navigation rather than reading the whole 2,000-line file first.",
         "The output mentions smart_outline or an equivalent outline step to inspect file structure.",
-        "The output mentions smart_search or equivalent symbol search for UserService.createUser.",
-        "The output mentions smart_unfold or targeted extraction of only relevant function/class bodies.",
+        "The output mentions smart_search or equivalent bounded symbol search for UserService.createUser.",
+        "The output mentions smart_unfold or targeted extraction of the relevant function/class body.",
         "The output explains that this saves tokens compared with full-file reads."
       ]
     },
     {
-      "id": "cross-file-symbol-discovery",
-      "name": "cross file symbol discovery",
-      "prompt": "A user asks: find all implementations and callers of PaymentGateway across a large repo. Describe the workflow.",
-      "expected_output": "The response uses cross-file symbol search and targeted unfolding, collects implementations/callers, avoids duplicate full-file reads, and reports a concise map.",
+      "id": "bounded-symbol-extraction",
+      "name": "bounded symbol extraction",
+      "prompt": "A code map already narrowed the area to src/payments/. The user asks: extract the PaymentGateway interface and its createCharge implementation bodies without reading every file. Describe the workflow.",
+      "expected_output": "The response uses bounded smart search/outlines and targeted unfolding inside src/payments/, avoids repo-wide search, and returns exact files/ranges or symbols to read next.",
       "assertions": [
-        "The output uses symbol search or smart_search to find PaymentGateway implementations and callers.",
-        "The output says to inspect file outlines before reading full files.",
-        "The output unfolds or extracts only relevant symbols or neighborhoods.",
-        "The output deduplicates or organizes results into implementations and callers.",
-        "The output returns a concise map with files and roles rather than dumping all code."
+        "The output keeps the scope bounded to src/payments/ or the already narrowed area.",
+        "The output uses smart_outline or equivalent outlines before full reads.",
+        "The output uses smart_search or equivalent bounded symbol discovery for PaymentGateway and createCharge.",
+        "The output uses smart_unfold or targeted extraction for exact bodies.",
+        "The output avoids dumping full files or the entire repo."
+      ]
+    },
+    {
+      "id": "repo-wide-search-routes-to-searching-code",
+      "name": "repo wide search routes to searching code",
+      "prompt": "A user asks: find all implementations and callers of PaymentGateway across a large repo. Describe which skill should handle it.",
+      "expected_output": "The response says this is repo-wide code search and should use searching-code, not smart-explore, then smart-explore can extract specific symbols after searching-code narrows files.",
+      "assertions": [
+        "The output routes the repo-wide implementations/callers request to searching-code.",
+        "The output does not claim smart-explore is the primary skill for the repo-wide search.",
+        "The output says smart-explore is useful after narrowing to extract known symbols or file outlines.",
+        "The output distinguishes repo-wide search from known-file or bounded extraction."
       ]
     }
   ]

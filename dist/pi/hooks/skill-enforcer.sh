@@ -79,10 +79,10 @@ if echo "$PROMPT_LOWER" | grep -qE 'worktree|git\s*worktree|isolat.*(work|branch
 	skills+="using-git-worktrees "
 fi
 
-# searching-code: Intelligent codebase search + zoom-out mapping via WarpGrep
-# Triggers: Understanding code flow, tracing, cross-file exploration, zoom-out requests, large repos
+# searching-code: AST-first codebase search + zoom-out mapping via WarpGrep
+# Triggers: structural code search, code flow, tracing, cross-file exploration, zoom-out requests, large repos
 # "how does X work" only for THIS codebase — external libs go to looking-up-docs/exploring-repos
-if echo "$PROMPT_LOWER" | grep -qE 'how\s*does.*(this|our|the\s*(code|project|repo|module|function|class|method)).*work|trace.*(flow|data|request|call)|understand.*(codebase|code|flow|architecture)|find\s*all.*(implementation|usage|call|reference)|cross[[:space:]-]?file|multi[[:space:]-]?hop|where.*implemented|explore.*(codebase|code)|large\s*repo|warpgrep|intelligent\s*search|reason.*about.*code|zoom\s*out|go\s*up\s*a\s*layer|map\s*(this|the)?\s*(area|module|code|flow)|caller\s*map|module\s*map'; then
+if echo "$PROMPT_LOWER" | grep -qE 'ast[[:space:]-]?grep|\bsg\b.*(scan|search|run)|structural\s*(code\s*)?(search|grep|pattern|query)|ast\s*(search|pattern|query)|code\s*shape|language\s*construct|find\s*all.*(implementation|usage|call|reference|function|method|class|handler)|find.*(async\s*functions?|function\s*calls?|call\s*sites?|react\s*components?|hooks?\s*inside|without\s*(try|catch|error)|missing\s*(try|catch|error))|how\s*does.*(this|our|the\s*(code|project|repo|module|function|class|method)).*work|trace.*(flow|data|request|call)|understand.*(codebase|code|flow|architecture)|cross[[:space:]-]?file|multi[[:space:]-]?hop|where.*implemented|explore.*(codebase|code)|large\s*repo|warpgrep|intelligent\s*search|reason.*about.*code|zoom\s*out|go\s*up\s*a\s*layer|map\s*(this|the)?\s*(area|module|code|flow)|caller\s*map|module\s*map'; then
 	skills+="searching-code "
 fi
 
@@ -165,8 +165,8 @@ if echo "$PROMPT_LOWER" | grep -qE '\bgrill\s*(me|this|the|my)\b|\bstress[[:spac
 fi
 
 # using-modern-cli: Modern CLI tools for better performance
-# Triggers: grep/find/cat alternatives, bash scripts, command optimization
-if echo "$PROMPT_LOWER" | grep -qE '\bripgrep\b|\brg\b.*search|\bfd\b.*find|\bbat\b.*file|\bsd\b.*replace|\beza\b|\bdust\b|\bprocs\b|\bmodern\s*cli\b|better\s*than\s*(grep|find|cat|sed|ls)|replace.*(grep|find|cat|sed|ls)|faster.*(search|find)|\.gitignore.*respect|bash\s*script|command.*chain|optimize.*(command|cli|shell)'; then
+# Triggers: ast-grep/rg/fd/cat alternatives, bash scripts, command optimization
+if echo "$PROMPT_LOWER" | grep -qE 'ast[[:space:]-]?grep|\bsg\b.*(scan|search|run)|structural\s*(code\s*)?(search|grep)|\bripgrep\b|\brg\b.*search|\bfd\b.*find|\bbat\b.*file|\bsd\b.*replace|\beza\b|\bdust\b|\bprocs\b|\bmodern\s*cli\b|better\s*than\s*(grep|find|cat|sed|ls)|replace.*(grep|find|cat|sed|ls)|faster.*(search|find)|\.gitignore.*respect|bash\s*script|command.*chain|optimize.*(command|cli|shell)'; then
 	skills+="using-modern-cli "
 fi
 
@@ -265,9 +265,10 @@ if echo "$PROMPT_LOWER" | grep -qE '\bask\s*gemini\b|\bgemini\s*(search|opinion|
 	skills+="using-gemini "
 fi
 
-# smart-explore: AST-based code navigation via claude-mem
-# Triggers: code structure, file outline, structural exploration
-if echo "$PROMPT_LOWER" | grep -qE '\b(code|file)\s*structure\b|\boutline\b.*\b(file|code|class|module)\b|\bstructural\s*(view|map|overview)\b|\bwhat.?s\s*in\s*this\s*file\b|\bexplore\s*(the\s*)?(code|codebase)\s*(structure)?\b|\bshow\s*(me\s*)?(the\s*)?(file|code)\s*structure\b|\bast\s*(pars|view|explor)\b|\bsmart[[:space:]_-]?explore\b'; then
+# smart-explore: Known-file/symbol navigation via claude-mem
+# Triggers: file outline, known-symbol extraction, targeted AST navigation
+# NOT for repo-wide maps/flows/structural search — those go to searching-code
+if echo "$PROMPT_LOWER" | grep -qE '\bfile\s*structure\b|\boutline\b.*\b(file|class|module)\b|\bwhat.?s\s*in\s*this\s*file\b|\bshow\s*(me\s*)?(the\s*)?file\s*structure\b|\b(show|extract|unfold)\s*(the\s*)?(function|method|class|type|symbol)\b|\b(function|method|class|type|symbol)\s*(body|source|definition)\b|\bsmart[[:space:]_-]?explore\b|\bsmart_(outline|search|unfold)\b'; then
 	skills+="smart-explore "
 fi
 

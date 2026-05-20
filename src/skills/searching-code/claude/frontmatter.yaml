@@ -9,3 +9,8 @@ allowed-tools:
   - Read
   - Grep
   - Glob
+  - Bash(command -v *)
+  - Bash(ast-grep *)
+  - Bash(sg *)
+  - Bash(rg *)
+  - Bash(fd *)

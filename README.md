@@ -20,7 +20,7 @@ AI coding tools are powerful out of the box, but specialized workflows need spec
 - **Smart hooks** that auto-suggest skills, lint after edits, protect secrets, and run tests (Claude Code)
 - **Spec-driven development** with structured requirements, tasks, and a CLI for project management
 - **Infrastructure ops** with validated K8s, Terraform, and Helm deployments
-- **Developer utilities** including worktree isolation, codebase search, web research, and brainstorming
+- **Developer utilities** including worktree isolation, AST-first codebase search, web research, and brainstorming
 
 Every skill has been manually crafted and refined through real-world use — not generated boilerplate.
 
@@ -242,6 +242,14 @@ The `AGENTS.md` at the repo root provides a skill catalog readable by any tool s
 
 ## Prerequisites
 
+Structural code search uses [ast-grep](https://ast-grep.github.io/) when installed. Skills fall back to `rg`/`fd`, but AST-aware search is the fast path for code shape queries:
+
+```bash
+brew install ast-grep
+npm install -g @ast-grep/cli
+cargo install ast-grep
+```
+
 Portable docs lookup uses the [Context7 CLI](https://github.com/upstash/context7):
 
 ```bash
@@ -286,23 +294,23 @@ All agents and several skills optionally integrate with [claude-mem](https://git
 | Cross-session memory          | `search`, `get_observations`, `timeline`        | Find past decisions, known gotchas, recurring bugs |
 | Historical context in reviews | `search` + `get_observations`                   | Review agents check past findings before starting  |
 
-**Graceful degradation**: All plugins work without claude-mem. When it's not installed, MCP tools are silently absent — agents fall back to Read/Grep/Glob, and skills skip history checks. No errors, no configuration needed.
+**Graceful degradation**: All plugins work without claude-mem. When it's not installed, MCP tools are silently absent — agents fall back to local tools. Search skills use ast-grep when installed, then `rg`/`fd`, then platform Read/Grep/Glob where needed. No errors, no configuration needed.
 
 **How it works**: Agent frontmatter lists claude-mem MCP tools alongside standard tools. Claude Code silently omits unavailable tools at runtime, so agents always have their core tools (Read, Grep, Glob, LSP) and gain smart_explore/memory tools when claude-mem is present. Skill instructions use "when available" / "if claude-mem available" phrasing to guide Claude's behavior.
 
 ## Plugins
 
-| Plugin                                             | Skills | Agents | Description                                                                        |
-| -------------------------------------------------- | ------ | ------ | ---------------------------------------------------------------------------------- |
-| [**dev-flow**](src/plugins/dev-flow/plugin.yaml)   | 10     | 2      | Fix, refactor, review, document, commit; `engineer` and `reviewer` roles; 7 hooks  |
-| [**go-dev**](src/plugins/go-dev/plugin.yaml)       | 1      | 1      | Idiomatic Go development with stdlib-first patterns, testing, and CLI tooling      |
-| [**py-dev**](src/plugins/py-dev/plugin.yaml)       | 1      | 1      | Python 3.12+ development with uv/ruff/pyright toolchain                            |
-| [**ts-dev**](src/plugins/ts-dev/plugin.yaml)       | 1      | 1      | TypeScript with strict typing, React patterns, and modern tooling                  |
-| [**web-dev**](src/plugins/web-dev/plugin.yaml)     | 1      | 1      | Web frontend with vanilla HTML, CSS, JavaScript, and HTMX                          |
-| [**infra-ops**](src/plugins/infra-ops/plugin.yaml) | 3      | 1      | Kubernetes, Terraform, Helm, GitHub Actions, AWS, GCP                              |
-| [**dev-tools**](src/plugins/dev-tools/plugin.yaml) | 17     | 1      | Modern CLI, git worktrees, docs lookup, web research, config review, brainstorming |
-| [**spec-dev**](src/plugins/spec-dev/plugin.yaml)   | 7      | 2      | Spec-driven development: requirements, tasks, and planning workflows               |
-| [**test-e2e**](src/plugins/test-e2e/plugin.yaml)   | 2      | 1      | E2E testing with Playwright: browser automation and test generation                |
+| Plugin                                             | Skills | Agents | Description                                                                       |
+| -------------------------------------------------- | ------ | ------ | --------------------------------------------------------------------------------- |
+| [**dev-flow**](src/plugins/dev-flow/plugin.yaml)   | 10     | 2      | Fix, refactor, review, document, commit; `engineer` and `reviewer` roles; 7 hooks |
+| [**go-dev**](src/plugins/go-dev/plugin.yaml)       | 1      | 1      | Idiomatic Go development with stdlib-first patterns, testing, and CLI tooling     |
+| [**py-dev**](src/plugins/py-dev/plugin.yaml)       | 1      | 1      | Python 3.12+ development with uv/ruff/pyright toolchain                           |
+| [**ts-dev**](src/plugins/ts-dev/plugin.yaml)       | 1      | 1      | TypeScript with strict typing, React patterns, and modern tooling                 |
+| [**web-dev**](src/plugins/web-dev/plugin.yaml)     | 1      | 1      | Web frontend with vanilla HTML, CSS, JavaScript, and HTMX                         |
+| [**infra-ops**](src/plugins/infra-ops/plugin.yaml) | 3      | 1      | Kubernetes, Terraform, Helm, GitHub Actions, AWS, GCP                             |
+| [**dev-tools**](src/plugins/dev-tools/plugin.yaml) | 17     | 1      | Modern CLI, AST-first search, git worktrees, docs lookup, research, config review |
+| [**spec-dev**](src/plugins/spec-dev/plugin.yaml)   | 7      | 2      | Spec-driven development: requirements, tasks, and planning workflows              |
+| [**test-e2e**](src/plugins/test-e2e/plugin.yaml)   | 2      | 1      | E2E testing with Playwright: browser automation and test generation               |
 
 **Totals**: 43 skills, 2 plugin-owned role agents (`engineer`, `reviewer`), 9 hooks
 
@@ -347,10 +355,10 @@ These activate silently when relevant patterns are detected — no `/skill-name`
 | `managing-infra`     | K8s resources, Terraform, Helm, GitHub Actions |
 | `playwright-skill`   | Runtime library for testing-e2e skill          |
 | `refactoring-code`   | Multi-file batch changes, rename everywhere    |
-| `searching-code`     | "how does X work", trace flow, find all uses   |
-| `smart-explore`      | Token-efficient local code navigation          |
+| `searching-code`     | AST-first search, trace flow, find all uses    |
+| `smart-explore`      | Token-efficient known-file/symbol extraction   |
 | `using-cloud-cli`    | bq queries, gcloud/aws commands                |
-| `using-modern-cli`   | rg, fd, bat, eza, sd instead of legacy tools   |
+| `using-modern-cli`   | ast-grep, rg, fd, bat, eza, sd over legacy CLI |
 | `writing-go`         | Go files, go commands, Go-specific terms       |
 | `writing-python`     | Python files, pytest, pip, frameworks          |
 | `writing-typescript` | TS/TSX files, npm/bun, React, Node.js          |

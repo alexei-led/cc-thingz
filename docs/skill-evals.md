@@ -239,7 +239,7 @@ Reports are written to:
 
 - Test one behavior cluster per case.
 - Use 3-8 concrete assertions per case.
-- Prefer positive assertions: "uses rg" is easier to grade than "does not use grep".
+- Prefer positive assertions: "uses ast-grep for structural search" or "uses rg for text search" is easier to grade than "does not use grep".
 - Avoid broad assertions like "is good" or "is idiomatic".
 - Include edge cases where the baseline likely fails.
 - Keep prompts realistic, not keyword traps.

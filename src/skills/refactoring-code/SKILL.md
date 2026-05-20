@@ -58,7 +58,10 @@ When applying an approved architecture-deepening refactor, keep the seam rule (o
 ### Standard Refactoring
 
 ```
-1. Use WarpGrep or semantic search to find all locations needing change
+1. Map all locations before editing:
+   - structural code pattern → ast-grep / sg first
+   - exact text or symbol string → rg
+   - semantic multi-hop flow → WarpGrep or semantic search
 2. State: "Behavior must be preserved unless the user explicitly requested a behavior change."
 3. Use MorphLLM `edit_file` or the batch refactoring workflow for each batch/file, grouping related edits
 4. Batch all edits for the same file into one edit operation
@@ -66,7 +69,7 @@ When applying an approved architecture-deepening refactor, keep the seam rule (o
 6. Delete obsolete shallow tests once deeper interface tests cover the behavior
 ```
 
-For multi-file renames, say this is a batch refactor, map all occurrences before editing, use the batch refactoring tool/workflow by name, preserve behavior, and run relevant lint/tests after the rename.
+For multi-file renames, say this is a batch refactor, map all occurrences before editing, use ast-grep for structural references and `rg` for plain symbol text, use the batch refactoring tool/workflow by name, preserve behavior, and run relevant lint/tests after the rename.
 
 ### High-Stakes Changes (dryRun)
 
@@ -155,7 +158,7 @@ For multi-file renames, list every occurrence mapped before the proposal so the 
 - Batch all edits to same file in one call
 - Include enough context to locate changes precisely
 - Preserve exact indentation in code_edit
-- Use WarpGrep first to understand scope
+- Use ast-grep first for structural code patterns; use WarpGrep for semantic flow
 - Run tests after each file to catch issues early
 - Keep old public behavior stable unless the user explicitly requested behavior change
 - Prefer tests through the deepened module interface over tests of extracted helpers

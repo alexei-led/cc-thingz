@@ -5,13 +5,41 @@
       "id": "trace-auth-flow",
       "name": "trace auth flow",
       "prompt": "A user asks: How does authentication flow from the login HTTP handler to persistence? Describe the codebase-search workflow and final answer shape.",
-      "expected_output": "The response uses targeted rg/fd search, loads domain docs when present, traces entry points/callers/callees/shared types, reads only needed files, and returns a code map with flow, modules, read-next files, and unknowns.",
+      "expected_output": "The response loads domain docs when present, uses targeted local search for entry points, uses semantic search for flow tracing, reads only needed files, and returns a code map with flow, modules, read-next files, and unknowns.",
       "assertions": [
         "The output says to read relevant CONTEXT.md, CONTEXT-MAP.md, or ADRs when present.",
-        "The output uses targeted search commands such as rg and fd to find entry points and symbols.",
+        "The output classifies the query as semantic flow rather than a pure structural search.",
+        "The output uses targeted local search such as rg or fd to find entry points and symbols before semantic tracing.",
         "The output traces callers, callees, and shared types or messages across files.",
         "The output says to read only the files or line ranges needed to verify the map.",
         "The final answer shape includes a flow or code map with files/line references, key modules, read-next files, and unknowns."
+      ]
+    },
+    {
+      "id": "structural-search-uses-ast-grep-first",
+      "name": "structural search uses ast-grep first",
+      "prompt": "A user asks: Find async JavaScript functions that call await but do not have try/catch. Describe the search workflow and final answer shape.",
+      "expected_output": "The response treats the request as structural code search, tries ast-grep or sg before rg, writes or tests a minimal ast-grep pattern/rule with has/not and stopBy: end, falls back to rg only if ast-grep is unavailable or for sanity checks, and reports file:line matches plus the rule used.",
+      "assertions": [
+        "The output says to use ast-grep or sg before rg for this structural code-shape query.",
+        "The output includes an ast-grep run or scan workflow, not only text search.",
+        "The output mentions a relational or composite rule with has/not or an equivalent structure for await without try/catch.",
+        "The output mentions stopBy: end for relational matching or otherwise shows deep traversal.",
+        "The output says rg is a fallback or secondary sanity check, not the first tool.",
+        "The final answer shape includes file:line results and the ast-grep pattern or rule used."
+      ]
+    },
+    {
+      "id": "plain-text-search-uses-rg-not-ast-grep",
+      "name": "plain text search uses rg not ast-grep",
+      "prompt": "A user asks: Find every mention of NEXT_PUBLIC_API_URL in docs, config, and source files. Describe the workflow.",
+      "expected_output": "The response classifies the request as exact text search, uses rg first, uses fd only for file scoping if needed, and does not force ast-grep because AST shape is irrelevant.",
+      "assertions": [
+        "The output classifies NEXT_PUBLIC_API_URL as exact text or config-key search.",
+        "The output uses rg before ast-grep for this query.",
+        "The output says ast-grep is not needed or is the wrong tool because AST shape is irrelevant.",
+        "The output uses fd only for file discovery or scoping if needed.",
+        "The output avoids grep/find unless modern tools are unavailable."
       ]
     },
     {

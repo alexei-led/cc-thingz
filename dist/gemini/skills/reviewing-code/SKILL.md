@@ -21,7 +21,7 @@ This skill produces findings, not edits. It owns the tiered-findings output cont
 
 1. Determine review scope.
 2. Detect languages and load the matching references.
-3. Walk the review dimensions across the scope.
+3. Walk the review dimensions across the scope. Use ast-grep before `rg` for structural code-pattern checks when Bash is available; use `rg` for exact text.
 4. Aggregate findings by severity and report.
 
 ## Determine scope

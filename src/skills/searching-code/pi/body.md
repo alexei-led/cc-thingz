@@ -3,6 +3,15 @@
 Map code with verified file references. Do not read the whole repo because the
 user sounds curious. Curiosity is not a query plan.
 
+## Search Tool Order
+
+1. `ast-grep` / `sg` for structural code patterns.
+2. `rg` for exact text, strings, comments, docs, logs, and config keys.
+3. `fd` for file and directory discovery.
+4. `Agent` with `reviewer` for compressed multi-file context when the search is
+   broad.
+5. `grep` / `find` only when modern tools are unavailable.
+
 ## Workflow
 
 1. Clarify scope if the request is vague.
@@ -11,8 +20,10 @@ user sounds curious. Curiosity is not a query plan.
    - `CONTEXT-MAP.md`
    - nearest `*/CONTEXT.md`
    - `docs/adr/*.md`
-3. Use `fd` to find likely files and `rg` to find symbols, routes, handlers,
-   tests, config keys, and shared types.
+3. Classify the search:
+   - Structural code shape → `ast-grep run` or `ast-grep scan`.
+   - Exact text or config keys → `rg`.
+   - File names or extensions → `fd`.
 4. Read only the files or line ranges needed to verify the map.
 5. For large searches, launch one bounded `Agent` with `reviewer` to gather
    compressed context. Keep the main loop in control.
@@ -21,10 +32,21 @@ user sounds curious. Curiosity is not a query plan.
 ## Useful Commands
 
 ```bash
-fd 'auth|login|session|user'
+command -v ast-grep || command -v sg
+ast-grep run --pattern 'console.log($$$)' --lang javascript .
+ast-grep scan --inline-rules 'id: await-in-func
+language: javascript
+rule:
+  kind: function_declaration
+  has:
+    pattern: await $EXPR
+    stopBy: end
+' .
 rg -n 'login|authenticate|AuthService|Session|UserRepository'
-rg -n 'func .*Handler|class .*Controller|router\.|app\.'
+fd 'auth|login|session|user'
 ```
+
+Use `sg` in place of `ast-grep` if that is the installed binary.
 
 ## Zoom-Out Mode
 
@@ -38,6 +60,8 @@ Return:
 3. Callers, callees, shared types, and messages.
 4. Unknowns or unverified assumptions.
 5. Read-next list, top 3 files only.
+
+For structural searches, include the ast-grep pattern or rule used.
 
 ## Output Contract
 
@@ -55,8 +79,11 @@ Return:
 
 ### Modules
 
-| Module | Files | Responsibility |
-| ------ | ----- | -------------- |
+- `module/path` — responsibility and key files
+
+### Search
+
+- `<command or rule>` — why it was used
 
 ### Unknowns
 

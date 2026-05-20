@@ -26,7 +26,7 @@ it is a feature wearing a fake mustache.
 ## Workflow
 
 1. Define the refactor goal and non-goals.
-2. Use `rg` and `fd` to find all affected sites.
+2. Map all affected sites before editing: `ast-grep` / `sg` for structural code patterns, `rg` for exact text, `fd` for files.
 3. Read representative files and tests.
 4. Add characterization tests when behavior is under-specified.
 5. Apply one coherent batch with `edit` or `write`.

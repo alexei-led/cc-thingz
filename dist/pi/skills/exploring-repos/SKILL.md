@@ -25,8 +25,9 @@ exist.
 4. Use `web_search` or `web_answer` for public docs, README context, release
    notes, or architecture articles.
 5. Use `gh` or a shallow clone for code structure when needed.
-6. Map architecture from files, not reputation.
-7. Use `looking-up-docs` for library API docs, not repo architecture.
+6. For cloned-repo structural code search, follow `searching-code`: ast-grep / `sg` before `rg`, then `fd`, with `grep`/`find` only as fallback.
+7. Map architecture from files, not reputation.
+8. Use `looking-up-docs` for library API docs, not repo architecture.
 
 ## Commands
 
@@ -34,6 +35,7 @@ exist.
 gh repo view owner/name --json name,description,homepageUrl,repositoryTopics
 rg -n 'architecture|design|package|module|cmd|src' README.md docs 2>/dev/null
 fd 'README|CONTRIBUTING|docs|cmd|src|packages|internal'
+ast-grep run --pattern 'func $NAME($$$) { $$$ }' --lang go . 2>/dev/null
 ```
 
 For a temporary clone:

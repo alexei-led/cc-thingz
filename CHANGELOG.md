@@ -12,6 +12,9 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 - GitHub release notes now render from the curated `CHANGELOG.md` section for
   the tag, then append the plugin table and install snippet.
+- Made code search skills AST-first by folding ast-grep guidance into
+  `searching-code`, keeping `smart-explore` focused on known-file and
+  known-symbol extraction, and tightening skill-enforcer routing.
 
 ## [4.9.0] - 2026-05-19
 

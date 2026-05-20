@@ -15,6 +15,9 @@ allowed-tools:
   - Bash(git *)
   - Bash(gh pr *)
   - Bash(gh api *)
+  - Bash(command -v *)
+  - Bash(ast-grep *)
+  - Bash(sg *)
   - Bash(rg *)
   - mcp__plugin_claude-mem_mcp-search__search
   - mcp__plugin_claude-mem_mcp-search__get_observations

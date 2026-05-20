@@ -184,7 +184,7 @@ DeepWiki returns empty or error?
 
    ```bash
    git clone --depth=1 <repo-url>
-   # Use smart-explore skill for token-efficient AST navigation
+   # Use searching-code/smart-explore: ast-grep for structure, rg for text, fd for files
    ```
 
 ## Combining with Context7

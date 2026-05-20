@@ -122,6 +122,8 @@ description: >-
   recent facts, best practices, standards.
 allowed-tools:
   - Bash(gh *)
+  - Bash(ast-grep *)
+  - Bash(sg *)
   - Bash(rg *)
 ---
 ```
@@ -236,10 +238,10 @@ Each skill can have eval fixtures at
 
 Required per eval item: `id`, `name`, `prompt`, `assertions` (non-empty).
 
-Validate:
+Validate by building the temporary eval tree:
 
 ```sh
-uv run python scripts/evals/prepare-skill-evals.py --validate-only
+uv run python scripts/evals/prepare-skill-evals.py --out /tmp/cc-thingz-skill-eval-root
 ```
 
 Run full LLM evals:
@@ -255,12 +257,13 @@ elsewhere.
 
 ### Runtime
 
-| Tool   | Purpose                          | Install                |
-| ------ | -------------------------------- | ---------------------- |
-| `gh`   | GitHub CLI for `exploring-repos` | `brew install gh`      |
-| `rg`   | Ripgrep — semantic code search   | `brew install ripgrep` |
-| `fd`   | Fast file find                   | `brew install fd`      |
-| `ctx7` | Library docs via Context7        | `npm i -g ctx7`        |
+| Tool       | Purpose                                 | Install                 |
+| ---------- | --------------------------------------- | ----------------------- |
+| `gh`       | GitHub CLI for `exploring-repos`        | `brew install gh`       |
+| `ast-grep` | Structural code search before text grep | `brew install ast-grep` |
+| `rg`       | Ripgrep text search                     | `brew install ripgrep`  |
+| `fd`       | Fast file find                          | `brew install fd`       |
+| `ctx7`     | Library docs via Context7               | `npm i -g ctx7`         |
 
 ### Development
 
