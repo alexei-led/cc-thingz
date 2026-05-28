@@ -76,6 +76,7 @@ Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allo
 
 - **analyzing-usage** — Analyze AI coding agent usage, cost, efficiency, and burn rate (ccusage)
 - **brainstorming-ideas** — Brainstorm ideas and stress-test draft plans before coding
+- **cleanup-git** — Remove merged local branches and stale git worktrees
 - **context7-cli** — ctx7 (Context7) CLI mechanics; Tier 1 of looking-up-docs
 - **debating-ideas** — Stress-test design decisions via dialectic thesis/antithesis agents
 - **evolving-config** — Audit Claude Code configuration against latest features and best practices
