@@ -8,8 +8,20 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
-## [4.9.1] - 2026-05-20
+## [4.9.2] - 2026-05-28
 
+### Changed
+
+- Expanded `reviewing-instructions` to review agent-targeted markdown beyond
+  `AGENTS.md` and `CLAUDE.md`, including `body.md`, `references/*.md`, linked
+  markdown, and custom prompt/context/rules docs.
+- Taught the `reviewing-instructions` linter to discover canonical instruction
+  entrypoints, linked support markdown, and heuristic agent-facing instruction
+  files while skipping ordinary docs and test fixtures.
+- Updated README and skill catalog docs to match the broader
+  `reviewing-instructions` scope.
+
+## [4.9.1] - 2026-05-20
 
 ### Changed
 
