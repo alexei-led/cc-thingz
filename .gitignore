@@ -48,6 +48,7 @@ powerline/usage/
 posts/
 
 # === Project-specific state (per-repo, not portable) ===
+.pi/
 projects/
 
 # === System skills (managed externally) ===
