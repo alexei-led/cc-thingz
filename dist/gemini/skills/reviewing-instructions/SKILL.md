@@ -2,8 +2,8 @@
 description: 'Review and score AI agent/skill instruction files for quality — signal
   density, scope specificity, output structure, failure handling, and routing precision.
   Use when asked to "lint", "audit", "review", or "score" prompts, SKILL.md, AGENT.md,
-  AGENTS.md, or CLAUDE.md files; or when authoring or improving AI agent/skill instruction
-  files.
+  AGENTS.md, CLAUDE.md, platform-specific body.md, reference markdown, or other markdown
+  files explicitly meant to be read by AI agents.
 
   '
 name: reviewing-instructions
@@ -17,24 +17,39 @@ Review AI agent and skill instruction files for quality. Combines a fast structu
 
 The user may pass:
 
-- A file path or plugin name to scope the review (omitted → review all plugins)
+- A file path, directory path, or plugin name to scope the review (omitted → review all candidate instruction files)
 - `--model <name>` to override model-specific rule selection (e.g. `--model claude`, `--model gemini`, `--model openai`)
 - Plugin name without path separator → expand to `src/plugins/<name>/`
 
-Do not review non-instruction files (source code, tests, config, READMEs). Scope: SKILL.md, AGENT.md, AGENTS.md, and CLAUDE.md files only. Do not overlap with reviewing-code (code quality) or reviewing-cc-config (harness configuration) — those are separate skills.
+Do not review source code, tests, harness config, or ordinary project docs as instruction files. Review markdown that is clearly targeted at AI agents. Do not overlap with reviewing-code (code quality) or reviewing-cc-config (harness configuration).
+
+## File Discovery
+
+Build the review set in this order:
+
+1. Start with explicit instruction entrypoints: `SKILL.md`, `AGENT.md`, `AGENTS.md`, `CLAUDE.md`.
+2. Expand to markdown those entrypoints tell the agent to read: platform-specific `body.md`, `references/*.md`, linked `.md` files, and named prompt/context/rules files.
+3. Scan for other likely instruction markdown when the repo uses custom layouts. High-confidence signals:
+   - file or path names such as `body.md`, `prompt*.md`, `instructions*.md`, `rules*.md`, `context*.md`, `policy*.md`
+   - directories such as `agents/`, `skills/`, `prompts/`, `instructions/`, `references/`
+   - frontmatter or metadata like `name:`, `description:`, `model:`, `tools:`, `allowed-tools:`
+   - agent-directed content: imperative rules, tool guidance, output contracts, failure handling, `Use when`, `Do not`, `Read X.md`
+4. Exclude ordinary docs like `README.md`, changelogs, product docs, and design docs unless an instruction file explicitly points to them or the file clearly addresses an AI agent.
+5. If confidence is ambiguous, list the file under `Candidates Not Reviewed` with a short reason instead of forcing a score.
 
 ## Model Context Resolution
 
-For each instruction file under review:
+For each confirmed instruction file under review:
 
 1. Check `--model` arg first; if absent, check the file's frontmatter `model:` field. Args take precedence.
-2. Look for `references/models/<model>.md` in this skill's directory. Read it if present.
-3. If no local reference: WebFetch the model's official prompting guide:
+2. If the file has no model metadata but is a support file, inherit model context from the parent instruction file when obvious.
+3. Look for `references/models/<model>.md` in this skill's directory. Read it if present.
+4. If no local reference: WebFetch the model's official prompting guide:
    - Claude: `https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview`
    - GPT series: `https://platform.openai.com/docs/guides/prompt-engineering`
    - Gemini: `https://ai.google.dev/gemini-api/docs/prompting-strategies`
    - Other: web search for `<model> prompting guide best practices`
-4. If no model anywhere: read `references/models/generic.md`.
+5. If no model anywhere: read `references/models/generic.md`.
 
 Surface the resolution as a one-line header in the report: `Model context: claude (from frontmatter)`.
 
@@ -46,20 +61,21 @@ uv run python src/skills/reviewing-instructions/scripts/lint-instructions.py
 
 If the script fails (missing deps, sandbox restriction, uv cache error), skip the structural pre-pass and record "skipped (script unavailable)" in the Summary. Proceed with semantic review only.
 
-Record which rule IDs flagged (U-SCOPE, K-DESC, F-NO-TABLE, etc.). The semantic review below is authoritative — this is a heuristic baseline.
+Record which rule IDs flagged (U-SCOPE, K-DESC, F-NO-TABLE, etc.). The semantic review below is authoritative — this is a heuristic baseline for high-confidence instruction files and linked support markdown.
 
 ## Step 2: Semantic Review and Scoring
 
 Read `references/scoring-rubric.md` for 0–10 anchors and weights per dimension.
 
-For each file:
+For each confirmed file:
 
 1. Read it fully.
-2. Identify model from frontmatter (if any) and load model context per resolution above.
-3. Score each of the 8 dimensions 0–10 with a one-line justification.
-4. Rate each applicable lint rule PASS / WARN / FAIL. For WARN/FAIL: cite exact section and propose a concrete fix.
-5. Compute weighted overall score (weights in `references/scoring-rubric.md`).
-6. List top 3 improvements by impact.
+2. Confirm it is meant to guide an AI agent, not just a human reader. If not, move it to `Candidates Not Reviewed`.
+3. Identify model from frontmatter or inherited parent context and load model context per resolution above.
+4. Score each of the 8 dimensions 0–10 with a one-line justification.
+5. Rate each applicable lint rule PASS / WARN / FAIL. For WARN/FAIL: cite exact section and propose a concrete fix.
+6. Compute weighted overall score (weights in `references/scoring-rubric.md`).
+7. List top 3 improvements by impact.
 
 ## Output
 
@@ -68,6 +84,8 @@ For each file:
 
 ### Summary
 - Files reviewed: N (model: M or generic)
+- Extra instruction files discovered: N
+- Candidates not reviewed: N
 - Structural pre-pass: N errors, N warnings (or: skipped)
 - Scores: mean X.X / 10 (range Y.Y–Z.Z)
 
@@ -88,6 +106,9 @@ path/to/SKILL.md — overall 7.8 / 10
 
 ### Top Improvements (by impact)
 1. ...
+
+### Candidates Not Reviewed
+- path/to/file.md — why confidence was too low or why it was ordinary documentation
 
 ### Per-File Detail
 ...

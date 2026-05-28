@@ -87,7 +87,7 @@ Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allo
 - **parsing-documents** — Extract structured data from PDF documents
 - **researching-web** — Web research via Perplexity AI
 - **reviewing-cc-config** — Review Claude Code configuration for context efficiency and anti-patterns
-- **reviewing-instructions** — Review and score AI agent/skill instruction files for quality
+- **reviewing-instructions** — Review and score AI agent/skill instruction files and related agent-targeted markdown such as `body.md`, `references/*.md`, and custom prompt/context/rules docs
 - **sequential-thinking** — Structured stepwise reasoning with explicit revisions and branches
 - **smart-explore** — Token-efficient known-file and known-symbol navigation
 - **using-git-worktrees** — Creates isolated git worktrees for parallel development

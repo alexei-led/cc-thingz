@@ -25,6 +25,54 @@ ROOT = next(
     Path.cwd(),
 )
 
+CANONICAL_ENTRYPOINTS = {
+    "AGENT.md": "agent",
+    "AGENTS.md": "instruction",
+    "CLAUDE.md": "instruction",
+    "SKILL.md": "skill",
+}
+IGNORE_DIRS = {
+    ".git",
+    ".hg",
+    ".svn",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "tests",
+    "venv",
+}
+NEGATIVE_NAMES = {"README.md", "CHANGELOG.md", "CONTRIBUTING.md", "LICENSE.md"}
+PATH_SIGNAL_DIRS = {
+    "agents",
+    "skills",
+    "prompts",
+    "instructions",
+    "references",
+    "rules",
+}
+PLATFORM_DIRS = {"claude", "codex", "gemini", "pi", "openai", "openclaw", "hermes"}
+LIKELY_FILE_RE = re.compile(
+    r"(?i)^(body|prompt(?:s)?|instruction(?:s)?|rules?|context|policy|system)\.md$"
+)
+DIRECTIVE_RE = re.compile(
+    r"(?i)\b(?:must|should|always|never|do\s+not|use\s+when|read\s+\S+)\b"
+)
+AGENT_VOCAB_RE = re.compile(
+    r"(?i)\b(?:agent|assistant|model|llm|prompt|context|tool|subagent|output|workflow|failure)\b"
+)
+SECTION_SIGNAL_RE = re.compile(
+    r"(?im)^##\s+(?:output|workflow|failure|boundaries|scope|instructions?)\b"
+)
+MARKDOWN_LINK_RE = re.compile(r"\[[^\]]+\]\(([^)#?]+\.md)\)")
+INLINE_MD_PATH_RE = re.compile(r"(?<!\w)(?:@)?([A-Za-z0-9_./-]+\.md)(?!\w)")
+READ_MD_RE = re.compile(
+    r"(?i)\b(?:read|see|follow|use|load|open)\s+`?([A-Za-z0-9_./-]+\.md)`?"
+)
+_P = re.compile
+
 
 # -------------------------------------------------------------------
 # Types
@@ -44,7 +92,7 @@ class InstructionFile:
     path: Path
     rel: str
     model: str
-    kind: str  # agent or skill
+    kind: str  # agent, skill, instruction
     tools: list[str] = field(default_factory=list)
     effort: str | None = None
     user_invocable: bool = False
@@ -52,6 +100,8 @@ class InstructionFile:
     description: str = ""
     support_files: int = 0
     metadata: dict = field(default_factory=dict)
+    entrypoint: bool = True
+    origin: str = ""
 
     @property
     def has_bash(self) -> bool:
@@ -84,7 +134,7 @@ class InstructionFile:
     @property
     def is_knowledge_skill(self) -> bool:
         """Auto-activated reference skills (not user-invocable)."""
-        return self.kind == "skill" and not self.user_invocable
+        return self.kind == "skill" and self.entrypoint and not self.user_invocable
 
 
 # -------------------------------------------------------------------
@@ -92,8 +142,19 @@ class InstructionFile:
 # -------------------------------------------------------------------
 
 
+def _path_key(path: Path) -> str:
+    return str(path.resolve()).lower()
+
+
 def discover_files() -> list[InstructionFile]:
-    files: list[InstructionFile] = []
+    files: dict[str, InstructionFile] = {}
+
+    def add(item: InstructionFile | None) -> None:
+        if not item:
+            return
+        files.setdefault(_path_key(item.path), item)
+
+    primary_files: list[InstructionFile] = []
 
     agents_dir = ROOT / "src" / "agents"
     if agents_dir.is_dir():
@@ -102,8 +163,10 @@ def discover_files() -> list[InstructionFile]:
                 continue
             md = agent_dir / "AGENT.md"
             if md.exists():
-                if f := _load(md, "agent"):
-                    files.append(f)
+                item = _load(md, kind="agent", entrypoint=True, origin="src/agents")
+                add(item)
+                if item:
+                    primary_files.append(item)
 
     skills_dir = ROOT / "src" / "skills"
     if skills_dir.is_dir():
@@ -112,30 +175,115 @@ def discover_files() -> list[InstructionFile]:
                 continue
             sm = skill_dir / "SKILL.md"
             if sm.exists():
-                if f := _load(sm, "skill"):
-                    files.append(f)
+                item = _load(sm, kind="skill", entrypoint=True, origin="src/skills")
+                add(item)
+                if item:
+                    primary_files.append(item)
 
-    return files
+    for item in primary_files:
+        for extra in _discover_module_markdown(item):
+            add(extra)
+
+    for name, kind in (("AGENTS.md", "instruction"), ("CLAUDE.md", "instruction")):
+        for path in sorted(ROOT.rglob(name)):
+            if _ignored(path):
+                continue
+            item = _load(path, kind=kind, entrypoint=True, origin=f"canonical {name}")
+            add(item)
+            if item:
+                for extra in _discover_explicit_references(item):
+                    add(extra)
+
+    for path in sorted(ROOT.rglob("*.md")):
+        if _path_key(path) in files or _ignored(path):
+            continue
+        if "docs" in {part.lower() for part in path.parts}:
+            continue
+        if not _is_likely_instruction_markdown(path):
+            continue
+        add(
+            _load(
+                path, kind="instruction", entrypoint=True, origin="heuristic markdown"
+            )
+        )
+
+    return sorted(files.values(), key=lambda item: item.rel)
 
 
-def _load(path: Path, kind: str) -> InstructionFile | None:
+def _discover_module_markdown(primary: InstructionFile) -> list[InstructionFile]:
+    found: list[InstructionFile] = []
+    for path in sorted(primary.path.parent.rglob("*.md")):
+        if path == primary.path or _ignored(path):
+            continue
+        item = _load(
+            path,
+            kind="instruction",
+            entrypoint=False,
+            parent=primary,
+            origin=f"support of {primary.rel}",
+        )
+        if item:
+            found.append(item)
+    return found
+
+
+def _discover_explicit_references(item: InstructionFile) -> list[InstructionFile]:
+    found: list[InstructionFile] = []
+    for path in _extract_markdown_refs(item.path.parent, item.body):
+        if _ignored(path) or not path.exists() or path.suffix.lower() != ".md":
+            continue
+        extra = _load(
+            path,
+            kind="instruction",
+            entrypoint=False,
+            parent=item,
+            origin=f"referenced by {item.rel}",
+        )
+        if extra:
+            found.append(extra)
+    return found
+
+
+def _load(
+    path: Path,
+    *,
+    kind: str,
+    entrypoint: bool,
+    origin: str,
+    parent: InstructionFile | None = None,
+) -> InstructionFile | None:
     try:
         post = frontmatter.load(str(path))
     except Exception:
-        return None
-    if not post.metadata:
-        return None
+        try:
+            body = path.read_text()
+        except Exception:
+            return None
+        meta: dict = {}
+    else:
+        body = post.content
+        meta = post.metadata or {}
 
-    meta = post.metadata
-    model = meta.get("model", "sonnet")
-    model = model.lower() if isinstance(model, str) else "sonnet"
+    parent_model = parent.model if parent else None
+    model = meta.get(
+        "model", parent_model or ("sonnet" if kind in {"agent", "skill"} else "generic")
+    )
+    model = model.lower() if isinstance(model, str) else (parent_model or "generic")
 
-    tools_raw = meta.get("tools") or meta.get("allowed-tools") or []
+    tools_raw = (
+        meta.get("tools")
+        or meta.get("allowed-tools")
+        or (parent.tools if parent else [])
+    )
     tools = [str(t) for t in tools_raw] if isinstance(tools_raw, list) else []
 
-    effort_val = meta.get("effort")
+    effort_val = meta.get("effort") or (parent.effort if parent else None)
+    user_invocable = bool(
+        meta.get("user-invocable", parent.user_invocable if parent else False)
+    )
+
     support_files = 0
-    if kind == "skill":
+    if kind == "skill" and entrypoint:
         support_files = len(
             [
                 p
@@ -145,18 +293,22 @@ def _load(path: Path, kind: str) -> InstructionFile | None:
             ]
         )
 
+    rel = str(path.relative_to(ROOT)) if path.is_relative_to(ROOT) else str(path)
+
     return InstructionFile(
         path=path,
-        rel=str(path.relative_to(ROOT)),
+        rel=rel,
         model=model,
         kind=kind,
         tools=tools,
         effort=str(effort_val) if effort_val else None,
-        user_invocable=bool(meta.get("user-invocable", False)),
-        body=post.content,
+        user_invocable=user_invocable,
+        body=body,
         description=str(meta.get("description", "")),
         support_files=support_files,
         metadata=meta,
+        entrypoint=entrypoint,
+        origin=origin,
     )
 
 
@@ -164,7 +316,81 @@ def _load(path: Path, kind: str) -> InstructionFile | None:
 # Helpers
 # -------------------------------------------------------------------
 
-_P = re.compile  # alias
+
+def _ignored(path: Path) -> bool:
+    parts = set(path.parts)
+    if parts & IGNORE_DIRS:
+        return True
+    return any(
+        part.startswith(".") and part not in {".spec"} for part in path.parts[1:]
+    )
+
+
+def _extract_markdown_refs(base_dir: Path, body: str) -> set[Path]:
+    refs: set[Path] = set()
+    raw_refs = set(MARKDOWN_LINK_RE.findall(body))
+    raw_refs.update(INLINE_MD_PATH_RE.findall(body))
+    raw_refs.update(READ_MD_RE.findall(body))
+    for raw in raw_refs:
+        candidate = raw.strip().strip("`")
+        if not candidate or candidate.startswith(("http://", "https://")):
+            continue
+        path = Path(candidate)
+        candidates = []
+        if path.is_absolute():
+            candidates.append(path)
+        else:
+            if len(path.parts) == 1 and path.name in CANONICAL_ENTRYPOINTS:
+                candidates.append((ROOT / path).resolve())
+                candidates.append((base_dir / path).resolve())
+            else:
+                candidates.append((base_dir / path).resolve())
+                candidates.append((ROOT / path).resolve())
+        for resolved in candidates:
+            if resolved.exists():
+                refs.add(resolved)
+    return refs
+
+
+def _is_likely_instruction_markdown(path: Path) -> bool:
+    if path.name in NEGATIVE_NAMES:
+        return False
+
+    try:
+        raw = path.read_text()
+    except Exception:
+        return False
+
+    score = 0
+    lower_parts = {part.lower() for part in path.parts}
+
+    if path.name in CANONICAL_ENTRYPOINTS:
+        score += 5
+    if LIKELY_FILE_RE.match(path.name):
+        score += 4
+    if lower_parts & PATH_SIGNAL_DIRS:
+        score += 2
+    if path.parent.name.lower() in PLATFORM_DIRS and path.name == "body.md":
+        score += 4
+    if any(
+        key in raw for key in ("allowed-tools:", "tools:", "model:", "user-invocable:")
+    ):
+        score += 3
+    if any(key in raw for key in ("name:", "description:")):
+        score += 1
+    if SECTION_SIGNAL_RE.search(raw):
+        score += 2
+    if DIRECTIVE_RE.search(raw) and AGENT_VOCAB_RE.search(raw):
+        score += 3
+    elif DIRECTIVE_RE.search(raw):
+        score += 1
+
+    if path.name.startswith("README"):
+        score -= 4
+    if "docs" in lower_parts and score < 6:
+        score -= 2
+
+    return score >= 6
 
 
 def _any(body: str, patterns: list[re.Pattern[str]]) -> bool:
@@ -177,8 +403,8 @@ def _any(body: str, patterns: list[re.Pattern[str]]) -> bool:
 
 
 def check_u_scope(f: InstructionFile) -> Finding | None:
-    """Scope boundaries — skip knowledge-base skills."""
-    if f.is_knowledge_skill:
+    """Scope boundaries — skip support files and knowledge-base skills."""
+    if not f.entrypoint or f.is_knowledge_skill:
         return None
     pats = [
         _P(r"\bONLY\b"),
@@ -188,23 +414,18 @@ def check_u_scope(f: InstructionFile) -> Finding | None:
         _P(r"\bFocus\b.*\bon\b"),
         _P(r"(?i)\bscope\b"),
         _P(r"(?i)out\s*of\s*scope"),
-        _P(r"(?i)\$ARGUMENTS"),  # arg-based scoping
+        _P(r"(?i)\$ARGUMENTS"),
         _P(r"(?i)when\s+to\s+skip"),
         _P(r"(?i)avoid\b"),
     ]
     if _any(f.body, pats):
         return None
-    return Finding(
-        f.rel,
-        "U-SCOPE",
-        "warning",
-        "No scope boundaries found.",
-    )
+    return Finding(f.rel, "U-SCOPE", "warning", "No scope boundaries found.")
 
 
 def check_u_output(f: InstructionFile) -> Finding | None:
-    """Output format — skip knowledge-base skills."""
-    if f.is_knowledge_skill:
+    """Output format — skip support files and knowledge-base skills."""
+    if not f.entrypoint or f.is_knowledge_skill:
         return None
     pats = [
         _P(r"(?i)output\s*format"),
@@ -215,21 +436,16 @@ def check_u_output(f: InstructionFile) -> Finding | None:
         _P(r"(?i)##\s*proposed\s*changes"),
         _P(r"(?i)template"),
         _P(r"(?i)##\s*report"),
-        _P(r"```\w"),  # code block with lang hint
+        _P(r"```\w"),
     ]
     if _any(f.body, pats):
         return None
-    return Finding(
-        f.rel,
-        "U-OUTPUT",
-        "warning",
-        "No output format defined.",
-    )
+    return Finding(f.rel, "U-OUTPUT", "warning", "No output format defined.")
 
 
 def check_u_tool_first(f: InstructionFile) -> Finding | None:
-    """Tool-first — only for agents with Bash."""
-    if not f.has_bash or f.kind != "agent":
+    """Tool-first — only for entrypoint agents with Bash."""
+    if not f.entrypoint or not f.has_bash or f.kind != "agent":
         return None
     pats = [
         _P(r"(?i)run\s*tooling"),
@@ -250,8 +466,8 @@ def check_u_tool_first(f: InstructionFile) -> Finding | None:
 
 
 def check_u_failure(f: InstructionFile) -> Finding | None:
-    """Failure handling — skip knowledge-base skills."""
-    if f.is_knowledge_skill:
+    """Failure handling — skip support files and knowledge-base skills."""
+    if not f.entrypoint or f.is_knowledge_skill:
         return None
     pats = [
         _P(r"(?i)\bimpossible\b"),
@@ -269,17 +485,12 @@ def check_u_failure(f: InstructionFile) -> Finding | None:
     ]
     if _any(f.body, pats):
         return None
-    return Finding(
-        f.rel,
-        "U-FAILURE",
-        "warning",
-        "No failure/impossibility handling.",
-    )
+    return Finding(f.rel, "U-FAILURE", "warning", "No failure/impossibility handling.")
 
 
 def check_u_ground(f: InstructionFile) -> Finding | None:
-    """Grounding in tool output — skip knowledge skills."""
-    if f.is_knowledge_skill:
+    """Grounding in tool output — skip support files and knowledge skills."""
+    if not f.entrypoint or f.is_knowledge_skill:
         return None
     pats = [
         _P(r"(?i)include\b.*\boutput\b"),
@@ -295,19 +506,13 @@ def check_u_ground(f: InstructionFile) -> Finding | None:
     ]
     if _any(f.body, pats):
         return None
-    return Finding(
-        f.rel,
-        "U-GROUND",
-        "warning",
-        "No grounding in tool output.",
-    )
+    return Finding(f.rel, "U-GROUND", "warning", "No grounding in tool output.")
 
 
 def check_u_no_destroy(f: InstructionFile) -> Finding | None:
-    """Destructive action warning — only for write-capable agents."""
-    if not (f.has_risky_bash or f.has_write_tools):
+    """Destructive action warning — only for write-capable entrypoints."""
+    if not f.entrypoint or not (f.has_risky_bash or f.has_write_tools):
         return None
-    # Propose-only agents are safe
     if _any(f.body, [_P(r"(?i)propose\s*only")]):
         return None
     pats = [
@@ -339,7 +544,7 @@ def check_u_no_destroy(f: InstructionFile) -> Finding | None:
 
 
 def check_o_efficiency(f: InstructionFile) -> Finding | None:
-    if f.model != "opus":
+    if not f.entrypoint or f.model != "opus":
         return None
     pats = [
         _P(r"(?i)\bfocused\b"),
@@ -353,15 +558,12 @@ def check_o_efficiency(f: InstructionFile) -> Finding | None:
     if _any(f.body, pats):
         return None
     return Finding(
-        f.rel,
-        "O-EFFICIENCY",
-        "warning",
-        "Opus agent without efficiency constraint.",
+        f.rel, "O-EFFICIENCY", "warning", "Opus agent without efficiency constraint."
     )
 
 
 def check_o_scope_only(f: InstructionFile) -> Finding | None:
-    if f.model != "opus":
+    if not f.entrypoint or f.model != "opus":
         return None
     pats = [
         _P(r"ONLY\s*these", re.IGNORECASE),
@@ -372,10 +574,7 @@ def check_o_scope_only(f: InstructionFile) -> Finding | None:
     if _any(f.body, pats):
         return None
     return Finding(
-        f.rel,
-        "O-SCOPE-ONLY",
-        "warning",
-        "Opus agent missing 'ONLY these' marker.",
+        f.rel, "O-SCOPE-ONLY", "warning", "Opus agent missing 'ONLY these' marker."
     )
 
 
@@ -385,9 +584,7 @@ def check_o_scope_only(f: InstructionFile) -> Finding | None:
 
 
 def check_s_anti_eager(f: InstructionFile) -> Finding | None:
-    if f.model != "sonnet":
-        return None
-    if f.is_knowledge_skill:
+    if not f.entrypoint or f.model != "sonnet" or f.is_knowledge_skill:
         return None
     pats = [
         _P(r"(?i)do\s*not\s*fabricat"),
@@ -409,10 +606,7 @@ def check_s_anti_eager(f: InstructionFile) -> Finding | None:
     if _any(f.body, pats):
         return None
     return Finding(
-        f.rel,
-        "S-ANTI-EAGER",
-        "warning",
-        "Sonnet without anti-eagerness clause.",
+        f.rel, "S-ANTI-EAGER", "warning", "Sonnet without anti-eagerness clause."
     )
 
 
@@ -423,15 +617,12 @@ def check_s_anti_eager(f: InstructionFile) -> Finding | None:
 
 def check_skill_name_clear(f: InstructionFile) -> Finding | None:
     """Skill names should be kebab-case and explainable."""
-    if f.kind != "skill":
+    if f.kind != "skill" or not f.entrypoint:
         return None
     name = str(f.metadata.get("name", f.path.parent.name))
     if not re.match(r"^[a-z][a-z0-9]*(-[a-z0-9]+)*$", name):
         return Finding(
-            f.rel,
-            "K-NAME",
-            "warning",
-            f"Skill name '{name}' is not kebab-case.",
+            f.rel, "K-NAME", "warning", f"Skill name '{name}' is not kebab-case."
         )
     parts = name.split("-")
     if len(name) < 4 or any(len(part) == 1 for part in parts):
@@ -446,7 +637,7 @@ def check_skill_name_clear(f: InstructionFile) -> Finding | None:
 
 def check_skill_description_triggers(f: InstructionFile) -> Finding | None:
     """Skill descriptions drive activation; they need trigger language."""
-    if f.kind != "skill":
+    if f.kind != "skill" or not f.entrypoint:
         return None
     pats = [
         _P(r"(?i)use\s+when"),
@@ -458,16 +649,13 @@ def check_skill_description_triggers(f: InstructionFile) -> Finding | None:
     if _any(f.description, pats):
         return None
     return Finding(
-        f.rel,
-        "K-DESC",
-        "warning",
-        "Skill description lacks clear trigger language.",
+        f.rel, "K-DESC", "warning", "Skill description lacks clear trigger language."
     )
 
 
 def check_progressive_disclosure(f: InstructionFile) -> Finding | None:
     """Large skills should move detail into sibling reference files."""
-    if f.kind != "skill":
+    if f.kind != "skill" or not f.entrypoint:
         return None
     line_count = len(f.body.splitlines())
     if line_count <= 220 or f.support_files > 0:
@@ -476,8 +664,10 @@ def check_progressive_disclosure(f: InstructionFile) -> Finding | None:
         f.rel,
         "K-PROGRESSIVE",
         "warning",
-        f"Skill body is {line_count} lines with no support files; "
-        "split reference material.",
+        (
+            f"Skill body is {line_count} lines with no support files; "
+            "split reference material."
+        ),
     )
 
 
@@ -490,8 +680,11 @@ def check_f_no_table(f: InstructionFile) -> Finding | None:
         f.rel,
         "F-NO-TABLE",
         "warning",
-        "Contains markdown tables — replace with bullet lists (`- **Label**: desc`). "
-        "Tables are 3-5x token-heavier with no comprehension gain for LLMs.",
+        (
+            "Contains markdown tables — replace with bullet lists "
+            "(`- **Label**: desc`). Tables are 3-5x token-heavier "
+            "with no comprehension gain for LLMs."
+        ),
     )
 
 
@@ -570,15 +763,18 @@ def check_f_bold_sparse(f: InstructionFile) -> Finding | None:
             f.rel,
             "F-BOLD-SPARSE",
             "info",
-            f"Bold appears on {bold_lines}/{prose_lines} prose lines ({ratio:.0%}) — "
-            "keep to ≤15% of lines; reserve for bullet labels and keywords.",
+            (
+                f"Bold appears on {bold_lines}/{prose_lines} prose lines "
+                f"({ratio:.0%}) — keep to ≤15% of lines; reserve "
+                "for bullet labels and keywords."
+            ),
         )
     return None
 
 
 def check_one_question_at_a_time(f: InstructionFile) -> Finding | None:
     """Interactive skills should avoid batched interrogation."""
-    if not f.has_ask_user_question:
+    if not f.entrypoint or not f.has_ask_user_question:
         return None
     pats = [
         _P(r"(?i)one\s+question\s+at\s+a\s+time"),
@@ -591,8 +787,10 @@ def check_one_question_at_a_time(f: InstructionFile) -> Finding | None:
         f.rel,
         "I-ONE-QUESTION",
         "warning",
-        "Uses AskUserQuestion but does not require one-question-at-a-time "
-        "or sequential questioning.",
+        (
+            "Uses AskUserQuestion but does not require one-question-at-a-time "
+            "or sequential questioning."
+        ),
     )
 
 
@@ -675,7 +873,6 @@ def main() -> int:
         print()
 
     print(f"Total: {len(warnings)} warning(s), {len(infos)} info(s)")
-    # Advisory only — never fail CI
     return 0
 
 
