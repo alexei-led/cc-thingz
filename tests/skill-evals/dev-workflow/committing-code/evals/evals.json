@@ -2,6 +2,19 @@
   "skill_name": "committing-code",
   "evals": [
     {
+      "id": "single-focused-change-one-commit",
+      "name": "single focused change uses one commit",
+      "prompt": "A user says: commit my changes. Current changed files are:\n\n```text\nM src/validation.ts\nM tests/validation.test.ts\n```\n\n`git diff --stat HEAD` shows a small change. Recent commits use conventional commit style. Describe the proposed commit plan before staging anything.",
+      "expected_output": "The response inspects git state first, recognizes a small focused change, proposes one commit for source plus test, avoids unnecessary split analysis, uses recent commit style, and waits for approval before staging or committing.",
+      "assertions": [
+        "The output says to inspect git status, diff stat, and recent git log before committing.",
+        "The output proposes one focused commit rather than multiple commits.",
+        "The output groups src/validation.ts with tests/validation.test.ts in the same commit.",
+        "The output uses or preserves conventional commit style based on recent history.",
+        "The output indicates staging/committing should wait for user approval or explicit execution."
+      ]
+    },
+    {
       "id": "group-logical-commits",
       "name": "group logical commits",
       "prompt": "A user says: commit my changes. Current changed files are:\n\n```text\nM src/validation.ts\nM tests/validation.test.ts\nM README.md\nM .github/workflows/ci.yml\n```\n\nRecent commits use conventional commit style. Describe the proposed commit plan before staging anything.",
