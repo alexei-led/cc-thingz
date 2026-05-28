@@ -8,13 +8,17 @@ APPLY=false
 FORCE=false
 BASE_OVERRIDE=""
 PROTECTED_BRANCHES=(main master trunk develop dev)
+GH_AVAILABLE=0
+CLEANUP_REASON=""
+CLEANUP_AHEAD=0
 
 usage() {
 	cat <<'EOF'
 Usage: cleanup-git.sh [--apply] [--force] [--base <ref>]
 
 Dry-run by default. Removes clean worktrees and local branches whose branch is
-merged into the detected base branch or whose upstream is gone.
+confirmed MERGED by GitHub, merged into the detected base branch, or whose
+upstream is gone.
 EOF
 }
 
@@ -55,6 +59,10 @@ done
 
 cd "$(git rev-parse --show-toplevel)"
 git fetch --all --prune --quiet || true
+
+if command -v gh >/dev/null 2>&1; then
+	GH_AVAILABLE=1
+fi
 
 has_ref() {
 	git rev-parse --verify --quiet "$1" >/dev/null
@@ -155,32 +163,66 @@ run() {
 	fi
 }
 
+is_current_branch() {
+	local branch=$1
+	[ -n "$CUR_BRANCH" ] && [ "$branch" = "$CUR_BRANCH" ]
+}
+
 is_protected_branch() {
 	local branch=$1 protected
 	[ "$branch" = "$BASE_NAME" ] && return 0
-	[ -n "$CUR_BRANCH" ] && [ "$branch" = "$CUR_BRANCH" ] && return 0
 	for protected in "${PROTECTED_BRANCHES[@]}"; do
 		[ "$branch" = "$protected" ] && return 0
 	done
 	return 1
 }
 
-reason_for() {
-	local branch=$1 track
-	track=$(git for-each-ref --format='%(upstream:track)' "refs/heads/$branch")
-	if [[ "$track" == *gone* ]]; then
-		echo gone
+pr_lookup() {
+	local branch=$1
+	[ "$GH_AVAILABLE" -eq 1 ] || return 1
+	gh pr view "$branch" --json state,headRefOid --template '{{printf "%s\t%s" .state .headRefOid}}' 2>/dev/null
+}
+
+merged_pr_ahead_count() {
+	local branch=$1 pr_head=$2
+	if [ -n "$pr_head" ] && has_ref "$pr_head^{commit}"; then
+		git rev-list --count "$pr_head..$branch" 2>/dev/null || echo 0
 		return 0
 	fi
-	if git merge-base --is-ancestor "$branch" "$BASE_REF" 2>/dev/null; then
-		echo merged
-		return 0
-	fi
-	return 1
+	echo 0
 }
 
 ahead_count() {
 	git rev-list --count "$BASE_REF..$1" 2>/dev/null || echo 0
+}
+
+cleanup_reason_for() {
+	local branch=$1 track pr_info pr_state pr_head
+	CLEANUP_REASON=""
+	CLEANUP_AHEAD=0
+
+	pr_info=$(pr_lookup "$branch" || true)
+	if [ -n "$pr_info" ]; then
+		IFS=$'\t' read -r pr_state pr_head <<<"$pr_info"
+		if [ "$pr_state" = "MERGED" ]; then
+			CLEANUP_REASON="PR merged"
+			CLEANUP_AHEAD=$(merged_pr_ahead_count "$branch" "$pr_head")
+			return 0
+		fi
+	fi
+
+	track=$(git for-each-ref --format='%(upstream:track)' "refs/heads/$branch")
+	if [[ "$track" == *gone* ]]; then
+		CLEANUP_REASON="upstream gone"
+		CLEANUP_AHEAD=$(ahead_count "$branch")
+		return 0
+	fi
+	if git merge-base --is-ancestor "$branch" "$BASE_REF" 2>/dev/null; then
+		CLEANUP_REASON="merged"
+		CLEANUP_AHEAD=$(ahead_count "$branch")
+		return 0
+	fi
+	return 1
 }
 
 list_worktrees() {
@@ -209,7 +251,7 @@ delete_branch() {
 	fi
 	printf '+ git branch -d %q\n' "$branch"
 	git branch -d "$branch" 2>/dev/null || {
-		echo "  -d refused; branch is safe relative to $BASE_REF, deleting with -D."
+		echo "  -d refused; deleting with -D."
 		run git branch -D "$branch"
 	}
 }
@@ -218,13 +260,20 @@ echo "base branch: $BASE_REF"
 echo "== worktrees =="
 list_worktrees | while IFS=$'\t' read -r path branch; do
 	[ -n "$path" ] || continue
-	[ "$path" = "$CUR_WORKTREE" ] && continue
 	case "$branch" in
 	DETACHED | BARE)
 		echo "  skip $path ($branch)"
 		continue
 		;;
 	esac
+	if [ "$path" = "$CUR_WORKTREE" ]; then
+		echo "  skip $path ($branch, current worktree)"
+		continue
+	fi
+	if is_current_branch "$branch"; then
+		echo "  skip $path ($branch, current branch)"
+		continue
+	fi
 	if is_protected_branch "$branch"; then
 		echo "  skip $path ($branch, protected)"
 		continue
@@ -233,25 +282,28 @@ list_worktrees | while IFS=$'\t' read -r path branch; do
 		echo "  KEEP $path ($branch, dirty)"
 		continue
 	fi
-	reason=$(reason_for "$branch") || true
-	if [ -z "$reason" ]; then
+	cleanup_reason_for "$branch" || true
+	if [ -z "$CLEANUP_REASON" ]; then
 		echo "  skip $path ($branch, active)"
 		continue
 	fi
-	ahead=$(ahead_count "$branch")
-	if [ "$ahead" -gt 0 ] && ! $FORCE; then
-		echo "  KEEP $path ($branch, $reason, $ahead ahead — use --force)"
+	if [ "$CLEANUP_AHEAD" -gt 0 ] && ! $FORCE; then
+		echo "  KEEP $path ($branch, $CLEANUP_REASON, $CLEANUP_AHEAD ahead — use --force)"
 		continue
 	fi
 	ahead_suffix=""
-	[ "$ahead" -gt 0 ] && ahead_suffix=", $ahead ahead"
-	echo "  remove $path ($branch, $reason$ahead_suffix)"
+	[ "$CLEANUP_AHEAD" -gt 0 ] && ahead_suffix=", $CLEANUP_AHEAD ahead"
+	echo "  remove $path ($branch, $CLEANUP_REASON$ahead_suffix)"
 	run git worktree remove "$path"
 done
 
 echo "== branches =="
 WORKTREE_BRANCHES=$(list_worktrees | awk -F '\t' '$2 != "DETACHED" && $2 != "BARE" { print $2 }')
 git for-each-ref --format='%(refname:short)' refs/heads/ | while read -r branch; do
+	if is_current_branch "$branch"; then
+		echo "  skip $branch (current branch)"
+		continue
+	fi
 	if is_protected_branch "$branch"; then
 		echo "  skip $branch (protected)"
 		continue
@@ -260,20 +312,19 @@ git for-each-ref --format='%(refname:short)' refs/heads/ | while read -r branch;
 		echo "  skip $branch (in worktree)"
 		continue
 	fi
-	reason=$(reason_for "$branch") || true
-	if [ -z "$reason" ]; then
+	cleanup_reason_for "$branch" || true
+	if [ -z "$CLEANUP_REASON" ]; then
 		echo "  skip $branch (active)"
 		continue
 	fi
-	ahead=$(ahead_count "$branch")
-	if [ "$ahead" -gt 0 ] && ! $FORCE; then
-		echo "  KEEP $branch ($reason, $ahead ahead — use --force)"
+	if [ "$CLEANUP_AHEAD" -gt 0 ] && ! $FORCE; then
+		echo "  KEEP $branch ($CLEANUP_REASON, $CLEANUP_AHEAD ahead — use --force)"
 		continue
 	fi
 	ahead_suffix=""
-	[ "$ahead" -gt 0 ] && ahead_suffix=", $ahead ahead"
-	echo "  delete $branch ($reason$ahead_suffix)"
-	delete_branch "$branch" "$ahead"
+	[ "$CLEANUP_AHEAD" -gt 0 ] && ahead_suffix=", $CLEANUP_AHEAD ahead"
+	echo "  delete $branch ($CLEANUP_REASON$ahead_suffix)"
+	delete_branch "$branch" "$CLEANUP_AHEAD"
 done
 
 $APPLY || echo "(dry-run — pass --apply)"

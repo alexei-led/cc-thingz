@@ -7,6 +7,8 @@ description: Remove merged local branches and stale git worktrees. Use when the 
 
 Clean local git branches and worktrees after work has merged. Dry-run first. Destructive commands require user approval.
 
+Prefer a repo-local `scripts/cleanup-git.sh` when the target repo ships one. If it does not, use the bundled skill script from this skill's `scripts/` directory. Manual fallback: `git fetch --prune`, inspect `git worktree list`, then remove only branches/worktrees that meet the same rules below.
+
 ## Command
 
 Run from anywhere inside a repository:
@@ -30,8 +32,10 @@ Use `--base <ref>` only for unusual repositories.
 
 ## What It Removes
 
-- Worktrees whose branch is merged into the detected base branch or whose upstream is gone.
+- Worktrees whose branch has a GitHub PR in `MERGED` state, is merged into the detected base branch, or whose upstream is gone.
 - Local branches with the same criteria.
+
+When `gh` is available, PR `MERGED` state is the source of truth for squash/rebase merges. Do not miss those just because `git merge-base --is-ancestor` fails after history rewrite. If no PR is found, or `gh` is unavailable, fall back to the git-based checks.
 
 ## Guards
 
@@ -45,10 +49,12 @@ Hard guards:
 Soft guard:
 
 - Keep items with commits ahead of the base branch. `--force` overrides only this guard.
+- For merged PRs, treat only commits added after the PR head as "ahead". A squash/rebase-merged branch with no new local commits is still removable.
 
 ## Workflow
 
 1. Run `scripts/cleanup-git.sh` and show the preview.
-2. Surface every `KEEP` line as a human decision.
-3. Ask before running `scripts/cleanup-git.sh --apply`.
-4. Use `--force` only when the user confirms ahead commits are throwaway.
+2. Read reasons literally: `remove ... (PR merged)`, `remove ... (upstream gone)`, `KEEP ... (dirty)`, `KEEP ... (PR merged, N ahead — use --force)`.
+3. Surface every `KEEP` line as a human decision.
+4. Ask before running `scripts/cleanup-git.sh --apply`.
+5. Use `--force` only when the user confirms ahead commits are throwaway.

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import stat
 import subprocess
 from pathlib import Path
 
@@ -9,7 +11,14 @@ from conftest import REPO_ROOT
 SCRIPT = REPO_ROOT / "src" / "skills" / "cleanup-git" / "scripts" / "cleanup-git.sh"
 
 
-def run(args: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
+def run(
+    args: list[str],
+    cwd: Path,
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    merged_env = os.environ.copy()
+    if env:
+        merged_env.update(env)
     return subprocess.run(
         args,
         cwd=cwd,
@@ -17,11 +26,12 @@ def run(args: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         check=False,
+        env=merged_env,
     )
 
 
-def git(repo: Path, *args: str) -> str:
-    result = run(["git", *args], repo)
+def git(repo: Path, *args: str, env: dict[str, str] | None = None) -> str:
+    result = run(["git", *args], repo, env=env)
     assert result.returncode == 0, result.stdout
     return result.stdout
 
@@ -47,6 +57,62 @@ def add_merged_branch(repo: Path, base: str, branch: str = "cleanup-me") -> None
     write_commit(repo, f"{branch}.txt", "work\n", branch)
     git(repo, "checkout", base)
     git(repo, "merge", "--no-ff", branch, "-m", f"merge {branch}")
+
+
+def add_remote(repo: Path, tmp_path: Path, *, name: str = "origin") -> Path:
+    origin = tmp_path / f"{name}.git"
+    result = run(["git", "clone", "--bare", str(repo), str(origin)], tmp_path)
+    assert result.returncode == 0, result.stdout
+    git(repo, "remote", "add", name, str(origin))
+    git(repo, "fetch", name)
+    git(repo, "remote", "set-head", name, "-a")
+    return origin
+
+
+def set_upstream(repo: Path, branch: str, remote: str = "origin") -> None:
+    git(repo, "branch", "--set-upstream-to", f"{remote}/{branch}", branch)
+
+
+def create_worktree(repo: Path, tmp_path: Path, branch: str) -> Path:
+    worktree = tmp_path / f"wt-{branch.replace('/', '-')}"
+    result = run(["git", "worktree", "add", str(worktree), branch], repo)
+    assert result.returncode == 0, result.stdout
+    return worktree
+
+
+def make_gh_stub(
+    tmp_path: Path, states: dict[str, tuple[str, str | None] | None]
+) -> dict[str, str]:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    script = bin_dir / "gh"
+    lines = [
+        "#!/usr/bin/env python3",
+        "import sys",
+        "states = {",
+    ]
+    for branch, value in states.items():
+        if value is None:
+            lines.append(f"    {branch!r}: None,")
+        else:
+            state, head = value
+            lines.append(f"    {branch!r}: ({state!r}, {head!r}),")
+    lines += [
+        "}",
+        "args = sys.argv[1:]",
+        "if len(args) >= 4 and args[:2] == ['pr', 'view']:",
+        "    branch = args[2]",
+        "    value = states.get(branch)",
+        "    if value is None:",
+        "        sys.exit(1)",
+        "    state, head = value",
+        "    sys.stdout.write(state + '\\t' + (head or ''))",
+        "    sys.exit(0)",
+        "sys.exit(1)",
+    ]
+    script.write_text("\n".join(lines) + "\n")
+    script.chmod(script.stat().st_mode | stat.S_IXUSR)
+    return {"PATH": f"{bin_dir}:{os.environ['PATH']}"}
 
 
 @pytest.mark.parametrize("base", ["main", "master", "trunk"])
@@ -94,3 +160,127 @@ def test_remote_default_branch_wins_over_local_fallback_order(tmp_path: Path) ->
 
     assert result.returncode == 0, result.stdout
     assert "base branch: master" in result.stdout
+
+
+def test_removes_squash_merged_pr_worktree_when_gh_confirms_merged(
+    tmp_path: Path,
+) -> None:
+    repo = init_repo(tmp_path, "main")
+    branch = "cleanup-me"
+    git(repo, "checkout", "-b", branch)
+    write_commit(repo, f"{branch}.txt", "work\n", branch)
+    pr_head = git(repo, "rev-parse", branch).strip()
+    git(repo, "checkout", "main")
+    git(repo, "merge", "--squash", branch)
+    git(repo, "commit", "-m", f"squash {branch}")
+    worktree = create_worktree(repo, tmp_path, branch)
+    env = make_gh_stub(tmp_path, {branch: ("MERGED", pr_head)})
+
+    result = run([str(SCRIPT)], repo, env=env)
+
+    assert result.returncode == 0, result.stdout
+    assert f"remove {worktree} ({branch}, PR merged)" in result.stdout
+    assert f"skip {branch} (in worktree)" in result.stdout
+
+
+def test_removes_branch_when_pr_not_found_but_git_ancestry_says_merged(
+    tmp_path: Path,
+) -> None:
+    repo = init_repo(tmp_path, "main")
+    add_merged_branch(repo, "main")
+    env = make_gh_stub(tmp_path, {"cleanup-me": None})
+
+    result = run([str(SCRIPT)], repo, env=env)
+
+    assert result.returncode == 0, result.stdout
+    assert "delete cleanup-me (merged)" in result.stdout
+
+
+def test_removes_upstream_gone_branch(tmp_path: Path) -> None:
+    repo = init_repo(tmp_path, "main")
+    add_remote(repo, tmp_path)
+    git(repo, "checkout", "-b", "gone-branch")
+    git(repo, "push", "-u", "origin", "gone-branch")
+    git(repo, "reset", "--hard", "main")
+    git(repo, "checkout", "main")
+    git(repo, "push", "origin", "--delete", "gone-branch")
+    git(repo, "fetch", "origin", "--prune")
+
+    result = run([str(SCRIPT)], repo)
+
+    assert result.returncode == 0, result.stdout
+    assert "delete gone-branch (upstream gone)" in result.stdout
+
+
+def test_keeps_dirty_worktree(tmp_path: Path) -> None:
+    repo = init_repo(tmp_path, "main")
+    branch = "dirty-branch"
+    git(repo, "checkout", "-b", branch)
+    write_commit(repo, "dirty.txt", "clean\n", "dirty")
+    git(repo, "checkout", "main")
+    add_remote(repo, tmp_path)
+    git(repo, "push", "-u", "origin", branch)
+    worktree = create_worktree(repo, tmp_path, branch)
+    (worktree / "dirty.txt").write_text("dirty\n")
+
+    result = run([str(SCRIPT)], repo)
+
+    assert result.returncode == 0, result.stdout
+    assert f"KEEP {worktree} ({branch}, dirty)" in result.stdout
+
+
+def test_skips_protected_and_current_branch(tmp_path: Path) -> None:
+    repo = init_repo(tmp_path, "main")
+    git(repo, "checkout", "-b", "feature")
+
+    result = run([str(SCRIPT)], repo)
+
+    assert result.returncode == 0, result.stdout
+    assert "skip main (protected)" in result.stdout
+    assert "skip feature (current branch)" in result.stdout
+
+
+def test_keeps_merged_pr_branch_with_new_commits_ahead_without_force(
+    tmp_path: Path,
+) -> None:
+    repo = init_repo(tmp_path, "main")
+    branch = "cleanup-me"
+    git(repo, "checkout", "-b", branch)
+    write_commit(repo, f"{branch}.txt", "work\n", branch)
+    pr_head = git(repo, "rev-parse", branch).strip()
+    git(repo, "checkout", "main")
+    git(repo, "merge", "--squash", branch)
+    git(repo, "commit", "-m", f"squash {branch}")
+    git(repo, "checkout", branch)
+    write_commit(repo, "after.txt", "after\n", "after merge")
+    git(repo, "checkout", "main")
+    env = make_gh_stub(tmp_path, {branch: ("MERGED", pr_head)})
+
+    result = run([str(SCRIPT)], repo, env=env)
+
+    assert result.returncode == 0, result.stdout
+    assert "KEEP cleanup-me (PR merged, 1 ahead — use --force)" in result.stdout
+
+
+def test_without_gh_falls_back_to_git_checks(tmp_path: Path) -> None:
+    repo = init_repo(tmp_path, "main")
+    add_merged_branch(repo, "main")
+    env = {"PATH": "/usr/bin:/bin"}
+
+    result = run([str(SCRIPT)], repo, env=env)
+
+    assert result.returncode == 0, result.stdout
+    assert "delete cleanup-me (merged)" in result.stdout
+
+
+def test_pr_not_found_falls_back_to_active_when_not_merged(tmp_path: Path) -> None:
+    repo = init_repo(tmp_path, "main")
+    git(repo, "checkout", "-b", "feature")
+    write_commit(repo, "feature.txt", "feature\n", "feature")
+    git(repo, "checkout", "main")
+    env = make_gh_stub(tmp_path, {"feature": None})
+
+    result = run([str(SCRIPT)], repo, env=env)
+
+    assert result.returncode == 0, result.stdout
+    assert "skip feature (active)" in result.stdout
