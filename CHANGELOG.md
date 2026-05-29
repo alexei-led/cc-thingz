@@ -8,8 +8,21 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
-## [4.9.3] - 2026-05-28
+## [4.9.4] - 2026-05-29
 
+### Fixed
+
+- `notify` hook: improved back-navigation in Kitty + tmux — recovers tmux
+  client metadata so detection works when `TERM_PROGRAM=tmux` masks the
+  terminal, and the click-to-navigate command now chains `open` → kitty
+  `focus-tab` → tmux `switch-client` → `select-window` → `select-pane`.
+- `notify` hook: less noise — skips `idle_prompt` when the tmux pane is
+  already focused (permission prompts still always fire), recovers the real
+  `TERM_PROGRAM` from the tmux server env so iTerm/WezTerm under tmux activate
+  the right app instead of Terminal.app, and drops the last-commit-subject
+  substitution that cluttered idle messages.
+
+## [4.9.3] - 2026-05-28
 
 ## [4.9.2] - 2026-05-28
 

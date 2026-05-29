@@ -1,6 +1,6 @@
 {
   "name": "dev-tools",
-  "version": "4.9.3",
+  "version": "4.9.4",
   "description": "Modern CLI tools, git worktrees, docs lookup, research, and brainstorming",
   "author": {
     "name": "Alexei Ledenev",
