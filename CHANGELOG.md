@@ -8,6 +8,17 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [4.9.5] - 2026-05-29
+
+### Removed
+
+- `docs/skill-format.md` — documented a sidecar model (`SKILL.pi.md`,
+  `flat/skills-codex/`) that no longer matches the overlay build;
+  `CONTRIBUTING.md` is the accurate authoring reference.
+- `scripts/build/migrate_skills.py` and `scripts/build/migrate_hooks.py` —
+  one-shot helpers for the completed legacy->`src/` migration, not wired into
+  the build or CI. Their tests are dropped; `src/hooks` layout tests remain.
+
 ## [4.9.4] - 2026-05-29
 
 ### Fixed
