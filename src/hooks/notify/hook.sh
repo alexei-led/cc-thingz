@@ -7,11 +7,15 @@
 # Env vars used:
 #   CLAUDE_CODE_VERSION                            - Claude Code detection (title fallback)
 #   KITTY_LISTEN_ON, KITTY_PID, KITTY_WINDOW_ID  - kitty detection + navigation
-#   TMUX_PANE                                      - tmux pane navigation
+#   TMUX, TMUX_PANE                                - tmux server + pane targeting
 #   TERM_PROGRAM                                   - fallback terminal detection
 #   CLAUDE_TERMINAL_BUNDLE_ID                      - manual override (all agents)
 
 set -uo pipefail
+
+shell_quote() {
+	printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\''/g")"
+}
 
 # --- Parse input ---
 json_input="${1:-$(cat)}"
@@ -40,12 +44,10 @@ if [[ -n "$cwd" ]]; then
 	title="[$(basename "$cwd")] $title"
 fi
 
-# --- Git context: branch for subtitle, last commit for idle message ---
+# --- Git context: branch for subtitle ---
 git_branch=""
-git_last_commit=""
 if [[ -n "$cwd" && -d "$cwd/.git" ]]; then
 	git_branch=$(git -C "$cwd" branch --show-current 2>/dev/null || true)
-	git_last_commit=$(git -C "$cwd" log --oneline -1 2>/dev/null | sed 's/^[a-f0-9]* //' || true)
 fi
 
 # --- Emoji prefix + subtitle by type ---
@@ -63,8 +65,6 @@ idle_prompt)
 	title="💤 $title"
 	subtitle="Waiting for input"
 	[[ -n "$git_branch" ]] && subtitle="$subtitle · $git_branch"
-	# Replace generic agent message with last commit subject (more useful context)
-	[[ -n "$git_last_commit" ]] && message="$git_last_commit"
 	;;
 esac
 
@@ -85,7 +85,36 @@ fi
 kitty_bin=$(command -v kitty 2>/dev/null || echo "/opt/homebrew/bin/kitty")
 tmux_bin=$(command -v tmux 2>/dev/null || echo "/opt/homebrew/bin/tmux")
 
-# --- Detect parent terminal via kitty socket ---
+# --- Discover tmux client metadata (works even when TERM_PROGRAM=tmux) ---
+tmux_client_term=""
+tmux_client_tty=""
+tmux_session_name=""
+tmux_window_index=""
+if command -v tmux &>/dev/null && [[ -n "${TMUX_PANE:-}" ]]; then
+	tmux_client_term=$(tmux display-message -p -t "$TMUX_PANE" '#{client_termname}' 2>/dev/null || true)
+	tmux_client_tty=$(tmux display-message -p -t "$TMUX_PANE" '#{client_tty}' 2>/dev/null || true)
+	tmux_session_name=$(tmux display-message -p -t "$TMUX_PANE" '#{session_name}' 2>/dev/null || true)
+	tmux_window_index=$(tmux display-message -p -t "$TMUX_PANE" '#{window_index}' 2>/dev/null || true)
+fi
+
+# --- Skip idle notifications when the user is already viewing this pane ---
+# Cheap tmux focus check: attached session + active window + active pane.
+# Permission prompts are never suppressed — an action-required ping must fire.
+if [[ "$notification_type" == "idle_prompt" && -n "${TMUX_PANE:-}" ]] && command -v tmux &>/dev/null; then
+	pane_state=$(tmux display-message -p -t "$TMUX_PANE" '#{session_attached}:#{window_active}:#{pane_active}' 2>/dev/null || true)
+	if [[ "$pane_state" =~ ^[1-9][0-9]*:1:1$ ]]; then
+		exit 0
+	fi
+fi
+
+# --- Recover the launching terminal when tmux masks TERM_PROGRAM as "tmux" ---
+effective_term="${TERM_PROGRAM:-}"
+if [[ -n "${TMUX_PANE:-}" && (-z "$effective_term" || "$effective_term" == "tmux") ]] && command -v tmux &>/dev/null; then
+	recovered_term=$(tmux show-environment -g TERM_PROGRAM 2>/dev/null | sed -n 's/^TERM_PROGRAM=//p' || true)
+	[[ -n "$recovered_term" ]] && effective_term="$recovered_term"
+fi
+
+# --- Detect parent terminal via kitty socket, tmux client term, or recovered TERM_PROGRAM ---
 kitty_socket=""
 if [[ -n "${KITTY_LISTEN_ON:-}" ]]; then
 	kitty_socket="$KITTY_LISTEN_ON"
@@ -96,8 +125,12 @@ kitty_socket_path="${kitty_socket#unix:}"
 
 if [[ -n "$kitty_socket" && -S "$kitty_socket_path" ]]; then
 	BUNDLE_ID="net.kovidgoyal.kitty"
+elif [[ "$tmux_client_term" == *kitty* ]]; then
+	BUNDLE_ID="net.kovidgoyal.kitty"
+elif [[ "$tmux_client_term" == *alacritty* ]]; then
+	BUNDLE_ID="org.alacritty"
 else
-	case "${TERM_PROGRAM:-}" in
+	case "$effective_term" in
 	iTerm.app) BUNDLE_ID="com.googlecode.iterm2" ;;
 	WezTerm) BUNDLE_ID="com.github.wez.wezterm" ;;
 	Alacritty) BUNDLE_ID="org.alacritty" ;;
@@ -109,17 +142,30 @@ BUNDLE_ID="${CLAUDE_TERMINAL_BUNDLE_ID:-$BUNDLE_ID}"
 
 # --- Build click-to-navigate command (kitty + tmux) ---
 execute_cmd=""
-if [[ -n "$kitty_socket" && -S "$kitty_socket_path" ]]; then
-	nav_parts=("/usr/bin/open -b net.kovidgoyal.kitty")
+nav_parts=()
+if [[ "$BUNDLE_ID" == "net.kovidgoyal.kitty" ]]; then
+	nav_parts+=("/usr/bin/open -b net.kovidgoyal.kitty")
+fi
 
-	if [[ -n "${KITTY_WINDOW_ID:-}" ]]; then
-		nav_parts+=("${kitty_bin} @ --to ${kitty_socket} focus-tab -m window_id:${KITTY_WINDOW_ID} 2>/dev/null")
+if [[ -n "$kitty_socket" && -S "$kitty_socket_path" && -n "${KITTY_WINDOW_ID:-}" ]]; then
+	nav_parts+=("$(shell_quote "$kitty_bin") @ --to $(shell_quote "$kitty_socket") focus-tab -m window_id:$(shell_quote "$KITTY_WINDOW_ID") 2>/dev/null")
+fi
+
+if command -v tmux &>/dev/null && [[ -n "${TMUX_PANE:-}" ]]; then
+	tmux_prefix="$(shell_quote "$tmux_bin")"
+	if [[ -n "${TMUX:-}" ]]; then
+		tmux_prefix="TMUX=$(shell_quote "$TMUX") $tmux_prefix"
 	fi
-
-	if [[ -n "${TMUX_PANE:-}" ]]; then
-		nav_parts+=("${tmux_bin} select-pane -t ${TMUX_PANE} 2>/dev/null")
+	if [[ -n "$tmux_client_tty" && -n "$tmux_session_name" ]]; then
+		nav_parts+=("$tmux_prefix switch-client -c $(shell_quote "$tmux_client_tty") -t $(shell_quote "$tmux_session_name") 2>/dev/null")
 	fi
+	if [[ -n "$tmux_session_name" && -n "$tmux_window_index" ]]; then
+		nav_parts+=("$tmux_prefix select-window -t $(shell_quote "${tmux_session_name}:${tmux_window_index}") 2>/dev/null")
+	fi
+	nav_parts+=("$tmux_prefix select-pane -t $(shell_quote "$TMUX_PANE") 2>/dev/null")
+fi
 
+if [[ ${#nav_parts[@]} -gt 0 ]]; then
 	execute_cmd=$(printf '%s; ' "${nav_parts[@]}")
 	execute_cmd="${execute_cmd%; }"
 fi
