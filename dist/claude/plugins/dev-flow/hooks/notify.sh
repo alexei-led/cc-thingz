@@ -97,7 +97,24 @@ if command -v tmux &>/dev/null && [[ -n "${TMUX_PANE:-}" ]]; then
 	tmux_window_index=$(tmux display-message -p -t "$TMUX_PANE" '#{window_index}' 2>/dev/null || true)
 fi
 
-# --- Detect parent terminal via kitty socket or tmux client term ---
+# --- Skip idle notifications when the user is already viewing this pane ---
+# Cheap tmux focus check: attached session + active window + active pane.
+# Permission prompts are never suppressed — an action-required ping must fire.
+if [[ "$notification_type" == "idle_prompt" && -n "${TMUX_PANE:-}" ]] && command -v tmux &>/dev/null; then
+	pane_state=$(tmux display-message -p -t "$TMUX_PANE" '#{session_attached}:#{window_active}:#{pane_active}' 2>/dev/null || true)
+	if [[ "$pane_state" =~ ^[1-9][0-9]*:1:1$ ]]; then
+		exit 0
+	fi
+fi
+
+# --- Recover the launching terminal when tmux masks TERM_PROGRAM as "tmux" ---
+effective_term="${TERM_PROGRAM:-}"
+if [[ -n "${TMUX_PANE:-}" && (-z "$effective_term" || "$effective_term" == "tmux") ]] && command -v tmux &>/dev/null; then
+	recovered_term=$(tmux show-environment -g TERM_PROGRAM 2>/dev/null | sed -n 's/^TERM_PROGRAM=//p' || true)
+	[[ -n "$recovered_term" ]] && effective_term="$recovered_term"
+fi
+
+# --- Detect parent terminal via kitty socket, tmux client term, or recovered TERM_PROGRAM ---
 kitty_socket=""
 if [[ -n "${KITTY_LISTEN_ON:-}" ]]; then
 	kitty_socket="$KITTY_LISTEN_ON"
@@ -110,8 +127,10 @@ if [[ -n "$kitty_socket" && -S "$kitty_socket_path" ]]; then
 	BUNDLE_ID="net.kovidgoyal.kitty"
 elif [[ "$tmux_client_term" == *kitty* ]]; then
 	BUNDLE_ID="net.kovidgoyal.kitty"
+elif [[ "$tmux_client_term" == *alacritty* ]]; then
+	BUNDLE_ID="org.alacritty"
 else
-	case "${TERM_PROGRAM:-}" in
+	case "$effective_term" in
 	iTerm.app) BUNDLE_ID="com.googlecode.iterm2" ;;
 	WezTerm) BUNDLE_ID="com.github.wez.wezterm" ;;
 	Alacritty) BUNDLE_ID="org.alacritty" ;;
