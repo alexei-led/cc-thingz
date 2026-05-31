@@ -1,5 +1,5 @@
 name: dev-flow
-version: 4.9.5
+version: 4.9.6
 description: Code review, fixes, commits, and linting for development workflows
 skills:
 - ccgram-messaging
