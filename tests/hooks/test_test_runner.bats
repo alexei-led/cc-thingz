@@ -30,6 +30,9 @@ write_state() {
 [project]
 name = "demo"
 version = "0.0.0"
+
+[project.optional-dependencies]
+test = ["pytest"]
 TOML
 	touch pkg/foo.py tests/test_foo.py
 	cat >bin/uv <<'SH'
@@ -41,11 +44,34 @@ SH
 
 	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s1\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
-	[ "$(cat uv.args)" = "run pytest -q --maxfail=1 --tb=short tests/test_foo.py" ]
+	[ "$(cat uv.args)" = "run --extra test pytest -q --maxfail=1 --tb=short tests/test_foo.py" ]
 }
 
-@test "test-runner: exits 2 on focused test failure" {
+@test "test-runner: uses uv dependency group for pytest" {
 	mkdir -p bin pkg tests
+	cat >pyproject.toml <<'TOML'
+[project]
+name = "demo"
+version = "0.0.0"
+
+[dependency-groups]
+test = ["pytest"]
+TOML
+	touch pkg/foo.py tests/test_foo.py
+	cat >bin/uv <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/uv.args"
+SH
+	chmod +x bin/uv
+	write_state s_group pkg/foo.py
+
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_group\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat uv.args)" = "run --group test pytest -q --maxfail=1 --tb=short tests/test_foo.py" ]
+}
+
+@test "test-runner: skips uv when pyproject does not declare pytest" {
+	mkdir -p bin .venv/bin pkg tests
 	cat >pyproject.toml <<'TOML'
 [project]
 name = "demo"
@@ -54,8 +80,68 @@ TOML
 	touch pkg/foo.py tests/test_foo.py
 	cat >bin/uv <<'SH'
 #!/usr/bin/env bash
-echo focused-failure
-exit 1
+printf '%s\n' "$*" >"$PWD/uv.args"
+exit 99
+SH
+	cat >.venv/bin/pytest <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/pytest.args"
+SH
+	chmod +x bin/uv .venv/bin/pytest
+	write_state s_no_pytest_dep pkg/foo.py
+
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_no_pytest_dep\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ ! -f uv.args ]
+	[ "$(cat pytest.args)" = "-q --maxfail=1 --tb=short tests/test_foo.py" ]
+}
+
+@test "test-runner: falls back when declared uv pytest is unusable" {
+	mkdir -p bin .venv/bin pkg tests
+	cat >pyproject.toml <<'TOML'
+[project]
+name = "demo"
+version = "0.0.0"
+
+[project.optional-dependencies]
+test = ["pytest"]
+TOML
+	touch pkg/foo.py tests/test_foo.py
+	cat >bin/uv <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/uv.args"
+exit 99
+SH
+	cat >.venv/bin/pytest <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/pytest.args"
+SH
+	chmod +x bin/uv .venv/bin/pytest
+	write_state s_broken_uv pkg/foo.py
+
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_broken_uv\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat uv.args)" = "run --extra test python -c import pytest" ]
+	[ "$(cat pytest.args)" = "-q --maxfail=1 --tb=short tests/test_foo.py" ]
+}
+
+@test "test-runner: exits 2 on focused test failure" {
+	mkdir -p bin pkg tests
+	cat >pyproject.toml <<'TOML'
+[project]
+name = "demo"
+version = "0.0.0"
+
+[project.optional-dependencies]
+test = ["pytest"]
+TOML
+	touch pkg/foo.py tests/test_foo.py
+	cat >bin/uv <<'SH'
+#!/usr/bin/env bash
+case "$*" in
+*" pytest "*) echo focused-failure; exit 1 ;;
+*) exit 0 ;;
+esac
 SH
 	chmod +x bin/uv
 	write_state s_fail pkg/foo.py
@@ -102,6 +188,50 @@ MAKE
 	run env TEST_RUNNER_FULL=1 HOOK_INPUT_JSON="{\"session_id\":\"s4\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
 	[ "$(cat make.marker)" = "root-test" ]
+}
+
+@test "test-runner: TEST_RUNNER_FULL uses uv pytest extra" {
+	mkdir -p bin
+	cat >pyproject.toml <<'TOML'
+[project]
+name = "demo"
+version = "0.0.0"
+
+[project.optional-dependencies]
+test = ["pytest"]
+TOML
+	cat >bin/uv <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/uv.args"
+SH
+	chmod +x bin/uv
+
+	run env PATH="$WORK_DIR/bin:$PATH" TEST_RUNNER_FULL=1 HOOK_INPUT_JSON="{\"session_id\":\"s_full_uv\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat uv.args)" = "run --extra test pytest -q --maxfail=1 --tb=short" ]
+}
+
+@test "test-runner: TEST_RUNNER_FULL tolerates pytest exit 5" {
+	mkdir -p bin
+	cat >pyproject.toml <<'TOML'
+[project]
+name = "demo"
+version = "0.0.0"
+
+[project.optional-dependencies]
+test = ["pytest"]
+TOML
+	cat >bin/uv <<'SH'
+#!/usr/bin/env bash
+case "$*" in
+*" pytest "*) echo "no tests ran in 0.01s"; exit 5 ;;
+*) exit 0 ;;
+esac
+SH
+	chmod +x bin/uv
+
+	run env PATH="$WORK_DIR/bin:$PATH" TEST_RUNNER_FULL=1 HOOK_INPUT_JSON="{\"session_id\":\"s_full_exit5\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
 }
 
 @test "test-runner: TEST_RUNNER_FULL uses yarn package test script" {
@@ -200,4 +330,49 @@ SH
 	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_npm\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
 	[ "$(cat npm.args)" = "run --silent test" ]
+}
+
+@test "test-runner: conftest.py is not passed to pytest as a target" {
+	mkdir -p bin tests
+	cat >pyproject.toml <<'TOML'
+[project]
+name = "demo"
+version = "0.0.0"
+TOML
+	touch tests/conftest.py
+	cat >bin/uv <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/uv.args"
+SH
+	chmod +x bin/uv
+	write_state s_conftest tests/conftest.py
+
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_conftest\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ ! -f uv.args ]
+}
+
+@test "test-runner: pytest exit 5 (no tests collected) is not a failure" {
+	mkdir -p bin tests
+	cat >pyproject.toml <<'TOML'
+[project]
+name = "demo"
+version = "0.0.0"
+
+[project.optional-dependencies]
+test = ["pytest"]
+TOML
+	touch tests/test_empty.py
+	cat >bin/uv <<'SH'
+#!/usr/bin/env bash
+case "$*" in
+*" pytest "*) echo "no tests ran in 0.01s"; exit 5 ;;
+*) exit 0 ;;
+esac
+SH
+	chmod +x bin/uv
+	write_state s_exit5 tests/test_empty.py
+
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_exit5\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
 }

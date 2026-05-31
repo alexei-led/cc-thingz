@@ -353,9 +353,222 @@ run_and_capture() {
 	run_test_compact "$@"
 }
 
+# Like run_test_compact, but treats pytest exit code 5 ("no tests collected")
+# as success — handing pytest a file with no test functions is not a failure.
+run_pytest_compact() {
+	local label="$1"
+	shift
+	TESTS_RAN=1
+	log_info "Running: $*"
+	local output code
+	output=$("$@" 2>&1)
+	code=$?
+	if [[ "$code" -eq 0 || "$code" -eq 5 ]]; then
+		log_debug "$label passed (exit $code)"
+		return 0
+	fi
+	[[ -n "$output" ]] && compact_output "$output" >&2
+	log_warn "$label failed with exit $code"
+	return 2
+}
+
 add_existing_file() {
 	local candidate="$1"
 	[[ -f "$candidate" ]] && printf '%s\n' "$candidate"
+}
+
+uv_pytest_prefix_args() {
+	[[ -f pyproject.toml ]] || return 1
+	command_exists python3 || return 1
+	python3 - <<'PY' 2>/dev/null
+import re
+import sys
+from pathlib import Path
+
+
+def read_pyproject():
+    try:
+        text = Path("pyproject.toml").read_text()
+    except OSError:
+        sys.exit(1)
+    data = parse_with_toml(text)
+    if data is not None:
+        return data
+    return parse_light_toml(text)
+
+
+def parse_with_toml(text):
+    try:
+        import tomllib
+    except ImportError:
+        try:
+            import tomli as tomllib
+        except ImportError:
+            return None
+    try:
+        return tomllib.loads(text)
+    except Exception:
+        return None
+
+
+def strip_comment(line):
+    result = []
+    quote = ""
+    escaped = False
+    for char in line:
+        if quote:
+            result.append(char)
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = ""
+            continue
+        if char in "'\"":
+            quote = char
+            result.append(char)
+            continue
+        if char == "#":
+            break
+        result.append(char)
+    return "".join(result)
+
+
+def parse_light_toml(text):
+    data = {"project": {"dependencies": [], "optional-dependencies": {}}, "dependency-groups": {}}
+    section = ""
+    lines = text.splitlines()
+    index = 0
+    while index < len(lines):
+        line = strip_comment(lines[index]).strip()
+        index += 1
+        if not line:
+            continue
+        match = re.match(r"\[([^\]]+)\]\s*$", line)
+        if match:
+            section = match.group(1).strip().strip("'\"")
+            continue
+        match = re.match(r"([A-Za-z0-9_.-]+|'[^']+'|\"[^\"]+\")\s*=\s*(.*)$", line)
+        if not match:
+            continue
+        key = match.group(1).strip().strip("'\"")
+        value = match.group(2)
+        if "[" not in value:
+            continue
+        buffer = value
+        depth = value.count("[") - value.count("]")
+        while depth > 0 and index < len(lines):
+            next_line = strip_comment(lines[index])
+            index += 1
+            buffer += "\n" + next_line
+            depth += next_line.count("[") - next_line.count("]")
+        deps = re.findall(r"['\"]([^'\"]+)['\"]", buffer)
+        if section == "project" and key == "dependencies":
+            data["project"]["dependencies"] = deps
+        elif section == "project.optional-dependencies":
+            data["project"]["optional-dependencies"][key] = deps
+        elif section == "dependency-groups":
+            data["dependency-groups"][key] = deps
+    return data
+
+
+def dep_name(value):
+    if not isinstance(value, str):
+        return ""
+    return re.split(r"[<>=!~; \\[]", value.strip(), maxsplit=1)[0].lower().replace("_", "-")
+
+
+def is_pytest_dep(value):
+    name = dep_name(value)
+    return name == "pytest" or name.startswith("pytest-")
+
+
+def contains_pytest(value):
+    if isinstance(value, str):
+        return is_pytest_dep(value)
+    if isinstance(value, list):
+        return any(contains_pytest(item) for item in value)
+    if isinstance(value, dict):
+        return any(contains_pytest(item) for item in value.values())
+    return False
+
+
+def choose_name(names):
+    for preferred in ("test", "tests", "dev", "ci"):
+        if preferred in names:
+            return preferred
+    return sorted(names)[0] if names else ""
+
+
+def group_contains_pytest(groups, name, seen=None):
+    if seen is None:
+        seen = set()
+    if name in seen:
+        return False
+    seen.add(name)
+    deps = groups.get(name)
+    if contains_pytest(deps):
+        return True
+    if isinstance(deps, list):
+        for item in deps:
+            if isinstance(item, dict):
+                included = item.get("include-group")
+                if isinstance(included, str) and group_contains_pytest(groups, included, seen):
+                    return True
+    return False
+
+
+data = read_pyproject()
+project = data.get("project", {})
+if contains_pytest(project.get("dependencies", [])):
+    print("run")
+    sys.exit(0)
+
+optional_deps = project.get("optional-dependencies", {})
+if isinstance(optional_deps, dict):
+    extras = [name for name, deps in optional_deps.items() if contains_pytest(deps)]
+    extra = choose_name(extras)
+    if extra:
+        print("run")
+        print("--extra")
+        print(extra)
+        sys.exit(0)
+
+groups = data.get("dependency-groups", {})
+if isinstance(groups, dict):
+    group_names = [name for name in groups if group_contains_pytest(groups, name)]
+    group = choose_name(group_names)
+    if group:
+        print("run")
+        print("--group")
+        print(group)
+        sys.exit(0)
+
+sys.exit(1)
+PY
+}
+
+pytest_runner_command() {
+	local arg uv_args=()
+	if command_exists uv && [[ -f pyproject.toml ]]; then
+		while IFS= read -r arg; do
+			[[ -n "$arg" ]] && uv_args+=("$arg")
+		done < <(uv_pytest_prefix_args)
+		if [[ "${#uv_args[@]}" -gt 0 ]] && uv "${uv_args[@]}" python -c 'import pytest' >/dev/null 2>&1; then
+			printf '%s\n' uv "${uv_args[@]}" pytest
+			return 0
+		fi
+	fi
+	if [[ -x .venv/bin/pytest ]]; then
+		printf '%s\n' .venv/bin/pytest
+		return 0
+	fi
+	if command_exists python3 && python3 -c "import pytest" 2>/dev/null; then
+		printf '%s\n' python3 -m pytest
+		return 0
+	fi
+	return 1
 }
 
 find_python_tests_for_source() {
@@ -378,7 +591,12 @@ run_python_tests() {
 		[[ "$file" == *.py ]] || continue
 		under_make_root "$file" && continue
 		base=$(basename "$file")
-		if [[ "$base" == test_*.py || "$base" == *_test.py || "$file" == */tests/* || "$file" == tests/* || "$file" == */test/* || "$file" == test/* ]]; then
+		# Only genuine pytest test modules (test_*.py / *_test.py) are valid
+		# targets. Support files under a test dir — conftest.py, __init__.py,
+		# fixtures/helpers — are NOT test modules; passing them to pytest
+		# collects nothing (exit 5). Route everything else through source
+		# mapping, which finds the related test module if one exists.
+		if [[ "$base" == test_*.py || "$base" == *_test.py ]]; then
 			tests+=("$file")
 		else
 			while IFS= read -r candidate; do
@@ -392,17 +610,15 @@ run_python_tests() {
 	tests=()
 	while IFS= read -r file; do tests+=("$file"); done <"$tmp"
 	rm -f "$tmp"
-	if command_exists uv && [[ -f pyproject.toml ]]; then
-		runner=(uv run pytest -q --maxfail=1 --tb=short)
-	elif [[ -x .venv/bin/pytest ]]; then
-		runner=(.venv/bin/pytest -q --maxfail=1 --tb=short)
-	elif python3 -c "import pytest" 2>/dev/null; then
-		runner=(python3 -m pytest -q --maxfail=1 --tb=short)
-	else
+	while IFS= read -r file; do
+		[[ -n "$file" ]] && runner+=("$file")
+	done < <(pytest_runner_command)
+	if [[ "${#runner[@]}" -eq 0 ]]; then
 		log_warn "pytest not found — skipping focused Python tests"
 		return 0
 	fi
-	run_and_capture "Python tests" "${runner[@]}" "${tests[@]}"
+	runner+=(-q --maxfail=1 --tb=short)
+	run_pytest_compact "Python tests" "${runner[@]}" "${tests[@]}"
 }
 
 run_go_tests() {
@@ -596,8 +812,13 @@ run_full_override() {
 		run_and_capture "go test" go test -failfast ./...
 		return $?
 	fi
-	if [[ -f pyproject.toml ]] && command_exists uv; then
-		run_and_capture "pytest" uv run pytest -q --maxfail=1 --tb=short
+	local pytest_runner=() pytest_arg
+	while IFS= read -r pytest_arg; do
+		[[ -n "$pytest_arg" ]] && pytest_runner+=("$pytest_arg")
+	done < <(pytest_runner_command)
+	if [[ "${#pytest_runner[@]}" -gt 0 ]]; then
+		pytest_runner+=(-q --maxfail=1 --tb=short)
+		run_pytest_compact "pytest" "${pytest_runner[@]}"
 		return $?
 	fi
 	if [[ -f package.json ]]; then
