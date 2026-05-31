@@ -165,6 +165,27 @@ MAKE
 	[ "$(cat make.marker)" = "setup-test" ]
 }
 
+@test "test-runner: nested Makefile handles files before language runners" {
+	mkdir -p bin setup/files
+	touch setup/files/foo.go
+	cat >setup/Makefile <<'MAKE'
+test:
+	@echo setup-test > ../make.marker
+MAKE
+	cat >bin/go <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/go.args"
+exit 1
+SH
+	chmod +x bin/go
+	write_state s_make_first setup/files/foo.go
+
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_make_first\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat make.marker)" = "setup-test" ]
+	[ ! -f go.args ]
+}
+
 @test "test-runner: skips root Makefile fallback" {
 	mkdir -p pkg
 	touch pkg/foo.py
@@ -251,6 +272,51 @@ SH
 	[ "$(cat yarn.args)" = "run test" ]
 }
 
+@test "test-runner: TEST_RUNNER_FULL runs Vitest when no package script exists" {
+	mkdir -p node_modules/.bin
+	touch vitest.config.ts
+	cat >node_modules/.bin/vitest <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/vitest.args"
+SH
+	chmod +x node_modules/.bin/vitest
+
+	run env PATH="$WORK_DIR/node_modules/.bin:/usr/bin:/bin" TEST_RUNNER_FULL=1 HOOK_INPUT_JSON="{\"session_id\":\"s_full_vitest\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat vitest.args)" = "run --passWithNoTests" ]
+}
+
+@test "test-runner: TEST_RUNNER_FULL runs Jest when no package script exists" {
+	mkdir -p node_modules/.bin
+	touch jest.config.js
+	cat >node_modules/.bin/jest <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/jest.args"
+SH
+	chmod +x node_modules/.bin/jest
+
+	run env PATH="$WORK_DIR/node_modules/.bin:/usr/bin:/bin" TEST_RUNNER_FULL=1 HOOK_INPUT_JSON="{\"session_id\":\"s_full_jest\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat jest.args)" = "--passWithNoTests" ]
+}
+
+@test "test-runner: TEST_RUNNER_FULL runs Bats when shell tests exist" {
+	mkdir -p bin tests
+	cat >tests/test_smoke.bats <<'BATS'
+#!/usr/bin/env bats
+@test "smoke" { true; }
+BATS
+	cat >bin/bats <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/bats.args"
+SH
+	chmod +x bin/bats
+
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" TEST_RUNNER_FULL=1 HOOK_INPUT_JSON="{\"session_id\":\"s_full_bats\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat bats.args)" = "tests/test_smoke.bats" ]
+}
+
 @test "test-runner: Go tests use failfast without verbose output" {
 	mkdir -p bin pkg
 	touch go.mod pkg/foo.go
@@ -271,14 +337,49 @@ SH
 	touch vitest.config.ts src/foo.ts
 	cat >node_modules/.bin/vitest <<'SH'
 #!/usr/bin/env bash
-printf '%s\n' "$*" >"$PWD/vitest.args"
+case "$*" in
+*"--passWithNoTests"*) printf '%s\n' "$*" >"$PWD/vitest.args" ;;
+*) exit 1 ;;
+esac
 SH
 	chmod +x node_modules/.bin/vitest
 	write_state s_vitest src/foo.ts
 
 	run env HOOK_INPUT_JSON="{\"session_id\":\"s_vitest\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
-	[ "$(cat vitest.args)" = "related src/foo.ts --run" ]
+	[ "$(cat vitest.args)" = "related src/foo.ts --run --passWithNoTests" ]
+}
+
+@test "test-runner: Vitest treats JS support files in tests as related sources" {
+	mkdir -p node_modules/.bin tests
+	touch vitest.config.ts
+	printf '%s\n' 'export const helper = 1' >tests/helper.ts
+	cat >node_modules/.bin/vitest <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/vitest.args"
+SH
+	chmod +x node_modules/.bin/vitest
+	write_state s_vitest_helper tests/helper.ts
+
+	run env HOOK_INPUT_JSON="{\"session_id\":\"s_vitest_helper\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat vitest.args)" = "related tests/helper.ts --run --passWithNoTests" ]
+}
+
+@test "test-runner: keeps Vitest test files with test declarations as direct targets" {
+	mkdir -p node_modules/.bin tests
+	touch vitest.config.ts
+	printf '%s\n' 'test("works", () => {})' >tests/foo.ts
+	cat >node_modules/.bin/vitest <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/vitest.args"
+SH
+	chmod +x node_modules/.bin/vitest
+	write_state s_vitest_direct tests/foo.ts
+
+	run env HOOK_INPUT_JSON="{\"session_id\":\"s_vitest_direct\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat vitest.args)" = "run tests/foo.ts --passWithNoTests" ]
 }
 
 @test "test-runner: Jest uses findRelatedTests for source files" {
@@ -286,14 +387,33 @@ SH
 	touch jest.config.js src/foo.ts
 	cat >node_modules/.bin/jest <<'SH'
 #!/usr/bin/env bash
-printf '%s\n' "$*" >"$PWD/jest.args"
+case "$*" in
+*"--passWithNoTests"*) printf '%s\n' "$*" >"$PWD/jest.args" ;;
+*) exit 1 ;;
+esac
 SH
 	chmod +x node_modules/.bin/jest
 	write_state s_jest src/foo.ts
 
 	run env HOOK_INPUT_JSON="{\"session_id\":\"s_jest\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
-	[ "$(cat jest.args)" = "--findRelatedTests src/foo.ts" ]
+	[ "$(cat jest.args)" = "--findRelatedTests src/foo.ts --passWithNoTests" ]
+}
+
+@test "test-runner: does not fall back to Bun when Vitest config exists without Vitest" {
+	mkdir -p bin src
+	touch vitest.config.ts bun.lock src/foo.ts
+	cat >bin/bun <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/bun.args"
+exit 1
+SH
+	chmod +x bin/bun
+	write_state s_no_vitest src/foo.ts
+
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_no_vitest\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ ! -f bun.args ]
 }
 
 @test "test-runner: HOOK_PROJECT_FALLBACK=0 disables package and Makefile fallback" {
@@ -329,6 +449,54 @@ SH
 
 	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_npm\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
+	[ "$(cat npm.args)" = "run --silent test" ]
+}
+
+@test "test-runner: package script failure reports real exit code" {
+	mkdir -p bin src
+	cat >package.json <<'JSON'
+{"scripts":{"test":"echo test"}}
+JSON
+	touch package-lock.json src/foo.ts
+	cat >bin/npm <<'SH'
+#!/usr/bin/env bash
+echo npm-failure
+exit 7
+SH
+	chmod +x bin/npm
+	write_state s_npm_fail src/foo.ts
+
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_npm_fail\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 2 ]
+	[[ "$output" == *"npm-failure"* ]]
+	[[ "$output" == *"npm test failed with exit 7"* ]]
+}
+
+@test "test-runner: package script detection uses node when python3 is unusable" {
+	mkdir -p bin src
+	cat >package.json <<'JSON'
+{"scripts":{"test":"echo test"}}
+JSON
+	touch package-lock.json src/foo.ts
+	cat >bin/python3 <<'SH'
+#!/usr/bin/env bash
+exit 1
+SH
+	cat >bin/node <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/node.args"
+exit 0
+SH
+	cat >bin/npm <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/npm.args"
+SH
+	chmod +x bin/python3 bin/node bin/npm
+	write_state s_node_package src/foo.ts
+
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_node_package\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ -f node.args ]
 	[ "$(cat npm.args)" = "run --silent test" ]
 }
 

@@ -8,6 +8,21 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [4.9.6] - 2026-05-31
+
+### Fixed
+
+- `test-runner` hook: focused pytest no longer false-fails on support files
+  such as `conftest.py`, treats pytest exit code 5 as no-tests success, and
+  handles `uv` extras/dependency groups before falling back to local pytest.
+- `test-runner` hook: hardened non-Python focused tests — nearest non-root
+  Makefile targets now win over broad package fallbacks, Vitest/Jest tolerate
+  no related tests, JS helpers under test directories route through related-test
+  mapping, full mode can run Vitest/Jest/Bats directly, and failing test
+  commands report their real exit code.
+- `test-runner` hook: package script detection can use `node` or `bun` when
+  `python3` is unavailable or unusable.
+
 ## [4.9.5] - 2026-05-29
 
 ### Removed

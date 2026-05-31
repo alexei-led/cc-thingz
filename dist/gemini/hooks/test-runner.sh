@@ -56,8 +56,8 @@ resolve_node_tool() {
 package_json_has_script() {
 	local script="$1"
 	[[ -f package.json ]] || return 1
-	command_exists python3 || return 1
-	python3 -c '
+	if command_exists python3; then
+		python3 -c '
 import json
 import sys
 from pathlib import Path
@@ -71,7 +71,33 @@ scripts = data.get("scripts", {})
 if isinstance(scripts, dict) and isinstance(scripts.get(script), str):
     sys.exit(0)
 sys.exit(1)
-' "$script" 2>/dev/null
+' "$script" 2>/dev/null && return 0
+	fi
+	if command_exists node; then
+		node -e '
+const fs = require("fs");
+const script = process.argv[process.argv.length - 1];
+try {
+  const data = JSON.parse(fs.readFileSync("package.json", "utf8"));
+  process.exit(data && data.scripts && typeof data.scripts[script] === "string" ? 0 : 1);
+} catch (_) {
+  process.exit(1);
+}
+' "$script" 2>/dev/null && return 0
+	fi
+	if command_exists bun; then
+		bun -e '
+const fs = require("fs");
+const script = process.argv[process.argv.length - 1];
+try {
+  const data = JSON.parse(fs.readFileSync("package.json", "utf8"));
+  process.exit(data && data.scripts && typeof data.scripts[script] === "string" ? 0 : 1);
+} catch (_) {
+  process.exit(1);
+}
+' -- "$script" 2>/dev/null && return 0
+	fi
+	return 1
 }
 
 package_script_runner() {
@@ -338,12 +364,13 @@ run_test_compact() {
 	shift
 	TESTS_RAN=1
 	log_info "Running: $*"
-	local output
-	if output=$("$@" 2>&1); then
+	local output code
+	output=$("$@" 2>&1)
+	code=$?
+	if [[ "$code" -eq 0 ]]; then
 		log_debug "$label passed"
 		return 0
 	fi
-	local code=$?
 	[[ -n "$output" ]] && compact_output "$output" >&2
 	log_warn "$label failed with exit $code"
 	return 2
@@ -648,10 +675,22 @@ run_go_tests() {
 }
 
 is_js_test_file() {
+	local base
+	base=$(basename "$1")
+	case "$base" in
+	*.test.js | *.test.jsx | *.test.ts | *.test.tsx | *.test.mjs | *.test.cjs | *.test.mts | *.test.cts | \
+		*.spec.js | *.spec.jsx | *.spec.ts | *.spec.tsx | *.spec.mjs | *.spec.cjs | *.spec.mts | *.spec.cts | \
+		test_*.js | test_*.jsx | test_*.ts | test_*.tsx | test_*.mjs | test_*.cjs | test_*.mts | test_*.cts | \
+		*_test.js | *_test.jsx | *_test.ts | *_test.tsx | *_test.mjs | *_test.cjs | *_test.mts | *_test.cts) return 0 ;;
+	esac
 	case "$1" in
-	*.test.js | *.test.jsx | *.test.ts | *.test.tsx | *.spec.js | *.spec.jsx | *.spec.ts | *.spec.tsx | */__tests__/* | */tests/* | tests/* | */test/* | test/*) return 0 ;;
+	*/__tests__/* | */tests/* | tests/* | */test/* | test/*) return 0 ;;
 	*) return 1 ;;
 	esac
+}
+
+js_file_has_tests() {
+	grep -Eq '(^|[^[:alnum:]_$])(describe|it|test|suite)([[:space:]]*\.[[:space:]]*[[:alpha:]_$][[:alnum:]_$]*)*[[:space:]]*\(' "$1" 2>/dev/null
 }
 
 find_js_tests_for_source() {
@@ -667,8 +706,9 @@ find_js_tests_for_source() {
 }
 
 js_runner_command() {
-	local bin
+	local bin has_test_config=0
 	if find . -maxdepth 3 -name 'vitest.config.*' -print -quit 2>/dev/null | grep -q .; then
+		has_test_config=1
 		bin=$(resolve_node_tool vitest || true)
 		if [[ -n "$bin" ]]; then
 			printf 'vitest|%s\n' "$bin"
@@ -676,12 +716,14 @@ js_runner_command() {
 		fi
 	fi
 	if find . -maxdepth 3 -name 'jest.config.*' -print -quit 2>/dev/null | grep -q .; then
+		has_test_config=1
 		bin=$(resolve_node_tool jest || true)
 		if [[ -n "$bin" ]]; then
 			printf 'jest|%s\n' "$bin"
 			return 0
 		fi
 	fi
+	[[ "$has_test_config" -eq 1 ]] && return 1
 	if command_exists bun && { [[ -f bun.lockb ]] || [[ -f bun.lock ]]; }; then
 		printf '%s\n' "bun|bun"
 		return 0
@@ -701,7 +743,7 @@ run_javascript_tests() {
 		*) continue ;;
 		esac
 		under_make_root "$file" && continue
-		if is_js_test_file "$file"; then
+		if is_js_test_file "$file" && js_file_has_tests "$file"; then
 			tests+=("$file")
 		else
 			sources+=("$file")
@@ -736,18 +778,18 @@ run_javascript_tests() {
 	case "$kind" in
 	vitest)
 		if [[ "${#sources[@]}" -gt 0 ]]; then
-			run_and_capture "JS related tests (vitest)" "$bin" related "${sources[@]}" --run || status=2
+			run_and_capture "JS related tests (vitest)" "$bin" related "${sources[@]}" --run --passWithNoTests || status=2
 		fi
 		if [[ "${#tests[@]}" -gt 0 ]]; then
-			run_and_capture "JS tests (vitest)" "$bin" run "${tests[@]}" || status=2
+			run_and_capture "JS tests (vitest)" "$bin" run "${tests[@]}" --passWithNoTests || status=2
 		fi
 		;;
 	jest)
 		if [[ "${#sources[@]}" -gt 0 ]]; then
-			run_and_capture "JS related tests (jest)" "$bin" --findRelatedTests "${sources[@]}" || status=2
+			run_and_capture "JS related tests (jest)" "$bin" --findRelatedTests "${sources[@]}" --passWithNoTests || status=2
 		fi
 		if [[ "${#tests[@]}" -gt 0 ]]; then
-			run_and_capture "JS tests (jest)" "$bin" "${tests[@]}" || status=2
+			run_and_capture "JS tests (jest)" "$bin" "${tests[@]}" --passWithNoTests || status=2
 		fi
 		;;
 	bun)
@@ -767,6 +809,20 @@ find_shell_tests_for_source() {
 		[[ -d "$test_dir" ]] || continue
 		find "$test_dir" -type f \( -name "test_${base}.bats" -o -name "${base}_test.bats" \) 2>/dev/null
 	done
+}
+
+run_full_javascript_tests() {
+	local runner kind bin
+	runner=$(js_runner_command || true)
+	[[ -n "$runner" ]] || return 1
+	kind=${runner%%|*}
+	bin=${runner#*|}
+	case "$kind" in
+	vitest) run_and_capture "vitest" "$bin" run --passWithNoTests ;;
+	jest) run_and_capture "jest" "$bin" --passWithNoTests ;;
+	bun) run_and_capture "bun test" bun test ;;
+	*) return 1 ;;
+	esac
 }
 
 run_shell_tests() {
@@ -797,8 +853,31 @@ run_shell_tests() {
 	run_and_capture "Shell tests" bats "${tests[@]}"
 }
 
+run_full_shell_tests() {
+	local tests=()
+	local test_dir file tmp
+	for test_dir in tests test; do
+		[[ -d "$test_dir" ]] || continue
+		while IFS= read -r file; do
+			[[ -n "$file" ]] && tests+=("$file")
+		done < <(find "$test_dir" -type f -name "*.bats" 2>/dev/null)
+	done
+	[[ "${#tests[@]}" -gt 0 ]] || return 1
+	command_exists bats || {
+		log_warn "bats not found — skipping full shell tests"
+		return 0
+	}
+	tmp=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-full-shell-tests.%s' "$$")
+	printf '%s\n' "${tests[@]}" | unique_lines >"$tmp"
+	tests=()
+	while IFS= read -r file; do tests+=("$file"); done <"$tmp"
+	rm -f "$tmp"
+	run_and_capture "Shell tests" bats "${tests[@]}"
+}
+
 run_full_override() {
 	log_warn "TEST_RUNNER_FULL=1 set — running project-level tests"
+	local full_status
 	if [[ -f "Makefile" ]]; then
 		local target
 		for target in test tests check verify; do
@@ -828,11 +907,17 @@ run_full_override() {
 			run_package_test_script "$script"
 			return $?
 		done
-		if command_exists bun && { [[ -f bun.lockb ]] || [[ -f bun.lock ]]; }; then
-			run_and_capture "bun test" bun test
-			return $?
-		fi
 	fi
+	run_full_javascript_tests
+	full_status=$?
+	case "$full_status" in
+	0 | 2) return "$full_status" ;;
+	esac
+	run_full_shell_tests
+	full_status=$?
+	case "$full_status" in
+	0 | 2) return "$full_status" ;;
+	esac
 	log_warn "No full project test runner found"
 	return 0
 }
@@ -872,15 +957,13 @@ main() {
 
 	log_debug "Focus files: ${focus_files[*]}"
 	local status=0
+	run_make_targets "${focus_files[@]}" || status=2
 	run_python_tests "${focus_files[@]}" || status=2
 	run_go_tests "${focus_files[@]}" || status=2
 	run_javascript_tests "${focus_files[@]}" || status=2
 	run_shell_tests "${focus_files[@]}" || status=2
 	if [[ "$status" -eq 0 && "$TESTS_RAN" -eq 0 ]]; then
 		run_package_test_fallback || status=2
-	fi
-	if [[ "$status" -eq 0 && "$TESTS_RAN" -eq 0 ]]; then
-		run_make_targets "${focus_files[@]}" || status=2
 	fi
 
 	echo "" >&2
