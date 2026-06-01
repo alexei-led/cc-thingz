@@ -70,7 +70,7 @@ def dedent_md(s: str) -> str:
 
 
 def make_skill_staging_root(tmp_path: Path) -> Path:
-    """Staging root for single-skill and watch-team tests.
+    """Staging root for single-skill tests.
 
     Symlinks the entire `src/skills/` tree and the preambles directory so
     that `compile_skill` resolves paths relative to the returned root.

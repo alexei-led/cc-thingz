@@ -2,7 +2,6 @@ name: dev-flow
 version: 4.9.6
 description: Code review, fixes, commits, and linting for development workflows
 skills:
-- ccgram-messaging
 - committing-code
 - documenting-code
 - fixing-code
@@ -11,7 +10,6 @@ skills:
 - refactoring-code
 - reviewing-code
 - searching-code
-- watch-team
 agents:
 - engineer
 - reviewer

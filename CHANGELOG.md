@@ -8,6 +8,11 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+### Removed
+
+- Removed unused `watch-team` and `ccgram-messaging` skills, including plugin
+  wiring, skill-enforcer routing, generated outputs, and skill eval fixtures.
+
 ## [4.9.6] - 2026-05-31
 
 ### Fixed

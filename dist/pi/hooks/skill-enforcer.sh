@@ -278,12 +278,6 @@ if echo "$PROMPT_LOWER" | grep -qE '\b(lint|audit|review|score|check)\s+(the\s+|
 	skills+="reviewing-instructions "
 fi
 
-# ccgram-messaging: Inter-agent messaging via ccgram swarm
-# Triggers: ccgram commands, peer messaging, inbox, broadcast, swarm collaboration, agent-to-agent
-if echo "$PROMPT_LOWER" | grep -qE '\bccgram\b|\binbox\b.*\b(message|agent|peer)\b|\bmessage\s*(other|another|peer|agent|window)\b|\bbroadcast\b.*\b(agent|peer|team|status)\b|\bswarm\b|\blist[[:space:]-]?peers\b|\bpeer\s*(message|discovery|status)\b|\binter[[:space:]-]?agent\b|\bagent[[:space:]-]?to[[:space:]-]?agent\b|\bsend\s*(a\s*)?(message|msg)\s*(to)?\s*(agent|peer|window|@)\b|\bask\s*(another|other|the)\s*agent\b|\breply\s*(to)?\s*(the)?\s*(message|msg|agent)\b|\bspawn\s*(a\s*)?(new\s*)?(agent|window)\b|\bagent\s*(collaborat|communicat|coordinat)\b|\btmux\s*messag\b|\bcheck\s*(my|the)?\s*inbox\b'; then
-	skills+="ccgram-messaging "
-fi
-
 # exploring-repos: Explore public GitHub repos via DeepWiki
 # Triggers: repo architecture, how does repo work, deepwiki, explore repo, codebase patterns
 if echo "$PROMPT_LOWER" | grep -qE '\bdeepwiki\b|\bexplore\s*(the\s*)?(repo|repository|codebase|project)\b|\brepo\s*(architecture|structure|design|patterns?)\b|\bhow\s*does\s*\S+/\S+\s*work\b|\bunderstand\s*(the\s*)?(repo|repository|codebase|project)\b|\bcodebase\s*(overview|architecture|structure|understanding)\b|\bwiki\s*(for|of|about)\s*(the\s*)?(repo|repository)\b|\bexplore\s*\S+/\S+\b|\bdesign\s*patterns?\s*(in|of|used\s*by)\b|\bhow\s*(is|are)\s*\S+\s*(structured|organized|designed|architected)\b'; then

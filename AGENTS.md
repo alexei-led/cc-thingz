@@ -41,7 +41,6 @@ Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allo
 
 ## Development Workflow
 
-- **ccgram-messaging** — Inter-agent messaging via ccgram swarm
 - **committing-code** — Smart git commits with logical grouping
 - **documenting-code** — Update project documentation based on recent changes
 - **fixing-code** — Fix code problems with disciplined diagnosis
@@ -57,7 +56,6 @@ Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allo
 - **spec-work** — Implement the next ready task with approval at each step
 - **spec-status** — Report spec progress; quality audit for orphans and cycles
 - **spec-done** — Mark a task complete with evidence and quality gates
-- **watch-team** — Monitor a team in tmux, auto-approve prompts, and report status
 
 ## Language Tooling
 

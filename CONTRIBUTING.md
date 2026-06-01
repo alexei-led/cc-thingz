@@ -211,7 +211,8 @@ for skills and agents — both follow the `base + per-target overlay` pattern.
 - **Commands (Claude only):** commands now live as skills under
   `src/skills/<command>/` and the Claude target picks them up from
   `claude/frontmatter.yaml` (which may carry `allowed-tools`,
-  `argument-hint`, etc.). The `watch-team` skill is the reference example.
+  `argument-hint`, etc.). Use an existing skill with a
+  `claude/frontmatter.yaml` overlay as the reference example.
 
 After any of the above, run `make build && make ci`.
 

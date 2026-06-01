@@ -1,4 +1,0 @@
-allowed-tools:
-  - Bash
-  - Read
-argument-hint: <tmux-window> [duration-seconds]
