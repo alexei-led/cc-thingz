@@ -1,6 +1,6 @@
 {
   "name": "go-dev",
-  "version": "4.10.0",
+  "version": "4.10.1",
   "description": "Idiomatic Go development with stdlib-first patterns",
   "author": {
     "name": "Alexei Ledenev",

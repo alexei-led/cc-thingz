@@ -8,6 +8,8 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [4.10.1] - 2026-06-01
+
 ### Changed
 
 - Tightened `writing-go` instructions and Go references for leaner scope,
