@@ -1,168 +1,49 @@
 ---
 description:
   Idiomatic TypeScript development. Use when writing TypeScript code, Node.js
-  services, React apps, or discussing TS patterns. Emphasizes strict typing, composition,
-  and modern tooling (bun/vite). NOT for Go, Python, plain HTML/CSS/JS, or
-  server-rendered templates (use writing-web for those).
+  services, React apps, or TS design advice. Emphasizes strict typing, boundary
+  validation, composition, behavior tests, and project-configured tooling. NOT
+  for Go, Python, plain HTML/CSS/JS, or server-rendered templates.
 name: writing-typescript
 ---
 
-# TypeScript Development (5.x)
+# TypeScript Development
 
-## Critical Output Rules
+## Scope
 
-- State strict TypeScript choices explicitly: `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, no `any` by default, and `unknown` for untrusted input.
-- Validate untrusted API/JSON responses at the boundary before returning typed data.
-- Favor composition and small functions/hooks over large classes, global state, or mixed concerns.
-- Handle async errors explicitly with `Result`/discriminated unions or typed thrown errors at boundaries.
-- Always mention behavior tests for success and failure paths. For React, include component or user-behavior tests for loading, success, error, and validation states.
-- Include verification commands when code changes: `bunx tsc --noEmit`, `bun test`, and lint/format commands when configured.
-- Keep dependencies minimal; add schema/form libraries only when real complexity beats a small type guard or helper.
+- Use for `.ts` and `.tsx`, Node.js services, React apps, typed APIs, and TypeScript design advice.
+- Do not use for Go, Python, plain HTML/CSS/JS, or server-rendered templates.
+- Follow the repository's TypeScript version, tsconfig, package manager, framework, test runner, and lint rules.
+- Do not add dependencies or switch frameworks unless the project already uses them or the user approves.
+
+## Required Reads
+
+- Read `references/principles.md` before editing, generating, or reviewing TypeScript.
+- Read `references/patterns.md` for data modeling, validation, async flow, and module boundaries.
+- Read `references/react.md` for React components, hooks, state, forms, and performance.
+- Read `references/testing.md` before adding or changing TypeScript tests.
+
+## Defaults
+
+- Preserve strict typing. If creating config, enable `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `useUnknownInCatchVariables`, `noImplicitOverride`, `noImplicitReturns`, and `noFallthroughCasesInSwitch`.
+- Use `unknown` for untrusted input. Avoid `any`; isolate it only for unavoidable interop.
+- Validate API, JSON, env, storage, and form data at the boundary before typed use.
+- Use discriminated unions for variants, async state, and domain states.
+- Use guard clauses and focused helpers. Avoid deep nesting, global state, and mixed concerns.
+- Model recoverable errors explicitly with unions or `Result`. Throw typed/custom errors only at boundaries where the project already does.
+- Prefer composition and dependency injection over inheritance, singletons, and hidden module state.
+- Avoid unsafe casts, non-null assertions, broad index signatures, enum-heavy app code, and boolean-flag state.
+
+## Testing and Verification
+
+- For behavior changes, include success and failure tests. For React, cover loading, success, error, validation, and user interaction states when affected.
+- Run the project's configured typecheck, tests, lint, and format checks for the changed package or workspace.
+- Report checks run, failures, and unchecked risks. Do not claim success without a clean check or an explicit reason it was skipped.
+
+## Failure Handling
+
+- If project root is unclear, identify the nearest `package.json` and `tsconfig.json`; in monorepos, state the selected package.
+- If strict compiler options are absent, do not silently weaken new code. State the gap and keep the change locally type-safe.
+- If validation needs a schema/form library not already used, ask before adding it; otherwise use a narrow type guard.
+- If typecheck or tests fail, quote the failing line, state the cause, and fix the type/model boundary before widening types.
 - Do not run destructive shell commands. For broad or risky changes, state the risk and ask before acting.
-
-## Core Philosophy
-
-Strict-mode-always, interface-vs-type, discriminated unions, flat control flow, the Result-type error pattern, the no-destructive-commands safety rule, and the post-generation verification loop are in [references/principles.md](references/principles.md) — read it before generating code.
-
-## Quick Patterns
-
-### Discriminated Unions (Not Boolean Flags)
-
-```typescript
-// GOOD: discriminated union for state
-type LoadState<T> =
-  | { status: "idle" }
-  | { status: "loading" }
-  | { status: "success"; data: T }
-  | { status: "error"; error: string };
-
-// BAD: boolean flags
-type LoadState = {
-  isLoading: boolean;
-  isError: boolean;
-  data: T | null;
-  error: string | null;
-};
-```
-
-### Flat Control Flow (No Nesting)
-
-```typescript
-// GOOD: guard clauses, early returns
-function process(user: User | null): Result<Data> {
-  if (!user) return err("no user");
-  if (!user.isActive) return err("inactive");
-  if (user.role !== "admin") return err("not admin");
-  return ok(doWork(user)); // happy path at end
-}
-
-// BAD: nested conditions
-function process(user: User | null): Result<Data> {
-  if (user) {
-    if (user.isActive) {
-      if (user.role === "admin") {
-        return ok(doWork(user));
-      }
-    }
-  }
-  return err("invalid");
-}
-```
-
-### Type Guards
-
-```typescript
-function isUser(value: unknown): value is User {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "id" in value &&
-    "name" in value
-  );
-}
-
-// Predicate helper for flat code
-const isActiveAdmin = (u: User | null): u is User & { role: "admin" } =>
-  !!u && u.isActive && u.role === "admin";
-```
-
-### Result Type
-
-```typescript
-type Result<T, E = Error> = { ok: true; value: T } | { ok: false; error: E };
-
-const ok = <T>(value: T): Result<T, never> => ({ ok: true, value });
-const err = <E>(error: E): Result<never, E> => ({ ok: false, error });
-
-async function fetchUser(
-  id: string,
-): Promise<Result<User, "not-found" | "network">> {
-  try {
-    const res = await fetch(`/users/${id}`);
-    if (res.status === 404) return err("not-found");
-    if (!res.ok) return err("network");
-    return ok(await res.json());
-  } catch {
-    return err("network");
-  }
-}
-```
-
-### Exhaustive Switch
-
-```typescript
-function area(shape: Shape): number {
-  switch (shape.kind) {
-    case "circle":
-      return Math.PI * shape.radius ** 2;
-    case "square":
-      return shape.size ** 2;
-    case "rect":
-      return shape.width * shape.height;
-    default: {
-      const _exhaustive: never = shape; // Error if variant missed
-      return _exhaustive;
-    }
-  }
-}
-```
-
-## tsconfig.json Essentials
-
-```json
-{
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
-    "noImplicitReturns": true,
-    "noImplicitOverride": true,
-    "isolatedModules": true
-  }
-}
-```
-
-## References
-
-- [principles.md](references/principles.md) - Core philosophy, safety rule, and verification loop (read before generating code)
-- [PATTERNS.md](references/PATTERNS.md) - Code patterns and style
-- [REACT.md](references/REACT.md) - React component patterns
-- [TESTING.md](references/TESTING.md) - Testing with vitest
-
-## Commands
-
-```bash
-bun install              # Install deps
-bun run build            # Build
-bun test                 # Test
-bun run lint             # Lint
-bun run format           # Format
-```
-
-## Failure Cases
-
-- **No tsconfig.json found**: run `find . -name 'tsconfig.json'` to locate the project root before generating code; do not assume a single root.
-- **`tsc --noEmit` or test failure after generation**: quote the failing line, state the cause, show the exact fix. For `Type 'X' is not assignable to type 'Y'` errors, check discriminated union tags and generic constraints before widening types.

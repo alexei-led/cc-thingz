@@ -1,54 +1,46 @@
-# TypeScript principles and verification
+# TypeScript Principles
 
-Read this before generating TypeScript code. Covers strict-typing, control-flow
-and error-handling principles, the no-destructive-commands safety rule, and the
-post-generation verification loop.
+Read this before TypeScript work. Apply project conventions first, but do not weaken type safety to fit unsafe code without approval.
 
-## Safety
+## Strictness
 
-Do not run destructive shell commands. For broad or risky changes, state the risk and ask before acting.
+- Treat compiler errors as design feedback, not noise to bypass.
+- Keep or add strict options when creating config: `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `useUnknownInCatchVariables`, `noImplicitOverride`, `noImplicitReturns`, `noFallthroughCasesInSwitch`.
+- Avoid `any`. Use `unknown` at boundaries and narrow before use.
+- Avoid `as`, `!`, and broad index signatures unless a runtime check or external type gap justifies them.
+- Prefer `satisfies` and `as const` for narrow literal data.
 
-## Core Philosophy
+## Types and Data Models
 
-### Strict Mode Always
+- Use interfaces for public, extensible object contracts when that matches project style.
+- Use type aliases for unions, mapped types, utility types, and closed variants.
+- Use discriminated unions for domain states, async states, and variants.
+- Use exhaustive switches with a `never` check for closed unions.
+- Prefer named domain values over repeated string and number literals.
 
-- Enable all strict checks in tsconfig
-- Treat `any` as a bug—use `unknown` for untrusted input
-- noUncheckedIndexedAccess, exactOptionalPropertyTypes
+## Boundaries
 
-### Interface vs Type
+- Validate untrusted data before typed use: HTTP responses, request bodies, local storage, env vars, CLI args, form data, and third-party SDK output.
+- Use the project's existing schema library when present. Otherwise write small type guards.
+- Keep parsing and validation close to I/O. Return typed domain data from the boundary.
+- Do not return `await response.json()` as a trusted type without validation.
 
-- interface for object shapes (extensible, mergeable)
-- type for unions, intersections, mapped types
-- interface for React props and public APIs
+## Control Flow and Errors
 
-### Discriminated Unions
+- Use guard clauses and early returns to keep happy paths flat.
+- Keep functions focused; split mixed parsing, I/O, domain logic, and rendering.
+- Use `Result` or discriminated unions for recoverable domain and I/O failures.
+- Throw typed/custom errors at process, framework, or API boundaries when that matches the codebase.
+- Preserve cancellation, timeouts, and cleanup for async work that can outlive the caller.
 
-- Literal `kind`/`type` tag for variants
-- Exhaustive switch with never check
-- Model states as unions, not boolean flags
+## Dependencies
 
-### Flat Control Flow
+- Prefer standard TypeScript, platform APIs, and existing project utilities.
+- Add schema, form, query, state, or test libraries only when existing project use or real complexity justifies them.
+- Do not introduce a library just to avoid writing a narrow helper.
 
-- Guard clauses with early returns
-- Type guards and predicate helpers
-- Maximum 2 levels of nesting
+## Verification
 
-### Result Type Pattern
-
-- Result<T, E> for explicit error handling
-- Discriminated union for success/failure
-- Custom Error subclasses for instanceof
-
-## Verify Generated Code
-
-After generating code, always verify it compiles, tests pass, and lint runs when configured:
-
-```bash
-bunx tsc --noEmit
-bun test
-bun run lint
-bun run format --check
-```
-
-Use the project's configured commands if different.
+- Use the package's configured scripts and workspace filters.
+- Verify typecheck, tests, lint, and formatting for the touched package when configured.
+- For failures, quote the exact diagnostic, fix the model or boundary, and rerun the relevant check.
