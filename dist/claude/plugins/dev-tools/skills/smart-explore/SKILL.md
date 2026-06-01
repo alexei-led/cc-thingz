@@ -4,16 +4,14 @@ allowed-tools:
 - mcp__plugin_claude-mem_mcp-search__smart_outline
 - mcp__plugin_claude-mem_mcp-search__smart_unfold
 - Bash(command -v *)
-- Bash(ast-grep *)
-- Bash(sg *)
 - Bash(rg *)
 - Bash(fd *)
 context: fork
 description: Token-efficient local code navigation and extraction. Use when exploring
   a known file or bounded module outline, finding a known symbol in a scoped area,
   or extracting exact function/type bodies with smart_outline, smart_search, and smart_unfold.
-  NOT for repo-wide structural pattern search, "how does X work", trace-flow, zoom-out
-  maps, or ast-grep rule searches — use searching-code.
+  NOT for repo-wide structural pattern search, architecture or trace-flow questions,
+  ast-grep/codegraph/GitNexus evidence, or broad caller/implementation maps.
 name: smart-explore
 user-invocable: false
 ---
@@ -21,7 +19,7 @@ user-invocable: false
 # Smart Explore: Local Code Navigation
 
 Use cheap structure before reading large files. The goal is precise outline and
-extraction from a known area, not repo-wide search theater.
+extraction from a known area, not repo-wide search.
 
 ## Boundary
 
@@ -31,14 +29,18 @@ Use this skill for:
 - known-module outlines
 - targeted symbol lookup in a bounded scope
 - exact function, class, method, or type extraction
-- read-next ranges after a code map already narrowed the area
+- read-next ranges after another search/review tool narrowed the area
 
 Do not use this skill for:
 
-- repo-wide structural pattern search — use `searching-code`
-- ast-grep rule authoring or code-shape queries — use `searching-code`
-- semantic flow, architecture, or "how does X work" — use `searching-code`
-- broad "find all implementations/callers in the repo" — use `searching-code`
+- repo-wide structural pattern search
+- ast-grep rule authoring or code-shape queries
+- architecture, semantic flow, or "how does X work?" questions
+- broad "find all implementations/callers in the repo" requests
+- codegraph, GitNexus, dependency, churn, or blast-radius evidence
+
+For those, use a dedicated repo-wide search or architecture-analysis workflow.
+Return to smart-explore only after the scope is a known file, module, or symbol.
 
 ## Tool Order
 
@@ -56,12 +58,13 @@ Do not use this skill for:
 - Specific function/type body — `smart_unfold`.
 - Simple string fallback — `rg`.
 - Missing file path — `fd`.
-- Repo-wide search or code-shape matching — switch to `searching-code`.
+- Repo-wide maps, code-shape matching, callers/callees, or architecture evidence —
+  switch to a dedicated repo-wide workflow.
 
 ## Progressive Disclosure Workflow
 
 1. Confirm the scope: known file, known module, or known symbol. If the scope is
-   repo-wide, switch to `searching-code`.
+   repo-wide, stop and use a dedicated repo-wide workflow.
 2. Outline first when a target file is known. `smart_outline` shows every
    function/class/interface with bodies collapsed.
 3. Search symbols only after narrowing the area. `smart_search` finds likely
@@ -76,16 +79,16 @@ Do not use this skill for:
 - Complete function bodies instead of chopped line ranges.
 - Symbol lists without full-file reads.
 - Predictable token cost through outline → search → unfold.
-- Clean handoff: use `searching-code` first for repo maps, then use this skill
-  to extract the few symbols worth reading.
+- Clean handoff from repo-wide search: extract only the few symbols worth reading.
 
 ## Failure Handling
 
 - claude-mem plugin unavailable: use `rg`/`fd` for bounded lookup and Read for
   targeted files; note the token cost difference.
-- Scope is repo-wide or structural: switch to `searching-code` instead of
-  forcing local navigation into a search job.
+- Scope is repo-wide, structural, architectural, graph-shaped, or historical:
+  switch to a dedicated repo-wide workflow instead of forcing local navigation
+  into a search job.
 - `smart_outline` returns no symbols: skip to targeted Read and report the file
   type.
-- `smart_search` returns too many matches: narrow the term, add a path filter,
-  or switch to `searching-code` if the desired answer is repo-wide.
+- `smart_search` returns too many matches: narrow the term, add a path filter, or
+  switch to a dedicated repo-wide workflow if the desired answer is repo-wide.

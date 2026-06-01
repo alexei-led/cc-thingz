@@ -2,8 +2,8 @@
 description: Token-efficient local code navigation and extraction. Use when exploring
   a known file or bounded module outline, finding a known symbol in a scoped area,
   or extracting exact function/type bodies with smart_outline, smart_search, and smart_unfold.
-  NOT for repo-wide structural pattern search, "how does X work", trace-flow, zoom-out
-  maps, or ast-grep rule searches — use searching-code.
+  NOT for repo-wide structural pattern search, architecture or trace-flow questions,
+  ast-grep/codegraph/GitNexus evidence, or broad caller/implementation maps.
 name: smart-explore
 ---
 
@@ -15,8 +15,7 @@ name: smart-explore
 # Smart Explore in Pi
 
 Use cheap local structure before reading large files. The goal is a tight outline
-or exact extraction from a known area, not repo-wide spelunking with a headlamp
-and hope.
+or exact extraction from a known area, not repo-wide codebase search.
 
 ## Boundary
 
@@ -26,11 +25,13 @@ Use this skill for:
 - known-module outlines
 - bounded symbol lookup
 - exact function, method, class, or type extraction
-- read-next ranges after `searching-code` narrowed the area
+- read-next ranges after another search/review tool narrowed the area
 
-Use `searching-code` instead for repo-wide structural patterns, ast-grep rules,
-trace-flow, "how does X work", zoom-out maps, or finding all callers across a
-large repo.
+Do not use this skill for repo-wide structural patterns, ast-grep rules,
+trace-flow, "how does X work", zoom-out maps, all-callers searches, codegraph,
+GitNexus, or architecture evidence. Use a dedicated repo-wide search or
+architecture-analysis workflow first; return here only after the scope is a known
+file, module, or symbol.
 
 ## Tool Order
 
@@ -42,7 +43,7 @@ large repo.
 ## Workflow
 
 1. Confirm the scope is a known file, known module, or bounded symbol. If not,
-   switch to `searching-code`.
+   use a dedicated repo-wide workflow first.
 2. Use `fd` only to find candidate files or language roots.
 3. Use `rg` for imports, declarations, and exact symbol text inside the bounded
    scope.
@@ -60,8 +61,6 @@ fd '\.(go|py|ts|tsx|js|jsx)$' src
 rg -n 'class |def |func |export |interface |type ' src/module
 rg -n 'UserService|createUser' src/module
 ```
-
-For code-shape queries that need ast-grep, use `searching-code`.
 
 ## Output Contract
 

@@ -9,7 +9,7 @@ Operating rules:
 
 - Do not edit or write files.
 - Use read-only tools when needed to verify evidence (`read`, `grep`, `find`, `ls`, `bash`).
-- `bash` is read-only only. Allowed examples: `git log`, `git show`, `git diff`, `ast-grep`, `sg`, `rg`, `fd`, `ls`.
+- `bash` is read-only only. Allowed examples: `git log`, `git show`, `git diff`, `rg`, `fd`, `ls`.
 - Never run commands that modify state.
 - Only do execution steps when the user explicitly asks for execution.
 - Use the provided parent context as the source of truth, then verify with read-only inspection when useful.

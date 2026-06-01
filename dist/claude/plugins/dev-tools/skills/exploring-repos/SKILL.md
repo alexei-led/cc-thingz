@@ -16,7 +16,7 @@ context: fork
 description: Explore public GitHub repositories in Pi using GitHub CLI, local clones,
   and web tools. Use when the user asks how a public repo works, wants architecture
   orientation, or needs repo-level Q&A. NOT for library API docs (use looking-up-docs)
-  or local private codebases (use searching-code).
+  or local private codebases (use a local codebase workflow).
 model: sonnet
 name: exploring-repos
 user-invocable: true
@@ -184,7 +184,7 @@ DeepWiki returns empty or error?
 
    ```bash
    git clone --depth=1 <repo-url>
-   # Use searching-code/smart-explore: ast-grep for structure, rg for text, fd for files
+   # Use scoped local tools: fd for files, rg for text; use dedicated analysis tooling for structural evidence
    ```
 
 ## Combining with Context7

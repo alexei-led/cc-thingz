@@ -1,15 +1,15 @@
 ---
-description: Code review covering security, quality, tests, implementation, documentation,
-  and architecture / module-depth. Use when the user asks to review code, check changes,
-  audit a PR or diff, find refactoring opportunities, or look for shallow modules
-  and over-abstraction. NOT for fixing the issues found (use fixing-code) or applying
-  refactors (use refactoring-code).
+description: Code review covering security, correctness, quality, tests, implementation,
+  and documentation. Use when the user asks to review code, check changes, audit a
+  PR or diff, or find line-level refactoring opportunities. NOT for repo-wide architecture
+  review, codebase analysis, fixing issues (use fixing-code), or applying refactors
+  (use refactoring-code).
 name: reviewing-code
 ---
 
 # Code Review
 
-Review changed code for security, quality, test coverage, and architecture. Ground every finding in concrete evidence: a `file:line` reference or tool output.
+Review changed code for security, correctness, test coverage, maintainability, and documentation. Ground every finding in concrete evidence: a `file:line` reference or tool output.
 
 If a task-tracking facility is available, track these phases as tasks.
 
@@ -21,7 +21,7 @@ This skill produces findings, not edits. It owns the tiered-findings output cont
 
 1. Determine review scope.
 2. Detect languages and load the matching references.
-3. Walk the review dimensions across the scope. Use ast-grep before `rg` for structural code-pattern checks when Bash is available; use `rg` for exact text.
+3. Walk the review dimensions across the scope.
 4. Aggregate findings by severity and report.
 
 ## Determine scope
@@ -50,23 +50,19 @@ Mixed languages: load each matching reference. Unknown or unsupported language: 
 Walk every dimension across the scope. For a standard review, cover the security and correctness dimensions; for a thorough review, cover all six. If the runtime supports parallel sub-tasks and the scope is large, the orchestrator may fan the dimensions out, but the rubric is identical either way.
 
 - Logic, security, OWASP, race conditions, unchecked errors, resource leaks
-- Patterns, conventions, stdlib usage, error handling (the language reference sharpens this)
+- Patterns, conventions, stdlib usage, error handling
 - Test coverage, edge cases, mocking discipline
-- Requirements match, dependency injection, edge cases
-- Comments, docstrings, API docs (ARIA labels for web)
-- Over-abstraction, dead code, pass-throughs
+- Requirements match, dependency injection, boundary inputs
+- Comments, docstrings, API docs, ARIA labels for web
+- Maintainability, dead code, confusing indirection, pass-through wrappers
 
 ## Review rules
 
 - Cite concrete `file:line` evidence or tool output for every finding. No evidence, no finding.
 - Findings include severity and a concrete fix.
 - For security findings, remind the user: keep private code local; do not paste private diffs into web tools. Use web only for external facts (CVE, library docs); cite separately.
-- Read relevant `CONTEXT.md`, `CONTEXT-MAP.md`, and `docs/adr/` before naming architecture findings. If a candidate contradicts an ADR, flag only when the friction justifies reopening the decision.
 - Ask one clarifying question at a time; do not batch.
-
-## Architecture vocabulary
-
-When the user asks for architecture focus, use the shared module-depth terms (module, interface, seam, adapter, depth, leverage, locality), the deletion test, and the seam rule from [references/architecture-vocab.md](references/architecture-vocab.md). Findings must use that vocabulary.
+- Keep the review scoped to changed code or the user-provided file list. Do not expand into repo-wide architecture analysis.
 
 ## Historical context (optional)
 
@@ -91,10 +87,6 @@ If cross-session memory tooling is available, query for prior observations on th
 ### Suggestions (consider)
 
 - `file:line` — improvement.
-
-### Architecture opportunities (if requested)
-
-- Candidate: `module`. Problem: shallow / pass-through / fake seam. Deepening move: <how>. Test benefit: <how>.
 
 ### Summary
 

@@ -11,10 +11,10 @@ Read, Grep, Glob, LS only. No Bash, no Edit, no Write — you cannot run `git di
 ## Skill routing
 
 - security / quality review → `reviewing-code`
-- over-abstraction / architecture → `improving-codebase-architecture`
+- over-abstraction in changed code → `reviewing-code` maintainability focus
 - test design → `improving-tests`
 - documentation → `documenting-code`
-- locate code → `searching-code`
+- locate code → built-in `Grep` / `Glob` / `Read`
 - planning → `spec` or `planning:make`
 - idiom critique → `writing-<lang>` (read-only)
 

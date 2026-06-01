@@ -79,34 +79,19 @@ if echo "$PROMPT_LOWER" | grep -qE 'worktree|git\s*worktree|isolat.*(work|branch
 	skills+="using-git-worktrees "
 fi
 
-# searching-code: AST-first codebase search + zoom-out mapping via WarpGrep
-# Triggers: structural code search, code flow, tracing, cross-file exploration, zoom-out requests, large repos
-# "how does X work" only for THIS codebase — external libs go to looking-up-docs/exploring-repos
-if echo "$PROMPT_LOWER" | grep -qE 'ast[[:space:]-]?grep|\bsg\b.*(scan|search|run)|structural\s*(code\s*)?(search|grep|pattern|query)|ast\s*(search|pattern|query)|code\s*shape|language\s*construct|find\s*all.*(implementation|usage|call|reference|function|method|class|handler)|find.*(async\s*functions?|function\s*calls?|call\s*sites?|react\s*components?|hooks?\s*inside|without\s*(try|catch|error)|missing\s*(try|catch|error))|how\s*does.*(this|our|the\s*(code|project|repo|module|function|class|method)).*work|trace.*(flow|data|request|call)|understand.*(codebase|code|flow|architecture)|cross[[:space:]-]?file|multi[[:space:]-]?hop|where.*implemented|explore.*(codebase|code)|large\s*repo|warpgrep|intelligent\s*search|reason.*about.*code|zoom\s*out|go\s*up\s*a\s*layer|map\s*(this|the)?\s*(area|module|code|flow)|caller\s*map|module\s*map'; then
-	skills+="searching-code "
-fi
-
 # refactoring-code: Fast batch refactoring via MorphLLM edit_file
 # Triggers: Multi-file batch changes, style updates everywhere, complex prompt → many changes
 if echo "$PROMPT_LOWER" | grep -qE 'refactor.*(across|multiple|batch|all|every)|batch.*(edit|rename|update|change)|rename.*(across|everywhere|all|every)|update.*(pattern|import|style).*everywhere|(multi[[:space:]-]?file|cross[[:space:]-]?file).*(refactor|update|change)|morphllm|edit_file|5\+?\s*files|same\s*pattern.*files|style.*every'; then
 	skills+="refactoring-code "
 fi
 
-# improve-codebase-architecture: Find deepening opportunities, module/seam vocab
-# Triggers: improve architecture, deepen modules, find architecture opportunities
-# NOT for line-level cleanup or PR review (use reviewing-code)
-if echo "$PROMPT_LOWER" | grep -qE '\bimprove\s*(the|my|this)?\s*(codebase\s*)?architecture\b|\bdeepen\s*(the|my)?\s*(modules?|architecture|abstractions?)\b|\bfind\s*(architecture|deepening|module)\s*opportunities\b|\bmake\s*(this|the|my)?\s*codebase\s*(more\s*)?(testable|navigable|deep)\b|\bconsolidate\s*(tightly[[:space:]-]?)?(coupled\s*)?modules?\b'; then
-	skills+="improve-codebase-architecture "
-fi
-
 # reviewing-code: Multi-agent code review for security, quality, line-level concerns
 # Triggers: review code, check code, review changes, review PR
-# NOT for architecture deepening (use improve-codebase-architecture)
+# NOT for architecture deepening
 # NOT for config/setup/skills/agents/hooks review (use reviewing-cc-config)
-if echo "$PROMPT_LOWER" | grep -qE '\breview\b.*\b(code|changes|this|my|the)\b|\bcode\s*review\b|\bcheck\s*(this|my|the)?\s*code\b|\bdeep\s*(code\s*)?review\b|\bfeedback\s*(on)?\s*(my|the|this)?\s*code\b|review\s*(my|the|these)?\s*(changes|implementation|pr)\b|critique\s*(my|the|this)?\s*code|find\s*refactoring\s*opportunities|deep\s*module|shallow\s*module|seam|adapter\b|deletion\s*test'; then
-	# Exclude architecture-deepening — those go to improve-codebase-architecture
+if echo "$PROMPT_LOWER" | grep -qE '\breview\b.*\b(code|changes|this|my|the)\b|\bcode\s*review\b|\bcheck\s*(this|my|the)?\s*code\b|\bdeep\s*(code\s*)?review\b|\bfeedback\s*(on)?\s*(my|the|this)?\s*code\b|review\s*(my|the|these)?\s*(changes|implementation|pr)\b|critique\s*(my|the|this)?\s*code|find\s*line[[:space:]-]?level\s*refactoring\s*opportunities'; then
 	# Exclude config-review patterns — those go to reviewing-cc-config
-	if ! echo "$PROMPT_LOWER" | grep -qE '\b(config|configuration|setup|skills?|agents?|hooks?|claude\.?md|architecture\s*deepening|deepen\s*(module|architecture))\b'; then
+	if ! echo "$PROMPT_LOWER" | grep -qE '\b(config|configuration|setup|skills?|agents?|hooks?|claude\.?md)\b'; then
 		skills+="reviewing-code "
 	fi
 fi
@@ -164,9 +149,9 @@ if echo "$PROMPT_LOWER" | grep -qE '\bgrill\s*(me|this|the|my)\b|\bstress[[:spac
 	skills+="brainstorming-ideas "
 fi
 
-# using-modern-cli: Modern CLI tools for better performance
-# Triggers: ast-grep/rg/fd/cat alternatives, bash scripts, command optimization
-if echo "$PROMPT_LOWER" | grep -qE 'ast[[:space:]-]?grep|\bsg\b.*(scan|search|run)|structural\s*(code\s*)?(search|grep)|\bripgrep\b|\brg\b.*search|\bfd\b.*find|\bbat\b.*file|\bsd\b.*replace|\beza\b|\bdust\b|\bprocs\b|\bmodern\s*cli\b|better\s*than\s*(grep|find|cat|sed|ls)|replace.*(grep|find|cat|sed|ls)|faster.*(search|find)|\.gitignore.*respect|bash\s*script|command.*chain|optimize.*(command|cli|shell)'; then
+# using-modern-cli: Modern shell/file tools for better ergonomics
+# Triggers: legacy CLI replacement, bash scripts, command optimization
+if echo "$PROMPT_LOWER" | grep -qE '\bripgrep\b|\brg\b.*(text|literal|regex|search)|\bfd\b.*find|\bbat\b.*file|\bsd\b.*replace|\beza\b|\bdust\b|\bprocs\b|\bdelta\b.*diff|\bmodern\s*cli\b|better\s*than\s*(grep|find|cat|sed|ls|du|ps|diff)|replace.*(grep|find|cat|sed|ls|du|ps|diff)|faster.*(text\s*search|file\s*find)|\.gitignore.*respect|bash\s*script|command.*chain|optimize.*(command|cli|shell)'; then
 	skills+="using-modern-cli "
 fi
 
@@ -267,7 +252,7 @@ fi
 
 # smart-explore: Known-file/symbol navigation via claude-mem
 # Triggers: file outline, known-symbol extraction, targeted AST navigation
-# NOT for repo-wide maps/flows/structural search — those go to searching-code
+# NOT for repo-wide maps/flows/structural search
 if echo "$PROMPT_LOWER" | grep -qE '\bfile\s*structure\b|\boutline\b.*\b(file|class|module)\b|\bwhat.?s\s*in\s*this\s*file\b|\bshow\s*(me\s*)?(the\s*)?file\s*structure\b|\b(show|extract|unfold)\s*(the\s*)?(function|method|class|type|symbol)\b|\b(function|method|class|type|symbol)\s*(body|source|definition)\b|\bsmart[[:space:]_-]?explore\b|\bsmart_(outline|search|unfold)\b'; then
 	skills+="smart-explore "
 fi
@@ -279,8 +264,8 @@ if echo "$PROMPT_LOWER" | grep -qE '\b(lint|audit|review|score|check)\s+(the\s+|
 fi
 
 # exploring-repos: Explore public GitHub repos via DeepWiki
-# Triggers: repo architecture, how does repo work, deepwiki, explore repo, codebase patterns
-if echo "$PROMPT_LOWER" | grep -qE '\bdeepwiki\b|\bexplore\s*(the\s*)?(repo|repository|codebase|project)\b|\brepo\s*(architecture|structure|design|patterns?)\b|\bhow\s*does\s*\S+/\S+\s*work\b|\bunderstand\s*(the\s*)?(repo|repository|codebase|project)\b|\bcodebase\s*(overview|architecture|structure|understanding)\b|\bwiki\s*(for|of|about)\s*(the\s*)?(repo|repository)\b|\bexplore\s*\S+/\S+\b|\bdesign\s*patterns?\s*(in|of|used\s*by)\b|\bhow\s*(is|are)\s*\S+\s*(structured|organized|designed|architected)\b'; then
+# Triggers: explicit DeepWiki, GitHub URL, or owner/name public repo requests
+if echo "$PROMPT_LOWER" | grep -qE '\bdeepwiki\b|github\.com/[a-z0-9_.-]+/[a-z0-9_.-]+|\b(public\s*)?(github\s*)?(repo|repository)\s+[a-z0-9_.-]+/[a-z0-9_.-]+\b|\b(how\s*does|explore|understand|wiki\s*(for|of|about))\s+[a-z0-9_.-]+/[a-z0-9_.-]+\b'; then
 	skills+="exploring-repos "
 fi
 

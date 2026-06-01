@@ -1,8 +1,8 @@
 ---
 description: Batch refactoring via MorphLLM edit_file. Use for "refactor across files",
-  "batch rename", "update pattern everywhere", large files (500+ lines), 5+ edits
-  in same file, or applying an approved architecture-deepening refactor. NOT for single-file
-  targeted edits (use built-in Edit) or code review (use reviewing-code).
+  "batch rename", "update pattern everywhere", large files (500+ lines), or 5+ edits
+  in the same file. NOT for repo-wide architecture design/review, codebase analysis,
+  single-file targeted edits (use built-in Edit), or code review (use reviewing-code).
 name: refactoring-code
 ---
 
@@ -26,7 +26,7 @@ it is a feature wearing a fake mustache.
 ## Workflow
 
 1. Define the refactor goal and non-goals.
-2. Map all affected sites before editing: `ast-grep` / `sg` for structural code patterns, `rg` for exact text, `fd` for files.
+2. Map all affected sites before editing with available file/text search tools.
 3. Read representative files and tests.
 4. Add characterization tests when behavior is under-specified.
 5. Apply one coherent batch with `edit` or `write`.
@@ -40,8 +40,8 @@ Good batches:
 
 - rename one public symbol and all callers
 - move one function/module with tests unchanged
-- extract one adapter or seam with existing behavior preserved
 - remove one duplicate implementation after tests prove equivalence
+- update one repeated pattern across files
 
 Bad batches:
 

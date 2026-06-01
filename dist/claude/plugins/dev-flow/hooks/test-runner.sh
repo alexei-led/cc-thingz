@@ -18,7 +18,7 @@ TEST_RUNNER_DIFF_FALLBACK_LIMIT="${TEST_RUNNER_DIFF_FALLBACK_LIMIT:-50}"
 TEST_RUNNER_FULL="${TEST_RUNNER_FULL:-0}"
 TEST_RUNNER_DEBUG="${TEST_RUNNER_DEBUG:-0}"
 TEST_RUNNER_COMPACT_LINES=120
-HOOK_PROJECT_FALLBACK="${HOOK_PROJECT_FALLBACK:-1}"
+HOOK_PROJECT_FALLBACK="${HOOK_PROJECT_FALLBACK:-0}"
 TESTS_RAN=0
 
 log_debug() { [[ "$TEST_RUNNER_DEBUG" == "1" ]] && echo -e "${CYAN}[DEBUG]${NC} $*" >&2; }
@@ -156,10 +156,6 @@ maybe_cd_to_hook_cwd() {
 	fi
 }
 
-repo_root() {
-	git rev-parse --show-toplevel 2>/dev/null || pwd
-}
-
 hook_session_id() {
 	local sid
 	sid=$(json_field session_id || true)
@@ -258,64 +254,6 @@ collect_focus_files() {
 
 unique_lines() {
 	sort -u | sed '/^$/d'
-}
-
-make_target_for_file() {
-	local file="$1"
-	local root dir target
-	root=$(repo_root)
-	dir=$(dirname "$file")
-	while [[ -n "$dir" && "$dir" != "." && "$dir" != "/" ]]; do
-		if [[ -f "$dir/Makefile" ]]; then
-			if [[ "$(cd "$dir" 2>/dev/null && pwd)" == "$root" ]]; then
-				return 1
-			fi
-			for target in test tests check verify; do
-				if grep -qE "^[[:space:]]*${target}[[:space:]]*:" "$dir/Makefile" 2>/dev/null; then
-					printf '%s|%s\n' "$dir" "$target"
-					return 0
-				fi
-			done
-		fi
-		dir=$(dirname "$dir")
-	done
-	return 1
-}
-
-MAKE_ROOTS=()
-run_make_targets() {
-	project_fallback_enabled || return 0
-	local focus_files=("$@")
-	local targets=()
-	local entry file dir target tmp
-	for file in "${focus_files[@]}"; do
-		entry=$(make_target_for_file "$file" || true)
-		[[ -n "$entry" ]] && targets+=("$entry")
-	done
-	[[ "${#targets[@]}" -gt 0 ]] || return 0
-	tmp=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-test-runner.%s' "$$")
-	printf '%s\n' "${targets[@]}" | unique_lines >"$tmp"
-	local status=0
-	while IFS= read -r entry; do
-		[[ -n "$entry" ]] || continue
-		dir=${entry%|*}
-		target=${entry##*|}
-		MAKE_ROOTS+=("$dir")
-		run_test_compact "make $target" make -C "$dir" "$target" || status=2
-	done <"$tmp"
-	rm -f "$tmp"
-	return "$status"
-}
-
-under_make_root() {
-	local file="$1"
-	local root
-	for root in "${MAKE_ROOTS[@]}"; do
-		case "$file" in
-		"$root" | "$root"/*) return 0 ;;
-		esac
-	done
-	return 1
 }
 
 run_package_test_script() {
@@ -616,7 +554,6 @@ run_python_tests() {
 	local file base tmp runner=()
 	for file in "${focus_files[@]}"; do
 		[[ "$file" == *.py ]] || continue
-		under_make_root "$file" && continue
 		base=$(basename "$file")
 		# Only genuine pytest test modules (test_*.py / *_test.py) are valid
 		# targets. Support files under a test dir — conftest.py, __init__.py,
@@ -654,7 +591,6 @@ run_go_tests() {
 	local file dir tmp pkg
 	for file in "${focus_files[@]}"; do
 		[[ "$file" == *.go ]] || continue
-		under_make_root "$file" && continue
 		dir=$(dirname "$file")
 		[[ "$dir" == "." ]] && dirs+=(".") || dirs+=("./$dir")
 	done
@@ -742,7 +678,6 @@ run_javascript_tests() {
 		*.js | *.jsx | *.ts | *.tsx | *.mjs | *.cjs | *.mts | *.cts) ;;
 		*) continue ;;
 		esac
-		under_make_root "$file" && continue
 		if is_js_test_file "$file" && js_file_has_tests "$file"; then
 			tests+=("$file")
 		else
@@ -833,7 +768,6 @@ run_shell_tests() {
 		case "$file" in
 		*.bats) tests+=("$file") ;;
 		*.sh | *.bash)
-			under_make_root "$file" && continue
 			while IFS= read -r candidate; do
 				[[ -n "$candidate" ]] && tests+=("$candidate")
 			done < <(find_shell_tests_for_source "$file")
@@ -957,7 +891,6 @@ main() {
 
 	log_debug "Focus files: ${focus_files[*]}"
 	local status=0
-	run_make_targets "${focus_files[@]}" || status=2
 	run_python_tests "${focus_files[@]}" || status=2
 	run_go_tests "${focus_files[@]}" || status=2
 	run_javascript_tests "${focus_files[@]}" || status=2
