@@ -81,9 +81,9 @@ function useUser(userId: string): AsyncState<User> {
             : { status: "error", error: result.error },
         );
       })
-      .catch((error: unknown) => {
+      .catch(() => {
         if (controller.signal.aborted) return;
-        setState({ status: "error", error: toErrorMessage(error) });
+        setState({ status: "error", error: "network" });
       });
 
     return () => controller.abort();

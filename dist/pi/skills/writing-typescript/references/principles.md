@@ -30,7 +30,7 @@ Read this before TypeScript work. Apply project conventions first, but do not we
 - Use guard clauses and early returns to keep happy paths flat.
 - Keep functions focused; split mixed parsing, I/O, domain logic, and rendering.
 - Use `Result` or discriminated unions for recoverable domain and I/O failures.
-- Throw typed/custom errors at process, framework, or API boundaries when that matches the codebase.
+- Throw Error subclasses at process, framework, or API boundaries when that matches the codebase.
 - Preserve cancellation, timeouts, and cleanup for async work that can outlive the caller.
 
 ## Dependencies

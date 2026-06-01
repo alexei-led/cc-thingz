@@ -30,9 +30,9 @@ name: writing-typescript
 - Validate API, JSON, env, storage, and form data at the boundary before typed use.
 - Use discriminated unions for variants, async state, and domain states.
 - Use guard clauses and focused helpers. Avoid deep nesting, global state, and mixed concerns.
-- Model recoverable errors explicitly with unions or `Result`. Throw typed/custom errors only at boundaries where the project already does.
+- Model recoverable errors explicitly with unions or `Result`. Throw Error subclasses only at boundaries where the project already does.
 - Prefer composition and dependency injection over inheritance, singletons, and hidden module state.
-- Avoid unsafe casts, non-null assertions, broad index signatures, enum-heavy app code, and boolean-flag state.
+- Avoid unsafe casts, non-null assertions, broad index signatures, boolean-flag state, and new app enums where literal unions fit.
 
 ## Testing and Verification
 

@@ -1,23 +1,25 @@
 # TypeScript Patterns
 
-Use this reference for TypeScript data modeling, validation, async flow, and module boundaries. Keep examples aligned with the project's existing style.
+Use for data models, validation, async flow, and module boundaries.
 
 ## Strict Data Models
 
-- Prefer narrow domain types over raw strings and loose objects.
+- Prefer named domain types and constants over repeated raw strings.
+- Use branded primitives only when ID mixups are likely.
 - Use interfaces for extensible object contracts and public APIs when project style allows it.
 - Use type aliases for unions, mapped types, utility types, and closed variants.
 - Use `satisfies` for config maps so values stay narrow while keys are checked.
 
 ```typescript
+const ROLES = ["admin", "user", "guest"] as const;
+type Role = (typeof ROLES)[number];
+type UserId = string;
+
 interface User {
   id: UserId;
   email: string;
   role: Role;
 }
-
-type UserId = string & { readonly brand: unique symbol };
-type Role = "admin" | "user" | "guest";
 
 const routes = {
   home: { path: "/" },
@@ -103,19 +105,29 @@ const err = <E>(error: E): Err<E> => ({ ok: false, error });
 
 async function fetchUser(
   id: string,
+  options: { signal?: AbortSignal } = {},
 ): Promise<Result<User, "not-found" | "invalid-response" | "network">> {
+  let response: Response;
   try {
-    const response = await fetch(`/users/${encodeURIComponent(id)}`);
-    if (response.status === 404) return err("not-found");
-    if (!response.ok) return err("network");
-
-    const body: unknown = await response.json();
-    if (!isUser(body)) return err("invalid-response");
-
-    return ok(body);
+    response = await fetch(`/users/${encodeURIComponent(id)}`, {
+      signal: options.signal,
+    });
   } catch {
     return err("network");
   }
+
+  if (response.status === 404) return err("not-found");
+  if (!response.ok) return err("network");
+
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    return err("invalid-response");
+  }
+
+  if (!isUser(body)) return err("invalid-response");
+  return ok(body);
 }
 ```
 
