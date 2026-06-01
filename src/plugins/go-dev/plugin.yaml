@@ -1,5 +1,5 @@
 name: go-dev
-version: 4.9.6
+version: 4.10.0
 description: Idiomatic Go 1.25+ development with stdlib-first patterns
 skills:
   - writing-go

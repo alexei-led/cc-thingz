@@ -1,6 +1,6 @@
 {
   "name": "ts-dev",
-  "version": "4.9.6",
+  "version": "4.10.0",
   "description": "TypeScript with strict typing, React patterns, and modern tooling",
   "author": {
     "name": "Alexei Ledenev",

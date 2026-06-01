@@ -1,6 +1,6 @@
 {
   "name": "dev-flow",
-  "version": "4.9.6",
+  "version": "4.10.0",
   "description": "Code review, fixes, commits, and linting for development workflows",
   "author": {
     "name": "Alexei Ledenev",
