@@ -181,7 +181,7 @@ jobs:
             echo "::warning::Skill evals failed in advisory mode. See the job summary and artifact."
           fi
           exit 0
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: skill-eval-report
@@ -194,7 +194,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   ci-success:
