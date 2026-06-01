@@ -8,6 +8,14 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [4.11.0] - 2026-06-01
+
+### Fixed
+
+- Pi `ask_user_question`: selectable prompts now keep choices visible when the
+  question text is long, for both single-select and multi-select questions.
+- Plugin and marketplace versions bumped to 4.11.0.
+
 ## [4.10.1] - 2026-06-01
 
 ### Changed
