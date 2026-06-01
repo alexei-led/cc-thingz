@@ -16,17 +16,15 @@
       ]
     },
     {
-      "id": "architecture-deepening-safety",
-      "name": "architecture deepening safety",
-      "prompt": "A user asks: apply the approved architecture-deepening refactor to replace duplicated payment validation scattered across services with a deeper module. The change is high stakes. Describe the refactoring workflow.",
-      "expected_output": "The response uses architecture-deepening vocabulary, reads context/ADRs, applies deletion test and seam rules, previews high-stakes changes with dryRun before applying, preserves behavior, improves tests through the deeper interface, and verifies after changes.",
+      "id": "high-stakes-batch-refactor-preview",
+      "name": "high stakes batch refactor preview",
+      "prompt": "A user asks: replace duplicated payment validation scattered across services with a shared implementation. The change touches many files and is high stakes. Describe the refactoring workflow.",
+      "expected_output": "The response treats this as a behavior-preserving batch refactor, defines the preservation target, maps affected files before editing, previews high-stakes changes with dryRun or another reviewable preview, applies one coherent batch at a time, and verifies with tests.",
       "assertions": [
-        "The output uses architecture terms such as module, interface, seam, adapter, depth, leverage, or locality.",
-        "The output says to read relevant CONTEXT.md, CONTEXT-MAP.md, or docs/adr before editing.",
-        "The output applies the deletion test or explains why the module earns its keep.",
-        "The output mentions seam discipline, such as avoiding interfaces without real variation or using adapters only at real seams.",
-        "The output says to use dryRun or preview mode for the high-stakes change before applying edits.",
-        "The output says tests should verify behavior through the deepened module interface rather than extracted helpers.",
+        "The output states the behavior-preservation target before editing.",
+        "The output says to map affected files or occurrences before editing.",
+        "The output uses dryRun, preview mode, or another reviewable preview for the high-stakes change before applying edits.",
+        "The output applies one coherent batch at a time rather than mixing unrelated changes.",
         "The output includes post-refactor lint/test verification."
       ]
     }

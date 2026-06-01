@@ -2,22 +2,20 @@ name: dev-flow
 version: 4.9.6
 description: Code review, fixes, commits, and linting for development workflows
 skills:
-- committing-code
-- documenting-code
-- fixing-code
-- improving-codebase-architecture
-- improving-tests
-- refactoring-code
-- reviewing-code
-- searching-code
+  - committing-code
+  - documenting-code
+  - fixing-code
+  - improving-tests
+  - refactoring-code
+  - reviewing-code
 agents:
-- engineer
-- reviewer
+  - engineer
+  - reviewer
 hooks:
-- file-protector
-- git-guardrails
-- notify
-- session-start
-- skill-enforcer
-- smart-lint
-- test-runner
+  - file-protector
+  - git-guardrails
+  - notify
+  - session-start
+  - skill-enforcer
+  - smart-lint
+  - test-runner

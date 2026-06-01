@@ -13,7 +13,7 @@ it is a feature wearing a fake mustache.
 ## Workflow
 
 1. Define the refactor goal and non-goals.
-2. Map all affected sites before editing: `ast-grep` / `sg` for structural code patterns, `rg` for exact text, `fd` for files.
+2. Map all affected sites before editing with available file/text search tools.
 3. Read representative files and tests.
 4. Add characterization tests when behavior is under-specified.
 5. Apply one coherent batch with `edit` or `write`.
@@ -27,8 +27,8 @@ Good batches:
 
 - rename one public symbol and all callers
 - move one function/module with tests unchanged
-- extract one adapter or seam with existing behavior preserved
 - remove one duplicate implementation after tests prove equivalence
+- update one repeated pattern across files
 
 Bad batches:
 

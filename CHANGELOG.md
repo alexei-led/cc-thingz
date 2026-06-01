@@ -8,10 +8,23 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+### Changed
+
+- Stopped auto-routing repo-wide code search and architecture-analysis prompts
+  from `skill-enforcer`; companion plugins can own those workflows without
+  cc-thingz naming or depending on them.
+- Trimmed `reviewing-code` and `refactoring-code` to changed-code review and
+  behavior-preserving batch refactors, removing repo-wide architecture/search
+  guidance.
+
 ### Removed
 
 - Removed unused `watch-team` and `ccgram-messaging` skills, including plugin
   wiring, skill-enforcer routing, generated outputs, and skill eval fixtures.
+- Removed `searching-code`; repo-wide code search, AST evidence, codegraph, and
+  GitNexus workflows are now outside cc-thingz.
+- Removed `improving-codebase-architecture`; architecture review/design/planning
+  is now outside cc-thingz.
 
 ## [4.9.6] - 2026-05-31
 

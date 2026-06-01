@@ -5,7 +5,5 @@ allowed-tools:
   - mcp__plugin_claude-mem_mcp-search__smart_outline
   - mcp__plugin_claude-mem_mcp-search__smart_unfold
   - Bash(command -v *)
-  - Bash(ast-grep *)
-  - Bash(sg *)
   - Bash(rg *)
   - Bash(fd *)

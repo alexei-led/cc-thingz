@@ -17,19 +17,6 @@
       ]
     },
     {
-      "id": "structural-code-search-prefers-ast-grep",
-      "name": "structural code search prefers ast-grep",
-      "prompt": "Rewrite this legacy code-search command for modern tools:\n\n```bash\ngrep -R \"console.log\" src\n```\n\nThe real intent is to find JavaScript console.log call expressions in source files, not comments or docs. Assume modern CLI tools are installed. Return commands and a short rationale.",
-      "expected_output": "The response uses ast-grep or sg before rg because the intent is structural code search, and explains that rg is for text search or fallback.",
-      "assertions": [
-        "The output uses ast-grep or sg for the console.log call-expression search.",
-        "The output includes a structural pattern such as console.log($$$) or equivalent.",
-        "The output does not use rg as the primary command for this structural search.",
-        "The output states that rg is appropriate for text search or fallback, not AST shape matching.",
-        "The output avoids grep/find unless modern tools are unavailable."
-      ]
-    },
-    {
       "id": "compose-modern-repo-audit-workflow",
       "name": "compose modern repo audit workflow",
       "prompt": "Write a compact bash workflow for this repo audit:\n\n1. Find Markdown files that mention OpenAI.\n2. Preview matching lines with context.\n3. Show the largest directories two levels deep.\n4. Preview replacing the word 'colour' with 'color' in docs, but do not apply the replacement.\n\nAssume the modern CLI tools from the skill are installed. Include commands only, with short inline comments if helpful.",

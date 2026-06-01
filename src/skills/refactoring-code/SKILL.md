@@ -1,17 +1,21 @@
 ---
 description:
   Batch refactoring via MorphLLM edit_file. Use for "refactor across files",
-  "batch rename", "update pattern everywhere", large files (500+ lines), 5+ edits
-  in same file, or applying an approved architecture-deepening refactor. NOT for
-  single-file targeted edits (use built-in Edit) or code review (use reviewing-code).
+  "batch rename", "update pattern everywhere", large files (500+ lines), or 5+
+  edits in the same file. NOT for repo-wide architecture design/review, codebase
+  analysis, single-file targeted edits (use built-in Edit), or code review (use
+  reviewing-code).
 name: refactoring-code
 ---
 
 # Fast Refactoring with MorphLLM
 
-MorphLLM `edit_file` provides semantic code merging at 10,500+ tokens/sec with 98% accuracy. Use the MorphLLM `edit_file` / batch refactoring workflow for broad changes. Refactoring here means behavior-preserving change or architecture deepening, not cosmetic churn.
+MorphLLM `edit_file` provides semantic code merging at 10,500+ tokens/sec with
+98% accuracy. Use the MorphLLM `edit_file` / batch refactoring workflow for broad
+behavior-preserving changes, not cosmetic churn.
 
-Critical rule: preserve existing behavior unless the user explicitly asks for a behavior change. State the preservation target before editing.
+Critical rule: preserve existing behavior unless the user explicitly asks for a
+behavior change. State the preservation target before editing.
 
 ## Role-gated action
 
@@ -31,15 +35,15 @@ Use `edit_file` when:
 - Multi-file batch refactoring
 - Style/pattern update everywhere
 - Complex prompt → many changes
-- Structural refactoring at scale
-- 5+ files need same pattern
+- 5+ files need the same pattern
+- Large files where exact replacement would be brittle
 
 Use Built-in Edit/MultiEdit when:
 
 - Single file, clear edit
 - 2-3 targeted replacements
 - Need clear diff to review/tune
-- Simple rename (replace_all)
+- Simple rename within one file
 - Straightforward single-file work
 
 ## Key Features
@@ -49,27 +53,22 @@ Use Built-in Edit/MultiEdit when:
 - **Accuracy**: 98% success rate on edge cases
 - **dryRun**: Preview changes before applying
 
-## Architecture Deepening
-
-When applying an approved architecture-deepening refactor, keep the seam rule (one adapter means a hypothetical seam; two adapters means a real seam — do not add interfaces without real variation) and the deletion test in mind. The module-depth vocabulary is owned upstream by `improving-codebase-architecture` (`references/LANGUAGE.md`) and `reviewing-code`; match the design agreed there and do not redefine the terms here. Read relevant `CONTEXT.md`, `CONTEXT-MAP.md`, and ADRs when present. Preserve domain names.
-
 ## Workflow
 
 ### Standard Refactoring
 
 ```
-1. Map all locations before editing:
-   - structural code pattern → ast-grep / sg first
-   - exact text or symbol string → rg
-   - semantic multi-hop flow → WarpGrep or semantic search
-2. State: "Behavior must be preserved unless the user explicitly requested a behavior change."
-3. Use MorphLLM `edit_file` or the batch refactoring workflow for each batch/file, grouping related edits
-4. Batch all edits for the same file into one edit operation
-5. Verify with lint/test
-6. Delete obsolete shallow tests once deeper interface tests cover the behavior
+1. Define the behavior that must be preserved.
+2. Map affected files with the available file/text search tools.
+3. Read representative files and tests before editing.
+4. Use MorphLLM `edit_file` or the batch refactoring workflow for each batch/file.
+5. Batch all edits for the same file into one edit operation.
+6. Verify with narrow lint/test checks, then broader checks when the batch is done.
+7. Delete obsolete code exposed by the refactor.
 ```
 
-For multi-file renames, say this is a batch refactor, map all occurrences before editing, use ast-grep for structural references and `rg` for plain symbol text, use the batch refactoring tool/workflow by name, preserve behavior, and run relevant lint/tests after the rename.
+For multi-file renames, say this is a batch refactor, map all occurrences before
+editing, preserve behavior, and run relevant lint/tests after the rename.
 
 ### High-Stakes Changes (dryRun)
 
@@ -125,7 +124,8 @@ code_edit: Shows all locations with changes
 
 ## Output
 
-Engineer (applied the refactor): report the preservation target, files changed, and the lint/test verification result per touched file.
+Engineer (applied the refactor): report the preservation target, files changed,
+and the lint/test verification result per touched file.
 
 Reviewer (planned only — emit the refactor as a proposal, apply nothing):
 
@@ -145,7 +145,8 @@ Code:
 Rationale: <why this change>
 ```
 
-For multi-file renames, list every occurrence mapped before the proposal so the applier can replay it.
+For multi-file renames, list every occurrence mapped before the proposal so the
+applier can replay it.
 
 ## Failure handling
 
@@ -158,7 +159,5 @@ For multi-file renames, list every occurrence mapped before the proposal so the 
 - Batch all edits to same file in one call
 - Include enough context to locate changes precisely
 - Preserve exact indentation in code_edit
-- Use ast-grep first for structural code patterns; use WarpGrep for semantic flow
 - Run tests after each file to catch issues early
 - Keep old public behavior stable unless the user explicitly requested behavior change
-- Prefer tests through the deepened module interface over tests of extracted helpers

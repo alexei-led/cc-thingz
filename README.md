@@ -10,7 +10,7 @@
 [![Plugins](https://img.shields.io/badge/plugins-9-green)](src/plugins/)
 [![Skills](https://img.shields.io/badge/skills-42-green)](src/plugins/)
 
-A multi-agent skill suite for **Claude Code**, **Codex CLI**, **Gemini CLI**, and **Pi** — 42 skills, 3 agents, and 9 hooks. One source of truth in `src/`, compiled to platform-optimized output for each tool. Supports [AGENTS.md](https://agents.md)-compatible tools too. Built over 6+ months of daily use and continuous refinement.
+A multi-agent skill suite for **Claude Code**, **Codex CLI**, **Gemini CLI**, and **Pi** — 40 skills, 3 agents, and 9 hooks. One source of truth in `src/`, compiled to platform-optimized output for each tool. Supports [AGENTS.md](https://agents.md)-compatible tools too. Built over 6+ months of daily use and continuous refinement.
 
 ## Why This Exists
 
@@ -229,7 +229,7 @@ Agent({
 | `notify.ts`            | macOS notification via `terminal-notifier` on completion (requires Homebrew `terminal-notifier`) |
 
 **Pi gets**: all 3 agents — `engineer`, `reviewer`, `advisor` (requires
-`@tintinweb/pi-subagents`) — all 42 skills, and 8 bundled extensions. Each
+`@tintinweb/pi-subagents`) — all 40 skills, and 8 bundled extensions. Each
 agent has a Pi-specific frontmatter overlay tuned for OpenAI Codex models
 (`openai-codex/gpt-5.5`), thinking levels, tool restrictions, and turn limits.
 `advisor` ships to Codex, Gemini, and Pi; Claude is excluded because it has a
@@ -242,13 +242,7 @@ The `AGENTS.md` at the repo root provides a skill catalog readable by any tool s
 
 ## Prerequisites
 
-Structural code search uses [ast-grep](https://ast-grep.github.io/) when installed. Skills fall back to `rg`/`fd`, but AST-aware search is the fast path for code shape queries:
-
-```bash
-brew install ast-grep
-npm install -g @ast-grep/cli
-cargo install ast-grep
-```
+Repo-wide code search, AST evidence, codegraph, and GitNexus workflows are intentionally outside cc-thingz. Use a separate codebase-analysis plugin for repo-wide analysis, such as [architect](https://github.com/alexei-led/architect). cc-thingz does not ship a general repo-wide code-search skill; its review/refactor skills may still use local tools such as `rg` or `fd` when available.
 
 Portable docs lookup uses the [Context7 CLI](https://github.com/upstash/context7):
 
@@ -294,7 +288,7 @@ All agents and several skills optionally integrate with [claude-mem](https://git
 | Cross-session memory          | `search`, `get_observations`, `timeline`        | Find past decisions, known gotchas, recurring bugs |
 | Historical context in reviews | `search` + `get_observations`                   | Review agents check past findings before starting  |
 
-**Graceful degradation**: All plugins work without claude-mem. When it's not installed, MCP tools are silently absent — agents fall back to local tools. Search skills use ast-grep when installed, then `rg`/`fd`, then platform Read/Grep/Glob where needed. No errors, no configuration needed.
+**Graceful degradation**: All plugins work without claude-mem. When it's not installed, MCP tools are silently absent — agents fall back to local tools such as `rg`, `fd`, and platform Read/Grep/Glob where needed. No errors, no configuration needed.
 
 **How it works**: Agent frontmatter lists claude-mem MCP tools alongside standard tools. Claude Code silently omits unavailable tools at runtime, so agents always have their core tools (Read, Grep, Glob, LSP) and gain smart_explore/memory tools when claude-mem is present. Skill instructions use "when available" / "if claude-mem available" phrasing to guide Claude's behavior.
 
@@ -302,17 +296,17 @@ All agents and several skills optionally integrate with [claude-mem](https://git
 
 | Plugin                                             | Skills | Agents | Description                                                                       |
 | -------------------------------------------------- | ------ | ------ | --------------------------------------------------------------------------------- |
-| [**dev-flow**](src/plugins/dev-flow/plugin.yaml)   | 8      | 2      | Fix, refactor, review, document, commit; `engineer` and `reviewer` roles; 7 hooks |
+| [**dev-flow**](src/plugins/dev-flow/plugin.yaml)   | 6      | 2      | Fix, refactor, review, document, commit; `engineer` and `reviewer` roles; 7 hooks |
 | [**go-dev**](src/plugins/go-dev/plugin.yaml)       | 1      | 1      | Idiomatic Go development with stdlib-first patterns, testing, and CLI tooling     |
 | [**py-dev**](src/plugins/py-dev/plugin.yaml)       | 1      | 1      | Python 3.12+ development with uv/ruff/pyright toolchain                           |
 | [**ts-dev**](src/plugins/ts-dev/plugin.yaml)       | 1      | 1      | TypeScript with strict typing, React patterns, and modern tooling                 |
 | [**web-dev**](src/plugins/web-dev/plugin.yaml)     | 1      | 1      | Web frontend with vanilla HTML, CSS, JavaScript, and HTMX                         |
 | [**infra-ops**](src/plugins/infra-ops/plugin.yaml) | 3      | 1      | Kubernetes, Terraform, Helm, GitHub Actions, AWS, GCP                             |
-| [**dev-tools**](src/plugins/dev-tools/plugin.yaml) | 18     | 1      | Modern CLI, AST-first search, git worktrees, docs lookup, research, config review |
+| [**dev-tools**](src/plugins/dev-tools/plugin.yaml) | 18     | 1      | Modern CLI, git worktrees, docs lookup, research, config review                   |
 | [**spec-dev**](src/plugins/spec-dev/plugin.yaml)   | 7      | 2      | Spec-driven development: requirements, tasks, and planning workflows              |
 | [**test-e2e**](src/plugins/test-e2e/plugin.yaml)   | 2      | 1      | E2E testing with Playwright: browser automation and test generation               |
 
-**Totals**: 42 skills, 2 plugin-owned role agents (`engineer`, `reviewer`), 9 hooks
+**Totals**: 40 skills, 2 plugin-owned role agents (`engineer`, `reviewer`), 9 hooks
 
 ## Skills
 
@@ -322,30 +316,29 @@ Skills teach the AI model domain-specific knowledge and workflows. All skills ar
 
 Invoke as `/skill-name` or let the skill enforcer suggest them.
 
-| Skill                             | What It Does                                                                                                                                      | Example Trigger                          |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| `brainstorming-ideas`             | Brainstorm ideas and stress-test draft plans                                                                                                      | "brainstorm", "design feature"           |
-| `improving-codebase-architecture` | Find deepening opportunities, module/seam vocab                                                                                                   | "improve architecture", "deepen modules" |
-| `cleanup-git`                     | Remove merged branches and stale worktrees                                                                                                        | "cleanup branches", "tidy git"           |
-| `committing-code`                 | Smart git commits with logical grouping                                                                                                           | "commit", "save changes"                 |
-| `debating-ideas`                  | Dialectic agents stress-test design decisions                                                                                                     | "debate", "pros and cons"                |
-| `deploying-infra`                 | Validate + deploy K8s/Terraform/Helm                                                                                                              | "deploy to staging", "rollout"           |
-| `documenting-code`                | Update docs based on recent changes                                                                                                               | "update docs", "document"                |
-| `evolving-config`                 | Audit config against latest Claude Code features                                                                                                  | "evolve", "audit config"                 |
-| `exploring-repos`                 | Explore public GitHub repos and architecture                                                                                                      | "explore repo", "how does repo work"     |
-| `fixing-code`                     | Parallel agents fix all issues, zero tolerance                                                                                                    | "fix errors", "make it pass"             |
-| `improving-tests`                 | Refactor tests: combine to tabular, fill gaps                                                                                                     | "improve tests", "coverage"              |
-| `context7-cli`                    | Current library docs via ctx7 CLI; docs/API lookup                                                                                                | "ctx7", "look up docs", "API ref"        |
-| `looking-up-docs`                 | Find current docs via fallback chain: ctx7 → Perplexity → web tools                                                                               | "find docs", "latest API", "look up"     |
-| `mem-history`                     | Query project history and prior decisions                                                                                                         | "last session", "what happened"          |
-| `researching-web`                 | Web research via Perplexity AI                                                                                                                    | "research", "X vs Y"                     |
-| `reviewing-code`                  | Multi-agent review (security, quality, idioms)                                                                                                    | "review code", "check this"              |
-| `testing-e2e`                     | Playwright browser automation and test gen                                                                                                        | "e2e test", "playwright"                 |
-| `analyzing-usage`                 | Analyze AI agent usage, cost, and efficiency (Claude Code, Codex, Pi)                                                                             | "usage", "cost", "spending"              |
-| `learning-patterns`               | Extract learnings and generate customizations                                                                                                     | "learn", "extract learnings"             |
-| `reviewing-instructions`          | Review and score AI agent/skill instructions plus agent-targeted markdown like `body.md`, `references/*.md`, and custom prompt/context/rules docs | "lint instructions", "audit prompts"     |
-| `reviewing-cc-config`             | Review CC config for context efficiency                                                                                                           | "review config", "config review"         |
-| `using-git-worktrees`             | Isolated git worktrees for parallel development                                                                                                   | "worktree", "isolate"                    |
+| Skill                    | What It Does                                                                                                                                      | Example Trigger                      |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| `brainstorming-ideas`    | Brainstorm ideas and stress-test draft plans                                                                                                      | "brainstorm", "design feature"       |
+| `cleanup-git`            | Remove merged branches and stale worktrees                                                                                                        | "cleanup branches", "tidy git"       |
+| `committing-code`        | Smart git commits with logical grouping                                                                                                           | "commit", "save changes"             |
+| `debating-ideas`         | Dialectic agents stress-test design decisions                                                                                                     | "debate", "pros and cons"            |
+| `deploying-infra`        | Validate + deploy K8s/Terraform/Helm                                                                                                              | "deploy to staging", "rollout"       |
+| `documenting-code`       | Update docs based on recent changes                                                                                                               | "update docs", "document"            |
+| `evolving-config`        | Audit config against latest Claude Code features                                                                                                  | "evolve", "audit config"             |
+| `exploring-repos`        | Explore public GitHub repos and architecture                                                                                                      | "explore repo", "how does repo work" |
+| `fixing-code`            | Parallel agents fix all issues, zero tolerance                                                                                                    | "fix errors", "make it pass"         |
+| `improving-tests`        | Refactor tests: combine to tabular, fill gaps                                                                                                     | "improve tests", "coverage"          |
+| `context7-cli`           | Current library docs via ctx7 CLI; docs/API lookup                                                                                                | "ctx7", "look up docs", "API ref"    |
+| `looking-up-docs`        | Find current docs via fallback chain: ctx7 → Perplexity → web tools                                                                               | "find docs", "latest API", "look up" |
+| `mem-history`            | Query project history and prior decisions                                                                                                         | "last session", "what happened"      |
+| `researching-web`        | Web research via Perplexity AI                                                                                                                    | "research", "X vs Y"                 |
+| `reviewing-code`         | Multi-agent review (security, correctness, quality)                                                                                               | "review code", "check this"          |
+| `testing-e2e`            | Playwright browser automation and test gen                                                                                                        | "e2e test", "playwright"             |
+| `analyzing-usage`        | Analyze AI agent usage, cost, and efficiency (Claude Code, Codex, Pi)                                                                             | "usage", "cost", "spending"          |
+| `learning-patterns`      | Extract learnings and generate customizations                                                                                                     | "learn", "extract learnings"         |
+| `reviewing-instructions` | Review and score AI agent/skill instructions plus agent-targeted markdown like `body.md`, `references/*.md`, and custom prompt/context/rules docs | "lint instructions", "audit prompts" |
+| `reviewing-cc-config`    | Review CC config for context efficiency                                                                                                           | "review config", "config review"     |
+| `using-git-worktrees`    | Isolated git worktrees for parallel development                                                                                                   | "worktree", "isolate"                |
 
 ### Auto-Activated
 
@@ -356,10 +349,9 @@ These activate silently when relevant patterns are detected — no `/skill-name`
 | `managing-infra`     | K8s resources, Terraform, Helm, GitHub Actions |
 | `playwright-skill`   | Runtime library for testing-e2e skill          |
 | `refactoring-code`   | Multi-file batch changes, rename everywhere    |
-| `searching-code`     | AST-first search, trace flow, find all uses    |
 | `smart-explore`      | Token-efficient known-file/symbol extraction   |
 | `using-cloud-cli`    | bq queries, gcloud/aws commands                |
-| `using-modern-cli`   | ast-grep, rg, fd, bat, eza, sd over legacy CLI |
+| `using-modern-cli`   | Modern shell/file CLI replacements             |
 | `writing-go`         | Go files, go commands, Go-specific terms       |
 | `writing-python`     | Python files, pytest, pip, frameworks          |
 | `writing-typescript` | TS/TSX files, npm/bun, React, Node.js          |

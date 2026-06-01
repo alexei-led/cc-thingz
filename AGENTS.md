@@ -44,11 +44,9 @@ Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allo
 - **committing-code** — Smart git commits with logical grouping
 - **documenting-code** — Update project documentation based on recent changes
 - **fixing-code** — Fix code problems with disciplined diagnosis
-- **improving-codebase-architecture** — Find deepening opportunities informed by domain language in CONTEXT.md and docs/adr/
 - **improving-tests** — Improve test design and coverage, including TDD/red-green-refactor guidance
 - **refactoring-code** — Batch refactoring via MorphLLM edit_file
-- **reviewing-code** — Sequential code review for security, quality, tests, and architecture
-- **searching-code** — AST-first codebase search, structural grep, and zoom-out mapping via WarpGrep
+- **reviewing-code** — Sequential code review for security, quality, tests, implementation, and docs
 - **spec-init** — Bootstrap a new `.spec/` project or import requirements from a design doc
 - **spec-interview** — Capture PRD-quality requirements via structured Q&A
 - **spec-plan** — Turn a requirement into an EPIC with vertical-slice TASKs
@@ -89,7 +87,7 @@ Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allo
 - **sequential-thinking** — Structured stepwise reasoning with explicit revisions and branches
 - **smart-explore** — Token-efficient known-file and known-symbol navigation
 - **using-git-worktrees** — Creates isolated git worktrees for parallel development
-- **using-modern-cli** — Prefer modern CLI tools: ast-grep, rg, fd, bat, sd, eza over grep/find/cat/sed/ls
+- **using-modern-cli** — Prefer modern shell/file CLI tools: rg, fd, bat, eza, sd, dust, procs, delta
 
 ## End-to-End Testing
 

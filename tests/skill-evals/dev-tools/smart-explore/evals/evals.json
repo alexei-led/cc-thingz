@@ -29,12 +29,12 @@
       ]
     },
     {
-      "id": "repo-wide-search-routes-to-searching-code",
-      "name": "repo wide search routes to searching code",
+      "id": "repo-wide-search-routes-away-from-smart-explore",
+      "name": "repo wide search routes away from smart explore",
       "prompt": "A user asks: find all implementations and callers of PaymentGateway across a large repo. Describe which skill should handle it.",
-      "expected_output": "The response says this is repo-wide code search and should use searching-code, not smart-explore, then smart-explore can extract specific symbols after searching-code narrows files.",
+      "expected_output": "The response says this is repo-wide code search and should use a dedicated repo-wide search workflow, not smart-explore, then smart-explore can extract specific symbols after the repo-wide search narrows files.",
       "assertions": [
-        "The output routes the repo-wide implementations/callers request to searching-code.",
+        "The output routes the repo-wide implementations/callers request away from smart-explore to a dedicated repo-wide search workflow.",
         "The output does not claim smart-explore is the primary skill for the repo-wide search.",
         "The output says smart-explore is useful after narrowing to extract known symbols or file outlines.",
         "The output distinguishes repo-wide search from known-file or bounded extraction."

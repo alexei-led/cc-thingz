@@ -160,7 +160,7 @@ DeepWiki returns empty or error?
 
    ```bash
    git clone --depth=1 <repo-url>
-   # Use searching-code/smart-explore: ast-grep for structure, rg for text, fd for files
+   # Use scoped local tools: fd for files, rg for text; use dedicated analysis tooling for structural evidence
    ```
 
 ## Combining with Context7

@@ -15,25 +15,20 @@ FIXTURES="$BATS_TEST_DIRNAME/fixtures"
 	[[ "$output" == *"Consider skills"* ]]
 }
 
-@test "skill-enforcer: structural code search routes to existing search skills" {
+@test "skill-enforcer: structural code search is left to companion workflows" {
 	run bash "$HOOK" <"$FIXTURES/skill_enforcer_ast_grep.json"
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"searching-code"* ]]
-	[[ "$output" == *"using-modern-cli"* ]]
-	[[ "$output" != *"ast-grep "* ]]
-	[[ "$output" != *"smart-explore"* ]]
+	[ -z "$output" ]
 }
 
 @test "skill-enforcer: known-file extraction routes to smart-explore" {
 	run bash "$HOOK" <"$FIXTURES/skill_enforcer_smart_explore.json"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"smart-explore"* ]]
-	[[ "$output" != *"searching-code"* ]]
 }
 
-@test "skill-enforcer: codebase flow routes to searching-code not smart-explore" {
+@test "skill-enforcer: codebase flow is left to companion workflows" {
 	run bash "$HOOK" <"$FIXTURES/skill_enforcer_codebase_search.json"
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"searching-code"* ]]
-	[[ "$output" != *"smart-explore"* ]]
+	[ -z "$output" ]
 }

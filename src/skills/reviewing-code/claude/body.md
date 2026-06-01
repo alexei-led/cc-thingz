@@ -9,7 +9,6 @@ If `$ARGUMENTS` is passed, the keywords below tune the workflow:
 - `deep` — cover all six review dimensions, not just the security and correctness pair.
 - `team` — fan the dimensions to parallel reviewer sub-tasks that challenge each other's findings and converge.
 - `external` — additionally spawn external AI reviewers. Only when explicitly requested; never run by default.
-- `architecture` — include the Architecture vocabulary section in scope for every dimension.
 
 Without `external`, run only this skill's own review. Never spawn external reviewers implicitly.
 
@@ -23,7 +22,7 @@ Run the dimensions as the read-only `reviewer` role. For large scope, the orches
 
 When `team` is set, run those sub-tasks as an agent team so they challenge each other's findings; the report prefixes each finding with `[Flagged by: <dimension>]`.
 
-When `external` is set, additionally spawn any configured external-AI reviewer bridges in parallel for a second-model pass on security, quality, and architecture. Do not hard-depend on a specific external agent; skip silently if none is configured.
+When `external` is set, additionally spawn any configured external-AI reviewer bridges in parallel for a second-model pass on security and quality. Do not hard-depend on a specific external agent; skip silently if none is configured.
 
 ## Historical context (optional) (\_+)
 

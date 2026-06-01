@@ -33,7 +33,6 @@ BATCH_1_SKILLS_ALL_TARGETS = (
     "using-git-worktrees",
     "refactoring-code",
     "smart-explore",
-    "searching-code",
     "brainstorming-ideas",
 )
 CLAUDE_ONLY_SKILLS = ("debating-ideas",)
