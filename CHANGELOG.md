@@ -8,14 +8,25 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [4.10.0] - 2026-06-01
+
 ### Changed
 
+- Tightened `committing-code`, `writing-python`, and `writing-typescript`
+  instructions for leaner routing, conditional references, less duplicate
+  guidance, and stronger project-first language.
 - Stopped auto-routing repo-wide code search and architecture-analysis prompts
   from `skill-enforcer`; companion plugins can own those workflows without
   cc-thingz naming or depending on them.
 - Trimmed `reviewing-code` and `refactoring-code` to changed-code review and
   behavior-preserving batch refactors, removing repo-wide architecture/search
   guidance.
+- Plugin and marketplace versions bumped to 4.10.0.
+
+### Fixed
+
+- `test-runner` hook: disabled broad project fallback by default and removed
+  nearest-Makefile target fallback so focused runs avoid unrelated targets.
 
 ### Removed
 

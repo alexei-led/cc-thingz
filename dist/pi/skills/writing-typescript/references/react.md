@@ -1,61 +1,20 @@
 # React TypeScript Patterns
 
-Use this reference for `.tsx`, hooks, component state, forms, and React-specific tests.
+Use for `.tsx`, hooks, component state, forms, performance, and React-specific tests. Apply project conventions first.
 
 ## Components and Props
 
 - Use plain function components. Do not default to `React.FC`.
 - Use interfaces for props when project style allows extension.
-- Type `children` explicitly with `React.ReactNode`.
+- Type `children` explicitly as `ReactNode` or the project equivalent.
 - Keep components focused on rendering and user interaction. Move parsing, I/O, and domain logic out.
-
-```tsx
-interface ButtonProps {
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-}
-
-function Button({ label, onClick, disabled = false }: ButtonProps) {
-  return (
-    <button type="button" onClick={onClick} disabled={disabled}>
-      {label}
-    </button>
-  );
-}
-```
+- Put event and callback types on props when they are part of the public component contract.
 
 ## State
 
-Model exclusive UI states with discriminated unions, not parallel booleans and nullable fields.
-
-```typescript
-type AsyncState<T> =
-  | { status: "idle" }
-  | { status: "loading" }
-  | { status: "success"; data: T }
-  | { status: "error"; error: string };
-```
-
-Use reducers when transitions matter.
-
-```typescript
-type State = { count: number };
-type Action = { type: "increment" } | { type: "reset"; value: number };
-
-function reducer(state: State, action: Action): State {
-  switch (action.type) {
-    case "increment":
-      return { count: state.count + 1 };
-    case "reset":
-      return { count: action.value };
-    default: {
-      const exhaustive: never = action;
-      return exhaustive;
-    }
-  }
-}
-```
+- Model exclusive UI states with discriminated unions; use `patterns.md` for the shape.
+- Use reducers when transitions matter, not for simple local toggles.
+- Keep derived state derived during render unless caching is needed.
 
 ## Effects and Data Loading
 
@@ -63,57 +22,14 @@ function reducer(state: State, action: Action): State {
 - In effects, handle cleanup and cancellation.
 - Validate loaded data in the fetcher, not inside rendering code.
 - Avoid stale updates after unmount or dependency changes.
-
-```tsx
-function useUser(userId: string): AsyncState<User> {
-  const [state, setState] = useState<AsyncState<User>>({ status: "idle" });
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    setState({ status: "loading" });
-    void fetchUser(userId, { signal: controller.signal })
-      .then((result) => {
-        if (controller.signal.aborted) return;
-        setState(
-          result.ok
-            ? { status: "success", data: result.value }
-            : { status: "error", error: result.error },
-        );
-      })
-      .catch(() => {
-        if (controller.signal.aborted) return;
-        setState({ status: "error", error: "network" });
-      });
-
-    return () => controller.abort();
-  }, [userId]);
-
-  return state;
-}
-```
+- Keep dependency arrays complete; fix stale closures instead of suppressing lint rules.
 
 ## Context
 
 - Use context for cross-cutting dependencies or state, not as a default global store.
 - Keep context values small and stable.
 - Throw from custom hooks when a required provider is missing.
-
-```tsx
-interface AuthContextValue {
-  user: User | null;
-  login: (credentials: Credentials) => Promise<void>;
-  logout: () => void;
-}
-
-const AuthContext = createContext<AuthContextValue | null>(null);
-
-function useAuth(): AuthContextValue {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within AuthProvider");
-  return context;
-}
-```
+- Split read/write or domain contexts only when re-renders or ownership justify it.
 
 ## Forms
 
@@ -126,12 +42,8 @@ function useAuth(): AuthContextValue {
 
 - Do not add `memo`, `useMemo`, or `useCallback` by default.
 - Memoize only for measured expensive work, stable identity required by memoized children, or dependency churn that causes real re-renders.
-- Keep dependency arrays complete; fix stale closures instead of suppressing lint rules.
 - Use lazy loading at route or heavy-feature boundaries, not for tiny components.
 
 ## Tests
 
-- Test user-visible behavior, not props or hook internals.
-- Prefer Testing Library queries by role/name.
-- Use `userEvent` for interactions.
-- Cover affected loading, success, error, empty, and validation states.
+- Read `testing.md` before changing React tests.

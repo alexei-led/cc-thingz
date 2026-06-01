@@ -1,13 +1,13 @@
 # TypeScript Principles
 
-Read this before TypeScript work. Apply project conventions first, but do not weaken type safety to fit unsafe code without approval.
+Read before TypeScript work. Apply project conventions first; do not weaken type safety to fit unsafe code without approval.
 
 ## Strictness
 
-- Treat compiler errors as design feedback, not noise to bypass.
+- Fix type/model boundaries before suppressing diagnostics.
 - Keep or add strict options when creating config: `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `useUnknownInCatchVariables`, `noImplicitOverride`, `noImplicitReturns`, `noFallthroughCasesInSwitch`.
-- Avoid `any`. Use `unknown` at boundaries and narrow before use.
-- Avoid `as`, `!`, and broad index signatures unless a runtime check or external type gap justifies them.
+- Avoid `any`; use `unknown` at boundaries and narrow before use.
+- Avoid type assertions like `value as Type`, double assertions, non-null assertions, and broad index signatures unless a runtime check or external type gap justifies them.
 - Prefer `satisfies` and `as const` for narrow literal data.
 
 ## Types and Data Models
@@ -16,7 +16,7 @@ Read this before TypeScript work. Apply project conventions first, but do not we
 - Use type aliases for unions, mapped types, utility types, and closed variants.
 - Use discriminated unions for domain states, async states, and variants.
 - Use exhaustive switches with a `never` check for closed unions.
-- Prefer named domain values over repeated string and number literals.
+- Reuse named domain constants or types for repeated statuses, roles, routes, event names, and error codes.
 
 ## Boundaries
 
@@ -29,8 +29,8 @@ Read this before TypeScript work. Apply project conventions first, but do not we
 
 - Use guard clauses and early returns to keep happy paths flat.
 - Keep functions focused; split mixed parsing, I/O, domain logic, and rendering.
-- Use `Result` or discriminated unions for recoverable domain and I/O failures.
-- Throw Error subclasses at process, framework, or API boundaries when that matches the codebase.
+- Use `Result` or discriminated unions when callers must branch on recoverable failures.
+- Throw Error instances at process, framework, or API boundaries when the project uses exceptions.
 - Preserve cancellation, timeouts, and cleanup for async work that can outlive the caller.
 
 ## Dependencies
