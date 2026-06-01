@@ -38,8 +38,8 @@ describe("wrapQuestionText", () => {
 	});
 });
 
-describe("single-select UI", () => {
-	it("keeps options visible after capping a long question", async () => {
+describe("selection UI", () => {
+	it("keeps single-select options visible after capping a long question", async () => {
 		let registeredTool: any;
 		askUserQuestion({
 			registerTool(tool: any) {
@@ -89,6 +89,53 @@ describe("single-select UI", () => {
 		expect(rendered).toContain("1. Yes");
 		expect(rendered).toContain("2. No");
 		expect(result.details.answers[0].answers).toEqual([{ label: "Yes", value: "yes", source: "option" }]);
+	});
+
+	it("keeps multi-select options visible after capping a long question", async () => {
+		let registeredTool: any;
+		askUserQuestion({
+			registerTool(tool: any) {
+				registeredTool = tool;
+			},
+		} as any);
+
+		let prompt = "";
+		const result = await registeredTool.execute(
+			"tool-call-id",
+			{
+				questions: [
+					{
+						header: "Decision",
+						question: "word ".repeat(200),
+						options: [
+							{ label: "Yes", value: "yes" },
+							{ label: "No", value: "no" },
+						],
+						multiSelect: true,
+						allowOther: false,
+					},
+				],
+			},
+			undefined,
+			undefined,
+			{
+				hasUI: true,
+				ui: {
+					editor: async (_title: string, value: string) => {
+						prompt = value;
+						return "1,2";
+					},
+				},
+			},
+		);
+
+		expect(prompt).toContain("1. Yes");
+		expect(prompt).toContain("2. No");
+		expect(prompt.split("\n").filter((line) => line.includes("word"))).toHaveLength(8);
+		expect(result.details.answers[0].answers).toEqual([
+			{ label: "Yes", value: "yes", source: "option" },
+			{ label: "No", value: "no", source: "option" },
+		]);
 	});
 });
 

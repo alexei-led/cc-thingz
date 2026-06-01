@@ -61,6 +61,7 @@ function normalizeValue(option: AskOption): string {
 }
 
 const MAX_QUESTION_LINES = 8;
+const MULTI_SELECT_PROMPT_WIDTH = 80;
 
 export function wrapQuestionText(text: string, width: number, maxLines = MAX_QUESTION_LINES): string[] {
 	const usableWidth = Math.max(20, width);
@@ -265,7 +266,13 @@ async function askOne(question: AskQuestion, ctx: ExtensionContext): Promise<Ans
 	}
 
 	const numberedOptions = options.map(formatOption).join("\n");
-	const promptLines = [question.question, "", numberedOptions, "", "Enter comma-separated option numbers or labels."];
+	const promptLines = [
+		...wrapQuestionText(question.question, MULTI_SELECT_PROMPT_WIDTH),
+		"",
+		numberedOptions,
+		"",
+		"Enter comma-separated option numbers or labels.",
+	];
 
 	if (allowOther) {
 		promptLines.push("Custom values are allowed too.");
