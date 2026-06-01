@@ -57,7 +57,7 @@ Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allo
 
 ## Language Tooling
 
-- **writing-go** — Idiomatic Go 1.25+ development
+- **writing-go** — Idiomatic Go development
 - **writing-python** — Idiomatic Python 3.12+ development
 - **writing-typescript** — Idiomatic TypeScript development
 - **writing-web** — Simple web development with HTML, CSS, JS, and HTMX

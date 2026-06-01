@@ -40,9 +40,9 @@ CLAUDE_ONLY_SKILLS = ("debating-ideas",)
 SKILLS_WITH_REFERENCES = {
     "brainstorming-ideas": ("references/grill-protocol.md",),
     "writing-go": (
-        "references/CLI.md",
-        "references/PATTERNS.md",
-        "references/TESTING.md",
+        "references/cli.md",
+        "references/patterns.md",
+        "references/testing.md",
     ),
     "writing-python": (
         "references/principles.md",

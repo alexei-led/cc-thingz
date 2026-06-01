@@ -8,6 +8,12 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+### Changed
+
+- Tightened `writing-go` instructions and Go references for leaner scope,
+  version-gated APIs, dependency-aware concurrency guidance, and lowercase
+  reference filenames.
+
 ## [4.10.0] - 2026-06-01
 
 ### Changed

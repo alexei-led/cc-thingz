@@ -1,152 +1,55 @@
 ---
 description:
-  Idiomatic Go 1.25+ development. Use when writing Go code, designing APIs,
-  discussing Go patterns, or reviewing Go implementations. Emphasizes stdlib, concrete
-  types, simple error handling, and minimal dependencies. NOT for Python, TypeScript,
-  or shell scripting tasks.
+  Idiomatic Go development. Use when writing Go code, designing APIs, reviewing
+  Go implementations, or changing Go tests. Follow the module's target Go version.
+  Prefer stdlib, concrete types, explicit errors, context propagation, and behavior
+  tests. NOT for Python, TypeScript, shell scripts, or infra-only work.
 name: writing-go
 ---
 
-# Go Development (1.25+)
+# Go Development
 
-## Critical Output Rules
+Use only for Go modules. Follow the module's target Go version.
 
-- State stdlib-first choices explicitly: use `net/http`, `encoding/json`, `context`, and `testing` where practical before adding dependencies.
-- Avoid unnecessary dependencies. Add a library only when concrete requirements beat stdlib simplicity.
-- Prefer concrete types and small consumer-side interfaces only at real seams; do not abstract everything by default.
-- Error handling guidance must say normal failures return `error`, not `panic`; wrap with context using `%w`; avoid custom error hierarchies unless callers need distinct behavior.
-- Always mention behavior tests for success and error paths, even when only giving design or error-handling advice. Prefer table-driven tests with `t.Run`; stdlib `testing` is enough unless the project already uses another test library.
-- For handlers/services, pass `context.Context` through API boundaries and map service errors to HTTP status at the edge.
-- Do not run destructive shell commands. For broad or risky changes, state the risk and ask before acting.
+## Read First
 
-## Core Philosophy
+Read [principles.md](references/principles.md) before writing, changing, or reviewing Go code. Read conditional references only when the change touches that area.
 
-Stdlib-first stance, concrete-types-over-`any`, consumer-side interfaces, flat control flow, explicit error handling, the no-destructive-commands safety rule, and the post-generation verification loop are in [references/principles.md](references/principles.md) — read it before generating code.
+## Conditional References
 
-## Quick Patterns
+- [patterns.md](references/patterns.md) — package layout, interfaces, errors, HTTP/service boundaries, concurrency, comments.
+- [testing.md](references/testing.md) — adding or reshaping Go tests.
+- [cli.md](references/cli.md) — writing or changing Go CLIs.
 
-### Private Interface at Consumer
+## Version-Gated APIs
 
-```go
-// service/user.go - private interface where it's USED
-type userStore interface {
-    Get(ctx context.Context, id string) (*User, error)
-}
+- Confirm `go.mod`, `toolchain`, CI, and nearby code before using version-specific APIs.
+- Go 1.25+: use `sync.WaitGroup.Go` when no error propagation is needed.
+- Use existing `errgroup` for goroutine errors or shared cancellation; add it only when the dependency is justified.
+- Go 1.25+: use `testing/synctest` for deterministic concurrent tests when available.
+- Go 1.25+: prefer stdlib `crypto/hpke` and `testing/cryptotest` over third-party code when they fit.
+- Treat `encoding/json/v2` as experimental unless the project opts into `GOEXPERIMENT=jsonv2`.
+- Go 1.26+: use `new(expr)` only when clearer than a local variable, composite literal, or address expression.
+- Go 1.26+: keep recursive type constraints in generic libraries; keep business logic concrete.
 
-type Service struct {
-    store userStore  // accepts interface
-}
+## Verification
 
-// repo/postgres.go - returns concrete type
-func NewPostgresStore(db *sql.DB) *PostgresStore {
-    return &PostgresStore{db: db}
-}
-```
+Run the project-configured build, tests, lint, vet, and formatting checks. Add race or concurrency-specific checks when the change touches goroutines, shared state, timers, or channels.
 
-### Flat Control Flow (No Nesting)
-
-```go
-// GOOD: guard clauses, early returns
-func process(user *User) error {
-    if user == nil {
-        return ErrNilUser
-    }
-    if user.Email == "" {
-        return ErrMissingEmail
-    }
-    if !isValidEmail(user.Email) {
-        return ErrInvalidEmail
-    }
-    return doWork(user)
-}
-
-// BAD: nested conditions
-func process(user *User) error {
-    if user != nil {
-        if user.Email != "" {
-            if isValidEmail(user.Email) {
-                return doWork(user)
-            }
-        }
-    }
-    return nil
-}
-```
-
-### Error Handling
-
-```go
-if err := doThing(); err != nil {
-    return fmt.Errorf("do thing: %w", err)  // always wrap
-}
-
-// Sentinel errors
-if errors.Is(err, ErrNotFound) {
-    return http.StatusNotFound
-}
-```
-
-### Concrete Types (Avoid `any`)
-
-```go
-// GOOD: concrete types
-func ProcessUsers(users []User) error { ... }
-func GetUserByID(id string) (*User, error) { ... }
-
-// BAD: unnecessary any
-func ProcessItems(items []any) error { ... }
-func GetByID(id any) (any, error) { ... }
-```
-
-### Table-Driven Tests
-
-```go
-tests := []struct {
-    name    string
-    input   string
-    want    string
-    wantErr bool
-}{
-    {"valid", "hello", "HELLO", false},
-    {"empty", "", "", true},
-}
-for _, tt := range tests {
-    t.Run(tt.name, func(t *testing.T) {
-        got, err := Process(tt.input)
-        if tt.wantErr {
-            require.Error(t, err)
-            return
-        }
-        require.NoError(t, err)
-        assert.Equal(t, tt.want, got)
-    })
-}
-```
-
-## Go 1.25 Features
-
-- **testing/synctest**: Deterministic concurrent testing
-- **encoding/json/v2**: 3-10x faster (GOEXPERIMENT=jsonv2)
-- **runtime/trace.FlightRecorder**: Production trace capture
-- **Container-aware GOMAXPROCS**: Auto-detects cgroup limits
-
-## References
-
-- [principles.md](references/principles.md) - Core philosophy, safety rule, and verification loop (read before generating code)
-- [PATTERNS.md](references/PATTERNS.md) - Detailed code patterns
-- [TESTING.md](references/TESTING.md) - Testing with testify/mockery
-- [CLI.md](references/CLI.md) - CLI application patterns
-
-## Tooling
-
-```bash
-go build ./...           # Build
-go test -race ./...      # Test with race detector
-golangci-lint run        # Lint
-mockery --all            # Generate mocks
-```
+If a check is unavailable, state that and run the closest configured gate. If a check fails, quote the failure, diagnose the cause, fix one issue, and rerun the relevant check.
 
 ## Failure Cases
 
-- **No Go files in repo / ambiguous project root**: run `find . -name 'go.mod'` to locate modules before generating code; do not assume a single root.
-- **Compilation or test failure after generation**: quote the failing line, state the cause, show the exact fix. Do not retry blindly—diagnose first.
+- No clear Go root: locate `go.mod` before choosing files, commands, or import paths.
+- Unknown Go target: inspect `go.mod`, `toolchain`, CI, and lockfiles before using version-specific APIs.
+- New dependency requested: confirm stdlib or existing dependencies cannot meet the requirement.
+- Broad or risky edit: state the risk and ask before acting. Do not run destructive commands.
+
+## Final Response
+
+Include:
+
+- changed files
+- checks run and results
+- checks skipped with reasons
+- remaining risks or follow-ups

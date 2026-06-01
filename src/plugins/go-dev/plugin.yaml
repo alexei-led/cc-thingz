@@ -1,6 +1,6 @@
 name: go-dev
 version: 4.10.0
-description: Idiomatic Go 1.25+ development with stdlib-first patterns
+description: Idiomatic Go development with stdlib-first patterns
 skills:
   - writing-go
 agents:

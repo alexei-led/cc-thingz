@@ -1,53 +1,52 @@
-# Go principles and verification
+# Go principles
 
-Read this before generating Go code. Covers the stdlib-first stance, control-flow
-and error-handling principles, the no-destructive-commands safety rule, and the
-post-generation verification loop.
+Read before writing, changing, or reviewing Go code.
+
+## Scope
+
+- Use these rules for Go source, tests, APIs, and CLI code.
+- Do not apply them to Python, TypeScript, shell-only, or infrastructure-only tasks.
+- Project conventions win when they are safe and consistent.
+
+## Defaults
+
+- Start from `go.mod`, the module Go version, existing dependencies, CI, and nearby code.
+- Prefer stdlib and existing dependencies. Add a package only for a concrete requirement.
+- Keep packages cohesive: domain logic separate from transport, persistence, config, and process I/O.
+- Keep exported API small. Export only stable names used outside the package.
+
+## Types and interfaces
+
+- Prefer concrete types for domain data and business logic.
+- Use generics for reusable algorithms, not to avoid modeling a domain type.
+- Avoid `any` and `interface{}` unless the value is genuinely unconstrained.
+- Producers return concrete types. Consumers define the smallest private interface they need.
+- Wrap external clients in concrete adapters so vendor types do not leak through the domain.
+
+## Context and errors
+
+- Pass `context.Context` as the first parameter for work that can block, cancel, or cross a boundary.
+- Do not store `context.Context` in structs.
+- Return `error` for expected failures. Use `panic` only for programmer errors or impossible initialization states.
+- Wrap lower-level errors with `%w` when the added operation context helps diagnosis.
+- Use sentinel or typed errors only when callers need distinct behavior.
+- Keep HTTP, CLI, and worker error mapping at the boundary.
+
+## Flow and concurrency
+
+- Use guard clauses and early returns. Avoid deep nesting.
+- Start goroutines only with a clear owner, cancellation path, and completion path.
+- Prefer deterministic tests over sleeps for timers, goroutines, and channel behavior.
+
+## Tests and verification
+
+- Test externally visible behavior, not private helper trivia.
+- Cover success, failure, boundary, cancellation, and concurrency behavior when relevant.
+- Mock only system boundaries. Prefer small fakes when they keep tests clearer than generated mocks.
+- Run the project-configured verification gates before claiming success.
+- If a gate fails, diagnose from the actual output before changing code again.
 
 ## Safety
 
-Do not run destructive shell commands. For broad or risky changes, state the risk and ask before acting.
-
-## Core Philosophy
-
-### Stdlib and Mature Libraries First
-
-- Prefer Go stdlib solutions; add a library only when concrete requirements beat stdlib simplicity
-- Choose mature, well-maintained libs when needed
-
-### Concrete Types Over `any`
-
-- Never use `interface{}` or `any` when a concrete type works
-- Generics for reusable utilities, concrete types for business logic
-- Accept interfaces, return structs
-
-### Private Interfaces at Consumer
-
-- Define interfaces private (lowercase) where used
-- Decouples code, enables testing
-- Implementation returns concrete types
-
-### Flat Control Flow
-
-- Early returns, guard clauses
-- No nested IFs—max 2 levels
-- Switch for multi-case logic
-
-### Explicit Error Handling
-
-- Always wrap with context
-- Use `errors.Is()`/`errors.As()`
-- No bare `return err`
-
-## Verify Generated Code
-
-After generating code, always verify it compiles, tests pass, and lint runs when configured:
-
-```bash
-go test ./...
-go test -race ./...
-go vet ./...
-golangci-lint run ./...
-```
-
-Use the project's configured commands if different.
+- Do not run destructive commands without explicit approval.
+- For broad rewrites, data loss risk, generated-file churn, or dependency changes, state the risk first and ask.
