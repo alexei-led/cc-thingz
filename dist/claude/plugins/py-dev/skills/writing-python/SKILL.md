@@ -24,10 +24,9 @@ Read [principles.md](references/principles.md) before generating or changing Pyt
 ## Core Rules
 
 - Prefer existing project patterns over these defaults.
-- Use stdlib first for small tools.
-- Use concrete types; validate untyped boundary input before it spreads.
-- Use Python 3.12 typing syntax when the project target allows it.
-- Use guard clauses for validation and parsing.
+- Inspect the project Python target before using 3.12-only syntax.
+- Prefer stdlib and existing dependencies before adding packages.
+- Validate untyped boundary input before it spreads.
 
 ## Conditional References
 
@@ -43,6 +42,15 @@ If a tool is not configured, say so and run the closest available gate. If a che
 
 ## Python-Specific Failure Cases
 
-- No clear project root: locate the `pyproject.toml` before editing or choosing commands.
+- No clear project root: locate `pyproject.toml` before editing or choosing commands.
 - Unknown Python target: inspect `pyproject.toml`, `.python-version`, CI, or lockfiles before using 3.12-only syntax.
 - Type checker reports missing attributes: check imports, package exports, and runtime shape before loosening types.
+
+## Final Response
+
+Include:
+
+- changed files
+- checks run and results
+- checks skipped with reasons
+- remaining risks or follow-ups

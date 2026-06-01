@@ -10,9 +10,9 @@ Read before generating or changing Python code.
 
 ## Typing
 
-- Use `X | Y`, `list[T]`, `dict[K, V]`, and PEP 695 syntax for 3.12+ projects.
+- Use `X | Y`, `list[T]`, `dict[K, V]`, and PEP 695 syntax when the project target allows it.
 - Avoid unbounded `Any`; isolate and validate untyped inputs at boundaries.
-- Use `TypedDict`, `dataclass`, or small value objects for recurring dict shapes.
+- Use `TypedDict`, `dataclass`, or small value objects for recurring data shapes.
 - Use `Protocol` for consumer-owned interfaces; use ABC only for runtime enforcement.
 
 ## Control flow
@@ -29,12 +29,8 @@ Read before generating or changing Python code.
 - Catch multiple types with tuple syntax: `except (KeyError, ValueError) as exc:`.
 - Use exception chaining when wrapping: `raise ConfigError("invalid config") from exc`.
 
-## Logging and output
+## Logging
 
 - Use the project's logger for diagnostics.
 - Use stdlib `logging` for new code unless the project already uses another logger.
-- CLI user output may write to stdout/stderr through the chosen CLI framework.
-
-## Verification
-
-Run configured tests, lint, format checks, and type checks after code changes. If a gate is absent, state that and run the closest project check.
+- Do not print diagnostics from library or domain code.
