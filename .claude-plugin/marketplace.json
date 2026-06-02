@@ -27,7 +27,13 @@
     {
       "name": "dev-tools",
       "source": "./dist/claude/plugins/dev-tools",
-      "description": "Shell scripting, git worktrees, docs lookup, research, config review, memory, and brainstorming",
+      "description": "Shell scripting, docs lookup, research, config review, memory, and brainstorming",
+      "version": "4.12.0"
+    },
+    {
+      "name": "git-flow",
+      "source": "./dist/claude/plugins/git-flow",
+      "description": "Git worktrees, branch cleanup, hooks, secret scanning, config hygiene, and guardrails",
       "version": "4.12.0"
     },
     {

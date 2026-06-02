@@ -70,6 +70,9 @@ def test_build_plugin_index_real_repo(pi_mod):
 
     # committing-code belongs to dev-flow.
     assert index["skills"]["committing-code"] == ["dev-flow"]
+    # git hygiene skills belong to git-flow.
+    assert index["skills"]["configuring-git-hygiene"] == ["git-flow"]
+    assert "configuring-git-flow" not in index["skills"]
     # engineer is a shared role agent; dev-flow is one of its owners.
     assert "dev-flow" in index["agents"]["engineer"]
     # session-start hook belongs to dev-flow.

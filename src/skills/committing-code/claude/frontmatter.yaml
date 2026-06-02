@@ -6,4 +6,6 @@ allowed-tools:
   - Bash(git log *)
   - Bash(git show *)
   - Bash(git branch *)
+  - Bash(git add *)
+  - Bash(git commit *)
   - Bash(scripts/commit-state.sh *)

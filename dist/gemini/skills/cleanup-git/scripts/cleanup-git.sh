@@ -58,7 +58,13 @@ while [ "$#" -gt 0 ]; do
 done
 
 cd "$(git rev-parse --show-toplevel)"
-git fetch --all --prune --quiet || true
+if ! git fetch --all --prune --quiet; then
+	if $APPLY; then
+		echo "Error: git fetch --all --prune failed; refusing apply with stale refs" >&2
+		exit 1
+	fi
+	echo "warning: git fetch --all --prune failed; dry-run uses local refs" >&2
+fi
 
 if command -v gh >/dev/null 2>&1; then
 	GH_AVAILABLE=1
@@ -251,7 +257,7 @@ delete_branch() {
 	fi
 	printf '+ git branch -d %q\n' "$branch"
 	git branch -d "$branch" 2>/dev/null || {
-		echo "  -d refused; deleting with -D."
+		echo "  -d refused after cleanup proof ($CLEANUP_REASON, $ahead ahead); deleting with -D."
 		run git branch -D "$branch"
 	}
 }

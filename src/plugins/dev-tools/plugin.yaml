@@ -1,9 +1,8 @@
 name: dev-tools
 version: 4.12.0
-description: Shell scripting, git worktrees, docs lookup, research, config review, memory, and brainstorming
+description: Shell scripting, docs lookup, research, config review, memory, and brainstorming
 skills:
   - brainstorming-ideas
-  - cleanup-git
   - evolving-config
   - exploring-repos
   - learning-patterns
@@ -15,10 +14,7 @@ skills:
   - reviewing-cc-config
   - sequential-thinking
   - smart-explore
-  - using-git-worktrees
   - writing-shell
 agents:
   - reviewer
-hooks:
-  - worktree-create
-  - worktree-remove
+hooks: []

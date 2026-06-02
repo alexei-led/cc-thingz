@@ -12,3 +12,13 @@ FIXTURES="$BATS_TEST_DIRNAME/fixtures"
 	run bash "$HOOK" <"$FIXTURES/git_guardrails_dangerous.json" 2>&1
 	[ "$status" -eq 2 ]
 }
+
+@test "git-guardrails: git checkout force is blocked" {
+	run bash "$HOOK" <<<'{"tool_input":{"command":"git checkout -f feature"}}' 2>&1
+	[ "$status" -eq 2 ]
+}
+
+@test "git-guardrails: forced worktree remove is blocked" {
+	run bash "$HOOK" <<<'{"tool_input":{"command":"git worktree remove --force ../repo.worktrees/feature"}}' 2>&1
+	[ "$status" -eq 2 ]
+}

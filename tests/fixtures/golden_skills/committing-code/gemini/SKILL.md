@@ -1,6 +1,7 @@
 ---
-description: Create git commits with logical grouping. Use when committing, saving
-  changes, creating commits, or grouping work into commits.
+description: Create normal git commits with logical grouping. Use when committing,
+  saving changes, creating commits, or grouping work into commits. NOT for amending,
+  rebasing, force-pushing, or rewriting history.
 name: committing-code
 ---
 

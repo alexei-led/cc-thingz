@@ -58,7 +58,7 @@ SKILLS_WITH_REFERENCES = {
         "references/tools.md",
         "references/testing.md",
     ),
-    "using-git-worktrees": ("references/WORKFLOW.md",),
+    "using-git-worktrees": ("references/workflow.md",),
 }
 
 
@@ -106,6 +106,16 @@ def test_references_copied_to_dist(
     out_dir = written[0].parent
     for rel in refs:
         assert (out_dir / rel).is_file(), f"reference {rel} missing from {out_dir}"
+
+
+def test_using_git_worktrees_reference_name_is_lowercase() -> None:
+    repo_root = Path(__file__).resolve().parent.parent
+    refs = repo_root / "src" / "skills" / "using-git-worktrees" / "references"
+
+    names = {path.name for path in refs.iterdir()}
+
+    assert "workflow.md" in names
+    assert "WORKFLOW.md" not in names
 
 
 def test_brainstorming_ideas_swaps_claude_body(cs, tmp_path: Path) -> None:

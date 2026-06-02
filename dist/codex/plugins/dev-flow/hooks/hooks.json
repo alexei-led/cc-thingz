@@ -10,17 +10,6 @@
             "timeout": 10
           }
         ]
-      },
-      {
-        "matcher": "^Bash$",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$PLUGIN_ROOT/hooks/git-guardrails.sh\"",
-            "timeout": 10,
-            "statusMessage": "Checking git command"
-          }
-        ]
       }
     ],
     "PostToolUse": [

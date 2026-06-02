@@ -13,7 +13,6 @@ agents:
   - reviewer
 hooks:
   - file-protector
-  - git-guardrails
   - notify
   - session-start
   - skill-enforcer

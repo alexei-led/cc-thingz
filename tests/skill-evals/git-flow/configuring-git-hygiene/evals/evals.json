@@ -1,0 +1,31 @@
+{
+  "skill_name": "configuring-git-hygiene",
+  "evals": [
+    {
+      "id": "staged-precommit-full-prepush",
+      "name": "staged precommit full prepush",
+      "prompt": "A user asks: set up git hooks with gitleaks, linting on commit, and full tests before push. Describe the plan before editing files.",
+      "expected_output": "The response inspects existing hooks/config first, proposes fast staged pre-commit checks with Gitleaks, full pre-push validation, and avoids overwriting hooks without approval.",
+      "assertions": [
+        "The output checks existing hook configuration before changing it.",
+        "The output keeps pre-commit fast and scoped to staged or affected files.",
+        "The output runs or proposes Gitleaks secret scanning with redacted output.",
+        "The output reserves full build/test/lint validation for pre-push.",
+        "The output asks before overwriting hooks or changing git config."
+      ]
+    },
+    {
+      "id": "gitignore-tracked-file-safety",
+      "name": "gitignore tracked file safety",
+      "prompt": "A user says: add build artifacts to .gitignore and stop tracking the ones already committed. Describe the safe workflow.",
+      "expected_output": "The response derives ignore rules from actual artifacts, checks whether files are tracked or ignored, updates .gitignore narrowly, and asks before git rm --cached.",
+      "assertions": [
+        "The output inspects actual generated artifacts before adding ignore rules.",
+        "The output uses git check-ignore or git ls-files to verify behavior.",
+        "The output avoids broad ignore patterns that hide source files.",
+        "The output asks before removing tracked files from the index.",
+        "The output does not delete the user's working files."
+      ]
+    }
+  ]
+}

@@ -26,7 +26,7 @@ if echo "$PROMPT_LOWER" | grep -qE '\.go\b|go\.(mod|sum)|go (test|build|run|fmt|
 	skills+="writing-go "
 fi
 
-# writing-python: Idiomatic Python 3.14+ development
+# writing-python: Idiomatic Python 3.12+ development
 # Triggers: .py files, Python commands, Python frameworks
 if echo "$PROMPT_LOWER" | grep -qE '\.pyi?\b|pyproject|requirements\.txt|setup\.py|__init__|python[3]?\b|\buv (run|pip|sync|add|lock)|\bruff\b|pytest|poetry\b|mypy\b|django|flask|fastapi|pandas|numpy|pydantic|dataclass|type\s*hint|\btyping\b|asyncio|\basync\b.*\bawait\b|pip install|write.*python|implement.*python'; then
 	skills+="writing-python "
@@ -63,8 +63,20 @@ fi
 
 # using-git-worktrees: Isolated git worktree management
 # Triggers: Explicit worktree or isolation intent for feature work
-if echo "$PROMPT_LOWER" | grep -qE 'worktree|git\s*worktree|isolat.*(work|branch|develop|implement|environment)|separate.*(workspace|environment|branch)|parallel.*(branch|work|develop)|work.*(multiple|parallel).*branch|clean.*(workspace|environment|slate)|fresh.*(workspace|environment|branch)|feature.*isolation'; then
+if echo "$PROMPT_LOWER" | grep -qE 'worktree|git\s*worktree|isolat.*(work|branch|develop|implement|environment)|separate.*(workspace|environment|branch)|parallel.*(branch|work|develop)|work.*(multiple|parallel).*branch|fresh.*(workspace|environment|branch)|feature.*isolation'; then
 	skills+="using-git-worktrees "
+fi
+
+# cleanup-git: Remove merged/gone branches and stale worktrees
+# Triggers: cleanup branches, prune worktrees, tidy local git state
+if echo "$PROMPT_LOWER" | grep -qE 'cleanup.*(git|branch|worktree)|clean\s+up.*(git|branch|worktree)|prune.*(branch|worktree|git)|tidy.*git|remove.*merged.*branch|delete.*merged.*branch|gone\s+branches|stale\s+worktrees'; then
+	skills+="cleanup-git "
+fi
+
+# configuring-git-hygiene: Git hooks, Gitleaks, .gitignore, and git config hygiene
+# Triggers: setup git hooks, pre-commit/pre-push, gitleaks, gitignore, git config
+if echo "$PROMPT_LOWER" | grep -qE 'git[[:space:]-]?(hygiene|guardrails)|pre[[:space:]-]?commit|pre[[:space:]-]?push|gitleaks|git[[:space:]-]?leaks|secret\s+scan.*git|git\s+hooks?|core\.hooksPath|hooksPath|\.gitignore|gitignore|git\s+config.*(best|setup|hygiene|sign|pull|prune|includeif)'; then
+	skills+="configuring-git-hygiene "
 fi
 
 # refactoring-code: Fast batch refactoring via MorphLLM edit_file

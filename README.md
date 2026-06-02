@@ -7,10 +7,10 @@
 [![AGENTS.md](https://img.shields.io/badge/AGENTS.md-standard-000000)](https://agents.md)
 [![Codex CLI](https://img.shields.io/badge/Codex_CLI-skill_export-10A37F)](https://developers.openai.com/codex/plugins)
 [![Gemini CLI](https://img.shields.io/badge/Gemini_CLI-skill_export-4285F4)](https://geminicli.com/docs/extensions)
-[![Plugins](https://img.shields.io/badge/plugins-9-green)](src/plugins/)
-[![Skills](https://img.shields.io/badge/skills-36-green)](src/plugins/)
+[![Plugins](https://img.shields.io/badge/plugins-10-green)](src/plugins/)
+[![Skills](https://img.shields.io/badge/skills-37-green)](src/plugins/)
 
-A multi-agent skill suite for **Claude Code**, **Codex CLI**, **Gemini CLI**, and **Pi** — 36 skills, 3 agents, and 10 hooks. One source of truth in `src/`, compiled to platform-optimized output for each tool. Supports [AGENTS.md](https://agents.md)-compatible tools too. Built over 6+ months of daily use and continuous refinement.
+A multi-agent skill suite for **Claude Code**, **Codex CLI**, **Gemini CLI**, and **Pi** — 37 skills, 3 agents, and 10 hooks. One source of truth in `src/`, compiled to platform-optimized output for each tool. Supports [AGENTS.md](https://agents.md)-compatible tools too. Built over 6+ months of daily use and continuous refinement.
 
 ## Why This Exists
 
@@ -20,7 +20,7 @@ AI coding tools are powerful out of the box, but specialized workflows need spec
 - **Smart hooks** that auto-suggest skills, lint after edits, protect secrets, and run tests (Claude Code)
 - **Spec-driven development** with structured requirements, tasks, and a CLI for project management
 - **Infrastructure ops** with validated K8s, Terraform, and Helm deployments
-- **Developer utilities** including worktree isolation, AST-first codebase search, web research, and brainstorming
+- **Developer utilities** including git-flow hygiene, AST-first codebase search, web research, and brainstorming
 
 Every skill has been manually crafted and refined through real-world use — not generated boilerplate.
 
@@ -42,13 +42,14 @@ Every skill has been manually crafted and refined through real-world use — not
 # then install any plugin(s) you want:
 /plugin install dev-flow@cc-thingz
 /plugin install dev-tools@cc-thingz
+/plugin install git-flow@cc-thingz
 /plugin install go-dev@cc-thingz
 # ... repeat for py-dev, ts-dev, web-dev, infra-ops, spec-dev, browser-automation
 ```
 
 Use `--scope project` to install into `.claude/settings.json` for team sharing.
 
-`dev-flow` wires five hooks automatically on install:
+`dev-flow` wires development hooks automatically on install. Install `git-flow` for git guardrails and worktree hooks.
 
 | Event              | Matcher       | Hook                | Effect                                   |
 | ------------------ | ------------- | ------------------- | ---------------------------------------- |
@@ -56,6 +57,7 @@ Use `--scope project` to install into `.claude/settings.json` for team sharing.
 | `UserPromptSubmit` | —             | `skill-enforcer.sh` | Suggests relevant skills from prompt     |
 | `PreToolUse`       | `Write\|Edit` | `file-protector.py` | Blocks writes to `.env`, keys, secrets   |
 | `PostToolUse`      | `Write\|Edit` | `smart-lint.sh`     | Runs formatter/linter on changed files   |
+| `Stop`             | —             | `test-runner.sh`    | Runs focused tests for edited files      |
 | `Notification`     | —             | `notify.sh`         | macOS notification (Kitty + tmux focus)  |
 
 ### OpenAI Codex CLI
@@ -80,13 +82,12 @@ per-plugin skill directory directly:
 }
 ```
 
-`dev-flow` wires five hooks via `dist/codex/plugins/dev-flow/hooks/hooks.json`:
+`dev-flow` wires focused development hooks via `dist/codex/plugins/dev-flow/hooks/hooks.json`. Install `git-flow` for destructive-git guardrails.
 
 | Event          | Matcher         | Hook                | Effect                                   |
 | -------------- | --------------- | ------------------- | ---------------------------------------- |
 | `SessionStart` | —               | `session-start.py`  | Prints branch, last commit, project type |
 | `PreToolUse`   | `^apply_patch$` | `file-protector.py` | Blocks writes to `.env`, keys, secrets   |
-| `PreToolUse`   | `^Bash$`        | `git-guardrails.sh` | Blocks destructive git commands          |
 | `PostToolUse`  | `^apply_patch$` | `smart-lint.sh`     | Auto-format and lint edited files        |
 | `Stop`         | —               | `test-runner.sh`    | Runs focused tests for edited files      |
 
@@ -297,17 +298,18 @@ All agents and several skills optionally integrate with [claude-mem](https://git
 
 | Plugin                                                               | Skills | Agents | Description                                                                       |
 | -------------------------------------------------------------------- | ------ | ------ | --------------------------------------------------------------------------------- |
-| [**dev-flow**](src/plugins/dev-flow/plugin.yaml)                     | 6      | 2      | Fix, refactor, review, document, commit; `engineer` and `reviewer` roles; 7 hooks |
+| [**dev-flow**](src/plugins/dev-flow/plugin.yaml)                     | 6      | 2      | Fix, refactor, review, document, commit; `engineer` and `reviewer` roles; 6 hooks |
 | [**go-dev**](src/plugins/go-dev/plugin.yaml)                         | 1      | 1      | Idiomatic Go development with stdlib-first patterns, testing, and CLI tooling     |
 | [**py-dev**](src/plugins/py-dev/plugin.yaml)                         | 1      | 1      | Python 3.12+ development with uv/ruff/pyright toolchain                           |
 | [**ts-dev**](src/plugins/ts-dev/plugin.yaml)                         | 1      | 1      | TypeScript with strict typing, React patterns, and modern tooling                 |
 | [**web-dev**](src/plugins/web-dev/plugin.yaml)                       | 1      | 1      | Web frontend with vanilla HTML, CSS, JavaScript, and HTMX                         |
 | [**infra-ops**](src/plugins/infra-ops/plugin.yaml)                   | 2      | 1      | Kubernetes, Terraform, Helm, GitHub Actions, AWS, GCP                             |
-| [**dev-tools**](src/plugins/dev-tools/plugin.yaml)                   | 15     | 1      | Shell scripting, git worktrees, docs lookup, research, config review              |
+| [**dev-tools**](src/plugins/dev-tools/plugin.yaml)                   | 13     | 1      | Shell scripting, docs lookup, research, config review, memory                     |
+| [**git-flow**](src/plugins/git-flow/plugin.yaml)                     | 3      | 0      | Worktrees, cleanup, hooks, Gitleaks, `.gitignore`, git config, and guardrails     |
 | [**spec-dev**](src/plugins/spec-dev/plugin.yaml)                     | 7      | 2      | Spec-driven development: requirements, tasks, and planning workflows              |
 | [**browser-automation**](src/plugins/browser-automation/plugin.yaml) | 2      | 1      | Browser exploration, validation, screenshots, and E2E flows                       |
 
-**Totals**: 36 skills, 2 plugin-owned role agents (`engineer`, `reviewer`), 10 hooks
+**Totals**: 37 skills, 2 plugin-owned role agents (`engineer`, `reviewer`), 10 hooks
 
 ## Skills
 
@@ -322,6 +324,7 @@ Invoke as `/skill-name` or let the skill enforcer suggest them.
 | `brainstorming-ideas`    | Brainstorm ideas and stress-test draft plans or trade-offs                                                                                        | "brainstorm", "debate plan"          |
 | `cleanup-git`            | Remove merged branches and stale worktrees                                                                                                        | "cleanup branches", "tidy git"       |
 | `committing-code`        | Smart git commits with logical grouping                                                                                                           | "commit", "save changes"             |
+| `configuring-git-hygiene`   | Configure git hooks, Gitleaks, `.gitignore`, git config, and guardrails                                                                           | "setup pre-commit", "gitleaks"       |
 | `deploying-infra`        | Validate + deploy K8s/Terraform/Helm                                                                                                              | "deploy to staging", "rollout"       |
 | `documenting-code`       | Update docs based on recent changes                                                                                                               | "update docs", "document"            |
 | `evolving-config`        | Audit config against latest Claude Code features                                                                                                  | "evolve", "audit config"             |

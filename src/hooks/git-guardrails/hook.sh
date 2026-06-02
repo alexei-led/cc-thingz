@@ -24,7 +24,11 @@ DEFAULT_BLOCK_PATTERNS=$(
 (^|[;&|[:space:]])git[[:space:]]+clean[[:space:]][^;&|]*(-f|--force)
 (^|[;&|[:space:]])git[[:space:]]+branch[[:space:]]+-D([[:space:]]|$)
 (^|[;&|[:space:]])git[[:space:]]+checkout[[:space:]]+\.([[:space:]]|$)
+(^|[;&|[:space:]])git[[:space:]]+checkout[[:space:]][^;&|]*(-f|--force)
+(^|[;&|[:space:]])git[[:space:]]+switch[[:space:]][^;&|]*(-C|--force-create)
 (^|[;&|[:space:]])git[[:space:]]+restore[[:space:]]+\.([[:space:]]|$)
+(^|[;&|[:space:]])git[[:space:]]+restore[[:space:]][^;&|]*--source[^;&|]*[[:space:]]\.([[:space:]]|$)
+(^|[;&|[:space:]])git[[:space:]]+worktree[[:space:]]+remove[[:space:]][^;&|]*(--force|-f)
 (^|[;&|[:space:]])git[[:space:]]+push[[:space:]][^;&|]*(--force|-f)([[:space:]]|$)
 PATTERNS
 )

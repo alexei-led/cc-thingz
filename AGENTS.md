@@ -68,10 +68,15 @@ Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allo
 - **deploying-infra** — Validate and deploy Kubernetes, Terraform, Helm, Kustomize, GitHub Actions, and Docker configs
 - **operating-infra** — Author, inspect, troubleshoot, and review infrastructure across IaC, Kubernetes, cloud resources, containers, CI/CD, and Linux hosts
 
+## Git Workflow
+
+- **cleanup-git** — Remove merged local branches and stale git worktrees
+- **configuring-git-hygiene** — Configure git hooks, Gitleaks, `.gitignore`, git config, and guardrails
+- **using-git-worktrees** — Creates isolated git worktrees for parallel development
+
 ## Developer Tools
 
 - **brainstorming-ideas** — Brainstorm ideas and stress-test draft plans or trade-offs before coding
-- **cleanup-git** — Remove merged local branches and stale git worktrees
 - **evolving-config** — Audit Claude Code configuration against latest features and best practices
 - **exploring-repos** — Explore public GitHub repositories via DeepWiki AI-generated documentation
 - **learning-patterns** — Extract learnings and generate project-specific customizations
@@ -83,7 +88,6 @@ Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allo
 - **reviewing-instructions** — Review and score AI agent/skill instruction files and related agent-targeted markdown such as `body.md`, `references/*.md`, and custom prompt/context/rules docs
 - **sequential-thinking** — Structured stepwise reasoning with explicit revisions and branches
 - **smart-explore** — Token-efficient known-file and known-symbol navigation
-- **using-git-worktrees** — Creates isolated git worktrees for parallel development
 
 ## Browser Automation
 

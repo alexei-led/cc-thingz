@@ -61,18 +61,43 @@ rebase_or_merge_state() {
 	echo "clean"
 }
 
+has_head() {
+	git rev-parse --verify --quiet HEAD >/dev/null
+}
+
 changed_paths() {
 	{
-		git diff --name-only HEAD
+		if has_head; then
+			git diff --name-only HEAD
+		else
+			git diff --cached --name-only
+		fi
 		git ls-files --others --exclude-standard
 	} | awk 'NF' | sort -u
 }
 
-suspicious_paths() {
+suspicious_path_names() {
 	changed_paths | awk '
 		BEGIN { IGNORECASE = 1 }
 		/(^|\/)[.]env($|[.])|\.pem$|\.key$|\.p12$|credentials|secret|password|token/ { print }
 	'
+}
+
+suspicious_content_paths() {
+	local path
+	changed_paths | while IFS= read -r path; do
+		[ -f "$path" ] || continue
+		if grep -Eiq -- '(api[_-]?key|access[_-]?token|auth[_-]?token|secret|password|private[ -]?key)' "$path"; then
+			printf '%s\n' "$path"
+		fi
+	done | sort -u
+}
+
+suspicious_paths() {
+	{
+		suspicious_path_names
+		suspicious_content_paths
+	} | sort -u
 }
 
 status_short() {
@@ -80,15 +105,23 @@ status_short() {
 }
 
 shortstat() {
-	git diff --shortstat HEAD || true
+	if has_head; then
+		git diff --shortstat HEAD || true
+	else
+		git diff --cached --shortstat || true
+	fi
 }
 
 diff_stat() {
-	git diff --stat HEAD
+	if has_head; then
+		git diff --stat HEAD
+	else
+		git diff --cached --stat
+	fi
 }
 
 recent_log() {
-	git log --oneline -8
+	git log --oneline -8 2>/dev/null || true
 }
 
 gather() {
@@ -127,7 +160,11 @@ gather)
 	;;
 full-diff)
 	ensure_git_repo
-	git diff HEAD
+	if has_head; then
+		git diff HEAD
+	else
+		git diff --cached
+	fi
 	;;
 paths)
 	ensure_git_repo

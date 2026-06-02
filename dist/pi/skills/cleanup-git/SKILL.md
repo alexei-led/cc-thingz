@@ -1,7 +1,8 @@
 ---
 description: Remove merged local branches and stale git worktrees. Use when the user
   says "cleanup branches", "prune worktrees", "tidy git", "remove merged branches",
-  "gone branches", or wants to clean local git state.
+  "delete merged branches", "gone branches", or wants to clean local git state. NOT
+  for creating commits, creating worktrees, or configuring git hooks.
 name: cleanup-git
 ---
 
@@ -14,7 +15,7 @@ name: cleanup-git
 
 Clean local git branches and worktrees after work has merged. Dry-run first. Destructive commands require user approval.
 
-Prefer a repo-local `scripts/cleanup-git.sh` when the target repo ships one. If it does not, use the bundled skill script from this skill's `scripts/` directory. Manual fallback: `git fetch --prune`, inspect `git worktree list`, then remove only branches/worktrees that meet the same rules below.
+Prefer a repo-local `scripts/cleanup-git.sh` when the target repo ships one. If it does not, use the bundled skill script from this skill's `scripts/` directory. Do not improvise destructive cleanup commands outside the script workflow.
 
 ## Command
 
@@ -65,3 +66,30 @@ Soft guard:
 3. Surface every `KEEP` line as a human decision.
 4. Ask before running `scripts/cleanup-git.sh --apply`.
 5. Use `--force` only when the user confirms ahead commits are throwaway.
+
+## Output
+
+```text
+GIT CLEANUP
+===========
+Status: PREVIEW | APPLIED | BLOCKED
+Base: <ref>
+
+Remove:
+- <branch/worktree> — <reason>
+
+Keep:
+- <branch/worktree> — <reason and user decision needed>
+
+Verification:
+- <command> — pass/fail/not run
+```
+
+## Failure Handling
+
+- Not a git repo: say so and stop.
+- Base branch not found: ask for `--base <ref>`.
+- Fetch fails during preview: report that refs may be stale.
+- Fetch fails during apply: stop; do not delete with stale refs.
+- Dirty worktree: keep it and ask the user what to do.
+- Ahead commits: keep unless the user explicitly approves `--force`.

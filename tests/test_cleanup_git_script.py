@@ -141,6 +141,16 @@ def test_apply_deletes_merged_branch(tmp_path: Path) -> None:
     assert branches == ["master"]
 
 
+def test_apply_refuses_when_fetch_prune_fails(tmp_path: Path) -> None:
+    repo = init_repo(tmp_path, "main")
+    git(repo, "remote", "add", "origin", str(tmp_path / "missing.git"))
+
+    result = run([str(SCRIPT), "--apply"], repo)
+
+    assert result.returncode == 1
+    assert "refusing apply with stale refs" in result.stdout
+
+
 def test_remote_default_branch_wins_over_local_fallback_order(tmp_path: Path) -> None:
     repo = init_repo(tmp_path, "main")
     git(repo, "branch", "master")

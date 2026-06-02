@@ -1,0 +1,11 @@
+name: git-flow
+version: 4.12.0
+description: Git worktrees, branch cleanup, hooks, secret scanning, config hygiene, and guardrails
+skills:
+  - cleanup-git
+  - configuring-git-hygiene
+  - using-git-worktrees
+hooks:
+  - git-guardrails
+  - worktree-create
+  - worktree-remove

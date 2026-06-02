@@ -5,10 +5,13 @@ allowed-tools:
 - Bash(git log *)
 - Bash(git show *)
 - Bash(git branch *)
+- Bash(git add *)
+- Bash(git commit *)
 - Bash(scripts/commit-state.sh *)
 context: fork
-description: Create git commits with logical grouping. Use when committing, saving
-  changes, creating commits, or grouping work into commits.
+description: Create normal git commits with logical grouping. Use when committing,
+  saving changes, creating commits, or grouping work into commits. NOT for amending,
+  rebasing, force-pushing, or rewriting history.
 name: committing-code
 user-invocable: true
 ---

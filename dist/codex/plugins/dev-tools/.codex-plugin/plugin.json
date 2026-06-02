@@ -1,7 +1,7 @@
 {
   "name": "dev-tools",
   "version": "4.12.0",
-  "description": "Shell scripting, git worktrees, docs lookup, research, config review, memory, and brainstorming",
+  "description": "Shell scripting, docs lookup, research, config review, memory, and brainstorming",
   "author": {
     "name": "Alexei Ledenev",
     "email": "alexei.led@gmail.com"

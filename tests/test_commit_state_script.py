@@ -33,6 +33,28 @@ def test_commit_state_gather_reports_suspicious_paths(tmp_path: Path) -> None:
     assert "SUSPICIOUS_PATHS\n.env" in out
 
 
+def test_commit_state_gather_reports_suspicious_content_without_value(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    run(["git", "init"], repo)
+    run(["git", "config", "user.name", "Test User"], repo)
+    run(["git", "config", "user.email", "test@example.com"], repo)
+
+    (repo / "app.ts").write_text("console.log('v1')\n")
+    run(["git", "add", "app.ts"], repo)
+    run(["git", "commit", "-m", "feat: init"], repo)
+
+    (repo / "app.ts").write_text("const api_key = 'secret-value'\n")
+
+    script = Path("src/skills/committing-code/scripts/commit-state.sh").resolve()
+    out = run([str(script), "gather"], repo).stdout
+
+    assert "SUSPICIOUS_PATHS\napp.ts" in out
+    assert "secret-value" not in out
+
+
 def test_commit_state_paths_includes_untracked_files(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -51,3 +73,16 @@ def test_commit_state_paths_includes_untracked_files(tmp_path: Path) -> None:
     out = run([str(script), "paths"], repo).stdout.splitlines()
 
     assert out == ["new.txt", "tracked.txt"]
+
+
+def test_commit_state_handles_unborn_branch(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    run(["git", "init"], repo)
+    (repo / "new.txt").write_text("new\n")
+
+    script = Path("src/skills/committing-code/scripts/commit-state.sh").resolve()
+    result = run([str(script), "gather"], repo)
+
+    assert "REPO_STATE\nclean" in result.stdout
+    assert "new.txt" in result.stdout
