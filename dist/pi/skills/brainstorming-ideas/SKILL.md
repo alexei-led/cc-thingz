@@ -1,9 +1,10 @@
 ---
 description: Brainstorm ideas and stress-test draft plans before coding. Use when
-  brainstorming, exploring approaches, designing a feature/API/flow, grilling a plan,
-  challenging assumptions, or resolving terminology that blocks the design. NOT for
-  implementation task breakdown; use the spec-plan skill. NOT for general documentation
-  updates; use documenting-code or learning-patterns.
+  brainstorming, exploring approaches, designing a feature/API/flow, grilling or debating
+  a bounded plan, challenging assumptions, or resolving design-blocking terminology.
+  NOT for implementation task breakdown; use spec-plan. NOT for generic technology
+  comparisons or best-practice research; use researching-web. NOT for docs updates;
+  use documenting-code or learning-patterns.
 name: brainstorming-ideas
 ---
 
@@ -14,16 +15,15 @@ name: brainstorming-ideas
 
 # Brainstorming Ideas
 
-Turn a vague idea or draft plan into a well-formed design. Ask one question at a time. If the answer is discoverable from code, inspect code instead of asking.
+Turn a vague idea or draft plan into a well-formed design before coding.
 
 ## Core principles
 
-- One question at a time.
-- YAGNI at every step.
-- Present design in small sections and confirm before continuing.
-- Propose 2-3 concrete options with trade-offs.
-- Use project domain language from `CONTEXT.md` / `CONTEXT-MAP.md` when present.
-- Offer ADRs only for hard-to-reverse, surprising, real trade-off decisions.
+- Ask one question at a time.
+- Inspect code before asking when code can answer.
+- Offer 2-3 options with trade-offs; mark one recommendation.
+- Use existing `CONTEXT.md`, `CONTEXT-MAP.md`, and ADR vocabulary.
+- Cut speculative features.
 
 ## Step 0: Load domain context
 
@@ -34,7 +34,7 @@ Before design questions, look for relevant project docs:
 - `docs/adr/`
 - nearest `*/CONTEXT.md` or `*/docs/adr/`
 
-Read them when present. Use those terms in questions and designs. If no docs exist, create them lazily only when a real term or decision is resolved.
+Read them when present. Use those terms in questions and designs. If no docs exist, create them only with user approval and only when a real term or decision is resolved.
 
 ## Step 1: Understand the idea
 
@@ -49,33 +49,15 @@ Follow up one question at a time:
 
 Stop when you can state the problem in one sentence.
 
-## Step 2: Grill the plan when requested
+## Step 2: Grill or debate a bounded plan when requested
 
-If the user passed `plan`, `grill`, or asked to challenge/stress-test a plan, walk the decision tree. Keep it focused on design quality and assumptions, not implementation task breakdown; use the `spec-plan` skill for tasks.
+Use this mode only for a specific plan or trade-off. If none is clear, ask for one.
 
-For the full interview discipline (phase order, per-question format, final summary, failure handling), read `references/grill-protocol.md`.
+Read `references/grill-protocol.md` and follow it. Also:
 
-For each question:
-
-- Provide your recommended answer.
-- Explain why the branch matters.
-- Inspect code instead of asking when possible.
+- Test assumptions with concrete edge cases.
 - Flag vocabulary conflicts with `CONTEXT.md`.
-- Use concrete edge-case scenarios.
-
-When a domain term is resolved, propose a tight `CONTEXT.md` entry:
-
-```markdown
-**Term**:
-One-sentence definition.
-_Avoid_: overloaded synonym
-```
-
-Offer an ADR only when all three are true:
-
-1. Hard to reverse.
-2. Surprising without context.
-3. Result of a real trade-off.
+- If the discussion turns into task breakdown, stop and route to `spec-plan`.
 
 ## Step 3: Surface requirements and assumptions
 
@@ -98,11 +80,11 @@ Find:
 - integration points
 - constraints from ADRs or existing architecture
 
-Summarize in 3-5 bullets. Use project vocabulary.
+Summarize in 3-5 bullets. Use project vocabulary. Cite key paths when code shaped the recommendation.
 
 ## Step 5: Research external solutions only if requested
 
-Compare patterns, trade-offs, and common failure modes. Summarize before proposing approaches.
+If the request is only a generic technology comparison or best-practice survey, use `researching-web` instead. Otherwise compare patterns, trade-offs, and common failure modes. Summarize before proposing approaches.
 
 ## Step 6: Propose approaches
 
@@ -116,7 +98,7 @@ Mark one as recommended. Ask which fits best.
 
 ## Step 7: Detail the chosen design
 
-Present ~200-word sections and confirm after each:
+Present only relevant ~200-word sections and confirm after each. Typical sections:
 
 1. Architecture overview
 2. Data flow
@@ -136,13 +118,22 @@ docs/plans/YYYY-MM-DD-<topic>-design.md
 
 Include only: Problem, Chosen approach, Trade-offs, Open questions, Testing strategy.
 
-If domain terms or decisions crystallized, update `CONTEXT.md` or create a short ADR only with user approval.
+If domain terms crystallized, propose a `CONTEXT.md` entry and write it only with user approval:
+
+```markdown
+Term:
+One-sentence definition.
+Avoid: overloaded synonym
+```
+
+If hard-to-reverse decisions crystallized, offer an ADR only when the decision is surprising without context and came from a real trade-off.
 
 ## Failure handling
 
 - Idea conflicts with `CONTEXT.md` / `CONTEXT-MAP.md`: surface the contradiction explicitly ("the glossary defines X as A, this idea assumes B"). Resolve the term with the user before designing — do not silently pick one.
 - A constraint blocks every approach: stop generating options. State the blocker, what would unblock it, and ask the user to relax the constraint or change scope.
 - Idea is too vague to design (user cannot state the problem in one sentence): stay in Step 1. Ask one narrowing question at a time; do not fabricate requirements or jump to approaches.
+- No bounded plan or trade-off exists for grill/debate mode: ask for one; do not invent opposing positions.
 
 ## Output format
 

@@ -14,20 +14,21 @@ allowed-tools:
 - mcp__plugin_claude-mem_mcp-search__search
 - WebFetch
 - Bash(git *)
-argument-hint: '[idea|plan|grill] <topic-or-plan>'
+argument-hint: '[idea|plan|grill|debate] <topic-or-plan>'
 context: fork
 description: Brainstorm ideas and stress-test draft plans before coding. Use when
-  brainstorming, exploring approaches, designing a feature/API/flow, grilling a plan,
-  challenging assumptions, or resolving terminology that blocks the design. NOT for
-  implementation task breakdown; use the spec-plan skill. NOT for general documentation
-  updates; use documenting-code or learning-patterns.
+  brainstorming, exploring approaches, designing a feature/API/flow, grilling or debating
+  a bounded plan, challenging assumptions, or resolving design-blocking terminology.
+  NOT for implementation task breakdown; use spec-plan. NOT for generic technology
+  comparisons or best-practice research; use researching-web. NOT for docs updates;
+  use documenting-code or learning-patterns.
 name: brainstorming-ideas
 user-invocable: true
 ---
 
 # Brainstorming Ideas
 
-Turn a vague idea or draft plan into a clear design before coding. In grill mode, stress-test a plan until every important branch of the decision tree is resolved.
+Turn a vague idea or draft plan into a clear design before coding. In grill mode, stress-test or debate a bounded plan until every important branch of the decision tree is resolved.
 
 **Use TaskCreate / TaskUpdate** to track these 7 phases:
 
@@ -66,7 +67,7 @@ Start with dialogue, not agents. Ask the user directly.
 
 Use AskUserQuestion:
 
-- **Idea type** — What would you like to brainstorm? Options: 1. **New feature** - Add new functionality 2. **Modification** - Change existing behavior 3. **Integration** - Connect with an external system 4. **Plan grill** - Stress-test an existing plan 5. **Exploration** - Not sure yet, let's discover
+- **Idea type** — What would you like to brainstorm? Options: 1. **New feature** - Add new functionality 2. **Modification** - Change existing behavior 3. **Integration** - Connect with an external system 4. **Plan grill/debate** - Stress-test an existing plan or trade-off 5. **Exploration** - Not sure yet, let's discover
 
 ### 1b. Follow-up (based on response)
 
@@ -95,9 +96,9 @@ Ask questions **one at a time** using AskUserQuestion. Adapt based on idea type.
 - If user seems uncertain, explore deeper with sub-questions
 - Use "Other" option to allow custom responses
 
-### 2b. Plan Grill Mode
+### 2b. Plan Grill/Debate Mode
 
-If the user passed `plan`, `grill`, or asked to stress-test/challenge a plan, interrogate the plan one decision at a time. Keep it focused on design quality and assumptions, not task breakdown; use the `spec-plan` skill for implementation tasks.
+If the user passed `plan`, `grill`, `debate`, `pros and cons`, `devil's advocate`, or asked to stress-test/challenge a plan, interrogate the plan one decision at a time. Keep it focused on design quality and assumptions, not task breakdown; use the `spec-plan` skill for implementation tasks.
 
 For the full interview discipline (phase order, per-question format, final summary, failure handling), read `references/grill-protocol.md`.
 

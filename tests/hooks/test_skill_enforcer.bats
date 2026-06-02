@@ -15,6 +15,13 @@ FIXTURES="$BATS_TEST_DIRNAME/fixtures"
 	[[ "$output" == *"Consider skills"* ]]
 }
 
+@test "skill-enforcer: debate prompts route to brainstorming" {
+	run bash "$HOOK" <"$FIXTURES/skill_enforcer_debate.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"brainstorming-ideas"* ]]
+	[[ "$output" != *"debating"* ]]
+}
+
 @test "skill-enforcer: structural code search is left to companion workflows" {
 	run bash "$HOOK" <"$FIXTURES/skill_enforcer_ast_grep.json"
 	[ "$status" -eq 0 ]

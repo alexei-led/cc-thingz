@@ -25,6 +25,18 @@
         "The output mentions asking hard questions one at a time or resolving a decision tree.",
         "The output avoids generating a broad idea list as the main response."
       ]
+    },
+    {
+      "id": "bounded-tradeoff-debate",
+      "name": "bounded tradeoff debate",
+      "prompt": "A user says: debate the pros and cons of replacing REST endpoints with GraphQL for the admin app. Describe how brainstorming should respond.",
+      "expected_output": "The response treats the request as brainstorming's bounded grill/debate mode for a specific trade-off, compares sides with evidence, and avoids routing to a separate debating skill.",
+      "assertions": [
+        "The output recognizes this as a bounded trade-off or grill/debate mode.",
+        "The output compares both sides or pros and cons without forcing open-ended brainstorming.",
+        "The output uses code or project context when available instead of theory-only claims.",
+        "The output does not route to a separate debate skill."
+      ]
     }
   ]
 }

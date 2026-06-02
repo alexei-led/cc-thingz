@@ -71,9 +71,8 @@ Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allo
 ## Developer Tools
 
 - **analyzing-usage** — Analyze AI coding agent usage, cost, efficiency, and burn rate (ccusage)
-- **brainstorming-ideas** — Brainstorm ideas and stress-test draft plans before coding
+- **brainstorming-ideas** — Brainstorm ideas and stress-test draft plans or trade-offs before coding
 - **cleanup-git** — Remove merged local branches and stale git worktrees
-- **debating-ideas** — Stress-test design decisions via dialectic thesis/antithesis agents
 - **evolving-config** — Audit Claude Code configuration against latest features and best practices
 - **exploring-repos** — Explore public GitHub repositories via DeepWiki AI-generated documentation
 - **learning-patterns** — Extract learnings and generate project-specific customizations

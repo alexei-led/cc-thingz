@@ -137,9 +137,9 @@ if echo "$PROMPT_LOWER" | grep -qE '\bbrainstorm\b|\bideate\b|\bdesign\s*(a|an|t
 	skills+="brainstorming-ideas "
 fi
 
-# brainstorming-ideas (grill): decision-tree interview on a single plan/design
-# Triggers: "grill me", stress-test a SPECIFIC plan, challenge an existing design
-if echo "$PROMPT_LOWER" | grep -qE '\bgrill\s*(me|this|the|my)\b|\bstress[[:space:]-]?test\s*(this|the|my)\s*(plan|design|idea)\b|\bchallenge\s*me\b.*\bplan\b|\binterview\s*me\b.*\b(plan|design|approach)\b'; then
+# brainstorming-ideas (grill/debate): decision-tree interview on a bounded plan/design
+# Triggers: "grill me", debate/pros-cons, stress-test a specific plan, challenge an existing design
+if echo "$PROMPT_LOWER" | grep -qE '\bgrill\s*(me|this|the|my)\b|\bdebate\b|\bargue\s*(both)?\s*sides\b|\bdevil.?s?\s*advocate\b|\bpros\s*(and|&)\s*cons\b|\bstress[[:space:]-]?test\s*(this|the|my|an?)?\s*(plan|design|idea|approach|decision|claim)\b|\bchallenge\s+me\b|\bchallenge\s*(this|the|my)?\s*(plan|design|idea|approach|assumption)\b|\binterview\s*me\b.*\b(plan|design|approach)\b'; then
 	skills+="brainstorming-ideas "
 fi
 
@@ -213,15 +213,9 @@ if echo "$PROMPT_LOWER" | grep -qE '\busage\b.*\b(report|analyz|stat|cost|token|
 	skills+="analyzing-usage "
 fi
 
-# debating-ideas: Dialectic agents stress-test design decisions
-# Triggers: debate, argue both sides, devil's advocate, stress test idea
-if echo "$PROMPT_LOWER" | grep -qE '\bdebate\b|\bargue\s*(both)?\s*sides\b|\bdevil.?s?\s*advocate\b|\bstress[[:space:]-]?test\s*(this|the|my|an?)?\s*(idea|approach|design|decision|claim)\b|\bpros\s*(and|&)\s*cons\s*(of)?\s*(this|the|my)?\s*(approach|design|decision)\b|\bchallenge\s*(this|the|my)?\s*(idea|approach|assumption)\b|\brigorous\s*(evaluat|review|analys)\b|\bdialectic\b'; then
-	skills+="debating-ideas "
-fi
-
 # sequential-thinking: Externalized stepwise reasoning with revisions and branches
 # Triggers: explicit "step by step" / "sequential thinking" / revise-and-branch language
-# NOT for "think through" (brainstorming-ideas) or "stress test" (debating-ideas)
+# NOT for "think through" or "stress test" (brainstorming-ideas)
 if echo "$PROMPT_LOWER" | grep -qE '\bsequential[[:space:]-]?thinking\b|\bstep[[:space:]-]?by[[:space:]-]?step\b|\breason\s*through\s*(this|it|the)\b|\bplan\s*(this|it)\s*out\b|\bwalk\s*(me\s*)?through\s*(this|the|your)?\s*reasoning\b|\bbranch\s*(this|the|an?)\s*(idea|approach|reasoning|thought)\b|\brevise\s*(my|the|your)?\s*(reasoning|thought|earlier\s*step)\b|\bnumbered\s*thoughts?\b|\bshow\s*(your|the)?\s*reasoning\s*steps?\b'; then
 	skills+="sequential-thinking "
 fi

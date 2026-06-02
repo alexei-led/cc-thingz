@@ -303,11 +303,11 @@ All agents and several skills optionally integrate with [claude-mem](https://git
 | [**ts-dev**](src/plugins/ts-dev/plugin.yaml)       | 1      | 1      | TypeScript with strict typing, React patterns, and modern tooling                 |
 | [**web-dev**](src/plugins/web-dev/plugin.yaml)     | 1      | 1      | Web frontend with vanilla HTML, CSS, JavaScript, and HTMX                         |
 | [**infra-ops**](src/plugins/infra-ops/plugin.yaml) | 3      | 1      | Kubernetes, Terraform, Helm, GitHub Actions, AWS, GCP                             |
-| [**dev-tools**](src/plugins/dev-tools/plugin.yaml) | 17     | 1      | Modern CLI, git worktrees, docs lookup, research, config review                   |
+| [**dev-tools**](src/plugins/dev-tools/plugin.yaml) | 16     | 1      | Modern CLI, git worktrees, docs lookup, research, config review                   |
 | [**spec-dev**](src/plugins/spec-dev/plugin.yaml)   | 7      | 2      | Spec-driven development: requirements, tasks, and planning workflows              |
 | [**test-e2e**](src/plugins/test-e2e/plugin.yaml)   | 2      | 1      | E2E testing with Playwright: browser automation and test generation               |
 
-**Totals**: 39 skills, 2 plugin-owned role agents (`engineer`, `reviewer`), 9 hooks
+**Totals**: 38 skills, 2 plugin-owned role agents (`engineer`, `reviewer`), 9 hooks
 
 ## Skills
 
@@ -319,10 +319,9 @@ Invoke as `/skill-name` or let the skill enforcer suggest them.
 
 | Skill                    | What It Does                                                                                                                                      | Example Trigger                      |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| `brainstorming-ideas`    | Brainstorm ideas and stress-test draft plans                                                                                                      | "brainstorm", "design feature"       |
+| `brainstorming-ideas`    | Brainstorm ideas and stress-test draft plans or trade-offs                                                                                        | "brainstorm", "debate plan"          |
 | `cleanup-git`            | Remove merged branches and stale worktrees                                                                                                        | "cleanup branches", "tidy git"       |
 | `committing-code`        | Smart git commits with logical grouping                                                                                                           | "commit", "save changes"             |
-| `debating-ideas`         | Dialectic agents stress-test design decisions                                                                                                     | "debate", "pros and cons"            |
 | `deploying-infra`        | Validate + deploy K8s/Terraform/Helm                                                                                                              | "deploy to staging", "rollout"       |
 | `documenting-code`       | Update docs based on recent changes                                                                                                               | "update docs", "document"            |
 | `evolving-config`        | Audit config against latest Claude Code features                                                                                                  | "evolve", "audit config"             |

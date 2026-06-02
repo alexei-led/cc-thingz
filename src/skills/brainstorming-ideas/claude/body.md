@@ -1,6 +1,6 @@
 # Brainstorming Ideas
 
-Turn a vague idea or draft plan into a clear design before coding. In grill mode, stress-test a plan until every important branch of the decision tree is resolved.
+Turn a vague idea or draft plan into a clear design before coding. In grill mode, stress-test or debate a bounded plan until every important branch of the decision tree is resolved.
 
 **Use TaskCreate / TaskUpdate** to track these 7 phases:
 
@@ -39,7 +39,7 @@ Start with dialogue, not agents. Ask the user directly.
 
 Use AskUserQuestion:
 
-- **Idea type** — What would you like to brainstorm? Options: 1. **New feature** - Add new functionality 2. **Modification** - Change existing behavior 3. **Integration** - Connect with an external system 4. **Plan grill** - Stress-test an existing plan 5. **Exploration** - Not sure yet, let's discover
+- **Idea type** — What would you like to brainstorm? Options: 1. **New feature** - Add new functionality 2. **Modification** - Change existing behavior 3. **Integration** - Connect with an external system 4. **Plan grill/debate** - Stress-test an existing plan or trade-off 5. **Exploration** - Not sure yet, let's discover
 
 ### 1b. Follow-up (based on response)
 
@@ -68,9 +68,9 @@ Ask questions **one at a time** using AskUserQuestion. Adapt based on idea type.
 - If user seems uncertain, explore deeper with sub-questions
 - Use "Other" option to allow custom responses
 
-### 2b. Plan Grill Mode
+### 2b. Plan Grill/Debate Mode
 
-If the user passed `plan`, `grill`, or asked to stress-test/challenge a plan, interrogate the plan one decision at a time. Keep it focused on design quality and assumptions, not task breakdown; use the `spec-plan` skill for implementation tasks.
+If the user passed `plan`, `grill`, `debate`, `pros and cons`, `devil's advocate`, or asked to stress-test/challenge a plan, interrogate the plan one decision at a time. Keep it focused on design quality and assumptions, not task breakdown; use the `spec-plan` skill for implementation tasks.
 
 For the full interview discipline (phase order, per-question format, final summary, failure handling), read `references/grill-protocol.md`.
 

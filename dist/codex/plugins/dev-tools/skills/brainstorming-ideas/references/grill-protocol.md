@@ -1,16 +1,16 @@
 # Grill Protocol
 
-Interview the user about every decision branch in the plan until every node is resolved or explicitly deferred. Walk the decision tree depth-first. For each question, give your own recommended answer before waiting for theirs.
+Interview the user about key decision branches until each is resolved or explicitly deferred. Walk the decision tree depth-first. For each question, give your recommendation before waiting for theirs.
 
 Ask one question at a time.
 
-If a question can be answered by reading the codebase, read it first — then ask only what the code doesn't settle.
+If a question can be answered by reading the codebase, read it first. Ask only what the code does not settle. Cite paths when code contradicts or shapes the answer.
 
 ## Phase order
 
-1. **Scope** — problem framing, goals, explicit non-goals (2–3 questions)
-2. **Decisions** — key design choices, dependencies between them, constraints (most questions)
-3. **Edge cases** — failure modes, rollback, scale limits (close out)
+1. Scope: problem framing, goals, explicit non-goals.
+2. Decisions: key design choices, dependencies, constraints.
+3. Edge cases: failure modes, rollback, scale limits.
 
 ## Per-question format
 
@@ -38,9 +38,7 @@ Constraints surfaced:
 
 ## Failure handling
 
-- **Plan too vague** — ask for the plan first; do not invent decisions to grill on.
-- **User deflects** — restate the same question; do not move to the next until this one is answered or explicitly deferred.
-- **Codebase contradicts a stated assumption** — surface the discrepancy and resolve it before continuing.
-- **Scope creep during grilling** — note the new topic as a deferred item; finish the current branch first.
-
-Adapted from [mattpocock/skills](https://github.com/mattpocock/skills) (MIT).
+- Plan too vague: ask for the plan first; do not invent decisions.
+- User deflects: repeat the question until answered or explicitly deferred.
+- Code contradicts an assumption: surface the path-backed discrepancy and resolve it before continuing.
+- Scope creep: defer the new topic; finish the current branch.

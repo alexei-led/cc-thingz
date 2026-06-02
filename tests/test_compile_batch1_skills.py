@@ -2,12 +2,11 @@
 
 Asserts each newly migrated `src/skills/<name>/` source compiles cleanly for
 every applicable target. Compared to `test_compile_skill.py`, this suite does
-not lock byte-exact goldens — too noisy when 14 skills × 4 targets = 56 trees
-would need refreshing — and instead checks structural invariants that the
+not lock byte-exact goldens — too noisy when many skills × 4 targets would
+need refreshing — and instead checks structural invariants that the
 migration is meant to preserve:
 
-- compile_skill returns at least one written `SKILL.md` for each applicable
-  target (and zero for targets the base `targets:` restriction excludes)
+- compile_skill returns at least one written `SKILL.md` for each target
 - the emitted frontmatter keeps `name` and `description` and drops the
   renderer-only `targets` key
 - support files referenced via `references/` end up under the dist tree
@@ -35,8 +34,6 @@ BATCH_1_SKILLS_ALL_TARGETS = (
     "smart-explore",
     "brainstorming-ideas",
 )
-CLAUDE_ONLY_SKILLS = ("debating-ideas",)
-
 SKILLS_WITH_REFERENCES = {
     "brainstorming-ideas": ("references/grill-protocol.md",),
     "writing-go": (
@@ -89,21 +86,6 @@ def test_batch1_skill_compiles_for_target(
     assert "targets" not in post.metadata, (
         f"renderer-only `targets` leaked into emitted frontmatter for {skill}/{target}"
     )
-
-
-@pytest.mark.parametrize("skill", CLAUDE_ONLY_SKILLS)
-def test_claude_only_skill_skips_other_targets(cs, tmp_path: Path, skill: str) -> None:
-    root = make_batch_skill_staging_root(tmp_path)
-    skill_dir = root / "src" / "skills" / skill
-    plugin_index = {skill: ["plugin"]}
-
-    assert cs.compile_skill(skill_dir, "claude", plugin_index, root), (
-        f"{skill} did not emit for claude despite targets: [claude]"
-    )
-    for t in [t for t in TARGETS if t != "claude"]:
-        assert cs.compile_skill(skill_dir, t, plugin_index, root) == [], (
-            f"{skill} should be skipped for target {t}"
-        )
 
 
 @pytest.mark.parametrize("skill,refs", sorted(SKILLS_WITH_REFERENCES.items()))

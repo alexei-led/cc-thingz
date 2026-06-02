@@ -15,4 +15,4 @@ allowed-tools:
   - mcp__plugin_claude-mem_mcp-search__search
   - WebFetch
   - Bash(git *)
-argument-hint: '[idea|plan|grill] <topic-or-plan>'
+argument-hint: '[idea|plan|grill|debate] <topic-or-plan>'
