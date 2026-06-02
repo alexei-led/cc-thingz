@@ -244,7 +244,7 @@ The `AGENTS.md` at the repo root provides a skill catalog readable by any tool s
 
 Repo-wide code search, AST evidence, codegraph, and GitNexus workflows are intentionally outside cc-thingz. Use a separate codebase-analysis plugin for repo-wide analysis, such as [architect](https://github.com/alexei-led/architect). cc-thingz does not ship a general repo-wide code-search skill; its review/refactor skills may still use local tools such as `rg` or `fd` when available.
 
-Portable docs lookup uses the [Context7 CLI](https://github.com/upstash/context7):
+Portable docs lookup is one public `looking-up-docs` skill. It starts with the [Context7 CLI](https://github.com/upstash/context7), then falls back to official ecosystem docs/registries, Perplexity-backed source discovery, and GitHub releases/source when version-specific docs are missing.
 
 ```bash
 npm install -g ctx7@latest
@@ -252,6 +252,7 @@ npm install -g ctx7@latest
 bun add -g ctx7@latest
 
 # one-shot (no global install):
+npx ctx7@latest library react "React hooks"
 npx ctx7@latest docs /facebook/react "React hooks"
 # or with Bun:
 bunx ctx7@latest docs /facebook/react "React hooks"
@@ -302,11 +303,11 @@ All agents and several skills optionally integrate with [claude-mem](https://git
 | [**ts-dev**](src/plugins/ts-dev/plugin.yaml)       | 1      | 1      | TypeScript with strict typing, React patterns, and modern tooling                 |
 | [**web-dev**](src/plugins/web-dev/plugin.yaml)     | 1      | 1      | Web frontend with vanilla HTML, CSS, JavaScript, and HTMX                         |
 | [**infra-ops**](src/plugins/infra-ops/plugin.yaml) | 3      | 1      | Kubernetes, Terraform, Helm, GitHub Actions, AWS, GCP                             |
-| [**dev-tools**](src/plugins/dev-tools/plugin.yaml) | 18     | 1      | Modern CLI, git worktrees, docs lookup, research, config review                   |
+| [**dev-tools**](src/plugins/dev-tools/plugin.yaml) | 17     | 1      | Modern CLI, git worktrees, docs lookup, research, config review                   |
 | [**spec-dev**](src/plugins/spec-dev/plugin.yaml)   | 7      | 2      | Spec-driven development: requirements, tasks, and planning workflows              |
 | [**test-e2e**](src/plugins/test-e2e/plugin.yaml)   | 2      | 1      | E2E testing with Playwright: browser automation and test generation               |
 
-**Totals**: 40 skills, 2 plugin-owned role agents (`engineer`, `reviewer`), 9 hooks
+**Totals**: 39 skills, 2 plugin-owned role agents (`engineer`, `reviewer`), 9 hooks
 
 ## Skills
 
@@ -328,8 +329,7 @@ Invoke as `/skill-name` or let the skill enforcer suggest them.
 | `exploring-repos`        | Explore public GitHub repos and architecture                                                                                                      | "explore repo", "how does repo work" |
 | `fixing-code`            | Parallel agents fix all issues, zero tolerance                                                                                                    | "fix errors", "make it pass"         |
 | `improving-tests`        | Refactor tests: combine to tabular, fill gaps                                                                                                     | "improve tests", "coverage"          |
-| `context7-cli`           | Current library docs via ctx7 CLI; docs/API lookup                                                                                                | "ctx7", "look up docs", "API ref"    |
-| `looking-up-docs`        | Find current docs via fallback chain: ctx7 → Perplexity → web tools                                                                               | "find docs", "latest API", "look up" |
+| `looking-up-docs`        | Find current docs via Context7, official registries/docs, Perplexity/web, and GitHub fallback                                                     | "ctx7", "latest API", "look up"      |
 | `mem-history`            | Query project history and prior decisions                                                                                                         | "last session", "what happened"      |
 | `researching-web`        | Web research via Perplexity AI                                                                                                                    | "research", "X vs Y"                 |
 | `reviewing-code`         | Multi-agent review (security, correctness, quality)                                                                                               | "review code", "check this"          |

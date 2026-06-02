@@ -38,7 +38,6 @@ BATCH_2_ALL_TARGETS = (
     "improving-tests",
     "documenting-code",
     "managing-infra",
-    "context7-cli",
 )
 
 BATCH_2_CLAUDE_ONLY = (

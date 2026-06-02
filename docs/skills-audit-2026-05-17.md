@@ -7,8 +7,10 @@ Tier 1–3 executed 2026-05-17 via `docs/plans/20260517-skills-consolidation.md`
 Tier 4 (`dev-tools` 18-skill split) remains the open decision — a breaking
 marketplace change deferred for an explicit owner call.
 
-Later cleanup removed `watch-team` and `ccgram-messaging`; this file remains a
-historical snapshot of the 2026-05-17 audit.
+Later cleanup removed `watch-team` and `ccgram-messaging`. A 2026-06-02
+follow-up kept `looking-up-docs` as the only public docs skill and demoted
+Context7 CLI mechanics to references under it. This file remains a historical
+snapshot of the 2026-05-17 audit.
 
 45 skills, 9 plugins. Verdict: the set is already mature. Every aggressive consolidation
 hypothesis (one `writing-code`, merge search skills, collapse `spec-*`, merge the infra
@@ -143,9 +145,10 @@ for generated code. These are quality gaps, not consolidation targets.
 
 ### Tier 1 — fold (high confidence, low risk): 45 → 42 skills
 
-- Drop `looking-up-docs`. Absorb its natural-language trigger vocabulary into
-  `context7-cli`'s description; add one routing line to `researching-web` for
-  comparisons. Saves 1 skill, 1 description, 89 body lines. No behavior lost.
+- Superseded 2026-06-02: keep `looking-up-docs` as the public docs skill. Fold
+  Context7 CLI mechanics into `looking-up-docs/references/`, then broaden the
+  workflow with official ecosystem docs, Perplexity-backed source discovery, and
+  GitHub version fallback. Saves 1 public skill without losing ctx7 mechanics.
 - Drop `grill-me` as a skill. Move the protocol to
   `brainstorming-ideas/references/grill-protocol.md`; `improve-codebase-architecture`
   keeps working by loading that reference. Removes trigger ambiguity with
@@ -204,8 +207,7 @@ Split `dev-tools` into coherent installable units so users load only what they w
 - thinking-tools: `brainstorming-ideas`, `debating-ideas`, `sequential-thinking`
 - agent-config: `evolving-config`, `reviewing-cc-config`, `reviewing-instructions`,
   `learning-patterns`, `mem-history`, `analyzing-usage`
-- docs-research: `context7-cli` (with `looking-up-docs` folded in), `researching-web`,
-  `exploring-repos`
+- docs-research: `looking-up-docs`, `researching-web`, `exploring-repos`
 - cli-utils: `using-modern-cli`, `using-git-worktrees`, `parsing-documents`,
   `smart-explore`
 

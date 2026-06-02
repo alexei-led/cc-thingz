@@ -9,7 +9,7 @@ name: using-cloud-cli
 
 # Cloud CLI Patterns
 
-Credentials may be pre-configured. Verify identity before touching resources. Use `--help` or Context7 for syntax.
+Credentials may be pre-configured. Verify identity before touching resources. Use `--help` or `looking-up-docs` for syntax.
 
 ## Safety and Identity
 

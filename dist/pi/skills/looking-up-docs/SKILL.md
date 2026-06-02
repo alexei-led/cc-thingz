@@ -1,10 +1,10 @@
 ---
-description: Find current, factual library/API/framework documentation through a tool-fallback
-  chain. Use when the user says "look up docs", "how to use", "API for", "syntax for",
-  "examples of", "show me the docs", or wants the latest/current/actual behavior of
-  a library, framework, CLI, or API. NOT for comparisons, best-practice surveys, or
-  recent ecosystem news — use researching-web. NOT for raw ctx7 CLI mechanics — that
-  is context7-cli.
+description: Find current, version-correct library/API/framework docs through one
+  lookup workflow. Use when the user says "look up docs", "how to use", "API for",
+  "syntax for", "examples of", "show me the docs", mentions "ctx7"/"Context7", passes
+  a `/org/project` library ID, or wants the latest/current/actual behavior of a library,
+  framework, CLI, or API. NOT for comparisons, best-practice surveys, or recent ecosystem
+  news — use researching-web.
 name: looking-up-docs
 ---
 
@@ -15,95 +15,108 @@ name: looking-up-docs
 
 # Documentation Lookup
 
-Get grounded, version-correct documentation for a library, framework, CLI, or
-API. Training data goes stale; never answer syntax or API questions from memory
-when a lookup tool is available.
-
-This skill owns the lookup flow. Tool mechanics live elsewhere: `ctx7` command
-detail is in the `context7-cli` skill; exact per-platform web tool names are in
-`references/web-tools.md`.
+Get grounded, version-correct docs for a library, framework, CLI, or API.
+Never answer syntax or API questions from memory when lookup tools are available.
 
 ## Scope
 
 Use this skill for:
 
 - API signatures, options, config keys, syntax, and examples.
-- Version-specific behavior of a known library or framework.
+- Version-specific behavior of a known library, framework, language, CLI, or
+  standard library.
+- Context7 docs lookup, including explicit `ctx7`, `Context7`, or `/org/project`
+  library-ID requests.
 - Confirming current behavior before writing code against an external API.
 
-Do not use this skill as the primary workflow for:
+Do not use this skill for:
 
-- Comparisons, recommendations, market research, or best-practice surveys —
-  route to `researching-web`.
-- Repo-specific questions — search local files first.
-- Anything that would require sending secrets, credentials, personal data, or
-  proprietary code to an external service.
+- Comparisons, recommendations, market research, or best-practice surveys; route
+  to `researching-web`.
+- Repo-specific questions; search local files first.
+- External queries containing secrets, credentials, personal data, private
+  payloads, or proprietary code.
 
-## Fallback Chain
+## Reference Files
 
-Run the tiers in order. Stop at the first tier that yields a grounded answer.
-State which tier produced the answer and whether any fallback was used.
+Read only what the question needs:
 
-### Tier 1 — Context7 (`ctx7`)
+- `references/context7-cli.md` — Context7 lookup commands, selection rules,
+  limits, and fallbacks.
+- `references/official-sources.md` — primary docs and registries by ecosystem.
+- `references/web-tools.md` — platform web tools, query templates, and source
+  quality rules.
 
-Best for versioned library and framework docs. Follow the `context7-cli`
-workflow: identify the library and version from project files, resolve a
-library ID with `ctx7 library`, then fetch docs with `ctx7 docs`. Show the
-exact commands. See the `context7-cli` skill for command detail and limits.
+## Lookup Chain
 
-Escalate to Tier 2 when: `ctx7` is unavailable or not on `PATH` and the
-package-runner fallback also fails; the CLI hits a rate or auth limit; or it
-returns no useful match after one rephrase and one alternate library name.
+Run tiers in order. Stop at the first tier that yields a grounded answer. State
+which tier produced the answer and whether fallback was used.
 
-### Tier 2 — Perplexity
+### Tier 0 — Identify Package and Version
 
-Best for official docs, release notes, and current behavior not covered by
-Context7. Query Perplexity with a focused, version-qualified question and
-require URL-cited sources. The exact tool differs per platform — Perplexity MCP
-on Claude, Codex, and Gemini; the Perplexity-backed web provider on Pi. See
-`references/web-tools.md`.
+Find the exact package, module, CLI, language version, or framework version from
+local evidence.
 
-Escalate to Tier 3 when: Perplexity is unavailable or unconfigured; it returns
-no usable citation; or the answer needs a specific page fetched verbatim.
+If no local version is available, state `version unknown` and prefer latest
+stable official docs. Do not invent a version.
 
-### Tier 3 — Platform built-in web tools
+### Tier 1 — Context7
 
-Last resort. Every supported agent ships native web search and fetch: Claude
-`WebSearch` + `WebFetch`; Codex built-in web search; Gemini `google_web_search`
-+ `web_fetch`; Pi `web_search` / `web_research`. See `references/web-tools.md`
-for exact identifiers. Find the official documentation URL, fetch it, and
-ground the answer in the fetched page. Quote only the relevant part and cite
-the URL.
+Use `references/context7-cli.md` for Context7 library resolution and docs fetch.
+Best fit: versioned library and framework docs.
 
-## Hard Limits
+Escalate when Context7 is unavailable, rate-limited, returns no useful match
+after one rephrase and one alternate library name, or returns docs for the wrong
+version.
+
+### Tier 2 — Official Docs and Registries
+
+Use `references/official-sources.md` for language standard libraries, package
+registries, and canonical project docs. Prefer primary docs or registry-linked
+docs for the exact version.
+
+Use web tools only for source discovery. Ground final syntax in URL-cited primary
+sources.
+
+### Tier 3 — GitHub Releases, Tags, and Source
+
+Use GitHub only when primary docs or registry links are missing, incomplete, or
+version-mismatched. Follow `references/official-sources.md` fallback rules.
+
+Do not treat random issues, PR comments, blogs, or generated summaries as
+authoritative API docs. Use them only as clues to primary sources.
+
+### Tier 4 — Broad Research or Gap Report
+
+Use broad Perplexity/web research only when focused docs lookup fails or the
+question becomes a comparison/trade-off. If no grounded source exists, report the
+gap, the version needed vs found, and the safest next step.
+
+## Limits and Failure Handling
 
 - Never send secrets, credentials, private payloads, personal data, or
-  proprietary code to any tier.
-- Always pass a real, specific query — never a one-word placeholder.
-- Do not loop a tier indefinitely: one rephrase and one alternate name per
-  tier, then escalate.
-- Prefer primary sources (official docs, release notes) over blogs.
-- If all tiers fail, report the gap and the exact version mismatch — do not
-  fabricate syntax.
+  proprietary code to any external tier.
+- Always use a real, specific query; never use a one-word placeholder.
+- Do not loop a tier indefinitely: one rephrase and one alternate name per tier,
+  then escalate.
+- If docs are version-mismatched, state the mismatch and escalate to exact-version
+  registry docs, release notes, or matching GitHub tag/source.
+- If all tiers fail, report the gap and do not fabricate syntax.
+- If external lookup would expose private data, refuse the external query and
+  answer from local context only, noting the limitation.
 
 ## Response Contract
 
-For a docs lookup, return:
+Return a concise answer, not a workflow transcript, unless the user asks for the
+lookup process.
 
-1. Library / framework / API and version identified, or state version unknown.
-2. Tier that produced the answer, and any fallback used.
-3. Concise syntax or example guidance grounded in the source.
-4. Source URL or library ID for the grounded claim.
+Include:
+
+1. Library/framework/API and version, or `version unknown`.
+2. Tier that produced the answer, and fallback used if any.
+3. Syntax or example guidance grounded in the source.
+4. Source URL, Context7 library ID, or GitHub tag/source path for each claim.
 5. Boundary note when the request is actually comparison or broad research.
 
-If the user asks to describe the workflow, describe these tiers and the
-escalation rules instead of answering from memory.
-
-## Failure Cases
-
-- All tiers exhausted with no grounded answer: report the gap, state the
-  version needed vs found, and do not invent syntax.
-- Returned docs are version-mismatched: note the discrepancy explicitly and
-  escalate to the next tier for the specific version's release notes.
-- Request requires private code or credentials: refuse the external query and
-  answer from local context only, noting the limitation.
+If the user asks to describe the workflow, describe the tiers and escalation
+rules instead of answering from memory.

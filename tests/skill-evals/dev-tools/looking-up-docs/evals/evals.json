@@ -5,10 +5,10 @@
       "id": "api-syntax-tier1-ctx7",
       "name": "api syntax tier1 ctx7",
       "prompt": "A user asks: how do I use FastAPI dependency overrides in tests? I need current syntax and examples. Describe the workflow.",
-      "expected_output": "The response treats this as a documentation lookup, starts at Tier 1 (Context7 via the context7-cli ctx7 workflow), and grounds the answer in returned docs rather than memory.",
+      "expected_output": "The response treats this as a documentation lookup, starts at Tier 1 (Context7 via the ctx7 library / ctx7 docs workflow), and grounds the answer in returned docs rather than memory.",
       "assertions": [
         "The output treats the request as documentation lookup, not broad web research.",
-        "The output starts with Tier 1: Context7 via the ctx7 library / ctx7 docs workflow (context7-cli mechanics).",
+        "The output starts with Tier 1: Context7 via the ctx7 library / ctx7 docs workflow.",
         "The output says to identify the library/framework version from project files when possible.",
         "The output says not to answer API syntax from memory when a lookup tool is available.",
         "The output reports which tier produced the answer and any fallback used."
@@ -18,13 +18,26 @@
       "id": "fallback-chain-escalation",
       "name": "fallback chain escalation",
       "prompt": "A user asks: ctx7 keeps hitting a rate limit but I still need the current Stripe webhook signature verification API. Describe how this skill should respond.",
-      "expected_output": "The response escalates past Context7 to Tier 2 (Perplexity) and then Tier 3 (platform built-in web search/fetch), grounding the answer in URL-cited official docs, and states which tier and fallback were used.",
+      "expected_output": "The response escalates past Context7 to official docs or Perplexity-backed source discovery, then GitHub release/source fallback if needed, grounding the answer in URL-cited official docs and stating which tier and fallback were used.",
       "assertions": [
         "The output recognizes the ctx7 rate limit as a Tier 1 exhaustion condition and escalates.",
-        "The output escalates to Tier 2 (Perplexity) and, if needed, Tier 3 (platform built-in web search/fetch).",
+        "The output escalates to official docs/registries or Perplexity-backed web source discovery.",
         "The output requires URL-cited primary sources (official docs or release notes).",
         "The output states which tier produced the answer and that a fallback was used.",
         "The output does not fabricate syntax when a tier fails."
+      ]
+    },
+    {
+      "id": "ecosystem-sources-and-github-fallback",
+      "name": "ecosystem sources and github fallback",
+      "prompt": "A user asks: Context7 has no useful match for Go module github.com/acme/widget v1.2.3, but I need docs for WidgetOptions. Describe the workflow.",
+      "expected_output": "The response uses the official-source map after Context7, checks the installed Go module version, searches pkg.go.dev for the module/version and symbol, and falls back to GitHub release notes, tags, docs, examples, source, or tests for v1.2.3 only if official docs are missing or mismatched.",
+      "assertions": [
+        "The output treats this as a docs lookup and recognizes Context7 as exhausted.",
+        "The output uses Go-specific official docs, especially pkg.go.dev, with the module version when possible.",
+        "The output uses Perplexity or web search only to discover and cite primary sources.",
+        "The output uses GitHub releases/tags/source as a version-specific fallback, not as random issue research.",
+        "The output reports version mismatch or unknowns instead of inventing syntax."
       ]
     },
     {

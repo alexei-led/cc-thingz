@@ -50,16 +50,10 @@ if echo "$PROMPT_LOWER" | grep -qE '\bgcloud\b|\bgsutil\b|\bbq\s|\baws\s|bigquer
 	skills+="using-cloud-cli "
 fi
 
-# context7-cli: ctx7 (Context7) CLI mechanics — Tier 1 of looking-up-docs
-# Triggers: literal "ctx7" / "context7" / a /org/project library-id query.
-if echo "$PROMPT_LOWER" | grep -qE '\bctx7\b|\bcontext7\b|context7[[:space:]-]cli|/[a-z0-9-]+/[a-z0-9-]+\s+(library|docs|version)'; then
-	skills+="context7-cli "
-fi
-
-# looking-up-docs: docs-lookup fallback flow (ctx7 → Perplexity → built-in web)
-# Triggers: natural-language doc-seeking, API reference, or latest-behavior needs.
+# looking-up-docs: docs lookup flow (Context7 → official sources → Perplexity/web → GitHub)
+# Triggers: ctx7/context7, library IDs, natural-language doc-seeking, API reference, or latest-behavior needs.
 # NOT for comparisons/best-practices (use researching-web).
-if echo "$PROMPT_LOWER" | grep -qE '\bdocs\b|\bdocumentation\b|api\s*(reference|docs)|look\s*up.*(docs|api|syntax|usage|reference|examples)|find.*(docs|documentation|reference)|check.*(docs|documentation)|man\s*page|reference.*(guide|manual)|official.*(docs|documentation)|library.*docs|version.*specific|syntax\s*for|examples\s*of|how\s*to\s*use\s*\w+'; then
+if echo "$PROMPT_LOWER" | grep -qE '\bctx7\b|\bcontext7\b|context7[[:space:]-]cli|/[a-z0-9._-]+/[a-z0-9._-]+\s+(library|docs|version)|\bdocs\b|\bdocumentation\b|api\s*(reference|docs)|look\s*up.*(docs|api|syntax|usage|reference|examples)|find.*(docs|documentation|reference)|check.*(docs|documentation)|man\s*page|reference.*(guide|manual)|official.*(docs|documentation)|library.*docs|version.*specific|syntax\s*for|examples\s*of|how\s*to\s*use\s*\w+'; then
 	# Exclude comparison/research patterns — those go to researching-web
 	if ! echo "$PROMPT_LOWER" | grep -qE '\bvs\b|\bcompare\b|\bbest\s*practice\b|\bpros\s*(and|&)\s*cons\b|\bwhich.*(better|should)\b'; then
 		skills+="looking-up-docs "

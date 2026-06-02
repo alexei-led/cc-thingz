@@ -2,12 +2,12 @@
 
 DeepWiki provides AI-generated wiki documentation for 30,000+ popular public GitHub repositories — architecture overviews, design patterns, component relationships, and semantic Q&A powered by Cognition's Devin.
 
-## When to Use DeepWiki vs Context7
+## When to Use DeepWiki vs Documentation Lookup
 
 - **Repo architecture, design patterns, how components connect** — DeepWiki (AI-generated wiki from full codebase analysis)
-- **API references, code examples, version-specific docs** — Context7 (sourced from official library documentation)
+- **API references, code examples, version-specific docs** — `looking-up-docs` (Context7, official docs, registries, and GitHub fallbacks)
 - **"How does this repo work?"** — DeepWiki (codebase-level understanding)
-- **"How do I use this library?"** — Context7 (usage-level documentation)
+- **"How do I use this library?"** — `looking-up-docs` (usage-level documentation)
 - **Cross-repo comparison** — DeepWiki `ask_question` with multiple repos (accepts up to 10 repos)
 
 ## Workflow
@@ -104,7 +104,7 @@ DeepWiki returns empty or error?
 ├── Try the canonical repo name (not a fork)
 ├── Still not indexed?
 │   ├── Any public repo → gh CLI (works for all GitHub repos)
-│   ├── Popular library → Try Context7 for docs instead
+│   ├── Popular library → Try looking-up-docs for API docs instead
 │   ├── Open-source repo → Clone + local exploration
 │   └── Niche/private → Perplexity for general info
 ```
@@ -146,9 +146,9 @@ DeepWiki returns empty or error?
    ```
 
    Use `npx ctx7@latest` (or `bunx ctx7@latest`) when `ctx7` is not globally
-   installed. The `context7-cli` skill wraps this workflow.
+   installed. The `looking-up-docs` skill owns this workflow and its fallbacks.
 
-3. **Perplexity** — for repos not in DeepWiki or Context7:
+3. **Perplexity** — for repos not in DeepWiki and not covered by docs lookup:
 
    ```
    mcp__perplexity-ask__perplexity_ask({
@@ -163,16 +163,16 @@ DeepWiki returns empty or error?
    # Use scoped local tools: fd for files, rg for text; use dedicated analysis tooling for structural evidence
    ```
 
-## Combining with Context7
+## Combining with Documentation Lookup
 
-DeepWiki and Context7 are complementary. A typical research flow:
+DeepWiki and `looking-up-docs` are complementary. A typical research flow:
 
 1. **DeepWiki** — understand the architecture and design decisions
-2. **Context7** — get specific API references and code examples
+2. **looking-up-docs** — get version-specific API references and examples
 3. **DeepWiki ask_question** — clarify how specific APIs fit into the larger design
 
 Do not use DeepWiki when:
 
-- You need version-specific API syntax → use Context7
-- You need official getting-started guides → use Context7
+- You need version-specific API syntax → use `looking-up-docs`
+- You need official getting-started guides → use `looking-up-docs`
 - The repo is private or very new (<1 month) → use Perplexity or local exploration
