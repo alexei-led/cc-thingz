@@ -7,10 +7,10 @@ Tier 1–3 executed 2026-05-17 via `docs/plans/20260517-skills-consolidation.md`
 Tier 4 (`dev-tools` 18-skill split) remains the open decision — a breaking
 marketplace change deferred for an explicit owner call.
 
-Later cleanup removed `watch-team` and `ccgram-messaging`. A 2026-06-02
-follow-up kept `looking-up-docs` as the only public docs skill and demoted
-Context7 CLI mechanics to references under it. This file remains a historical
-snapshot of the 2026-05-17 audit.
+Later cleanup removed `watch-team`, `ccgram-messaging`, and `analyzing-usage`.
+A 2026-06-02 follow-up kept `looking-up-docs` as the only public docs skill and
+demoted Context7 CLI mechanics to references under it. This file remains a
+historical snapshot of the 2026-05-17 audit.
 
 45 skills, 9 plugins. Verdict: the set is already mature. Every aggressive consolidation
 hypothesis (one `writing-code`, merge search skills, collapse `spec-*`, merge the infra

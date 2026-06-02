@@ -11,9 +11,8 @@ output:
 
 - each multi-target skill compiles to at least one written `SKILL.md` for
   every target
-- Claude-only skills (`reviewing-cc-config`, `deploying-infra`,
-  `linting-instructions`, `analyzing-usage`) skip non-claude targets through
-  the base `targets: [claude]` restriction
+- Claude-only skills (`reviewing-cc-config`, `deploying-infra`) skip
+  non-claude targets through the base `targets: [claude]` restriction
 - skills migrated via `swap_pi_body` or `swap_claude_body` route the original
   Claude orchestration body to the Claude target while emitting the
   vendor-neutral variant elsewhere

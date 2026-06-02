@@ -207,12 +207,6 @@ if echo "$PROMPT_LOWER" | grep -qE '\b(mark|close|finish|complete)\s*(a\s*)?(spe
 	skills+="spec-done "
 fi
 
-# analyzing-usage: Analyze Claude Code usage, cost, and efficiency
-# Triggers: usage, cost, spending, tokens, burn rate, budget
-if echo "$PROMPT_LOWER" | grep -qE '\busage\b.*\b(report|analyz|stat|cost|token|session)\b|\bcost\b.*\b(analyz|report|break|track|session)\b|\bspending\b|\bburn\s*rate\b|\btoken\s*(usage|count|stat)\b|\banalyze\s*(my|the)?\s*usage\b|\bhow\s*much\s*(did|have|am)\s*(i|we)\s*(spend|spent|using)\b|\bbudget\b.*\b(check|track|monitor)\b|\befficiency\b.*\b(report|analyz)\b|\bccusage\b'; then
-	skills+="analyzing-usage "
-fi
-
 # sequential-thinking: Externalized stepwise reasoning with revisions and branches
 # Triggers: explicit "step by step" / "sequential thinking" / revise-and-branch language
 # NOT for "think through" or "stress test" (brainstorming-ideas)

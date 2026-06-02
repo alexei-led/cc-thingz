@@ -303,11 +303,11 @@ All agents and several skills optionally integrate with [claude-mem](https://git
 | [**ts-dev**](src/plugins/ts-dev/plugin.yaml)                         | 1      | 1      | TypeScript with strict typing, React patterns, and modern tooling                 |
 | [**web-dev**](src/plugins/web-dev/plugin.yaml)                       | 1      | 1      | Web frontend with vanilla HTML, CSS, JavaScript, and HTMX                         |
 | [**infra-ops**](src/plugins/infra-ops/plugin.yaml)                   | 3      | 1      | Kubernetes, Terraform, Helm, GitHub Actions, AWS, GCP                             |
-| [**dev-tools**](src/plugins/dev-tools/plugin.yaml)                   | 16     | 1      | Modern CLI, git worktrees, docs lookup, research, config review                   |
+| [**dev-tools**](src/plugins/dev-tools/plugin.yaml)                   | 15     | 1      | Modern CLI, git worktrees, docs lookup, research, config review                   |
 | [**spec-dev**](src/plugins/spec-dev/plugin.yaml)                     | 7      | 2      | Spec-driven development: requirements, tasks, and planning workflows              |
 | [**browser-automation**](src/plugins/browser-automation/plugin.yaml) | 2      | 1      | Browser exploration, validation, screenshots, and E2E flows                       |
 
-**Totals**: 38 skills, 2 plugin-owned role agents (`engineer`, `reviewer`), 9 hooks
+**Totals**: 37 skills, 2 plugin-owned role agents (`engineer`, `reviewer`), 9 hooks
 
 ## Skills
 
@@ -333,7 +333,6 @@ Invoke as `/skill-name` or let the skill enforcer suggest them.
 | `researching-web`        | Web research via Perplexity AI                                                                                                                    | "research", "X vs Y"                 |
 | `reviewing-code`         | Multi-agent review (security, correctness, quality)                                                                                               | "review code", "check this"          |
 | `browser-automation`     | Rendered UI exploration, validation, screenshots, recordings, and browser test flows                                                              | "use browser", "screenshot", "e2e"   |
-| `analyzing-usage`        | Analyze AI agent usage, cost, and efficiency (Claude Code, Codex, Pi)                                                                             | "usage", "cost", "spending"          |
 | `learning-patterns`      | Extract learnings and generate customizations                                                                                                     | "learn", "extract learnings"         |
 | `reviewing-instructions` | Review and score AI agent/skill instructions plus agent-targeted markdown like `body.md`, `references/*.md`, and custom prompt/context/rules docs | "lint instructions", "audit prompts" |
 | `reviewing-cc-config`    | Review CC config for context efficiency                                                                                                           | "review config", "config review"     |

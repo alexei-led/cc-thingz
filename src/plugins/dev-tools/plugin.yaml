@@ -2,7 +2,6 @@ name: dev-tools
 version: 4.12.0
 description: Modern CLI tools, git worktrees, docs lookup, research, and brainstorming
 skills:
-  - analyzing-usage
   - brainstorming-ideas
   - cleanup-git
   - evolving-config

@@ -8,6 +8,11 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+### Removed
+
+- Removed the unused `analyzing-usage` skill, including plugin wiring,
+  skill-enforcer routing, generated outputs, docs, and skill eval fixtures.
+
 ## [4.12.0] - 2026-06-02
 
 ### Changed
