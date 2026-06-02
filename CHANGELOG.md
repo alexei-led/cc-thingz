@@ -8,12 +8,30 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [4.12.0] - 2026-06-02
+
 ### Changed
 
 - Renamed the user-facing browser workflow from `testing-e2e` to
   `browser-automation`, broadened it to rendered UI exploration, validation,
   screenshots, recordings, and browser-flow tests, and made `playwright-skill`
   support-only.
+- Slimmed `playwright-skill` from a Playwright tutorial into a runtime-only
+  helper reference, fixed dev-server detection, and aligned temporary scripts
+  and artifacts under `/tmp/playwright-*`.
+- Folded `debating-ideas` into `brainstorming-ideas` and retained the
+  challenge protocol as a conditional reference.
+- Consolidated Context7 command guidance into `looking-up-docs`, keeping docs
+  lookup in one user-facing skill with official-source and web fallback
+  references.
+- Tightened runtime-neutral instruction wording across several support skills
+  and generated targets.
+- Plugin and marketplace versions bumped to 4.12.0.
+
+### Removed
+
+- Removed standalone `testing-e2e`, `debating-ideas`, and `context7-cli` skill
+  entries after their behavior moved into the replacement skills above.
 
 ## [4.11.0] - 2026-06-01
 
