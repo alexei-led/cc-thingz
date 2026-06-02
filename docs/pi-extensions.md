@@ -301,6 +301,11 @@ Registers an `ask_user_question` tool that lets the LLM ask the user
 structured questions (single-select, multi-select, or free text). Used by
 `smart-lint.sh` when it needs a decision before applying a fix.
 
+Selectable prompts keep choices visible by wrapping and capping long question
+text. Single-select questions render as a navigable selector; multi-select
+questions open an editor with capped question text, numbered options, and
+comma-separated input guidance.
+
 No configuration.
 
 ### permission-gate

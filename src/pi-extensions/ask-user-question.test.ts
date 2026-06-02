@@ -11,14 +11,133 @@ mock.module("typebox", () => ({
 	},
 }));
 mock.module("@earendil-works/pi-coding-agent", () => ({}));
+mock.module("@earendil-works/pi-tui", () => ({
+	Key: { down: "down", enter: "enter", escape: "escape", up: "up" },
+	matchesKey: (data: string, key: string) => data === key,
+	truncateToWidth: (value: string, width: number) => value.slice(0, width),
+}));
 
-const { parseMultiSelect } = await import("./ask-user-question.ts");
+const { default: askUserQuestion, parseMultiSelect, wrapQuestionText } = await import("./ask-user-question.ts");
 
 const OPTIONS = [
 	{ label: "Alpha", value: "alpha" },
 	{ label: "Beta", value: "beta" },
 	{ label: "Gamma" }, // value defaults to label
 ];
+
+describe("wrapQuestionText", () => {
+	it("wraps long text to the requested width", () => {
+		const lines = wrapQuestionText("alpha beta gamma delta", 20);
+		expect(lines).toEqual(["alpha beta gamma", "delta"]);
+	});
+
+	it("caps long questions so options stay visible", () => {
+		const lines = wrapQuestionText("word ".repeat(100), 20, 3);
+		expect(lines).toHaveLength(3);
+		expect(lines[2].endsWith("…")).toBe(true);
+	});
+});
+
+describe("selection UI", () => {
+	it("keeps single-select options visible after capping a long question", async () => {
+		let registeredTool: any;
+		askUserQuestion({
+			registerTool(tool: any) {
+				registeredTool = tool;
+			},
+		} as any);
+
+		let rendered = "";
+		const result = await registeredTool.execute(
+			"tool-call-id",
+			{
+				questions: [
+					{
+						header: "Decision",
+						question: "word ".repeat(100),
+						options: [
+							{ label: "Yes", value: "yes" },
+							{ label: "No", value: "no" },
+						],
+						allowOther: false,
+					},
+				],
+			},
+			undefined,
+			undefined,
+			{
+				hasUI: true,
+				ui: {
+					custom: async (factory: any) => {
+						let selected: number | undefined;
+						const component = factory(
+							{ requestRender() {} },
+							{ fg: (_name: string, value: string) => value, bold: (value: string) => value },
+							{},
+							(value: number | undefined) => {
+								selected = value;
+							},
+						);
+						rendered = component.render(60).join("\n");
+						component.handleInput("enter");
+						return selected;
+					},
+				},
+			},
+		);
+
+		expect(rendered).toContain("1. Yes");
+		expect(rendered).toContain("2. No");
+		expect(result.details.answers[0].answers).toEqual([{ label: "Yes", value: "yes", source: "option" }]);
+	});
+
+	it("keeps multi-select options visible after capping a long question", async () => {
+		let registeredTool: any;
+		askUserQuestion({
+			registerTool(tool: any) {
+				registeredTool = tool;
+			},
+		} as any);
+
+		let prompt = "";
+		const result = await registeredTool.execute(
+			"tool-call-id",
+			{
+				questions: [
+					{
+						header: "Decision",
+						question: "word ".repeat(200),
+						options: [
+							{ label: "Yes", value: "yes" },
+							{ label: "No", value: "no" },
+						],
+						multiSelect: true,
+						allowOther: false,
+					},
+				],
+			},
+			undefined,
+			undefined,
+			{
+				hasUI: true,
+				ui: {
+					editor: async (_title: string, value: string) => {
+						prompt = value;
+						return "1,2";
+					},
+				},
+			},
+		);
+
+		expect(prompt).toContain("1. Yes");
+		expect(prompt).toContain("2. No");
+		expect(prompt.split("\n").filter((line) => line.includes("word"))).toHaveLength(8);
+		expect(result.details.answers[0].answers).toEqual([
+			{ label: "Yes", value: "yes", source: "option" },
+			{ label: "No", value: "no", source: "option" },
+		]);
+	});
+});
 
 describe("parseMultiSelect", () => {
 	it("parses single numeric index", () => {

@@ -1,4 +1,5 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { Key, matchesKey, truncateToWidth } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 
 type AskOption = {
@@ -28,6 +29,8 @@ type Answer = {
 	}>;
 };
 
+type DisplayOption = (AskOption & { isOther: false }) | { label: string; description?: string; isOther: true };
+
 const AskOptionSchema = Type.Object({
 	label: Type.String({ description: "Display label for the option" }),
 	description: Type.Optional(Type.String({ description: "Optional extra context for the option" })),
@@ -55,6 +58,39 @@ function formatOption(option: AskOption, index: number): string {
 
 function normalizeValue(option: AskOption): string {
 	return option.value ?? option.label;
+}
+
+const MAX_QUESTION_LINES = 8;
+const MULTI_SELECT_PROMPT_WIDTH = 80;
+
+export function wrapQuestionText(text: string, width: number, maxLines = MAX_QUESTION_LINES): string[] {
+	const usableWidth = Math.max(20, width);
+	const wrapped: string[] = [];
+
+	for (const rawLine of text.trim().split(/\r?\n/)) {
+		const words = rawLine.trim().split(/\s+/).filter(Boolean);
+		if (words.length === 0) {
+			wrapped.push("");
+			continue;
+		}
+
+		let line = "";
+		for (const word of words) {
+			const next = line ? `${line} ${word}` : word;
+			if (next.length <= usableWidth) {
+				line = next;
+				continue;
+			}
+			if (line) wrapped.push(line);
+			line = word;
+		}
+		if (line) wrapped.push(line);
+	}
+
+	if (wrapped.length <= maxLines) return wrapped;
+	const visible = wrapped.slice(0, maxLines);
+	visible[maxLines - 1] = `${visible[maxLines - 1].replace(/[.…\s]+$/, "")}…`;
+	return visible;
 }
 
 export function parseMultiSelect(input: string, options: AskOption[]): Array<{ label: string; value: string; source: "option" | "custom" }> {
@@ -98,7 +134,7 @@ export function parseMultiSelect(input: string, options: AskOption[]): Array<{ l
 	return answers;
 }
 
-async function askOne(question: AskQuestion, ctx: Parameters<NonNullable<ExtensionAPI["registerTool"]>>[0] extends never ? never : any): Promise<Answer> {
+async function askOne(question: AskQuestion, ctx: ExtensionContext): Promise<Answer> {
 	const header = question.header ?? "Question";
 	const options = question.options ?? [];
 	const multiSelect = question.multiSelect === true;
@@ -125,16 +161,87 @@ async function askOne(question: AskQuestion, ctx: Parameters<NonNullable<Extensi
 	}
 
 	if (!multiSelect) {
-		const displayOptions = options.map(formatOption);
-		if (allowOther) displayOptions.push(`${displayOptions.length + 1}. Other / type something`);
+		const displayOptions: DisplayOption[] = options.map((option) => ({ ...option, isOther: false }));
+		if (allowOther) displayOptions.push({ label: "Other / type something", isOther: true });
 
-		const choice = await ctx.ui.select(`${header}\n${question.question}`, displayOptions);
-		if (choice === undefined) {
+		const selectedIndex = await ctx.ui.custom<number | undefined>((tui, theme, _keybindings, done) => {
+			let optionIndex = 0;
+
+			function refresh() {
+				tui.requestRender();
+			}
+
+			function selectCurrent() {
+				done(optionIndex);
+			}
+
+			function handleInput(data: string) {
+				if (matchesKey(data, Key.up)) {
+					optionIndex = Math.max(0, optionIndex - 1);
+					refresh();
+					return;
+				}
+				if (matchesKey(data, Key.down)) {
+					optionIndex = Math.min(displayOptions.length - 1, optionIndex + 1);
+					refresh();
+					return;
+				}
+				if (matchesKey(data, Key.enter)) {
+					selectCurrent();
+					return;
+				}
+				if (matchesKey(data, Key.escape)) {
+					done(undefined);
+					return;
+				}
+
+				const numeric = Number(data);
+				if (Number.isInteger(numeric) && numeric >= 1 && numeric <= displayOptions.length) {
+					optionIndex = numeric - 1;
+					selectCurrent();
+				}
+			}
+
+			function render(width: number): string[] {
+				const safeWidth = Math.max(20, width);
+				const lines: string[] = [];
+				const add = (value: string) => lines.push(truncateToWidth(value, safeWidth));
+
+				add(theme.fg("accent", "─".repeat(safeWidth)));
+				add(theme.fg("accent", theme.bold(` ${header}`)));
+				lines.push("");
+				for (const line of wrapQuestionText(question.question, safeWidth - 2)) {
+					add(` ${theme.fg("text", line)}`);
+				}
+				lines.push("");
+
+				for (let i = 0; i < displayOptions.length; i++) {
+					const option = displayOptions[i];
+					const selected = i === optionIndex;
+					const prefix = selected ? theme.fg("accent", "→ ") : "  ";
+					const label = `${i + 1}. ${option.label}`;
+					add(prefix + theme.fg(selected ? "accent" : "text", label));
+					if (option.description) add(`    ${theme.fg("muted", option.description)}`);
+				}
+
+				lines.push("");
+				add(theme.fg("dim", " ↑↓ navigate • Enter select • Esc cancel • number quick-select"));
+				add(theme.fg("accent", "─".repeat(safeWidth)));
+				return lines;
+			}
+
+			return { render, invalidate: () => {}, handleInput };
+		});
+
+		if (selectedIndex === undefined) {
 			return { question: question.question, header: question.header, multiSelect: false, cancelled: true, answers: [] };
 		}
 
-		const selectedIndex = displayOptions.indexOf(choice);
-		if (allowOther && selectedIndex === options.length) {
+		const selected = displayOptions[selectedIndex];
+		if (!selected) {
+			return { question: question.question, header: question.header, multiSelect: false, cancelled: true, answers: [] };
+		}
+		if (selected.isOther) {
 			const custom = await ctx.ui.input(header, question.placeholder ?? question.question);
 			if (custom === undefined) {
 				return { question: question.question, header: question.header, multiSelect: false, cancelled: true, answers: [] };
@@ -149,18 +256,23 @@ async function askOne(question: AskQuestion, ctx: Parameters<NonNullable<Extensi
 			};
 		}
 
-		const option = options[selectedIndex];
 		return {
 			question: question.question,
 			header: question.header,
 			multiSelect: false,
 			cancelled: false,
-			answers: [{ label: option.label, value: normalizeValue(option), source: "option" }],
+			answers: [{ label: selected.label, value: normalizeValue(selected), source: "option" }],
 		};
 	}
 
 	const numberedOptions = options.map(formatOption).join("\n");
-	const promptLines = [question.question, "", numberedOptions, "", "Enter comma-separated option numbers or labels."];
+	const promptLines = [
+		...wrapQuestionText(question.question, MULTI_SELECT_PROMPT_WIDTH),
+		"",
+		numberedOptions,
+		"",
+		"Enter comma-separated option numbers or labels.",
+	];
 
 	if (allowOther) {
 		promptLines.push("Custom values are allowed too.");
