@@ -19,32 +19,29 @@ Do not treat this as the user-facing browser skill. Load it only when `browser-a
 1. **Detect dev servers first** for localhost testing:
 
    ```bash
-   node -e "require('scripts/lib/helpers').detectDevServers().then(s => console.log(JSON.stringify(s)))"
+   node scripts/run.js "console.log(JSON.stringify(await helpers.detectDevServers()))"
    ```
 
    One server → use it. Multiple → ask which. None → ask for a URL.
 
-2. **Write generated scripts to `/tmp/playwright-test-*.js`** — never into `scripts/` or the user's project.
+2. **Write generated scripts and artifacts under `/tmp/playwright-*`** — never into `scripts/` or the user's project.
 
-3. **Visible browser by default** (`headless: false`). Headless only when the user asks.
+3. **Use visible browser mode** unless the user asks for headless.
 
-4. **Parameterize the target URL** at the top of the script as `TARGET_URL`.
+4. **Parameterize the target URL** at the top of generated scripts as `TARGET_URL`.
 
 ## Running scripts
 
 ```bash
-node scripts/run.js /tmp/playwright-test-<name>.js   # file
-node scripts/run.js "<code>"                          # inline
-cat script.js | node scripts/run.js                   # stdin
+node scripts/run.js /tmp/playwright-test-<name>.js
+node scripts/run.js "<code>"
 ```
 
-`run.js` `cd`s to its own directory for module resolution, auto-wraps non-`async` code, and on first run auto-installs Playwright via bun. For code without `require()` it injects globals: `chromium`, `firefox`, `webkit`, `devices`, `helpers`, and `getContextOptionsWithHeaders(opts)`.
+`run.js` `cd`s to `scripts/`, auto-wraps non-`async` code, and auto-installs Playwright on first run. For code without `require()`, it injects `chromium`, `firefox`, `webkit`, `devices`, `helpers`, and `getContextOptionsWithHeaders(opts)`.
 
 ## Helpers
 
-`scripts/lib/helpers.js` exports: `launchBrowser`, `createPage`, `createContext`, `waitForPageReady`, `safeClick`, `safeType`, `extractTexts`, `extractTableData`, `takeScreenshot`, `authenticate`, `scrollPage`, `handleCookieBanner`, `retryWithBackoff`, `detectDevServers`, `getExtraHeadersFromEnv`.
-
-Open the file when you need a signature.
+Open `scripts/lib/helpers.js` when you need helper signatures. Key helpers: `launchBrowser`, `createContext`, `waitForPageReady`, `safeClick`, `safeType`, `takeScreenshot`, `authenticate`, `detectDevServers`.
 
 ## Custom HTTP headers
 
@@ -62,14 +59,18 @@ PW_EXTRA_HEADERS='{"X-Automated-By":"playwright-skill","X-Debug":"true"}' \
 
 Headers apply automatically when scripts use `helpers.createContext(browser)`. For raw `browser.newContext(...)`, wrap options with `getContextOptionsWithHeaders(...)`.
 
+## Output
+
+Report the target URL, actions run, artifact paths, and failures. Base success claims on script output or artifacts, not on command completion alone.
+
 ## Failure handling
 
 - `run.js` not found: check that `playwright-skill` dir is on the skill path; run from that directory explicitly.
 - Dev server not detected: ask the user for the URL rather than assuming localhost:3000.
 - Script syntax error: quote the failing line, state the cause, rewrite the offending section — do not re-run the broken script.
-- Playwright not installed: `run.js` auto-installs on first run; if that fails, run `cd <skill-dir> && bun install` or `npm install`.
+- Playwright not installed: `run.js` auto-installs on first run; if that fails, use `references/setup.md`.
 
 ## References
 
 - [`references/setup.md`](references/setup.md) — first-time install (bun preferred, npm fallback).
-- [`references/api.md`](references/api.md) — selectors, locators, network interception, auth, visual regression, mobile emulation, performance, debugging, CI/CD.
+- [`references/api.md`](references/api.md) — runtime-only patterns and links to official Playwright API docs.
