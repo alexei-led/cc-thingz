@@ -1,0 +1,13 @@
+{
+  "name": "spec-flow",
+  "version": "5.0.0",
+  "description": "Spec-driven development with structured requirements and planning",
+  "author": {
+    "name": "Alexei Ledenev",
+    "email": "alexei.led@gmail.com"
+  },
+  "homepage": "https://github.com/alexei-led/cc-thingz",
+  "repository": "https://github.com/alexei-led/cc-thingz",
+  "license": "MIT",
+  "skills": "./skills"
+}

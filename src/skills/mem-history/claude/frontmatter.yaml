@@ -1,6 +1,0 @@
-user-invocable: true
-context: fork
-allowed-tools:
-  - mcp__plugin_claude-mem_mcp-search__search
-  - mcp__plugin_claude-mem_mcp-search__get_observations
-  - mcp__plugin_claude-mem_mcp-search__timeline

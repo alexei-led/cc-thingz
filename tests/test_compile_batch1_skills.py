@@ -30,7 +30,6 @@ BATCH_1_SKILLS_ALL_TARGETS = (
     "writing-shell",
     "using-git-worktrees",
     "refactoring-code",
-    "smart-explore",
     "brainstorming-ideas",
 )
 SKILLS_WITH_REFERENCES = {

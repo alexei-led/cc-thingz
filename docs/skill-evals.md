@@ -7,7 +7,7 @@ Skill evals are paid LLM regression tests for `SKILL.md` behavior. Keep them out
 Store fixtures under `tests/skill-evals/<plugin>/<skill>/`:
 
 ```text
-tests/skill-evals/dev-tools/using-modern-cli/
+tests/skill-evals/discovery/using-modern-cli/
 └── evals/
     ├── evals.json
     └── files/
@@ -147,7 +147,7 @@ make skill-evals
 Run one skill:
 
 ```bash
-make skill-evals SKILL_EVAL_INCLUDE='dev-tools/skills/using-modern-cli'
+make skill-evals SKILL_EVAL_INCLUDE='discovery/skills/using-modern-cli'
 ```
 
 Run against exported Codex/Gemini skill overlays:
@@ -191,7 +191,7 @@ make skill-evals SKILL_EVAL_CONCURRENCY=8 SKILL_EVAL_LOG_FORMAT=jsonl
 Fast fix loop, no baseline and no HTML report:
 
 ```bash
-make skill-evals-fast SKILL_EVAL_INCLUDE='dev-tools/skills/researching-web'
+make skill-evals-fast SKILL_EVAL_INCLUDE='discovery/skills/researching-web'
 ```
 
 Run source skills and Codex/Gemini overlays in parallel with separate workspaces:

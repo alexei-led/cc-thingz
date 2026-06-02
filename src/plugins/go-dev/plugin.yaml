@@ -1,8 +1,0 @@
-name: go-dev
-version: 4.12.0
-description: Idiomatic Go development with stdlib-first patterns
-skills:
-  - writing-go
-agents:
-  - engineer
-hooks: []

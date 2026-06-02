@@ -11,8 +11,8 @@ output:
 
 - each multi-target skill compiles to at least one written `SKILL.md` for
   every target
-- Claude-only skills (`reviewing-cc-config`, `deploying-infra`) skip
-  non-claude targets through the base `targets: [claude]` restriction
+- Claude-only skills (`deploying-infra`) skip non-claude targets through
+  the base `targets: [claude]` restriction
 - skills migrated via `swap_pi_body` or `swap_claude_body` route the original
   Claude orchestration body to the Claude target while emitting the
   vendor-neutral variant elsewhere
@@ -30,7 +30,6 @@ from conftest import REPO_ROOT, TARGETS, make_batch_skill_staging_root
 
 BATCH_2_ALL_TARGETS = (
     "browser-automation",
-    "mem-history",
     "exploring-repos",
     "researching-web",
     "evolving-config",
@@ -40,10 +39,7 @@ BATCH_2_ALL_TARGETS = (
     "operating-infra",
 )
 
-BATCH_2_CLAUDE_ONLY = (
-    "reviewing-cc-config",
-    "deploying-infra",
-)
+BATCH_2_CLAUDE_ONLY = ("deploying-infra",)
 
 # Skills migrated via swap_claude_body / swap_pi_body must keep the
 # Claude-specific body for Claude. The check looks for any target-specific

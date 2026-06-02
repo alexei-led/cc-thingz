@@ -17,7 +17,6 @@ tools:
 model: sonnet
 color: green
 skills:
-  # Preload only what an implementer needs on every spawn. mem-history and
-  # sequential-thinking stay Skill-discoverable to keep startup context lean.
+  # Preload only what an implementer needs on every spawn.
+  # sequential-thinking stays Skill-discoverable to keep startup context lean.
   - looking-up-docs
-  - smart-explore

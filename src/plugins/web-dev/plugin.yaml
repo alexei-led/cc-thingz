@@ -1,8 +1,0 @@
-name: web-dev
-version: 4.12.0
-description: Web frontend with vanilla HTML, CSS, JavaScript, and HTMX
-skills:
-- writing-web
-agents:
-- engineer
-hooks: []

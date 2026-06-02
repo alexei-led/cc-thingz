@@ -1,6 +1,6 @@
 # Documentation Update
 
-Scope: documentation files only. Not for session-learning extraction (use learning-patterns) or code-quality review (use reviewing-code).
+Scope: documentation files only. Not for code-quality review (use reviewing-code).
 
 Update project documentation to reflect current code state. Do not delete or overwrite existing docs without confirmation. If verification fails or required evidence is unavailable, report the failure instead of claiming docs are current.
 

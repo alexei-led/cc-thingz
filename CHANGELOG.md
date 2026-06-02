@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to this Claude Code configuration are documented here.
+All notable changes to this Coding Companion suite are documented here.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
@@ -8,10 +8,43 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [5.0.0] - 2026-06-02
+
+### Changed
+
+- Reorganized the installable plugin catalog from eleven source plugins to
+  seven coherent plugins: `browser`, `dev-flow`, `discovery`, `git-flow`,
+  `infra-ops`, `programming`, and `spec-flow`.
+- Renamed `browser-automation` → `browser`, `dev-tools` → `discovery`, and
+  `spec-dev` → `spec-flow`, and consolidated `go-dev`, `py-dev`, `ts-dev`,
+  and `web-dev` into `programming`.
+- Added declarative plugin dependencies in source manifests:
+  `browser` → `programming`, `programming` → `dev-flow`, and
+  `spec-flow` → `dev-flow`.
+- Merged `reviewing-cc-config` into `evolving-config`, keeping config review
+  and config-improvement workflows in one skill with review-only and
+  apply-fixes modes.
+- Clarified `cc-thingz` as “Coding Companion” in the top-level docs and reduced
+  Claude-first framing in the README and AGENTS catalog.
+- Kept `revdiff-plan-review` as an optional Pi bridge hook and assigned it to
+  `spec-flow` instead of leaving it orphaned.
+
 ### Removed
 
-- Removed the unused `analyzing-usage` skill, including plugin wiring,
-  skill-enforcer routing, generated outputs, docs, and skill eval fixtures.
+- Removed the empty `test-e2e` plugin.
+- Removed thin or redundant skills: `analyzing-usage`, `learning-patterns`,
+  `mem-history`, `parsing-documents`, and `smart-explore`.
+- Removed dead `skill-enforcer` routes for deleted or phantom skills:
+  `learning-patterns`, `mem-history`, `reviewing-cc-config`,
+  `smart-explore`, `using-gemini`, and `coding`.
+
+### Fixed
+
+- Updated README, AGENTS, contributing docs, release-mirror rewrite rules,
+  generated manifests, and hook/test fixtures to match the new plugin layout,
+  names, counts, and configuration surface.
+- Regenerated all marketplace manifests, plugin outputs, and target-specific
+  artifacts for the 5.0.0 layout.
 
 ## [4.12.0] - 2026-06-02
 

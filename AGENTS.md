@@ -1,6 +1,6 @@
-# cc-thingz
+# cc-thingz — Coding Companion
 
-Portable skills, agents, and hooks for Claude Code, Codex CLI, Gemini CLI, and Pi — code review, language tooling, infrastructure, testing, and developer utilities. Platform-specific skills are excluded.
+Portable skills, agents, and hooks for Pi, Claude Code, Codex CLI, and Gemini CLI — code review, language tooling, infrastructure, testing, and developer utilities. Platform-specific skills are excluded.
 
 ## Build
 
@@ -35,7 +35,7 @@ Three role agents. A role is a capability envelope plus a reasoning stance no sk
 
 Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allowlist (Gemini via the subagent frontmatter `tools:` field); Codex blocks writes via `sandbox_mode: read-only`; Pi has no tool-allowlist primitive, so the envelope there is a system-prompt directive. Gemini frontmatter has no read-only sandbox primitive, so `advisor` is granted `run_shell_command` and constrained to read-only by its body directive — the same tradeoff as Pi. Descriptions state each role behaviorally so the claim stays true on every target, and omit "use proactively" deliberately — roles are picked by the orchestrator to compose with a skill, not auto-delegated.
 
-- **engineer** — read + write + execute. The only mutator: applies changes and runs the build/test/lint verification on what it changed. Fork target for `writing-{go,python,typescript,web}` and `operating-infra`. Claude preloads `looking-up-docs` + `smart-explore`; `mem-history` and `sequential-thinking` stay Skill-discoverable to keep spawn context lean.
+- **engineer** — read + write + execute. The only mutator: applies changes and runs the build/test/lint verification on what it changed. Fork target for `writing-{go,python,shell,typescript,web}` and `operating-infra`. Claude preloads `looking-up-docs`; `sequential-thinking` stays Skill-discoverable to keep spawn context lean.
 - **reviewer** — Read + Grep + Glob + LS. Adversarial evaluator (assume bugs exist); emits structured findings/proposals, applies nothing. Non-mutating: tool-enforced on Claude and Gemini, write-blocked on Codex, directive on Pi. Absorbs the review family, code search, and planning (via `spec` / `planning:make`).
 - **advisor** — strategic escalation: verdict, ranked risks, next actions. Ships to Codex, Gemini, and Pi; excluded from Claude, which has a built-in advisor. Codex enforces read-only via sandbox; Pi uses xhigh thinking with read-only Bash and transcript-forwarding invocation; Gemini grants a read-only `tools:` allowlist plus `run_shell_command` held read-only by the body directive.
 
@@ -77,19 +77,14 @@ Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allo
 ## Developer Tools
 
 - **brainstorming-ideas** — Brainstorm ideas and stress-test draft plans or trade-offs before coding
-- **evolving-config** — Audit Claude Code configuration against latest features and best practices
+- **evolving-config** — Audit and improve agent configuration across platforms; supports review-only audits and apply-fixes mode
 - **exploring-repos** — Explore public GitHub repositories via DeepWiki AI-generated documentation
-- **learning-patterns** — Extract learnings and generate project-specific customizations
 - **looking-up-docs** — Find current docs via Context7, official registries/docs, Perplexity/web, and GitHub fallback
-- **mem-history** — Query project history, past decisions, and known gotchas from claude-mem observations
-- **parsing-documents** — Extract structured data from PDF documents
 - **researching-web** — Web research via Perplexity AI
-- **reviewing-cc-config** — Review Claude Code configuration for context efficiency and anti-patterns
 - **reviewing-instructions** — Review and score AI agent/skill instruction files and related agent-targeted markdown such as `body.md`, `references/*.md`, and custom prompt/context/rules docs
 - **sequential-thinking** — Structured stepwise reasoning with explicit revisions and branches
-- **smart-explore** — Token-efficient known-file and known-symbol navigation
 
 ## Browser Automation
 
 - **browser-automation** — Rendered UI exploration, validation, screenshots, recordings, and browser-flow tests
-- **playwright-skill** — Support-only Playwright runtime/reference for browser-automation
+- **playwright-skill** — Support-only Playwright runtime/reference for `browser-automation`

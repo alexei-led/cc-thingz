@@ -1,0 +1,11 @@
+name: browser
+version: 5.0.0
+description: Browser-based testing, validation, screenshots, recordings, and quick automation
+depends_on:
+  - programming
+skills:
+  - browser-automation
+  - playwright-skill
+agents:
+  - engineer
+hooks: []

@@ -4,7 +4,7 @@ description: Brainstorm ideas and stress-test draft plans before coding. Use whe
   a bounded plan, challenging assumptions, or resolving design-blocking terminology.
   NOT for implementation task breakdown; use spec-plan. NOT for generic technology
   comparisons or best-practice research; use researching-web. NOT for docs updates;
-  use documenting-code or learning-patterns.
+  use documenting-code.
 name: brainstorming-ideas
 ---
 

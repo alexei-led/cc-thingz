@@ -9,7 +9,6 @@ model: sonnet
 name: engineer
 skills:
   - looking-up-docs
-  - smart-explore
 tools:
   - Read
   - Edit

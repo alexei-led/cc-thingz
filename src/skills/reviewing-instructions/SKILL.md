@@ -20,7 +20,7 @@ The user may pass:
 - `--model <name>` to override model-specific rule selection (e.g. `--model claude`, `--model gemini`, `--model openai`)
 - Plugin name without path separator → expand to `src/plugins/<name>/`
 
-Do not review source code, tests, harness config, or ordinary project docs as instruction files. Review markdown that is clearly targeted at AI agents. Do not overlap with reviewing-code (code quality) or reviewing-cc-config (harness configuration).
+Do not review source code, tests, harness config, or ordinary project docs as instruction files. Review markdown that is clearly targeted at AI agents. Do not overlap with reviewing-code (code quality) or evolving-config (harness configuration).
 
 ## File Discovery
 

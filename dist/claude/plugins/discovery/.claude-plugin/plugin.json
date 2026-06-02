@@ -1,0 +1,12 @@
+{
+  "name": "discovery",
+  "version": "5.0.0",
+  "description": "Research, reasoning, config evolution, and agent self-improvement",
+  "author": {
+    "name": "Alexei Ledenev",
+    "email": "alexei.led@gmail.com"
+  },
+  "homepage": "https://github.com/alexei-led/cc-forge",
+  "repository": "https://github.com/alexei-led/cc-forge",
+  "license": "MIT"
+}

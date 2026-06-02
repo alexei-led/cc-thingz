@@ -4,8 +4,7 @@ description:
   brainstorming, exploring approaches, designing a feature/API/flow, grilling or debating
   a bounded plan, challenging assumptions, or resolving design-blocking terminology. NOT for
   implementation task breakdown; use spec-plan. NOT for generic technology comparisons or
-  best-practice research; use researching-web. NOT for docs updates; use documenting-code or
-  learning-patterns.
+  best-practice research; use researching-web. NOT for docs updates; use documenting-code.
 name: brainstorming-ideas
 ---
 

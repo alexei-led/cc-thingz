@@ -1,0 +1,13 @@
+{
+  "name": "programming",
+  "version": "5.0.0",
+  "description": "Idiomatic development across Go, Python, TypeScript, shell, and web",
+  "author": {
+    "name": "Alexei Ledenev",
+    "email": "alexei.led@gmail.com"
+  },
+  "homepage": "https://github.com/alexei-led/cc-thingz",
+  "repository": "https://github.com/alexei-led/cc-thingz",
+  "license": "MIT",
+  "skills": "./skills"
+}

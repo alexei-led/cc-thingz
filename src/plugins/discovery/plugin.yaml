@@ -1,0 +1,14 @@
+name: discovery
+version: 5.0.0
+description: Research, reasoning, config evolution, and agent self-improvement
+skills:
+  - brainstorming-ideas
+  - evolving-config
+  - exploring-repos
+  - looking-up-docs
+  - researching-web
+  - reviewing-instructions
+  - sequential-thinking
+agents:
+  - reviewer
+hooks: []

@@ -88,9 +88,9 @@ fi
 # reviewing-code: Multi-agent code review for security, quality, line-level concerns
 # Triggers: review code, check code, review changes, review PR
 # NOT for architecture deepening
-# NOT for config/setup/skills/agents/hooks review (use reviewing-cc-config)
+# NOT for config/setup/skills/agents/hooks review (use evolving-config)
 if echo "$PROMPT_LOWER" | grep -qE '\breview\b.*\b(code|changes|this|my|the)\b|\bcode\s*review\b|\bcheck\s*(this|my|the)?\s*code\b|\bdeep\s*(code\s*)?review\b|\bfeedback\s*(on)?\s*(my|the|this)?\s*code\b|review\s*(my|the|these)?\s*(changes|implementation|pr)\b|critique\s*(my|the|this)?\s*code|find\s*line[[:space:]-]?level\s*refactoring\s*opportunities'; then
-	# Exclude config-review patterns — those go to reviewing-cc-config
+	# Exclude config-review patterns — those go to evolving-config
 	if ! echo "$PROMPT_LOWER" | grep -qE '\b(config|configuration|setup|skills?|agents?|hooks?|claude\.?md)\b'; then
 		skills+="reviewing-code "
 	fi
@@ -161,12 +161,6 @@ if echo "$PROMPT_LOWER" | grep -qE '\bimprove\s*(my|the|these)?\s*tests?\b|\bref
 	skills+="improving-tests "
 fi
 
-# learning-patterns: Extract learnings and generate customizations/domain docs
-# Triggers: learn, learnings, adapt config, session patterns, domain language capture
-if echo "$PROMPT_LOWER" | grep -qE '\blearn\b.*\b(from|session|pattern|conversation)\b|\bextract\s*(the)?\s*learnings?\b|\bwhat\s*did\s*(we|i)\s*learn\b|\bsave\s*(the)?\s*learnings?\b|\badapt\s*(the|my)?\s*(config|configuration|settings)\b|\bsession\s*learnings?\b|\bimprove\s*claude\s*code\b|\bcustomiz.*(claude|config)\b|\b(learn|record)\s*from\s*(this|the|our)\s*(session|conversation|chat)\b|capture\s*(domain|term|language)|save\s*(domain|term|language)|record\s*(ADR|decision|out[[:space:]-]?of[[:space:]-]?scope)'; then
-	skills+="learning-patterns "
-fi
-
 # spec-status: Progress overview + orientation for spec-driven projects
 # Triggers: project status, progress, how far along, spec status,
 #           how does spec work, spec guide, spec methodology, spec workflow
@@ -226,24 +220,7 @@ if echo "$PROMPT_LOWER" | grep -qE '\bevolve\b|\bself[[:space:]-]?improv\b|\baud
 	skills+="evolving-config "
 fi
 
-# reviewing-cc-config: Review Claude Code configuration for context efficiency
-# Triggers: review config, config review, context review, review cc config, review my setup, review skills/agents/hooks
-if echo "$PROMPT_LOWER" | grep -qE '\breview\s*(my|the|cc|claude)?\s*(config|configuration|setup)\b|\b(config|configuration|setup)\s*review\b|\bcontext\s*review\b|\breview\s*(my|the)?\s*(skills|agents|hooks)\b|\bconfig(uration)?\s*(quality|health|check)\b'; then
-	skills+="reviewing-cc-config "
-fi
-
-# using-gemini: Consult Gemini CLI for second opinions or web search
-# Triggers: ask gemini, gemini search, gemini opinion, second AI perspective
-if echo "$PROMPT_LOWER" | grep -qE '\bask\s*gemini\b|\bgemini\s*(search|opinion|review|check|consult)\b|\bget\s*gemini\b|\bconsult\s*gemini\b|\bgemini\s*-p\b|\bsecond\s*(ai|opinion|perspective)\b'; then
-	skills+="using-gemini "
-fi
-
-# smart-explore: Known-file/symbol navigation via claude-mem
-# Triggers: file outline, known-symbol extraction, targeted AST navigation
-# NOT for repo-wide maps/flows/structural search
-if echo "$PROMPT_LOWER" | grep -qE '\bfile\s*structure\b|\boutline\b.*\b(file|class|module)\b|\bwhat.?s\s*in\s*this\s*file\b|\bshow\s*(me\s*)?(the\s*)?file\s*structure\b|\b(show|extract|unfold)\s*(the\s*)?(function|method|class|type|symbol)\b|\b(function|method|class|type|symbol)\s*(body|source|definition)\b|\bsmart[[:space:]_-]?explore\b|\bsmart_(outline|search|unfold)\b'; then
-	skills+="smart-explore "
-fi
+# evolving-config: Audit and improve agent configuration across platforms; supports review-only audits and apply-fixes mode
 
 # reviewing-instructions: Review and score AI agent/skill instructions for quality
 # Triggers: reviewing/linting/scoring skills, agents, SKILL.md, AGENTS.md, CLAUDE.md, instruction files
@@ -255,22 +232,6 @@ fi
 # Triggers: explicit DeepWiki, GitHub URL, or owner/name public repo requests
 if echo "$PROMPT_LOWER" | grep -qE '\bdeepwiki\b|github\.com/[a-z0-9_.-]+/[a-z0-9_.-]+|\b(public\s*)?(github\s*)?(repo|repository)\s+[a-z0-9_.-]+/[a-z0-9_.-]+\b|\b(how\s*does|explore|understand|wiki\s*(for|of|about))\s+[a-z0-9_.-]+/[a-z0-9_.-]+\b'; then
 	skills+="exploring-repos "
-fi
-
-# mem-history: Query project history via claude-mem
-# Triggers: past sessions, previous decisions, project timeline, memory search
-if echo "$PROMPT_LOWER" | grep -qE '\blast\s*session\b|\bdid\s*we\s*already\b|\bprevious\s*session\b|\bremember\s*when\b|\bwhat\s*did\s*we\s*decide\b|\bpast\s*(issue|bug|decision|fix)\b|\brecurring\s*bug\b|\bproject\s*(history|timeline)\b|\btimeline\b.*\b(project|feature|change)\b|\bwhat\s*happened\s*with\b|\bmem[[:space:]-]?history\b|\bmem[[:space:]-]?search\b|\bclaude[[:space:]-]?mem\b'; then
-	skills+="mem-history "
-fi
-
-# coding: Implementation process discipline — assumptions and verifiable goals
-# Triggers: implement, write/create/build/add code constructs in any language
-# Co-fires alongside language-specific skills (writing-go, writing-python, etc.)
-if echo "$PROMPT_LOWER" | grep -qE '\bimplement\b|\bwrite\s+(a\s+)?(function|method|class|module|script|service|handler|middleware|endpoint|api|component|struct|interface|type|trait|enum)\b|\bcreate\s+(a\s+)?(function|method|class|module|script|service|handler|endpoint|component|struct)\b|\badd\s+(a\s+)?(feature|function|method|endpoint|handler|route|command|flag|option|field|property)\b|\bbuild\s+(a\s+)?(feature|module|service|api|system|component|pipeline|cli|tool)\b|\bdevelop\s+(a\s+)?(feature|module|service|component|api)\b|\bcode\s+(this|up|a|the)\b'; then
-	# Exclude review/fix/commit/doc tasks — those have dedicated skills
-	if ! echo "$PROMPT_LOWER" | grep -qE '\breview\b|\bfix\b|\bcommit\b|\bdocument\b|\brefactor\b'; then
-		skills+="coding "
-	fi
 fi
 
 # Output only if skills detected (silent when no match)

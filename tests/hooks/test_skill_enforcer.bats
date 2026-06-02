@@ -28,12 +28,6 @@ FIXTURES="$BATS_TEST_DIRNAME/fixtures"
 	[ -z "$output" ]
 }
 
-@test "skill-enforcer: known-file extraction routes to smart-explore" {
-	run bash "$HOOK" <"$FIXTURES/skill_enforcer_smart_explore.json"
-	[ "$status" -eq 0 ]
-	[[ "$output" == *"smart-explore"* ]]
-}
-
 @test "skill-enforcer: shell scripting routes to writing-shell" {
 	run bash "$HOOK" <"$FIXTURES/skill_enforcer_shell.json"
 	[ "$status" -eq 0 ]

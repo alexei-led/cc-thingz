@@ -1,8 +1,7 @@
 ---
 description: Update project documentation based on code changes. Use when the user
   asks to update docs, document behavior, add README content, or align docs with recent
-  implementation changes. NOT for extracting session learnings or authoring ADRs (use
-  learning-patterns) or code-quality feedback (use reviewing-code).
+  implementation changes. NOT for code-quality feedback (use reviewing-code).
 name: documenting-code
 ---
 
@@ -51,8 +50,8 @@ Mixed languages: load each matching reference. Unknown language: use the generic
 ## Rules
 
 - Do not document dead or speculative behavior.
-- Do not author or update ADRs (architecture decision records) or `docs/adr/` —
-  route decision capture to `learning-patterns`.
+- Do not author or update ADRs (architecture decision records) or `docs/adr/`
+  unless the user explicitly asks for them.
 - Do not add promotional filler.
 - Prefer examples that can be run.
 - Keep private paths or secrets out of docs.

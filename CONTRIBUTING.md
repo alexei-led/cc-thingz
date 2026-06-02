@@ -365,7 +365,7 @@ Before opening a PR, confirm **all** of the following:
 ## Commit and PR Style
 
 - Imperative mood, lowercase type prefix:
-  `feat: add foo skill`, `fix(go-dev): correct lint hook`, `docs: …`,
+  `feat: add foo skill`, `fix(programming): correct lint hook`, `docs: …`,
   `refactor: …`, `chore: …`.
 - Body explains **why**, not what — the diff already shows what.
 - One logical change per commit. Squash noise locally before pushing.

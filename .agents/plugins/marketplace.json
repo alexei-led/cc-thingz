@@ -5,10 +5,10 @@
   },
   "plugins": [
     {
-      "name": "browser-automation",
+      "name": "browser",
       "source": {
         "source": "local",
-        "path": "./dist/codex/plugins/browser-automation"
+        "path": "./dist/codex/plugins/browser"
       },
       "policy": {
         "installation": "AVAILABLE",
@@ -27,10 +27,10 @@
       }
     },
     {
-      "name": "dev-tools",
+      "name": "discovery",
       "source": {
         "source": "local",
-        "path": "./dist/codex/plugins/dev-tools"
+        "path": "./dist/codex/plugins/discovery"
       },
       "policy": {
         "installation": "AVAILABLE",
@@ -49,17 +49,6 @@
       }
     },
     {
-      "name": "go-dev",
-      "source": {
-        "source": "local",
-        "path": "./dist/codex/plugins/go-dev"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_USE"
-      }
-    },
-    {
       "name": "infra-ops",
       "source": {
         "source": "local",
@@ -71,10 +60,10 @@
       }
     },
     {
-      "name": "py-dev",
+      "name": "programming",
       "source": {
         "source": "local",
-        "path": "./dist/codex/plugins/py-dev"
+        "path": "./dist/codex/plugins/programming"
       },
       "policy": {
         "installation": "AVAILABLE",
@@ -82,32 +71,10 @@
       }
     },
     {
-      "name": "spec-dev",
+      "name": "spec-flow",
       "source": {
         "source": "local",
-        "path": "./dist/codex/plugins/spec-dev"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_USE"
-      }
-    },
-    {
-      "name": "ts-dev",
-      "source": {
-        "source": "local",
-        "path": "./dist/codex/plugins/ts-dev"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_USE"
-      }
-    },
-    {
-      "name": "web-dev",
-      "source": {
-        "source": "local",
-        "path": "./dist/codex/plugins/web-dev"
+        "path": "./dist/codex/plugins/spec-flow"
       },
       "policy": {
         "installation": "AVAILABLE",

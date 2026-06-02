@@ -1,4 +1,4 @@
-# cc-thingz
+# cc-thingz — Coding Companion
 
 [![CI](https://github.com/alexei-led/cc-thingz/actions/workflows/ci.yml/badge.svg)](https://github.com/alexei-led/cc-thingz/actions/workflows/ci.yml)
 [![GitHub tag](https://img.shields.io/github/v/tag/alexei-led/cc-thingz?label=version&sort=semver)](https://github.com/alexei-led/cc-thingz/tags)
@@ -7,17 +7,17 @@
 [![AGENTS.md](https://img.shields.io/badge/AGENTS.md-standard-000000)](https://agents.md)
 [![Codex CLI](https://img.shields.io/badge/Codex_CLI-skill_export-10A37F)](https://developers.openai.com/codex/plugins)
 [![Gemini CLI](https://img.shields.io/badge/Gemini_CLI-skill_export-4285F4)](https://geminicli.com/docs/extensions)
-[![Plugins](https://img.shields.io/badge/plugins-10-green)](src/plugins/)
-[![Skills](https://img.shields.io/badge/skills-37-green)](src/plugins/)
+[![Plugins](https://img.shields.io/badge/plugins-7-green)](src/plugins/)
+[![Skills](https://img.shields.io/badge/skills-32-green)](src/plugins/)
 
-A multi-agent skill suite for **Claude Code**, **Codex CLI**, **Gemini CLI**, and **Pi** — 37 skills, 3 agents, and 10 hooks. One source of truth in `src/`, compiled to platform-optimized output for each tool. Supports [AGENTS.md](https://agents.md)-compatible tools too. Built over 6+ months of daily use and continuous refinement.
+A portable skill suite for **Pi**, **Claude Code**, **Codex CLI**, and **Gemini CLI** — 32 skills, 3 agents, and 10 hooks. One source of truth in `src/`, compiled to platform-optimized output for each tool. Supports [AGENTS.md](https://agents.md)-compatible tools too. Built over 6+ months of daily use and continuous refinement.
 
 ## Why This Exists
 
 AI coding tools are powerful out of the box, but specialized workflows need specialized prompts. After months of iterating on skills, agents, and hooks across Go, Python, TypeScript, infrastructure, and planning workflows, these plugins encode hard-won patterns:
 
 - **Code review** with parallel multi-agent review and sequential lint-and-check workflows
-- **Smart hooks** that auto-suggest skills, lint after edits, protect secrets, and run tests (Claude Code)
+- **Smart hooks** that auto-suggest skills, lint after edits, protect secrets, and run tests
 - **Spec-driven development** with structured requirements, tasks, and a CLI for project management
 - **Infrastructure ops** with validated K8s, Terraform, and Helm deployments
 - **Developer utilities** including git-flow hygiene, AST-first codebase search, web research, and brainstorming
@@ -41,10 +41,11 @@ Every skill has been manually crafted and refined through real-world use — not
 /plugin marketplace add alexei-led/cc-thingz
 # then install any plugin(s) you want:
 /plugin install dev-flow@cc-thingz
-/plugin install dev-tools@cc-thingz
+/plugin install discovery@cc-thingz
 /plugin install git-flow@cc-thingz
-/plugin install go-dev@cc-thingz
-# ... repeat for py-dev, ts-dev, web-dev, infra-ops, spec-dev, browser-automation
+/plugin install programming@cc-thingz
+/plugin install browser@cc-thingz
+# ... repeat for infra-ops and spec-flow
 ```
 
 Use `--scope project` to install into `.claude/settings.json` for team sharing.
@@ -230,7 +231,7 @@ Agent({
 | `notify.ts`            | macOS notification via `terminal-notifier` on completion (requires Homebrew `terminal-notifier`) |
 
 **Pi gets**: all 3 agents — `engineer`, `reviewer`, `advisor` (requires
-`@tintinweb/pi-subagents`) — all 40 skills, and 8 bundled extensions. Each
+`@tintinweb/pi-subagents`) — all 32 skills, and 8 bundled extensions. Each
 agent has a Pi-specific frontmatter overlay tuned for OpenAI Codex models
 (`openai-codex/gpt-5.5`), thinking levels, tool restrictions, and turn limits.
 `advisor` ships to Codex, Gemini, and Pi; Claude is excluded because it has a
@@ -263,11 +264,11 @@ Claude Code agents can also use optional MCP servers for enhanced capabilities.
 These are optional — plugins degrade gracefully without them. Pi exports do not
 assume MCP tools.
 
-| MCP Server                                                   | Purpose                                     | Used By                                                             |
-| ------------------------------------------------------------ | ------------------------------------------- | ------------------------------------------------------------------- |
-| [DeepWiki](https://cognition.ai/blog/deepwiki-mcp-server)    | AI-generated wiki for public GitHub repos   | Claude Code dev-tools                                               |
-| [Perplexity](https://github.com/ppl-ai/modelcontextprotocol) | Web research and technical comparisons      | Claude Code dev-flow, dev-tools, infra-ops                          |
-| [MorphLLM](https://github.com/morphllm/morph-claude-code)    | Fast codebase search and batch file editing | Claude Code `engineer` role via dev-flow, language, infra, spec-dev |
+| MCP Server                                                   | Purpose                                     | Used By                                                                 |
+| ------------------------------------------------------------ | ------------------------------------------- | ----------------------------------------------------------------------- |
+| [DeepWiki](https://cognition.ai/blog/deepwiki-mcp-server)    | AI-generated wiki for public GitHub repos   | Claude Code discovery                                                   |
+| [Perplexity](https://github.com/ppl-ai/modelcontextprotocol) | Web research and technical comparisons      | Claude Code dev-flow, discovery, infra-ops                              |
+| [MorphLLM](https://github.com/morphllm/morph-claude-code)    | Fast codebase search and batch file editing | Claude Code `engineer` role via dev-flow, programming, infra, spec-flow |
 
 > Stepwise reasoning previously came from the
 > [Sequential Thinking MCP](https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking).
@@ -292,24 +293,21 @@ All agents and several skills optionally integrate with [claude-mem](https://git
 
 **Graceful degradation**: All plugins work without claude-mem. When it's not installed, MCP tools are silently absent — agents fall back to local tools such as `rg`, `fd`, and platform Read/Grep/Glob where needed. No errors, no configuration needed.
 
-**How it works**: Agent frontmatter lists claude-mem MCP tools alongside standard tools. Claude Code silently omits unavailable tools at runtime, so agents always have their core tools (Read, Grep, Glob, LSP) and gain smart_explore/memory tools when claude-mem is present. Skill instructions use "when available" / "if claude-mem available" phrasing to guide Claude's behavior.
+**How it works**: Agent frontmatter lists claude-mem MCP tools alongside standard tools. Claude Code silently omits unavailable tools at runtime, so agents always have their core tools (Read, Grep, Glob, LSP) and gain AST/memory tools when claude-mem is present. Skill instructions use "when available" / "if claude-mem available" phrasing to guide Claude's behavior.
 
 ## Plugins
 
-| Plugin                                                               | Skills | Agents | Description                                                                       |
-| -------------------------------------------------------------------- | ------ | ------ | --------------------------------------------------------------------------------- |
-| [**dev-flow**](src/plugins/dev-flow/plugin.yaml)                     | 6      | 2      | Fix, refactor, review, document, commit; `engineer` and `reviewer` roles; 6 hooks |
-| [**go-dev**](src/plugins/go-dev/plugin.yaml)                         | 1      | 1      | Idiomatic Go development with stdlib-first patterns, testing, and CLI tooling     |
-| [**py-dev**](src/plugins/py-dev/plugin.yaml)                         | 1      | 1      | Python 3.12+ development with uv/ruff/pyright toolchain                           |
-| [**ts-dev**](src/plugins/ts-dev/plugin.yaml)                         | 1      | 1      | TypeScript with strict typing, React patterns, and modern tooling                 |
-| [**web-dev**](src/plugins/web-dev/plugin.yaml)                       | 1      | 1      | Web frontend with vanilla HTML, CSS, JavaScript, and HTMX                         |
-| [**infra-ops**](src/plugins/infra-ops/plugin.yaml)                   | 2      | 1      | Kubernetes, Terraform, Helm, GitHub Actions, AWS, GCP                             |
-| [**dev-tools**](src/plugins/dev-tools/plugin.yaml)                   | 13     | 1      | Shell scripting, docs lookup, research, config review, memory                     |
-| [**git-flow**](src/plugins/git-flow/plugin.yaml)                     | 3      | 0      | Worktrees, cleanup, hooks, Gitleaks, `.gitignore`, git config, and guardrails     |
-| [**spec-dev**](src/plugins/spec-dev/plugin.yaml)                     | 7      | 2      | Spec-driven development: requirements, tasks, and planning workflows              |
-| [**browser-automation**](src/plugins/browser-automation/plugin.yaml) | 2      | 1      | Browser exploration, validation, screenshots, and E2E flows                       |
+| Plugin                                                 | Skills | Agents | Description                                                                       | Depends on  |
+| ------------------------------------------------------ | ------ | ------ | --------------------------------------------------------------------------------- | ----------- |
+| [**dev-flow**](src/plugins/dev-flow/plugin.yaml)       | 6      | 2      | Fix, refactor, review, document, commit; `engineer` and `reviewer` roles; 6 hooks | —           |
+| [**spec-flow**](src/plugins/spec-flow/plugin.yaml)     | 7      | 2      | Spec-driven development: requirements, tasks, and planning workflows              | dev-flow    |
+| [**git-flow**](src/plugins/git-flow/plugin.yaml)       | 3      | 0      | Worktrees, cleanup, hooks, Gitleaks, `.gitignore`, git config, and guardrails     | —           |
+| [**browser**](src/plugins/browser/plugin.yaml)         | 2      | 1      | Browser testing, validation, screenshots, recordings, and quick automation        | programming |
+| [**infra-ops**](src/plugins/infra-ops/plugin.yaml)     | 2      | 1      | Kubernetes, Terraform, Helm, GitHub Actions, AWS, GCP                             | —           |
+| [**programming**](src/plugins/programming/plugin.yaml) | 5      | 1      | Idiomatic development across Go, Python, TypeScript, shell, and web               | dev-flow    |
+| [**discovery**](src/plugins/discovery/plugin.yaml)     | 7      | 1      | Research, reasoning, config evolution, and agent self-improvement                 | —           |
 
-**Totals**: 37 skills, 2 plugin-owned role agents (`engineer`, `reviewer`), 10 hooks
+**Totals**: 32 skills, 2 plugin-owned role agents (`engineer`, `reviewer`), 10 hooks
 
 ## Skills
 
@@ -319,27 +317,25 @@ Skills teach the AI model domain-specific knowledge and workflows. All skills ar
 
 Invoke as `/skill-name` or let the skill enforcer suggest them.
 
-| Skill                    | What It Does                                                                                                                                      | Example Trigger                      |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| `brainstorming-ideas`    | Brainstorm ideas and stress-test draft plans or trade-offs                                                                                        | "brainstorm", "debate plan"          |
-| `cleanup-git`            | Remove merged branches and stale worktrees                                                                                                        | "cleanup branches", "tidy git"       |
-| `committing-code`        | Smart git commits with logical grouping                                                                                                           | "commit", "save changes"             |
-| `configuring-git-hygiene`   | Configure git hooks, Gitleaks, `.gitignore`, git config, and guardrails                                                                           | "setup pre-commit", "gitleaks"       |
-| `deploying-infra`        | Validate + deploy K8s/Terraform/Helm                                                                                                              | "deploy to staging", "rollout"       |
-| `documenting-code`       | Update docs based on recent changes                                                                                                               | "update docs", "document"            |
-| `evolving-config`        | Audit config against latest Claude Code features                                                                                                  | "evolve", "audit config"             |
-| `exploring-repos`        | Explore public GitHub repos and architecture                                                                                                      | "explore repo", "how does repo work" |
-| `fixing-code`            | Parallel agents fix all issues, zero tolerance                                                                                                    | "fix errors", "make it pass"         |
-| `improving-tests`        | Refactor tests: combine to tabular, fill gaps                                                                                                     | "improve tests", "coverage"          |
-| `looking-up-docs`        | Find current docs via Context7, official registries/docs, Perplexity/web, and GitHub fallback                                                     | "ctx7", "latest API", "look up"      |
-| `mem-history`            | Query project history and prior decisions                                                                                                         | "last session", "what happened"      |
-| `researching-web`        | Web research via Perplexity AI                                                                                                                    | "research", "X vs Y"                 |
-| `reviewing-code`         | Multi-agent review (security, correctness, quality)                                                                                               | "review code", "check this"          |
-| `browser-automation`     | Rendered UI exploration, validation, screenshots, recordings, and browser test flows                                                              | "use browser", "screenshot", "e2e"   |
-| `learning-patterns`      | Extract learnings and generate customizations                                                                                                     | "learn", "extract learnings"         |
-| `reviewing-instructions` | Review and score AI agent/skill instructions plus agent-targeted markdown like `body.md`, `references/*.md`, and custom prompt/context/rules docs | "lint instructions", "audit prompts" |
-| `reviewing-cc-config`    | Review CC config for context efficiency                                                                                                           | "review config", "config review"     |
-| `using-git-worktrees`    | Isolated git worktrees for parallel development                                                                                                   | "worktree", "isolate"                |
+| Skill                     | What It Does                                                                                                                                      | Example Trigger                       |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| `brainstorming-ideas`     | Brainstorm ideas and stress-test draft plans or trade-offs                                                                                        | "brainstorm", "debate plan"           |
+| `cleanup-git`             | Remove merged branches and stale worktrees                                                                                                        | "cleanup branches", "tidy git"        |
+| `committing-code`         | Smart git commits with logical grouping                                                                                                           | "commit", "save changes"              |
+| `configuring-git-hygiene` | Configure git hooks, Gitleaks, `.gitignore`, git config, and guardrails                                                                           | "setup pre-commit", "gitleaks"        |
+| `deploying-infra`         | Validate + deploy K8s/Terraform/Helm                                                                                                              | "deploy to staging", "rollout"        |
+| `documenting-code`        | Update docs based on recent changes                                                                                                               | "update docs", "document"             |
+| `evolving-config`         | Audit and improve agent configuration; supports review-only audits and apply-fixes mode                                                           | "evolve", "audit config"              |
+| `exploring-repos`         | Explore public GitHub repos and architecture                                                                                                      | "explore repo", "how does repo work"  |
+| `fixing-code`             | Parallel agents fix all issues, zero tolerance                                                                                                    | "fix errors", "make it pass"          |
+| `improving-tests`         | Refactor tests: combine to tabular, fill gaps                                                                                                     | "improve tests", "coverage"           |
+| `looking-up-docs`         | Find current docs via Context7, official registries/docs, Perplexity/web, and GitHub fallback                                                     | "ctx7", "latest API", "look up"       |
+| `researching-web`         | Web research via Perplexity AI                                                                                                                    | "research", "X vs Y"                  |
+| `reviewing-code`          | Multi-agent review (security, correctness, quality)                                                                                               | "review code", "check this"           |
+| `browser-automation`      | Rendered UI exploration, validation, screenshots, recordings, and browser test flows                                                              | "use browser", "screenshot", "e2e"    |
+| `reviewing-instructions`  | Review and score AI agent/skill instructions plus agent-targeted markdown like `body.md`, `references/*.md`, and custom prompt/context/rules docs | "lint instructions", "audit prompts"  |
+| `sequential-thinking`     | Structured stepwise reasoning with explicit revisions and branches                                                                                | "think step by step", "plan this out" |
+| `using-git-worktrees`     | Isolated git worktrees for parallel development                                                                                                   | "worktree", "isolate"                 |
 
 ### Auto-Activated
 
@@ -349,7 +345,6 @@ These activate silently when relevant patterns are detected — no `/skill-name`
 | -------------------- | ---------------------------------------------- |
 | `operating-infra`    | IaC, Kubernetes, cloud resources, CI/CD, Linux |
 | `refactoring-code`   | Multi-file batch changes, rename everywhere    |
-| `smart-explore`      | Token-efficient known-file/symbol extraction   |
 | `writing-go`         | Go files, go commands, Go-specific terms       |
 | `writing-python`     | Python files, pytest, pip, frameworks          |
 | `writing-shell`      | Shell scripts, pipelines, shell lint/test      |
