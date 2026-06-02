@@ -51,8 +51,8 @@ unless creating permanent tests was requested.
 
 ## Script and Test Rules
 
-- Write temporary scripts to `/tmp/browser-<name>.js` or
-  `/tmp/browser-<name>.spec.ts`.
+- Write temporary scripts to `/tmp/playwright-<name>.js` or
+  `/tmp/playwright-<name>.spec.ts` when using the Playwright fallback.
 - Never use fixed sleep delays.
 - Wait or assert on visible state, URL, selector, network state, or
   accessibility snapshot.
@@ -75,6 +75,7 @@ unless creating permanent tests was requested.
 
 ```markdown
 ## Browser Automation Result
+
 Target: <page, feature, or flow>
 Runtime: <built-in browser | project runner | playwright-skill | blocked>
 Actions: <commands or browser action summary>

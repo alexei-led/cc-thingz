@@ -15,10 +15,10 @@ See [`references/setup.md`](references/setup.md). First invocation of `run.js` a
 ## Detect dev servers
 
 ```bash
-node -e "require('scripts/lib/helpers').detectDevServers().then(s => console.log(JSON.stringify(s)))"
+node scripts/run.js "console.log(JSON.stringify(await helpers.detectDevServers()))"
 ```
 
-If multiple servers are found, ask the user which to test.
+One server → use it. Multiple → ask which. None → ask for a URL.
 
 ## Run a temporary browser script
 
@@ -30,8 +30,20 @@ node scripts/run.js /tmp/playwright-check.js
 
 ## Rules
 
-- Never write generated tests into the skill directory.
+- Never write generated scripts or artifacts into the skill directory or user project.
+- Use `/tmp/playwright-*` for generated scripts, screenshots, traces, and logs.
 - Prefer visible browser mode unless the user asks for headless.
 - Parameterize target URLs.
 - Return artifact paths for screenshots, traces, and logs.
 - Higher-level browser workflow stays in `browser-automation`.
+
+## Output
+
+Report the target URL, actions run, artifact paths, and failures. Base success claims on script output or artifacts, not on command completion alone.
+
+## Failure handling
+
+- `run.js` not found: run from the `playwright-skill` directory.
+- Dev server not detected: ask for the URL.
+- Script syntax error: quote the failing line, state the cause, rewrite that section before rerunning.
+- Playwright install failure: use `references/setup.md`.

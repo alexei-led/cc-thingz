@@ -84,7 +84,7 @@ lockfile. Do not invent a runner.
 ### Playwright Helper Fallback
 
 Load `playwright-skill` for exact helper setup and invocation. Write temporary
-scripts to `/tmp/browser-*.js`; never write generated files into the helper
+scripts to `/tmp/playwright-*.js`; never write generated files into the helper
 directory or project unless permanent tests were requested.
 
 ## Browser Script Rules
@@ -119,6 +119,7 @@ directory or project unless permanent tests were requested.
 
 ```markdown
 ## Browser Automation Result
+
 Action: <explore | verify | screenshot | record | test>
 Result: <PASS | FAIL | BLOCKED>
 Runtime: <built-in browser | project runner | playwright-skill | unavailable>
