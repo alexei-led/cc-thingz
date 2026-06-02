@@ -56,6 +56,7 @@ SKILLS_WITH_REFERENCES = {
         "references/react.md",
         "references/testing.md",
     ),
+    "writing-web": ("references/patterns.md",),
     "using-cloud-cli": ("references/AWS.md", "references/GCP.md"),
     "using-git-worktrees": ("references/WORKFLOW.md",),
 }
