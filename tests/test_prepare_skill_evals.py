@@ -45,8 +45,8 @@ def _patch_roots(tmp_path: Path):
 
 
 def test_prepare_copies_claude_skill_and_evals(tmp_path):
-    _write_skill(tmp_path, "claude", "dev-tools", "using-modern-cli", "source skill")
-    _write_eval(tmp_path, "dev-tools", "using-modern-cli")
+    _write_skill(tmp_path, "claude", "dev-tools", "writing-shell", "source skill")
+    _write_eval(tmp_path, "dev-tools", "writing-shell")
     out = tmp_path.parent / "skill-eval-out-source"
 
     root_patch, dist_patch, evals_patch = _patch_roots(tmp_path)
@@ -54,15 +54,15 @@ def test_prepare_copies_claude_skill_and_evals(tmp_path):
         skills, evals = prepare_skill_evals.prepare(out, "skills")
 
     assert (skills, evals) == (1, 2)
-    dest = out / "dev-tools" / "skills" / "using-modern-cli"
+    dest = out / "dev-tools" / "skills" / "writing-shell"
     assert (dest / "SKILL.md").read_text(encoding="utf-8") == "source skill"
     assert (dest / "evals" / "evals.json").is_file()
 
 
 def test_prepare_can_copy_codex_overlay_while_preserving_eval_layout(tmp_path):
-    _write_skill(tmp_path, "claude", "dev-tools", "using-modern-cli", "source skill")
-    _write_skill(tmp_path, "codex", "dev-tools", "using-modern-cli", "codex overlay")
-    _write_eval(tmp_path, "dev-tools", "using-modern-cli", count=1)
+    _write_skill(tmp_path, "claude", "dev-tools", "writing-shell", "source skill")
+    _write_skill(tmp_path, "codex", "dev-tools", "writing-shell", "codex overlay")
+    _write_eval(tmp_path, "dev-tools", "writing-shell", count=1)
     out = tmp_path.parent / "skill-eval-out-codex"
 
     root_patch, dist_patch, evals_patch = _patch_roots(tmp_path)
@@ -70,7 +70,7 @@ def test_prepare_can_copy_codex_overlay_while_preserving_eval_layout(tmp_path):
         skills, evals = prepare_skill_evals.prepare(out, "skills-codex")
 
     assert (skills, evals) == (1, 1)
-    dest = out / "dev-tools" / "skills" / "using-modern-cli" / "SKILL.md"
+    dest = out / "dev-tools" / "skills" / "writing-shell" / "SKILL.md"
     assert dest.read_text(encoding="utf-8") == "codex overlay"
 
 

@@ -35,7 +35,7 @@ Three role agents. A role is a capability envelope plus a reasoning stance no sk
 
 Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allowlist (Gemini via the subagent frontmatter `tools:` field); Codex blocks writes via `sandbox_mode: read-only`; Pi has no tool-allowlist primitive, so the envelope there is a system-prompt directive. Gemini frontmatter has no read-only sandbox primitive, so `advisor` is granted `run_shell_command` and constrained to read-only by its body directive — the same tradeoff as Pi. Descriptions state each role behaviorally so the claim stays true on every target, and omit "use proactively" deliberately — roles are picked by the orchestrator to compose with a skill, not auto-delegated.
 
-- **engineer** — read + write + execute. The only mutator: applies changes and runs the build/test/lint verification on what it changed. Fork target for `writing-{go,python,typescript,web}` and `managing-infra`. Claude preloads `looking-up-docs` + `smart-explore`; `mem-history` and `sequential-thinking` stay Skill-discoverable to keep spawn context lean.
+- **engineer** — read + write + execute. The only mutator: applies changes and runs the build/test/lint verification on what it changed. Fork target for `writing-{go,python,typescript,web}` and `operating-infra`. Claude preloads `looking-up-docs` + `smart-explore`; `mem-history` and `sequential-thinking` stay Skill-discoverable to keep spawn context lean.
 - **reviewer** — Read + Grep + Glob + LS. Adversarial evaluator (assume bugs exist); emits structured findings/proposals, applies nothing. Non-mutating: tool-enforced on Claude and Gemini, write-blocked on Codex, directive on Pi. Absorbs the review family, code search, and planning (via `spec` / `planning:make`).
 - **advisor** — strategic escalation: verdict, ranked risks, next actions. Ships to Codex, Gemini, and Pi; excluded from Claude, which has a built-in advisor. Codex enforces read-only via sandbox; Pi uses xhigh thinking with read-only Bash and transcript-forwarding invocation; Gemini grants a read-only `tools:` allowlist plus `run_shell_command` held read-only by the body directive.
 
@@ -59,14 +59,14 @@ Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allo
 
 - **writing-go** — Idiomatic Go development
 - **writing-python** — Idiomatic Python 3.12+ development
+- **writing-shell** — Portable shell scripting with POSIX sh, Bash, Zsh, Fish, ShellCheck, shfmt, Bats, and ShellSpec
 - **writing-typescript** — Idiomatic TypeScript development
 - **writing-web** — Simple web development with HTML, CSS, JS, and HTMX
 
 ## Infrastructure & Operations
 
 - **deploying-infra** — Validate and deploy Kubernetes, Terraform, Helm, Kustomize, GitHub Actions, and Docker configs
-- **managing-infra** — Infrastructure patterns for Kubernetes, Terraform, Helm, Kustomize, and GitHub Actions
-- **using-cloud-cli** — Cloud CLI patterns for GCP and AWS
+- **operating-infra** — Author, inspect, troubleshoot, and review infrastructure across IaC, Kubernetes, cloud resources, containers, CI/CD, and Linux hosts
 
 ## Developer Tools
 
@@ -84,7 +84,6 @@ Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allo
 - **sequential-thinking** — Structured stepwise reasoning with explicit revisions and branches
 - **smart-explore** — Token-efficient known-file and known-symbol navigation
 - **using-git-worktrees** — Creates isolated git worktrees for parallel development
-- **using-modern-cli** — Prefer modern shell/file CLI tools: rg, fd, bat, eza, sd, dust, procs, delta
 
 ## Browser Automation
 

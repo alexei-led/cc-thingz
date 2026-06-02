@@ -27,7 +27,7 @@
     {
       "name": "dev-tools",
       "source": "./dist/claude/plugins/dev-tools",
-      "description": "Modern CLI tools, git worktrees, docs lookup, research, and brainstorming",
+      "description": "Shell scripting, git worktrees, docs lookup, research, config review, memory, and brainstorming",
       "version": "4.12.0"
     },
     {
@@ -39,7 +39,7 @@
     {
       "name": "infra-ops",
       "source": "./dist/claude/plugins/infra-ops",
-      "description": "Kubernetes, Terraform, Helm, GitHub Actions, AWS, and GCP operations",
+      "description": "Kubernetes, Terraform, Helm, GitHub Actions, AWS, GCP, and Linux infrastructure operations",
       "version": "4.12.0"
     },
     {

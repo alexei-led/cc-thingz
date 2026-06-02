@@ -8,9 +8,9 @@
 [![Codex CLI](https://img.shields.io/badge/Codex_CLI-skill_export-10A37F)](https://developers.openai.com/codex/plugins)
 [![Gemini CLI](https://img.shields.io/badge/Gemini_CLI-skill_export-4285F4)](https://geminicli.com/docs/extensions)
 [![Plugins](https://img.shields.io/badge/plugins-9-green)](src/plugins/)
-[![Skills](https://img.shields.io/badge/skills-42-green)](src/plugins/)
+[![Skills](https://img.shields.io/badge/skills-36-green)](src/plugins/)
 
-A multi-agent skill suite for **Claude Code**, **Codex CLI**, **Gemini CLI**, and **Pi** — 40 skills, 3 agents, and 9 hooks. One source of truth in `src/`, compiled to platform-optimized output for each tool. Supports [AGENTS.md](https://agents.md)-compatible tools too. Built over 6+ months of daily use and continuous refinement.
+A multi-agent skill suite for **Claude Code**, **Codex CLI**, **Gemini CLI**, and **Pi** — 36 skills, 3 agents, and 10 hooks. One source of truth in `src/`, compiled to platform-optimized output for each tool. Supports [AGENTS.md](https://agents.md)-compatible tools too. Built over 6+ months of daily use and continuous refinement.
 
 ## Why This Exists
 
@@ -302,12 +302,12 @@ All agents and several skills optionally integrate with [claude-mem](https://git
 | [**py-dev**](src/plugins/py-dev/plugin.yaml)                         | 1      | 1      | Python 3.12+ development with uv/ruff/pyright toolchain                           |
 | [**ts-dev**](src/plugins/ts-dev/plugin.yaml)                         | 1      | 1      | TypeScript with strict typing, React patterns, and modern tooling                 |
 | [**web-dev**](src/plugins/web-dev/plugin.yaml)                       | 1      | 1      | Web frontend with vanilla HTML, CSS, JavaScript, and HTMX                         |
-| [**infra-ops**](src/plugins/infra-ops/plugin.yaml)                   | 3      | 1      | Kubernetes, Terraform, Helm, GitHub Actions, AWS, GCP                             |
-| [**dev-tools**](src/plugins/dev-tools/plugin.yaml)                   | 15     | 1      | Modern CLI, git worktrees, docs lookup, research, config review                   |
+| [**infra-ops**](src/plugins/infra-ops/plugin.yaml)                   | 2      | 1      | Kubernetes, Terraform, Helm, GitHub Actions, AWS, GCP                             |
+| [**dev-tools**](src/plugins/dev-tools/plugin.yaml)                   | 15     | 1      | Shell scripting, git worktrees, docs lookup, research, config review              |
 | [**spec-dev**](src/plugins/spec-dev/plugin.yaml)                     | 7      | 2      | Spec-driven development: requirements, tasks, and planning workflows              |
 | [**browser-automation**](src/plugins/browser-automation/plugin.yaml) | 2      | 1      | Browser exploration, validation, screenshots, and E2E flows                       |
 
-**Totals**: 37 skills, 2 plugin-owned role agents (`engineer`, `reviewer`), 9 hooks
+**Totals**: 36 skills, 2 plugin-owned role agents (`engineer`, `reviewer`), 10 hooks
 
 ## Skills
 
@@ -344,13 +344,12 @@ These activate silently when relevant patterns are detected — no `/skill-name`
 
 | Skill                | Activates When                                 |
 | -------------------- | ---------------------------------------------- |
-| `managing-infra`     | K8s resources, Terraform, Helm, GitHub Actions |
+| `operating-infra`    | IaC, Kubernetes, cloud resources, CI/CD, Linux |
 | `refactoring-code`   | Multi-file batch changes, rename everywhere    |
 | `smart-explore`      | Token-efficient known-file/symbol extraction   |
-| `using-cloud-cli`    | bq queries, gcloud/aws commands                |
-| `using-modern-cli`   | Modern shell/file CLI replacements             |
 | `writing-go`         | Go files, go commands, Go-specific terms       |
 | `writing-python`     | Python files, pytest, pip, frameworks          |
+| `writing-shell`      | Shell scripts, pipelines, shell lint/test      |
 | `writing-typescript` | TS/TSX files, npm/bun, React, Node.js          |
 | `writing-web`        | HTML/CSS/JS/HTMX templates                     |
 
@@ -370,7 +369,7 @@ Three role agents: a capability envelope plus a reasoning stance no skill can su
 | `reviewer` | Read, Grep, Glob, LS — no writes | Adversarial evaluator: emits findings/proposals, applies nothing | sonnet              | gpt-5.4 thinking:medium |
 | `advisor`  | Read + read-only Bash            | Strategic escalation: verdict, ranked risks, next actions        | built-in (Opus 4.7) | gpt-5.5 thinking:xhigh  |
 
-`engineer` is the fork target for `writing-{go,python,typescript,web}` and `managing-infra`. `reviewer` absorbs the review family, code search, and planning (via `spec`). `advisor` ships to Codex, Gemini, and Pi; Claude is excluded because it has a built-in advisor. On Pi, `advisor` is invoked via transcript forwarding; on Gemini and Codex it is spawned as a normal custom subagent under its tool/sandbox envelope.
+`engineer` is the fork target for `writing-{go,python,typescript,web}` and `operating-infra`. `reviewer` absorbs the review family, code search, and planning (via `spec`). `advisor` ships to Codex, Gemini, and Pi; Claude is excluded because it has a built-in advisor. On Pi, `advisor` is invoked via transcript forwarding; on Gemini and Codex it is spawned as a normal custom subagent under its tool/sandbox envelope.
 
 Model tiers are matched per role across vendors. `engineer`/`reviewer` use Claude `sonnet`; their Pi counterparts pin `gpt-5.4` (not `gpt-5.5`) because GPT-5.5 is a frontier tier above Sonnet 4.6 — using it for the same role would make the Pi agent materially stronger and ~2× costlier for no parity reason. `advisor` is an escalation role: Claude's built-in advisor runs Opus 4.7 (frontier), so the Pi advisor stays at `gpt-5.5 thinking:xhigh` to match that tier. On Codex, the agent inherits the model chosen at `codex` launch, so there is no model to pin without brittleness.
 

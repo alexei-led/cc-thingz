@@ -52,7 +52,7 @@ Stop: "Missing tools: {list}. Install before proceeding." Do not attempt command
 
 ## Step 3: Pre-flight Validation
 
-Dry-run-before-apply safety doctrine: `managing-infra` `## Safety`.
+Dry-run-before-apply safety doctrine: `operating-infra` `## Boundary`.
 
 Read `references/validation-checklists.md` (skill-relative). Map
 `{detected_type}` to its section header, then copy that section verbatim into
@@ -207,4 +207,4 @@ Status: {HEALTHY|DEGRADED|FAILED}
 Rollback: {command if needed}
 ```
 
-Pairs with `managing-infra` skill for patterns and reference material.
+Pairs with `operating-infra` for patterns, inspection, and troubleshooting.

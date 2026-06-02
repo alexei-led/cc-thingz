@@ -34,6 +34,12 @@ FIXTURES="$BATS_TEST_DIRNAME/fixtures"
 	[[ "$output" == *"smart-explore"* ]]
 }
 
+@test "skill-enforcer: shell scripting routes to writing-shell" {
+	run bash "$HOOK" <"$FIXTURES/skill_enforcer_shell.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"writing-shell"* ]]
+}
+
 @test "skill-enforcer: codebase flow is left to companion workflows" {
 	run bash "$HOOK" <"$FIXTURES/skill_enforcer_codebase_search.json"
 	[ "$status" -eq 0 ]

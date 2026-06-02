@@ -1,0 +1,31 @@
+{
+  "skill_name": "writing-shell",
+  "evals": [
+    {
+      "id": "portable-shell-script-plan",
+      "name": "portable shell script plan",
+      "prompt": "A user asks for a script that scans a directory, rejects unsafe paths, writes a report, and works on macOS and Linux. Describe the implementation workflow and verification.",
+      "expected_output": "The response chooses POSIX sh or Bash deliberately, handles paths safely, avoids unsafe parsing, uses temp files/traps, and verifies with shell formatting, linting, and tests.",
+      "assertions": [
+        "The output explicitly chooses POSIX sh or Bash and explains the portability tradeoff.",
+        "The output mentions quoting, safe path handling, or avoiding word-splitting/globbing bugs.",
+        "The output avoids parsing ls and avoids eval-like command construction.",
+        "The output includes temporary-file cleanup or trap handling when writing reports.",
+        "The output includes shfmt and ShellCheck verification, plus Bats or ShellSpec tests."
+      ]
+    },
+    {
+      "id": "scriptable-cli-pipeline",
+      "name": "scriptable cli pipeline",
+      "prompt": "A user wants a shell pipeline to inspect JSON/YAML files, find matching text, preview replacements, and stay usable in CI. Describe the tool choices and safety rules.",
+      "expected_output": "The response prefers non-TUI scriptable tools, structured parsers for JSON/YAML, replacement preview mode, stable output, and missing-tool fallbacks without silent installation.",
+      "assertions": [
+        "The output prefers non-interactive, pipe-friendly CLI tools rather than TUI tools.",
+        "The output uses jq or yq for structured data instead of grep/sed text scraping.",
+        "The output uses rg or fd where text/file discovery is needed.",
+        "The output previews replacements before applying them.",
+        "The output says missing tools should be reported or checked, not installed silently."
+      ]
+    }
+  ]
+}

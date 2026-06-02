@@ -52,23 +52,23 @@ def test_latest_iteration_uses_highest_numeric_suffix(tmp_path):
 
 def test_collect_counts_failures_and_skill_name_from_meta(tmp_path):
     iteration = tmp_path / "iteration-1"
-    skill_dir = iteration / "using-modern-cli"
+    skill_dir = iteration / "writing-shell"
     skill_dir.mkdir(parents=True)
     (skill_dir / "meta.json").write_text(
-        json.dumps({"name": "Using Modern CLI"}),
+        json.dumps({"name": "Writing Shell"}),
         encoding="utf-8",
     )
-    _write_grading(iteration, "using-modern-cli", "rewrite-grep", "with_skill", 2, 1)
-    _write_grading(iteration, "using-modern-cli", "rewrite-grep", "without_skill", 1, 2)
+    _write_grading(iteration, "writing-shell", "rewrite-grep", "with_skill", 2, 1)
+    _write_grading(iteration, "writing-shell", "rewrite-grep", "without_skill", 1, 2)
 
     counts, per_skill, failures = summarize_skill_evals.collect(iteration)
 
     assert counts["with_skill"] == summarize_skill_evals.Counts(passed=2, failed=1)
     assert counts["without_skill"] == summarize_skill_evals.Counts(passed=1, failed=2)
-    assert per_skill["Using Modern CLI"].with_skill.rate == 2 / 3
-    assert per_skill["Using Modern CLI"].without_skill.rate == 1 / 3
+    assert per_skill["Writing Shell"].with_skill.rate == 2 / 3
+    assert per_skill["Writing Shell"].without_skill.rate == 1 / 3
     assert len(failures) == 2
-    assert failures[0].skill == "Using Modern CLI"
+    assert failures[0].skill == "Writing Shell"
     assert failures[0].eval_slug == "rewrite-grep"
     assert failures[0].text == "missing verification"
 

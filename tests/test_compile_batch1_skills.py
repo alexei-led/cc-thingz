@@ -27,8 +27,7 @@ BATCH_1_SKILLS_ALL_TARGETS = (
     "writing-typescript",
     "writing-web",
     "sequential-thinking",
-    "using-modern-cli",
-    "using-cloud-cli",
+    "writing-shell",
     "using-git-worktrees",
     "refactoring-code",
     "smart-explore",
@@ -54,7 +53,11 @@ SKILLS_WITH_REFERENCES = {
         "references/testing.md",
     ),
     "writing-web": ("references/patterns.md",),
-    "using-cloud-cli": ("references/AWS.md", "references/GCP.md"),
+    "writing-shell": (
+        "references/patterns.md",
+        "references/tools.md",
+        "references/testing.md",
+    ),
     "using-git-worktrees": ("references/WORKFLOW.md",),
 }
 

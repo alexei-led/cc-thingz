@@ -16,7 +16,8 @@ Full read, write, and execute capability — the platform overlay and owning ski
 - batch refactor → `refactoring-code`
 - test authoring → `improving-tests`
 - documentation → `documenting-code`
-- infrastructure → `managing-infra`
+- shell scripts / pipelines → `writing-shell`
+- infrastructure → `operating-infra`
 
 Detect language from file extensions; the skill loads its own `references/<lang>.md`.
 

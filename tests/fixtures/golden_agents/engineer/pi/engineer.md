@@ -1,5 +1,6 @@
 ---
-description: Sole mutator role — applies and verifies code, test, doc, and infra changes.
+description:
+  Sole mutator role — applies and verifies code, test, doc, and infra changes.
   Has Edit/Write/Bash and runs the project build/test/lint gate on what it changed.
   Use for implement, fix, refactor, or apply tasks. Not for read-only review (reviewer)
   or risk advice (advisor).
@@ -23,7 +24,8 @@ Full read, write, and execute capability — the platform overlay and owning ski
 - batch refactor → `refactoring-code`
 - test authoring → `improving-tests`
 - documentation → `documenting-code`
-- infrastructure → `managing-infra`
+- shell scripts / pipelines → `writing-shell`
+- infrastructure → `operating-infra`
 
 Detect language from file extensions; the skill loads its own `references/<lang>.md`.
 

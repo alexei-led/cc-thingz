@@ -38,16 +38,10 @@ if echo "$PROMPT_LOWER" | grep -qE '\.(ts|tsx)\b|typescript|tsconfig|package\.js
 	skills+="writing-typescript "
 fi
 
-# managing-infra: K8s, Terraform, Helm, Kustomize, GitHub Actions
-# Triggers: K8s resources, IaC tools, container orchestration, CI/CD
-if echo "$PROMPT_LOWER" | grep -qE '\.tf\b|\.tfvars|dockerfile|docker-compose|chart\.yaml|kustomization|values\.yaml|\bkubectl\b|\bhelm\b|\bkustomize\b|\bterraform\b|kubernetes|k8s\b|\bpod[s]?\b|\bdeployment[s]?\b|\bingress\b|\bconfigmap|\bnamespace[s]?\b|\breplica[s]?\b|\bstatefulset|\bdaemonset|cronjob|\bhpa\b|networkpolic|manifest|container.*(image|registry|port)|service\s*account|node\s*pool|github.*action|\.github/workflows|workflow.*yaml'; then
-	skills+="managing-infra "
-fi
-
-# using-cloud-cli: GCP/AWS cloud CLI patterns
-# Triggers: Cloud provider CLIs, cloud services, BigQuery
-if echo "$PROMPT_LOWER" | grep -qE '\bgcloud\b|\bgsutil\b|\bbq\s|\baws\s|bigquery|cloud\s*(run|function|sql|storage)|gke\b|gcs\b|pubsub|dataflow|firestore|spanner|\bs3\b|\bec2\b|aws.*lambda|lambda.*(function|handler)|\becs\b|\beks\b|\brds\b|dynamodb|\bsqs\b|\bsns\b|cloudformation|cloudwatch|iam.*(role|policy|permission)|\bbucket[s]?\b|--project\b|--region\b'; then
-	skills+="using-cloud-cli "
+# operating-infra: IaC, Kubernetes, cloud resources, containers, CI/CD, Linux hosts
+# Triggers: infra files/tools, cloud services, IAM, logs, instances, service health
+if echo "$PROMPT_LOWER" | grep -qE '\.tf\b|\.tfvars|dockerfile|docker-compose|chart\.yaml|kustomization|values\.yaml|\bkubectl\b|\bhelm\b|\bkustomize\b|\bterraform\b|\btofu\b|kubernetes|k8s\b|\bpod[s]?\b|\bdeployment[s]?\b|\bingress\b|\bconfigmap|\bnamespace[s]?\b|\bstatefulset|\bdaemonset|cronjob|\bhpa\b|networkpolic|manifest|container.*(image|registry|port)|service\s*account|node\s*pool|github.*action|\.github/workflows|workflow.*yaml|\bgcloud\b|\bgsutil\b|\bbq\s|\baws\s|bigquery|cloud\s*(run|function|sql|storage)|gke\b|gcs\b|pubsub|dataflow|firestore|spanner|\bs3\b|\bec2\b|aws.*lambda|lambda.*(function|handler)|\becs\b|\beks\b|\brds\b|dynamodb|\bsqs\b|\bsns\b|cloudformation|cloudwatch|iam.*(role|policy|permission)|\bbucket[s]?\b|--project\b|--region\b|systemctl|journalctl|\bnginx\b|\blinux\s*(host|service|instance)'; then
+	skills+="operating-infra "
 fi
 
 # looking-up-docs: docs lookup flow (Context7 → official sources → Perplexity/web → GitHub)
@@ -143,10 +137,10 @@ if echo "$PROMPT_LOWER" | grep -qE '\bgrill\s*(me|this|the|my)\b|\bdebate\b|\bar
 	skills+="brainstorming-ideas "
 fi
 
-# using-modern-cli: Modern shell/file tools for better ergonomics
-# Triggers: legacy CLI replacement, bash scripts, command optimization
-if echo "$PROMPT_LOWER" | grep -qE '\bripgrep\b|\brg\b.*(text|literal|regex|search)|\bfd\b.*find|\bbat\b.*file|\bsd\b.*replace|\beza\b|\bdust\b|\bprocs\b|\bdelta\b.*diff|\bmodern\s*cli\b|better\s*than\s*(grep|find|cat|sed|ls|du|ps|diff)|replace.*(grep|find|cat|sed|ls|du|ps|diff)|faster.*(text\s*search|file\s*find)|\.gitignore.*respect|bash\s*script|command.*chain|optimize.*(command|cli|shell)'; then
-	skills+="using-modern-cli "
+# writing-shell: POSIX sh, Bash, Zsh, Fish, hooks, CI shell steps, shell tests
+# Triggers: shell scripts, pipelines, shell lint/test tools, portable CLI glue
+if echo "$PROMPT_LOWER" | grep -qE '\.(sh|bash|zsh|fish|bats)\b|\b(shell|bash|zsh|fish)\s*(script|function|pipeline|hook|config)\b|shebang|pipefail|shellcheck|shfmt|checkbashisms|bats(-core|-assert)?|shellspec|bashate|shellharden|shellcheck-sarif|semgrep.*shell|\b(posix|portable)\s*sh\b|\b(command|cli)\s*(pipeline|chain|runner|glue)\b|scriptable.*cli|pipe.?friendly|better\s*than\s*(grep|find|cat|sed|ls|du|ps|diff|curl|time|df|awk|cut)|replace.*(grep|find|cat|sed|ls|du|ps|diff|curl|time|df|awk|cut)'; then
+	skills+="writing-shell "
 fi
 
 # improving-tests: Review, refactor, improve tests, and TDD workflow

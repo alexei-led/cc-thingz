@@ -21,6 +21,7 @@ output:
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import frontmatter
@@ -36,7 +37,7 @@ BATCH_2_ALL_TARGETS = (
     "fixing-code",
     "improving-tests",
     "documenting-code",
-    "managing-infra",
+    "operating-infra",
 )
 
 BATCH_2_CLAUDE_ONLY = (
@@ -129,6 +130,26 @@ def test_swap_skill_routes_claude_body(
     assert token not in codex_body, (
         f"Codex body for {skill} must not leak target-specific token '{token}'"
     )
+
+
+def test_operating_infra_links_are_lowercase_and_exist() -> None:
+    """Skill-relative markdown links must work on case-sensitive filesystems."""
+    skill_dir = _SRC_SKILLS / "operating-infra"
+    files = [skill_dir / "SKILL.md", *sorted((skill_dir / "references").glob("*.md"))]
+
+    for path in files:
+        text = path.read_text()
+        for match in re.finditer(r"\[[^\]]+\]\(([^)#]+)(?:#[^)]+)?\)", text):
+            target = match.group(1)
+            if target.startswith(("http://", "https://", "mailto:")):
+                continue
+            line = text[: match.start()].count("\n") + 1
+            assert target == target.lower(), (
+                f"{path}:{line}: non-lowercase link {target}"
+            )
+            assert (path.parent / target).exists(), (
+                f"{path}:{line}: missing link {target}"
+            )
 
 
 def test_genericity_validator_clean_for_batch2(load_script) -> None:
