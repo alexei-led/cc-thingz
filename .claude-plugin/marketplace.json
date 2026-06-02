@@ -9,63 +9,63 @@
     "homepage": "https://github.com/alexei-led/cc-forge",
     "repository": "https://github.com/alexei-led/cc-forge",
     "license": "MIT",
-    "version": "4.11.0"
+    "version": "4.12.0"
   },
   "plugins": [
     {
       "name": "browser-automation",
       "source": "./dist/claude/plugins/browser-automation",
       "description": "Browser automation for rendered UI exploration, validation, screenshots, and end-to-end flows",
-      "version": "4.11.0"
+      "version": "4.12.0"
     },
     {
       "name": "dev-flow",
       "source": "./dist/claude/plugins/dev-flow",
       "description": "Code review, fixes, commits, and linting for development workflows",
-      "version": "4.11.0"
+      "version": "4.12.0"
     },
     {
       "name": "dev-tools",
       "source": "./dist/claude/plugins/dev-tools",
       "description": "Modern CLI tools, git worktrees, docs lookup, research, and brainstorming",
-      "version": "4.11.0"
+      "version": "4.12.0"
     },
     {
       "name": "go-dev",
       "source": "./dist/claude/plugins/go-dev",
       "description": "Idiomatic Go development with stdlib-first patterns",
-      "version": "4.11.0"
+      "version": "4.12.0"
     },
     {
       "name": "infra-ops",
       "source": "./dist/claude/plugins/infra-ops",
       "description": "Kubernetes, Terraform, Helm, GitHub Actions, AWS, and GCP operations",
-      "version": "4.11.0"
+      "version": "4.12.0"
     },
     {
       "name": "py-dev",
       "source": "./dist/claude/plugins/py-dev",
       "description": "Python 3.12+ with uv/ruff/pyright toolchain and modern patterns",
-      "version": "4.11.0"
+      "version": "4.12.0"
     },
     {
       "name": "spec-dev",
       "source": "./dist/claude/plugins/spec-dev",
       "description": "Spec-driven development with structured requirements and planning",
-      "version": "4.11.0"
+      "version": "4.12.0"
     },
     {
       "name": "ts-dev",
       "source": "./dist/claude/plugins/ts-dev",
       "description": "TypeScript with strict typing, React patterns, and modern tooling",
-      "version": "4.11.0"
+      "version": "4.12.0"
     },
     {
       "name": "web-dev",
       "source": "./dist/claude/plugins/web-dev",
       "description": "Web frontend with vanilla HTML, CSS, JavaScript, and HTMX",
-      "version": "4.11.0"
+      "version": "4.12.0"
     }
   ],
-  "version": "4.11.0"
+  "version": "4.12.0"
 }

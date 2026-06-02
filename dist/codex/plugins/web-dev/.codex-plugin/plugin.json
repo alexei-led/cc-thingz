@@ -1,6 +1,6 @@
 {
   "name": "web-dev",
-  "version": "4.11.0",
+  "version": "4.12.0",
   "description": "Web frontend with vanilla HTML, CSS, JavaScript, and HTMX",
   "author": {
     "name": "Alexei Ledenev",
