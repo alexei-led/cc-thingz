@@ -1,7 +1,7 @@
 {
   "name": "playwright-skill",
   "version": "4.10.1",
-  "description": "General-purpose browser automation with Playwright for Claude Code with auto-detection and smart test management",
+  "description": "Support runtime for browser-automation using Playwright with dev-server detection and helper utilities",
   "author": "lackeyjb",
   "main": "run.js",
   "scripts": {

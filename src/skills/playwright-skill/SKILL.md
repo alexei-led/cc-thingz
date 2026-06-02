@@ -1,11 +1,13 @@
 ---
 name: playwright-skill
-description: Playwright primitives for real-browser automation — dev-server detection, a Node.js script runner, and helpers for clicks, form fills, screenshots, multi-viewport, custom HTTP headers. Use when a task needs an actual browser (rendered DOM, visual checks, multi-page flows, cross-browser behavior). Not for API tests or logic tests where curl or JSDOM is cheaper.
+description: Support-only Playwright runtime/reference for browser-automation — dev-server detection, a Node.js script runner, and helpers for clicks, form fills, screenshots, multi-viewport, and custom HTTP headers. Use when browser-automation selects the bundled Playwright fallback; do not route user intent here directly.
 ---
 
-# Playwright Browser Automation
+# Playwright Support Runtime
 
-Provides primitives for browser automation: dev-server detection, a script runner (`scripts/run.js`), and helper utilities (`scripts/lib/helpers.js`).
+Support-only helper for `browser-automation`. Provides Playwright primitives: dev-server detection, a script runner (`scripts/run.js`), and helper utilities (`scripts/lib/helpers.js`).
+
+Do not treat this as the user-facing browser skill. Load it only when `browser-automation` chooses the bundled Playwright helper as the runtime/reference.
 
 ## Critical workflow
 

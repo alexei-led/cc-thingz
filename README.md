@@ -43,7 +43,7 @@ Every skill has been manually crafted and refined through real-world use — not
 /plugin install dev-flow@cc-thingz
 /plugin install dev-tools@cc-thingz
 /plugin install go-dev@cc-thingz
-# ... repeat for py-dev, ts-dev, web-dev, infra-ops, spec-dev, test-e2e
+# ... repeat for py-dev, ts-dev, web-dev, infra-ops, spec-dev, browser-automation
 ```
 
 Use `--scope project` to install into `.claude/settings.json` for team sharing.
@@ -295,17 +295,17 @@ All agents and several skills optionally integrate with [claude-mem](https://git
 
 ## Plugins
 
-| Plugin                                             | Skills | Agents | Description                                                                       |
-| -------------------------------------------------- | ------ | ------ | --------------------------------------------------------------------------------- |
-| [**dev-flow**](src/plugins/dev-flow/plugin.yaml)   | 6      | 2      | Fix, refactor, review, document, commit; `engineer` and `reviewer` roles; 7 hooks |
-| [**go-dev**](src/plugins/go-dev/plugin.yaml)       | 1      | 1      | Idiomatic Go development with stdlib-first patterns, testing, and CLI tooling     |
-| [**py-dev**](src/plugins/py-dev/plugin.yaml)       | 1      | 1      | Python 3.12+ development with uv/ruff/pyright toolchain                           |
-| [**ts-dev**](src/plugins/ts-dev/plugin.yaml)       | 1      | 1      | TypeScript with strict typing, React patterns, and modern tooling                 |
-| [**web-dev**](src/plugins/web-dev/plugin.yaml)     | 1      | 1      | Web frontend with vanilla HTML, CSS, JavaScript, and HTMX                         |
-| [**infra-ops**](src/plugins/infra-ops/plugin.yaml) | 3      | 1      | Kubernetes, Terraform, Helm, GitHub Actions, AWS, GCP                             |
-| [**dev-tools**](src/plugins/dev-tools/plugin.yaml) | 16     | 1      | Modern CLI, git worktrees, docs lookup, research, config review                   |
-| [**spec-dev**](src/plugins/spec-dev/plugin.yaml)   | 7      | 2      | Spec-driven development: requirements, tasks, and planning workflows              |
-| [**test-e2e**](src/plugins/test-e2e/plugin.yaml)   | 2      | 1      | E2E testing with Playwright: browser automation and test generation               |
+| Plugin                                                               | Skills | Agents | Description                                                                       |
+| -------------------------------------------------------------------- | ------ | ------ | --------------------------------------------------------------------------------- |
+| [**dev-flow**](src/plugins/dev-flow/plugin.yaml)                     | 6      | 2      | Fix, refactor, review, document, commit; `engineer` and `reviewer` roles; 7 hooks |
+| [**go-dev**](src/plugins/go-dev/plugin.yaml)                         | 1      | 1      | Idiomatic Go development with stdlib-first patterns, testing, and CLI tooling     |
+| [**py-dev**](src/plugins/py-dev/plugin.yaml)                         | 1      | 1      | Python 3.12+ development with uv/ruff/pyright toolchain                           |
+| [**ts-dev**](src/plugins/ts-dev/plugin.yaml)                         | 1      | 1      | TypeScript with strict typing, React patterns, and modern tooling                 |
+| [**web-dev**](src/plugins/web-dev/plugin.yaml)                       | 1      | 1      | Web frontend with vanilla HTML, CSS, JavaScript, and HTMX                         |
+| [**infra-ops**](src/plugins/infra-ops/plugin.yaml)                   | 3      | 1      | Kubernetes, Terraform, Helm, GitHub Actions, AWS, GCP                             |
+| [**dev-tools**](src/plugins/dev-tools/plugin.yaml)                   | 16     | 1      | Modern CLI, git worktrees, docs lookup, research, config review                   |
+| [**spec-dev**](src/plugins/spec-dev/plugin.yaml)                     | 7      | 2      | Spec-driven development: requirements, tasks, and planning workflows              |
+| [**browser-automation**](src/plugins/browser-automation/plugin.yaml) | 2      | 1      | Browser exploration, validation, screenshots, and E2E flows                       |
 
 **Totals**: 38 skills, 2 plugin-owned role agents (`engineer`, `reviewer`), 9 hooks
 
@@ -332,7 +332,7 @@ Invoke as `/skill-name` or let the skill enforcer suggest them.
 | `mem-history`            | Query project history and prior decisions                                                                                                         | "last session", "what happened"      |
 | `researching-web`        | Web research via Perplexity AI                                                                                                                    | "research", "X vs Y"                 |
 | `reviewing-code`         | Multi-agent review (security, correctness, quality)                                                                                               | "review code", "check this"          |
-| `testing-e2e`            | Playwright browser automation and test gen                                                                                                        | "e2e test", "playwright"             |
+| `browser-automation`     | Rendered UI exploration, validation, screenshots, recordings, and browser test flows                                                              | "use browser", "screenshot", "e2e"   |
 | `analyzing-usage`        | Analyze AI agent usage, cost, and efficiency (Claude Code, Codex, Pi)                                                                             | "usage", "cost", "spending"          |
 | `learning-patterns`      | Extract learnings and generate customizations                                                                                                     | "learn", "extract learnings"         |
 | `reviewing-instructions` | Review and score AI agent/skill instructions plus agent-targeted markdown like `body.md`, `references/*.md`, and custom prompt/context/rules docs | "lint instructions", "audit prompts" |
@@ -346,7 +346,6 @@ These activate silently when relevant patterns are detected — no `/skill-name`
 | Skill                | Activates When                                 |
 | -------------------- | ---------------------------------------------- |
 | `managing-infra`     | K8s resources, Terraform, Helm, GitHub Actions |
-| `playwright-skill`   | Runtime library for testing-e2e skill          |
 | `refactoring-code`   | Multi-file batch changes, rename everywhere    |
 | `smart-explore`      | Token-efficient known-file/symbol extraction   |
 | `using-cloud-cli`    | bq queries, gcloud/aws commands                |
@@ -355,6 +354,12 @@ These activate silently when relevant patterns are detected — no `/skill-name`
 | `writing-python`     | Python files, pytest, pip, frameworks          |
 | `writing-typescript` | TS/TSX files, npm/bun, React, Node.js          |
 | `writing-web`        | HTML/CSS/JS/HTMX templates                     |
+
+### Support-Only
+
+- `playwright-skill` — bundled Playwright runtime/reference loaded by
+  `browser-automation` when the Playwright fallback is needed. Not routed from
+  user intent directly.
 
 ## Agents
 

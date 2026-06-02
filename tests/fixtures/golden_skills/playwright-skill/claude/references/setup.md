@@ -1,6 +1,6 @@
-# Setup — Playwright Skill
+# Setup — Playwright Support Runtime
 
-First-time installation of Playwright and Chromium for the bundled `scripts/run.js` executor.
+First-time installation of Playwright and Chromium for the bundled `scripts/run.js` executor used by `browser-automation`.
 
 ## Prerequisites
 

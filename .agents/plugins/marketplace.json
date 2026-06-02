@@ -5,6 +5,17 @@
   },
   "plugins": [
     {
+      "name": "browser-automation",
+      "source": {
+        "source": "local",
+        "path": "./dist/codex/plugins/browser-automation"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      }
+    },
+    {
       "name": "dev-flow",
       "source": {
         "source": "local",
@@ -64,17 +75,6 @@
       "source": {
         "source": "local",
         "path": "./dist/codex/plugins/spec-dev"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_USE"
-      }
-    },
-    {
-      "name": "test-e2e",
-      "source": {
-        "source": "local",
-        "path": "./dist/codex/plugins/test-e2e"
       },
       "policy": {
         "installation": "AVAILABLE",

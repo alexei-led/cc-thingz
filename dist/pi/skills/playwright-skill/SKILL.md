@@ -1,9 +1,8 @@
 ---
-description: Playwright primitives for real-browser automation — dev-server detection,
-  a Node.js script runner, and helpers for clicks, form fills, screenshots, multi-viewport,
-  custom HTTP headers. Use when a task needs an actual browser (rendered DOM, visual
-  checks, multi-page flows, cross-browser behavior). Not for API tests or logic tests
-  where curl or JSDOM is cheaper.
+description: Support-only Playwright runtime/reference for browser-automation — dev-server
+  detection, a Node.js script runner, and helpers for clicks, form fills, screenshots,
+  multi-viewport, and custom HTTP headers. Use when browser-automation selects the
+  bundled Playwright fallback; do not route user intent here directly.
 metadata:
   user_invocable: false
 name: playwright-skill
@@ -16,7 +15,7 @@ name: playwright-skill
 
 # Playwright Helper for Pi
 
-Playwright primitives for browser automation on Pi: dev-server detection, a script runner, and helper utilities. Use when a task needs an actual browser; prefer cheaper tools (curl, unit tests) when it doesn't.
+Support-only Playwright runtime/reference for `browser-automation` on Pi: dev-server detection, a script runner, and helper utilities. Do not route user intent here directly; use `browser-automation` for exploration, validation, screenshots, and browser tests.
 
 ## Path resolution
 
@@ -50,4 +49,4 @@ node scripts/run.js /tmp/playwright-check.js
 - Prefer visible browser mode unless the user asks for headless.
 - Parameterize target URLs.
 - Return artifact paths for screenshots, traces, and logs.
-- Higher-level test strategy stays in `testing-e2e`.
+- Higher-level browser workflow stays in `browser-automation`.

@@ -8,6 +8,13 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+### Changed
+
+- Renamed the user-facing browser workflow from `testing-e2e` to
+  `browser-automation`, broadened it to rendered UI exploration, validation,
+  screenshots, recordings, and browser-flow tests, and made `playwright-skill`
+  support-only.
+
 ## [4.10.1] - 2026-06-01
 
 ### Changed

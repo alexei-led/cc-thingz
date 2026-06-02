@@ -114,10 +114,10 @@ if echo "$PROMPT_LOWER" | grep -qE '\bdeploy\s*check\b|\bcheck\s*(my|the)?\s*dep
 	skills+="deploying-infra "
 fi
 
-# testing-e2e: E2E testing with Playwright MCP
-# Triggers: e2e test, playwright, browser testing, UI automation
-if echo "$PROMPT_LOWER" | grep -qE '\be2e\b.*\btest|\bplaywright\b|\bbrowser\s*(test|testing|automation)\b|\bui\s*(test|testing|automation)\b|\bend[[:space:]-]?to[[:space:]-]?end\b|\bvisual\s*(test|testing|regression)\b|\baccessibility\s*(test|testing|check)\b|\ba11y\s*(test|check)\b'; then
-	skills+="testing-e2e "
+# browser-automation: Browser exploration, validation, screenshots, and UI-flow tests
+# Triggers: browser exploration/checks, screenshots, UI automation, E2E, Playwright
+if echo "$PROMPT_LOWER" | grep -qE '\be2e\b.*\btest|\bplaywright\b|\bbrowser\s*(test|testing|automation|check|validation|verify|verification|exploration|inspect|debug|screenshot|record)\b|\b(use|open|drive|inspect|explore|validate|verify|record|screenshot|capture)\s*(a\s*)?(real\s*)?browser\b|\bscreenshot\b|\bui\s*(test|testing|automation|check|validation|verification|debug)\b|\brendered\s*(dom|page|state|ui)\b|\bend[[:space:]-]?to[[:space:]-]?end\b|\bvisual\s*(test|testing|check|regression|diff)\b|\baccessibility\s*(test|testing|check|audit)\b|\ba11y\s*(test|check|audit)\b'; then
+	skills+="browser-automation "
 fi
 
 # writing-web: Simple web development with HTML, CSS, JS, HTMX

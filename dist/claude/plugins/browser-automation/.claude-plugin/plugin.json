@@ -1,0 +1,12 @@
+{
+  "name": "browser-automation",
+  "version": "4.10.1",
+  "description": "Browser automation for rendered UI exploration, validation, screenshots, and end-to-end flows",
+  "author": {
+    "name": "Alexei Ledenev",
+    "email": "alexei.led@gmail.com"
+  },
+  "homepage": "https://github.com/alexei-led/cc-forge",
+  "repository": "https://github.com/alexei-led/cc-forge",
+  "license": "MIT"
+}

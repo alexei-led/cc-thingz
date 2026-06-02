@@ -29,7 +29,7 @@ import pytest
 from conftest import REPO_ROOT, TARGETS, make_batch_skill_staging_root
 
 BATCH_2_ALL_TARGETS = (
-    "testing-e2e",
+    "browser-automation",
     "mem-history",
     "exploring-repos",
     "researching-web",
@@ -45,16 +45,16 @@ BATCH_2_CLAUDE_ONLY = (
     "deploying-infra",
 )
 
-# Skills migrated via swap_claude_body / swap_pi_body must keep the original
-# orchestration body for Claude. The check looks for any Claude-specific
-# token that the swap moved into claude/body.md.
+# Skills migrated via swap_claude_body / swap_pi_body must keep the
+# Claude-specific body for Claude. The check looks for any target-specific
+# token that appears in claude/body.md only.
 # researching-web is intentionally excluded: its Claude "Deep Mode: Agent"
 # dispatch block was removed in the 39→3 consolidation (neither surviving role
 # has Perplexity MCP in its envelope), so its claude/body.md no longer carries
 # a Claude-only orchestration token. It still compiles for all targets and is
 # covered by BATCH_2_ALL_TARGETS.
 SWAP_SKILLS_AND_CLAUDE_TOKENS = {
-    "testing-e2e": "TaskCreate",
+    "browser-automation": "claude-in-chrome",
     "exploring-repos": "mcp__deepwiki__",
     "evolving-config": "TaskCreate",
     "documenting-code": "TaskCreate",
@@ -125,10 +125,10 @@ def test_swap_skill_routes_claude_body(
     codex_body = frontmatter.loads(codex_written[0].read_text()).content
 
     assert token in claude_body, (
-        f"Claude body for {skill} should retain '{token}' from the original SKILL.md"
+        f"Claude body for {skill} should retain target-specific token '{token}'"
     )
     assert token not in codex_body, (
-        f"Codex body for {skill} must not leak Claude-only token '{token}'"
+        f"Codex body for {skill} must not leak target-specific token '{token}'"
     )
 
 

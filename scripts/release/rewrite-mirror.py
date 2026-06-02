@@ -27,7 +27,6 @@ SOURCE_URL = f"https://github.com/{SOURCE_REPO}"
 MIRROR_NAMES: dict[str, dict[str, str]] = {
     "cc-forge": {
         "dev-flow": "review-lint-commit",
-        "test-e2e": "playwright-e2e",
         "py-dev": "python-3-dev",
         "dev-tools": "cli-research-tools",
         "spec-dev": "spec-driven-planning",

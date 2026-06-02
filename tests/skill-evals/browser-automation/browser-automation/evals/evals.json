@@ -1,0 +1,44 @@
+{
+  "skill_name": "browser-automation",
+  "evals": [
+    {
+      "id": "browser-feature-validation",
+      "name": "browser feature validation",
+      "prompt": "A user asks: verify the login feature in the browser, capture evidence, and check basic accessibility on the page. Describe the workflow.",
+      "expected_output": "The response chooses a real browser runtime, detects/starts the dev server, prepares deterministic auth or fixtures, validates user-facing login behavior, checks accessibility basics, and reports artifacts.",
+      "assertions": [
+        "The output chooses an available browser runtime such as built-in browser tools, the project browser runner, or Playwright.",
+        "The output says to detect or start the app/dev server before running browser actions.",
+        "The output validates user-facing login behavior rather than implementation details.",
+        "The output includes accessibility checks or assertions.",
+        "The output reports pass/fail/blocked plus useful artifacts such as screenshots, traces, logs, or snapshots when relevant."
+      ]
+    },
+    {
+      "id": "generate-browser-tests-from-manual-flow",
+      "name": "generate browser tests from manual flow",
+      "prompt": "A user describes a manual browser flow: open /checkout, add an item, apply a coupon, and verify the total. Describe how to turn this into browser automation or tests.",
+      "expected_output": "The response translates the flow into stable browser actions/assertions, controls data setup, avoids brittle sleeps, and verifies totals as rendered user-visible behavior.",
+      "assertions": [
+        "The output translates each manual step into browser actions and assertions.",
+        "The output recommends stable locators such as role/text/test id rather than brittle CSS paths.",
+        "The output handles test data setup or deterministic fixture state.",
+        "The output avoids arbitrary sleeps in favor of browser assertions or waiting for conditions.",
+        "The output verifies the coupon and total as observable user-facing behavior."
+      ]
+    },
+    {
+      "id": "screenshot-exploration-not-e2e-only",
+      "name": "screenshot exploration not e2e only",
+      "prompt": "A user asks: open the settings page in a browser, inspect what is rendered, and take a screenshot. Describe the workflow.",
+      "expected_output": "The response uses browser-automation for exploration and screenshot evidence, not only E2E testing; it selects built-in browser tools if available or Playwright fallback if not.",
+      "assertions": [
+        "The output treats browser exploration and screenshots as in scope.",
+        "The output prefers built-in browser tools when available.",
+        "The output falls back to project browser tooling or Playwright when built-in tools are unavailable.",
+        "The output records screenshot or rendered-state evidence.",
+        "The output does not frame the task as only writing E2E tests."
+      ]
+    }
+  ]
+}

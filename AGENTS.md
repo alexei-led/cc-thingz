@@ -87,7 +87,7 @@ Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allo
 - **using-git-worktrees** — Creates isolated git worktrees for parallel development
 - **using-modern-cli** — Prefer modern shell/file CLI tools: rg, fd, bat, eza, sd, dust, procs, delta
 
-## End-to-End Testing
+## Browser Automation
 
-- **playwright-skill** — Internal Playwright automation library
-- **testing-e2e** — Sequential E2E workflow
+- **browser-automation** — Rendered UI exploration, validation, screenshots, recordings, and browser-flow tests
+- **playwright-skill** — Support-only Playwright runtime/reference for browser-automation

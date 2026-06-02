@@ -1,0 +1,9 @@
+name: browser-automation
+version: 4.10.1
+description: Browser automation for rendered UI exploration, validation, screenshots, and end-to-end flows
+skills:
+  - browser-automation
+  - playwright-skill
+agents:
+  - engineer
+hooks: []
