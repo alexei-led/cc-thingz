@@ -17,7 +17,7 @@ All rules are in `references/scoring-rubric.md`. Apply universal (U-prefix), for
 
 ## When to fetch model docs
 
-If the instruction file targets a specific model and no reference file exists in `references/models/`, WebFetch the vendor's prompting guide and extract:
+If the instruction file targets a specific model and no reference file exists in `references/models/`, use available web tools to read the vendor's prompting guide and extract:
 
 1. Documented behavioral quirks (over-exploration, verbosity, lecture tendency, etc.)
 2. Recommended prompt structure (system/user format, XML tags, markdown conventions)

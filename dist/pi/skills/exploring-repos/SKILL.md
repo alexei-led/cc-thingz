@@ -1,6 +1,6 @@
 ---
-description: Explore public GitHub repositories in Pi using GitHub CLI, local clones,
-  and web tools. Use when the user asks how a public repo works, wants architecture
+description: Explore public GitHub repositories using GitHub CLI, local clones, and
+  available web tools. Use when the user asks how a public repo works, wants architecture
   orientation, or needs repo-level Q&A. NOT for library API docs (use looking-up-docs)
   or local private codebases (use a local codebase workflow).
 name: exploring-repos
@@ -11,7 +11,7 @@ name: exploring-repos
 <!-- Use Agent, get_subagent_result, and steer_subagent for delegated work. -->
 <!-- Use ctx7 or npx ctx7@latest through bash when Context7 documentation lookup is required. -->
 
-# Explore Public Repositories in Pi
+# Explore Public Repositories
 
 Use public sources and local clones. Do not assume specialized repo-wiki tools
 exist.
@@ -22,8 +22,8 @@ exist.
 2. Check if the repo is already cloned locally.
 3. If not, ask before cloning large repos. For quick reads, prefer GitHub URLs
    or `gh repo view`.
-4. Use `web_search` or `web_answer` for public docs, README context, release
-   notes, or architecture articles.
+4. Use the runtime's web tools for public docs, README context, release notes,
+   or architecture articles.
 5. Use `gh` or a shallow clone for code structure when needed.
 6. For cloned-repo exploration, use scoped local tools: `fd` for files and `rg` for text. Use dedicated codebase-analysis tooling for structural or architecture evidence when needed.
 7. Map architecture from files, not reputation.
@@ -46,7 +46,7 @@ git clone --depth=1 https://github.com/owner/name /tmp/name-repo
 ## Failure Handling
 
 - Repo not found or private: report the `gh` error, ask the user to confirm the `owner/name` slug or check access.
-- `gh` not installed: fall back to `git clone --depth=1` and `web_search` for public docs; note the limitation.
+- `gh` not installed: fall back to `git clone --depth=1` and available web search for public docs; note the limitation.
 - Clone too large (>500 MB): warn before cloning, offer shallow clone or `gh repo view` summary only.
 
 ## Output Contract

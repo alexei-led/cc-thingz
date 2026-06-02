@@ -1,4 +1,4 @@
-# Smart Explore in Pi
+# Smart Explore
 
 Use cheap local structure before reading large files. The goal is a tight outline
 or exact extraction from a known area, not repo-wide codebase search.

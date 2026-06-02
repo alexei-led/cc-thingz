@@ -1,17 +1,3 @@
----
-allowed-tools:
-- mcp__plugin_claude-mem_mcp-search__search
-- mcp__plugin_claude-mem_mcp-search__get_observations
-- mcp__plugin_claude-mem_mcp-search__timeline
-context: fork
-description: Query project history, past decisions, and known gotchas from configured
-  memory, local docs, and git history. Use when user asks "last session", "did we
-  already", "what did we decide", "project history", "timeline", or "what happened
-  with".
-name: mem-history
-user-invocable: true
----
-
 # Project Memory Search
 
 Query cross-session history via claude-mem.

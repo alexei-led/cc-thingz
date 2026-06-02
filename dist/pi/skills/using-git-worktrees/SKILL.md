@@ -46,7 +46,7 @@ root="$(dirname "$main_wt")/$project.worktrees"
 mkdir -p "$root"
 git worktree add "$root/fix-cron" -b fix-cron
 
-# 2. Work there (open editor/Claude Code in that folder)
+# 2. Work there (open your editor or coding agent in that folder)
 cd "$root/fix-cron"
 
 # 3. After PR merges — confirm, then clean up from the main worktree

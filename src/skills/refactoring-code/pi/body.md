@@ -1,4 +1,4 @@
-# Refactoring Code in Pi
+# Refactoring Code
 
 Refactor in small, verified batches. If behavior changes, it is not a refactor;
 it is a feature wearing a fake mustache.

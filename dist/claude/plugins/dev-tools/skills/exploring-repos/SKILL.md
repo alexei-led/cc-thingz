@@ -13,8 +13,8 @@ allowed-tools:
 - Bash(bunx ctx7@latest *)
 - mcp__perplexity-ask__perplexity_ask
 context: fork
-description: Explore public GitHub repositories in Pi using GitHub CLI, local clones,
-  and web tools. Use when the user asks how a public repo works, wants architecture
+description: Explore public GitHub repositories using GitHub CLI, local clones, and
+  available web tools. Use when the user asks how a public repo works, wants architecture
   orientation, or needs repo-level Q&A. NOT for library API docs (use looking-up-docs)
   or local private codebases (use a local codebase workflow).
 model: sonnet

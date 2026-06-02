@@ -9,9 +9,10 @@ allowed-tools:
 context: fork
 description: Token-efficient local code navigation and extraction. Use when exploring
   a known file or bounded module outline, finding a known symbol in a scoped area,
-  or extracting exact function/type bodies with smart_outline, smart_search, and smart_unfold.
-  NOT for repo-wide structural pattern search, architecture or trace-flow questions,
-  ast-grep/codegraph/GitNexus evidence, or broad caller/implementation maps.
+  or extracting exact function/type bodies with available structure tools and text-search
+  fallbacks. NOT for repo-wide structural pattern search, architecture or trace-flow
+  questions, ast-grep/codegraph/GitNexus evidence, or broad caller/implementation
+  maps.
 name: smart-explore
 user-invocable: false
 ---
@@ -44,18 +45,18 @@ Return to smart-explore only after the scope is a known file, module, or symbol.
 
 ## Tool Order
 
-1. `smart_outline` for known files or modules.
-2. `smart_search` for a known symbol or concept in a bounded scope.
-3. `smart_unfold` for exact function/type source.
-4. `rg` for exact text fallback when smart tools are unavailable.
+1. Structure-aware outline tools for known files or modules, when available.
+2. Structure-aware symbol search for a known symbol or concept in a bounded scope, when available.
+3. Structure-aware unfold/extraction for exact function/type source, when available.
+4. `rg` for exact text fallback when structure tools are unavailable.
 5. `fd` for candidate file discovery when the file path is missing.
 6. Read full files only when smaller structural views are insufficient.
 
 ## When to Use Which
 
-- File structure at a glance — `smart_outline`.
-- Bounded symbol discovery — `smart_search`.
-- Specific function/type body — `smart_unfold`.
+- File structure at a glance — outline tool when available.
+- Bounded symbol discovery — symbol search in the narrowed scope.
+- Specific function/type body — targeted structure extraction when available.
 - Simple string fallback — `rg`.
 - Missing file path — `fd`.
 - Repo-wide maps, code-shape matching, callers/callees, or architecture evidence —
@@ -65,12 +66,12 @@ Return to smart-explore only after the scope is a known file, module, or symbol.
 
 1. Confirm the scope: known file, known module, or known symbol. If the scope is
    repo-wide, stop and use a dedicated repo-wide workflow.
-2. Outline first when a target file is known. `smart_outline` shows every
-   function/class/interface with bodies collapsed.
-3. Search symbols only after narrowing the area. `smart_search` finds likely
+2. Outline first when a target file is known. Prefer tools that show symbols
+   with bodies collapsed.
+3. Search symbols only after narrowing the area. Prefer tools that find likely
    definitions and nearby callers without dumping whole files.
-4. Unfold targeted symbols. `smart_unfold` extracts exact function source by AST
-   node and avoids truncation.
+4. Extract targeted symbols with structure-aware tools when available; otherwise
+   read the smallest useful range or file.
 5. Read only if needed. Fall back to Read for files where AST parsing is not
    useful or exact full-file context matters.
 
@@ -83,12 +84,11 @@ Return to smart-explore only after the scope is a known file, module, or symbol.
 
 ## Failure Handling
 
-- claude-mem plugin unavailable: use `rg`/`fd` for bounded lookup and Read for
+- Structure tools unavailable: use `rg`/`fd` for bounded lookup and Read for
   targeted files; note the token cost difference.
 - Scope is repo-wide, structural, architectural, graph-shaped, or historical:
   switch to a dedicated repo-wide workflow instead of forcing local navigation
   into a search job.
-- `smart_outline` returns no symbols: skip to targeted Read and report the file
-  type.
-- `smart_search` returns too many matches: narrow the term, add a path filter, or
+- Outline returns no symbols: skip to targeted Read and report the file type.
+- Symbol search returns too many matches: narrow the term, add a path filter, or
   switch to a dedicated repo-wide workflow if the desired answer is repo-wide.

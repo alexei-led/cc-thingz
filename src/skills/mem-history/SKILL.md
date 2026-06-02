@@ -1,55 +1,63 @@
 ---
 description:
-  Query project history, past decisions, and known gotchas from claude-mem
-  observations. Use when user asks "last session", "did we already", "what did we
-  decide", "project history", "timeline", or "what happened with".
+  Query project history, past decisions, and known gotchas from configured
+  memory, local docs, and git history. Use when user asks "last session", "did
+  we already", "what did we decide", "project history", "timeline", or "what
+  happened with".
 name: mem-history
 ---
 
-# Project Memory Search
+# Project History
 
-Query cross-session history via claude-mem.
+Use the best available local source. Do not pretend a memory provider exists.
 
 ## Scope
 
-Searches observations stored by claude-mem in the current project only. Does not access git history, file contents, or observations from other projects.
+Search the current project only. Do not access unrelated repositories or private
+paths unless the user explicitly provides them.
 
 See also `learning-patterns` for encoding new observations.
 
-## If claude-mem Tools Are Not Available
+## Source Order
 
-Tell the user that cross-session memory requires the claude-mem plugin (`/plugin install claude-mem@thedotmack`). Suggest alternatives: check `git log` for recent changes, read CLAUDE.md files for project context, or use `git blame` for file history.
+1. Configured project-memory provider, if available.
+2. `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `CONTEXT.md`, and `docs/adr/`.
+3. `docs/plans/`, completed plans, changelogs, release notes, and issue notes.
+4. `git log --oneline --decorate --max-count=20` for recent history.
+5. `git log -- <path>` for path-specific history.
+6. `git blame <path>` only when line history matters.
 
-## 3-Layer Workflow
+## Workflow
 
-1. **Search** (index): `search` with keywords — returns compact list with IDs (~50-100 tokens/result)
-2. **Get details**: `get_observations` with IDs from search — returns full narratives (~500-1000 tokens/result)
-3. **Timeline**: `timeline` with anchor ID or query — shows chronological context around an observation
+1. Scope the question: project-wide, path-specific, or decision-specific.
+2. Search local docs with `rg` before broad git history.
+3. Query memory only if the runtime has a configured memory provider.
+4. Inspect the smallest useful git history.
+5. Report facts with file paths, commit hashes, observation IDs, or line references.
+6. Label gaps as gaps.
 
-## When to Use
+## Commands
 
-- **"What did we fix last session?"** — `search` with file path or feature name
-- **"Did we try this before?"** — `search` with approach keywords
-- **Past decisions on a feature** — `search` → `get_observations` on relevant IDs
-- **Recurring bug investigation** — `search` type filter for gotchas/problem-solution
-- **Full project timeline** — `timeline` with broad query
-
-## Search Tips
-
-- Use FTS5 syntax: `AND`, `OR`, `NOT`, quoted phrases
-- Filter by type: `gotcha`, `problem-solution`, `decision`, `discovery`
-- Filter by file path for file-specific history
-- Start with small limits (5-10), expand if needed
+```bash
+rg -n 'decision|because|ADR|plan|migration|deprecated' AGENTS.md docs . 2>/dev/null
+git log --oneline --decorate --max-count=20
+git log --oneline -- path/to/file
+```
 
 ## Output
 
-Present findings as a concise list ordered by recency:
+```markdown
+## History
 
-```
-MEMORY RESULTS: {query}
-=======================
-[date] {type} — {summary} (ID: {id})
-[date] {type} — {summary} (ID: {id})
+### Findings
 
-If nothing found: "No observations found for '{query}'. Try broader terms or check git log."
+- `path:line`, `commit`, or memory ID — fact
+
+### Likely Decision
+
+<grounded explanation>
+
+### Gaps
+
+- <missing evidence>
 ```

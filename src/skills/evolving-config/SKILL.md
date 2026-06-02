@@ -8,7 +8,7 @@ description:
 name: evolving-config
 ---
 
-# Evolving Agent Configuration in Pi
+# Evolving Agent Configuration
 
 Audit config with local evidence first, then current docs or web evidence when
 needed. Do not rewrite config because a blog post looked shiny. That way lies
@@ -29,7 +29,7 @@ Review:
 2. Read current files before suggesting changes.
 3. Check generated-file rules before editing generated outputs.
 4. Use `looking-up-docs` for library or tool docs when syntax is uncertain.
-5. Use `web_search` or `web_answer` for current public docs, release notes, or
+5. Use the runtime's web tools for current public docs, release notes, or
    feature availability.
 6. Prefer small, reversible changes. Ask before deleting or moving private
    config.

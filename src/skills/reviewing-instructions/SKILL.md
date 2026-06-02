@@ -43,7 +43,7 @@ For each confirmed instruction file under review:
 1. Check `--model` arg first; if absent, check the file's frontmatter `model:` field. Args take precedence.
 2. If the file has no model metadata but is a support file, inherit model context from the parent instruction file when obvious.
 3. Look for `references/models/<model>.md` in this skill's directory. Read it if present.
-4. If no local reference: WebFetch the model's official prompting guide:
+4. If no local reference: use available web search/fetch tools to read the model's official prompting guide:
    - Claude: `https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview`
    - GPT series: `https://platform.openai.com/docs/guides/prompt-engineering`
    - Gemini: `https://ai.google.dev/gemini-api/docs/prompting-strategies`

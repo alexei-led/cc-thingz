@@ -1,9 +1,10 @@
 ---
 description: Token-efficient local code navigation and extraction. Use when exploring
   a known file or bounded module outline, finding a known symbol in a scoped area,
-  or extracting exact function/type bodies with smart_outline, smart_search, and smart_unfold.
-  NOT for repo-wide structural pattern search, architecture or trace-flow questions,
-  ast-grep/codegraph/GitNexus evidence, or broad caller/implementation maps.
+  or extracting exact function/type bodies with available structure tools and text-search
+  fallbacks. NOT for repo-wide structural pattern search, architecture or trace-flow
+  questions, ast-grep/codegraph/GitNexus evidence, or broad caller/implementation
+  maps.
 name: smart-explore
 ---
 
@@ -12,7 +13,7 @@ name: smart-explore
 <!-- Use Agent, get_subagent_result, and steer_subagent for delegated work. -->
 <!-- Use ctx7 or npx ctx7@latest through bash when Context7 documentation lookup is required. -->
 
-# Smart Explore in Pi
+# Smart Explore
 
 Use cheap local structure before reading large files. The goal is a tight outline
 or exact extraction from a known area, not repo-wide codebase search.

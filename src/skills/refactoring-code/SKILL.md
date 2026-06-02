@@ -1,131 +1,88 @@
 ---
 description:
-  Batch refactoring via MorphLLM edit_file. Use for "refactor across files",
-  "batch rename", "update pattern everywhere", large files (500+ lines), or 5+
-  edits in the same file. NOT for repo-wide architecture design/review, codebase
-  analysis, single-file targeted edits (use built-in Edit), or code review (use
-  reviewing-code).
+  Batch refactoring for multi-file, repeated-pattern, large-file, or broad
+  behavior-preserving changes. Use for "refactor across files", "batch rename",
+  "update pattern everywhere", large files (500+ lines), or 5+ edits in the same
+  file. NOT for repo-wide architecture design/review, codebase analysis,
+  single-file targeted edits, or code review (use reviewing-code).
 name: refactoring-code
 ---
 
-# Fast Refactoring with MorphLLM
+# Batch Refactoring
 
-MorphLLM `edit_file` provides semantic code merging at 10,500+ tokens/sec with
-98% accuracy. Use the MorphLLM `edit_file` / batch refactoring workflow for broad
-behavior-preserving changes, not cosmetic churn.
-
-Critical rule: preserve existing behavior unless the user explicitly asks for a
-behavior change. State the preservation target before editing.
+Refactor in small, verified batches. If behavior changes, it is not a refactor;
+it is a feature or bug fix. State the behavior-preservation target before editing.
 
 ## Role-gated action
 
 Detect your capability from your tools, not from prose:
 
 - Write-capable role (engineer): map the scope, apply the batch edits, run lint/test verification.
-- Read-only role (reviewer): map the scope and produce the refactor plan, then emit it in the Proposed Changes contract under Output. Apply nothing; run nothing — a reviewer has no edit or Bash tools.
+- Read-only role (reviewer): map the scope and produce the refactor plan, then emit it in the Proposed Changes contract under Output. Apply nothing; run nothing.
 
-## Language detection
+## When To Use
 
-Detect the language from the file extensions in scope and preserve that language's idioms in the rewritten code. This skill has no per-language reference files — operate from the generic procedure.
+Use this workflow for:
 
-## When to Use edit_file
+- multi-file refactors
+- repeated pattern updates
+- public or internal renames with callers
+- large files where exact text replacement is brittle
+- 5+ coordinated edits in the same file
 
-Use `edit_file` when:
+Do not use it for:
 
-- Multi-file batch refactoring
-- Style/pattern update everywhere
-- Complex prompt → many changes
-- 5+ files need the same pattern
-- Large files where exact replacement would be brittle
-
-Use Built-in Edit/MultiEdit when:
-
-- Single file, clear edit
-- 2-3 targeted replacements
-- Need clear diff to review/tune
-- Simple rename within one file
-- Straightforward single-file work
-
-## Key Features
-
-- **Semantic merge**: Understands code structure, not just text
-- **Speed**: 10,500 tok/s vs 180 tok/s streaming
-- **Accuracy**: 98% success rate on edge cases
-- **dryRun**: Preview changes before applying
+- one small targeted edit
+- behavior changes
+- broad architecture redesign
+- code review findings without applying changes
+- cosmetic churn with no maintenance value
 
 ## Workflow
 
-### Standard Refactoring
+1. Define the refactor goal and non-goals.
+2. Name the behavior that must be preserved.
+3. Map all affected sites before editing with file/text search.
+4. Read representative files and tests.
+5. Add characterization tests when behavior is under-specified.
+6. Apply one coherent batch using the best available edit tool; use a semantic batch editor only when the runtime provides one.
+7. Run narrow tests.
+8. Run broader lint/type/test checks before the next batch.
+9. Delete dead code introduced or exposed by the refactor.
 
-```
-1. Define the behavior that must be preserved.
-2. Map affected files with the available file/text search tools.
-3. Read representative files and tests before editing.
-4. Use MorphLLM `edit_file` or the batch refactoring workflow for each batch/file.
-5. Batch all edits for the same file into one edit operation.
-6. Verify with narrow lint/test checks, then broader checks when the batch is done.
-7. Delete obsolete code exposed by the refactor.
-```
+## Safe Batches
 
-For multi-file renames, say this is a batch refactor, map all occurrences before
-editing, preserve behavior, and run relevant lint/tests after the rename.
+Good batches:
 
-### High-Stakes Changes (dryRun)
+- rename one public symbol and all callers
+- move one function/module with tests unchanged
+- remove one duplicate implementation after tests prove equivalence
+- update one repeated pattern across files
 
-```
-1. Call edit_file with dryRun: true
-2. Review preview output
-3. If approved, call again with dryRun: false
-```
+Bad batches:
 
-## Parameters
-
-```
-path: "/absolute/path/to/file"
-code_edit: "changed lines with // ... existing code ... markers"
-instruction: "brief description of changes"
-dryRun: false (set true to preview)
-```
-
-## Edit Format
-
-Use `// ... existing code ...` markers for unchanged sections:
-
-```typescript
-// ... existing code ...
-function updatedFunction() {
-  // new implementation
-}
-// ... existing code ...
-```
-
-## Common Patterns
-
-### Batch Error Handling
-
-```
-instruction: "Add error wrapping to all repository methods"
-code_edit: Shows only changed functions with context markers
-```
-
-### Import Updates
-
-```
-instruction: "Update imports from old-pkg to new-pkg"
-code_edit: Shows import section with changes
-```
-
-### Multi-Location Rename
-
-```
-instruction: "Rename getUserById to findUser throughout file"
-code_edit: Shows all locations with changes
-```
+- rename many symbols while changing logic
+- reorganize modules and change APIs in one pass
+- add abstractions for imagined future callers
+- edit generated files by hand
 
 ## Output
 
-Engineer (applied the refactor): report the preservation target, files changed,
-and the lint/test verification result per touched file.
+Engineer (applied the refactor):
+
+```text
+REFACTOR COMPLETE
+=================
+Preservation target: <behavior that must not change>
+Files changed: N
+Status: CLEAN | NEEDS ATTENTION
+
+Changes:
+- path:line — change
+
+Verification:
+- <command> — pass/fail
+```
 
 Reviewer (planned only — emit the refactor as a proposal, apply nothing):
 
@@ -140,9 +97,9 @@ File: `path/to/file`
 Action: CREATE | MODIFY | DELETE
 
 Code:
-<changed regions with // ... existing code ... markers>
+<changed regions with enough context to locate them>
 
-Rationale: <why this change>
+Rationale: <why this preserves behavior while improving structure>
 ```
 
 For multi-file renames, list every occurrence mapped before the proposal so the
@@ -150,14 +107,7 @@ applier can replay it.
 
 ## Failure handling
 
-- `edit_file` unavailable → fall back to built-in Edit/MultiEdit; warn the user that large batches may be slower
-- Tests fail after a batch edit → revert the last file edit, inspect the diff, and fix the conflict before continuing
-- Scope unclear (user says "refactor this") → ask: "Which files and what behavior to preserve?" before touching anything
-
-## Tips
-
-- Batch all edits to same file in one call
-- Include enough context to locate changes precisely
-- Preserve exact indentation in code_edit
-- Run tests after each file to catch issues early
-- Keep old public behavior stable unless the user explicitly requested behavior change
+- Batch-edit tool unavailable: use the runtime's precise edit tools and shrink the batch.
+- Tests fail after a batch: revert or inspect the last batch before continuing.
+- Scope unclear (`refactor this`): ask which files and what behavior to preserve before touching anything.
+- A mapped occurrence is generated or vendored: skip it unless the project regenerates that file from source.

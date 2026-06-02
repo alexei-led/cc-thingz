@@ -17,12 +17,14 @@ Extract structured information from PDF documents. Try the cheapest reliable met
 
 ## Parsing Strategy (Priority Order)
 
-### 1. Native Reading (primary)
+### 1. Native Reading (when supported)
 
-Use the Read tool directly — it handles PDFs natively, including scanned/image PDFs:
+Use the runtime's native PDF reader only when it explicitly supports PDF inputs.
+If the current reader supports only text/images, skip to CLI tools or page-image
+conversion instead of claiming the PDF was read.
 
 ```
-Read → /path/to/document.pdf
+Read → /path/to/document.pdf  # only on runtimes with PDF support
 ```
 
 ### 2. CLI Tools (quick operations)
@@ -111,16 +113,16 @@ CSV for table data: `csv.writer(f).writerows(table)`.
 
 ## Workflow
 
-1. Read natively with the Read tool
+1. Try native PDF reading only when the runtime supports it.
 2. Assess structure: tables? forms? pure text?
-3. Choose tool: simple text → `pdftotext`; tables → `pdfplumber`; forms → `pypdf`
-4. Extract and validate the data
-5. Format output (JSON, CSV, or Markdown)
+3. Choose tool: simple text → `pdftotext`; tables → `pdfplumber`; forms → `pypdf`; scanned/image pages → image conversion or OCR-capable reader.
+4. Extract and validate the data.
+5. Format output (JSON, CSV, or Markdown).
 
 ## Failure Handling
 
 - **Encrypted PDF**: check with `pdfinfo`; may need a password — ask the user, do not guess
-- **Scanned/image PDF**: use native reading rather than `pdftotext`
+- **Scanned/image PDF**: use an OCR-capable reader or convert pages to images before extraction; `pdftotext` alone is not enough.
 - **Garbled text**: try a different extraction method before reporting
 - **Missing tables**: adjust pdfplumber table settings
 

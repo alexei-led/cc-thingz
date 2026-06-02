@@ -1,8 +1,9 @@
 ---
-description: Batch refactoring via MorphLLM edit_file. Use for "refactor across files",
-  "batch rename", "update pattern everywhere", large files (500+ lines), or 5+ edits
-  in the same file. NOT for repo-wide architecture design/review, codebase analysis,
-  single-file targeted edits (use built-in Edit), or code review (use reviewing-code).
+description: Batch refactoring for multi-file, repeated-pattern, large-file, or broad
+  behavior-preserving changes. Use for "refactor across files", "batch rename", "update
+  pattern everywhere", large files (500+ lines), or 5+ edits in the same file. NOT
+  for repo-wide architecture design/review, codebase analysis, single-file targeted
+  edits, or code review (use reviewing-code).
 name: refactoring-code
 ---
 
@@ -11,7 +12,7 @@ name: refactoring-code
 <!-- Use Agent, get_subagent_result, and steer_subagent for delegated work. -->
 <!-- Use ctx7 or npx ctx7@latest through bash when Context7 documentation lookup is required. -->
 
-# Refactoring Code in Pi
+# Refactoring Code
 
 Refactor in small, verified batches. If behavior changes, it is not a refactor;
 it is a feature wearing a fake mustache.
