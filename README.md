@@ -297,15 +297,15 @@ All agents and several skills optionally integrate with [claude-mem](https://git
 
 ## Plugins
 
-| Plugin                                                 | Skills | Agents | Description                                                                       | Depends on  |
-| ------------------------------------------------------ | ------ | ------ | --------------------------------------------------------------------------------- | ----------- |
-| [**dev-flow**](src/plugins/dev-flow/plugin.yaml)       | 6      | 2      | Fix, refactor, review, document, commit; `engineer` and `reviewer` roles; 6 hooks | —           |
-| [**spec-flow**](src/plugins/spec-flow/plugin.yaml)     | 7      | 2      | Spec-driven development: requirements, tasks, and planning workflows              | dev-flow    |
-| [**git-flow**](src/plugins/git-flow/plugin.yaml)       | 3      | 0      | Worktrees, cleanup, hooks, Gitleaks, `.gitignore`, git config, and guardrails     | —           |
-| [**browser**](src/plugins/browser/plugin.yaml)         | 2      | 1      | Browser testing, validation, screenshots, recordings, and quick automation        | programming |
-| [**infra-ops**](src/plugins/infra-ops/plugin.yaml)     | 2      | 1      | Kubernetes, Terraform, Helm, GitHub Actions, AWS, GCP                             | —           |
-| [**programming**](src/plugins/programming/plugin.yaml) | 5      | 1      | Idiomatic development across Go, Python, TypeScript, shell, and web               | dev-flow    |
-| [**discovery**](src/plugins/discovery/plugin.yaml)     | 7      | 1      | Research, reasoning, config evolution, and agent self-improvement                 | —           |
+| Plugin                                                 | Skills | Agents | Description                                                                          | Depends on  |
+| ------------------------------------------------------ | ------ | ------ | ------------------------------------------------------------------------------------ | ----------- |
+| [**dev-flow**](src/plugins/dev-flow/plugin.yaml)       | 6      | 2      | Fix, refactor, review, document, commit; `engineer` and `reviewer` roles; 6 hooks    | —           |
+| [**spec-flow**](src/plugins/spec-flow/plugin.yaml)     | 7      | 2      | Spec-driven development: requirements, tasks, and planning workflows                 | dev-flow    |
+| [**git-flow**](src/plugins/git-flow/plugin.yaml)       | 3      | 0      | Worktrees, cleanup, hooks, Gitleaks, `.gitignore`, git config, and guardrails        | —           |
+| [**browser**](src/plugins/browser/plugin.yaml)         | 2      | 1      | Browser testing, validation, screenshots, recordings, and quick automation           | programming |
+| [**infra-ops**](src/plugins/infra-ops/plugin.yaml)     | 2      | 1      | Kubernetes, Terraform, Helm, GitHub Actions, AWS, GCP                                | —           |
+| [**programming**](src/plugins/programming/plugin.yaml) | 5      | 1      | Idiomatic development across Go, Python, TypeScript, shell, and web                  | dev-flow    |
+| [**discovery**](src/plugins/discovery/plugin.yaml)     | 7      | 1      | Research, docs lookup, repo exploration, instruction review, and agent config audits | —           |
 
 **Totals**: 32 skills, 2 plugin-owned role agents (`engineer`, `reviewer`), 10 hooks
 
@@ -325,7 +325,7 @@ Invoke as `/skill-name` or let the skill enforcer suggest them.
 | `configuring-git-hygiene` | Configure git hooks, Gitleaks, `.gitignore`, git config, and guardrails                                                            | "setup pre-commit", "gitleaks"        |
 | `deploying-infra`         | Validate + deploy K8s/Terraform/Helm                                                                                               | "deploy to staging", "rollout"        |
 | `documenting-code`        | Update docs based on recent changes                                                                                                | "update docs", "document"             |
-| `evolving-config`         | Audit and improve agent configuration; supports review-only audits and apply-fixes mode                                            | "evolve", "audit config"              |
+| `evolving-config`         | Audit AI coding-agent configuration; review-only by default, explicit approval for fixes                                           | "evolve", "audit config"              |
 | `exploring-repos`         | Explore public GitHub repos and architecture                                                                                       | "explore repo", "how does repo work"  |
 | `fixing-code`             | Reproduce, diagnose, patch, regression-test, and verify one code defect at a time                                                  | "fix errors", "make it pass"          |
 | `improving-tests`         | Improve test design and coverage with behavior seams, characterization tests, TDD, and test refactoring                            | "improve tests", "coverage"           |

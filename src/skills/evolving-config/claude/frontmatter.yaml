@@ -2,9 +2,6 @@ user-invocable: true
 model: sonnet
 context: fork
 allowed-tools:
-  - TaskCreate
-  - TaskUpdate
-  - TaskList
   - Read
   - Edit
   - Write
@@ -13,4 +10,4 @@ allowed-tools:
   - WebFetch
   - AskUserQuestion
   - mcp__perplexity-ask__perplexity_ask
-argument-hint: '[--dry-run]'
+argument-hint: '[--fix] [scope]'

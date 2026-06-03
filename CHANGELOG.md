@@ -8,6 +8,21 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [5.2.0] - 2026-06-03
+
+### Changed
+
+- Reworked `evolving-config` into a review-first AI coding-agent configuration audit workflow: fixes now require an explicit request, `--fix`, or named approval before changing permissions, sandbox policy, hooks, MCP servers, model routing, package installs, private config, or managed settings.
+- Added platform-specific guidance for Claude Code, Codex, and Pi configuration surfaces, including settings, context files, skills, agents, hooks, MCP, sandbox and approval policy, packages, extensions, prompts, and generated-export rules.
+- Tightened the `evolving-config` rubric around evidence, least privilege, generated-file source of truth, routing precision, context efficiency, and validation readiness.
+- Updated the Claude overlay to use local config evidence first, official docs and changelogs second, and broad web research only for gaps or ecosystem comparisons.
+- Updated the `discovery` plugin and catalog descriptions to describe research, docs lookup, repo exploration, instruction review, and agent configuration audits.
+
+### Fixed
+
+- Removed Gemini from `evolving-config` best-practice scope; explicit Gemini requests now get local-file review only with the coverage gap stated.
+- Removed stale audit/apply mode conflicts so review-only prompts no longer drift into fix prompts.
+
 ## [5.1.0] - 2026-06-03
 
 ### Changed

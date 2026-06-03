@@ -1,166 +1,117 @@
-# Evolve Configuration
+# Evolving Agent Configuration
 
-Audit Claude Code config against latest capabilities. Conservative by default — says "no changes needed" when that's true.
+Audit AI coding-agent configuration with local evidence first. Default to
+review-only. Apply fixes only when the user explicitly asks or passes `--fix`.
 
-**Use TaskCreate** to track these 6 phases:
+## Claude tool use
 
-1. Snapshot current configuration
-2. Fetch latest capabilities
-3. Research best practices
-4. Gap analysis
-5. Present report
-6. Apply changes
+- Use Read, Glob, and Grep for local inventory.
+- Use WebFetch for official docs, changelogs, and exact source URLs.
+- Use Perplexity only when official docs do not answer a current best-practice or ecosystem question.
+- Use AskUserQuestion before ambiguous scope or risky fixes.
+- Do not fetch broad web advice before reading local config.
 
-## Phase 1: Snapshot Current Configuration
+## Read first
 
-Read ALL config files in parallel:
+- `references/RUBRIC.md` for shared review dimensions and severity.
+- `references/platforms/claude-code.md` for Claude Code surfaces.
+- `references/platforms/codex.md` for Codex surfaces.
+- `references/platforms/pi.md` for Pi surfaces.
+- `references/apply-fixes.md` only in approved fix mode.
 
-```bash
-# Glob these patterns
-CLAUDE.md                           # Root instructions
-.claude/CLAUDE.md                   # Project instructions
-.claude/settings.json               # Settings + hooks
-.claude/settings.local.json         # Local overrides
-.claude/skills/*/SKILL.md           # All skills
-.claude/agents/*.md                 # All agents (if present)
-.claude/commands/**/*.md            # All commands (if present)
-hooks/*                             # Hook scripts
-```
+No dedicated Gemini coverage. If the user explicitly asks for Gemini config,
+review local files only and state that current best-practice coverage is skipped.
 
-Build inventory summary:
+## Modes
 
-- **Skills** — N (list names)
-- **Agents** — N (list names)
-- **Commands** — N (list names)
-- **Hooks** — N (list events)
-- **MCP servers** — N (list names)
-- **Model refs** — list (which models referenced where)
+Review-only is the default for prompts such as "review my config", "audit
+config", "check setup", or "what should I improve".
 
-Note any staleness indicators (outdated model names, deprecated patterns).
+Fix mode starts only when the user explicitly asks for changes or passes `--fix`.
+Even then, ask before changing permissions, sandbox policy, hooks, MCP servers,
+model routing, package installs, deletes, moves, broad rewrites, private config,
+or managed settings.
 
-## Phase 2: Fetch Latest Capabilities
+## Workflow
 
-Fetch the Claude Code changelog:
+1. Identify platform, config root, and mode.
+2. If scope is ambiguous, list detected surfaces and ask which to audit.
+3. Inventory relevant files with paths, sizes, and source/generated status.
+4. Read current files before recommending changes.
+5. Check the matching platform reference.
+6. Fetch official docs only when syntax, feature availability, or deprecation status is uncertain.
+7. Use broader web research only for source gaps or ecosystem comparisons.
+8. Classify findings by impact and disruption.
+9. In fix mode, apply only approved changes and verify.
 
-```
-WebFetch(
-  url="https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md",
-  prompt="Extract ALL features, changes, and deprecations from the last 6 months. Group by: new features, configuration changes, breaking changes, new hook events, new settings, new CLI flags, new MCP capabilities, new agent types. Be thorough."
-)
-```
+## Scope
 
-If WebFetch fails or returns insufficient data, note the gap and rely on Phase 3.
+Review AI-agent config only:
 
-## Phase 3: Research Best Practices
+- Claude Code settings, `CLAUDE.md`, skills, agents, commands, hooks, MCP, permissions.
+- Codex config, `AGENTS.md`, profiles, sandbox, approvals, MCP, skills, subagents.
+- Pi settings, packages, skills, extensions, prompts, themes, context files.
+- Plugin/package manifests and source-to-generated export rules.
 
-Run two targeted web research queries:
+Do not review app runtime config, git hook hygiene, product docs, source-code
+quality, or generated output as the source of truth.
 
-1. **Features and configuration** — "Claude Code CLI by Anthropic: what are the latest features, configuration options, best practices, and power user tips as of 2026? Include: hooks, skills, agents, MCP servers, settings.json options, CLAUDE.md patterns, team features, model routing, context management."
-2. **Ecosystem and integrations** — "Claude Code CLI advanced configuration 2026: MCP server recommendations, hook patterns, permission optimization, context fork strategies, agent orchestration patterns, skill design best practices. What are experienced users doing?"
+## Priorities
 
-If Perplexity returns cited URLs with high-value content, WebFetch top 2 for deeper details.
+Flag these first:
 
-## Phase 4: Gap Analysis
+- unsafe permissions, sandbox bypasses, broad MCP access, or secret exposure
+- unsupported or stale keys, tool names, hook events, or model names
+- generated exports edited by hand instead of source files
+- duplicate or overlapping skills, agents, hooks, prompts, or trigger descriptions
+- bloated startup context or always-loaded instructions that should be on demand
+- hooks or extensions that hide errors, block safe work, or run risky commands
+- missing validation for config that produces skills, agents, hooks, or packages
 
-Compare current config against latest capabilities. For EACH category below, produce findings:
-
-### Audit Categories
-
-- **Model routing** — Are model assignments optimal? New models available? Effort levels configured?
-- **Hooks** — New hook events available? Async hooks? Hook v2 features?
-- **Skills** — Stale patterns? New tool types to leverage? Missing `context: fork`?
-- **Agents** — New subagent types? Agent features (memory, skills)?
-- **MCP servers** — New useful servers? Deprecated transports? OAuth improvements?
-- **Permissions** — New permission syntax? Over-permissive rules? Missing deny rules?
-- **Settings** — New settings fields? Deprecated options? Sandbox improvements?
-- **CLAUDE.md** — Outdated instructions? Stale references? Missing new patterns?
-- **Teams** — New team features? Configuration improvements?
-- **Commands** — Deprecated command patterns? New frontmatter fields?
-
-### Classification Rules
-
-For each finding, assign ONE rating:
-
-- **STILL GOOD** — Current config matches or exceeds best practice; no change needed
-- **DEPRECATED** — Feature removed or replaced upstream; must update
-- **WORTH ADOPTING** — Clear value, low disruption, proven stable; recommend
-- **NICE-TO-HAVE** — Minor improvement, some disruption; mention only
-- **NOT YET** — Too experimental or doesn't fit workflow; skip or note
-
-**Critical rule**: Default classification is **STILL GOOD**. A finding must clear the bar: "Is this worth the disruption?" Changing working config has real cost — context relearning, potential breakage, testing overhead. Only promote to WORTH ADOPTING when the benefit clearly exceeds that cost.
-
-**Cap**: Maximum 10 recommendations across WORTH ADOPTING + DEPRECATED. If more exist, prioritize by impact and note the overflow.
-
-## Phase 5: Present Report
-
-Format the report:
+## Output
 
 ```markdown
-## Configuration Audit Report
+## Config Audit
 
-**Date**: {date}
-**Changelog checked through**: {version or date}
-**Sources**: {list: changelog, perplexity, docs URLs}
-
-### What's Working Well (STILL GOOD)
-
-- {explicit acknowledgment of things that don't need changing}
-- {this section should be the longest — most config should be fine}
-
-### Action Required (DEPRECATED)
-
-- {breaking changes or removed features — empty is normal}
-
-### Recommended Updates (WORTH ADOPTING)
-
-- {high-value, low-disruption improvements}
-- {each item: what to change, why, and estimated disruption}
-
-### On Your Radar (NICE-TO-HAVE)
-
-- {minor improvements that can wait}
-
-### Not Yet (TOO EARLY)
-
-- {experimental features, not ready for production config}
+Scope: <platforms/files>
+Mode: review-only | fix-approved
+Sources: <local files and docs checked>
+Confidence: high | medium | low
 
 ### Summary
 
-- {X} areas reviewed — no changes needed
-- {Y} updates recommended
-- {Z} items informational
+- Files reviewed: N
+- Generated files skipped: N
+- Main risk: <one sentence>
+
+### Critical
+
+- `path:line` — issue. Evidence: <fact>. Fix: <action>.
+
+### Important
+
+- `path:line` — issue. Evidence: <fact>. Fix: <action>.
+
+### Suggested
+
+- `path:line` — issue. Evidence: <fact>. Fix: <action>.
+
+### Working Well
+
+- <config that should stay as-is>
+
+### Verification
+
+- <command run or recommended>
 ```
 
-### STOP here
+Omit empty severity sections. If no findings are confirmed, say `No confirmed
+findings.`
 
-Use `AskUserQuestion`. Ask one question at a time:
+## Failure handling
 
-- **Action** — How should we proceed with the audit results? Options: Apply all recommended / Select items to apply / Dry run only (show diffs) / Skip (report only)
-
-If `$ARGUMENTS` contains `--dry-run`: Skip the question, show diffs only, do not apply.
-
-## Phase 6: Apply Changes
-
-Based on user selection:
-
-1. **Apply only approved items** — never sneak in extras
-2. **For small-improvement requests** — limit the answer to small scoped suggestions unless the user approves more; separate must-fix issues from optional suggestions
-3. **Before major or risky config changes** — model routing changes, hook behavior changes, permissions, MCP server changes, deletes, or broad rewrites — ask for explicit confirmation naming the files and risk
-4. **Prefer Edit over Write** — modify existing files, don't recreate
-5. **Show diff summary** after each change
-6. **Verify** the change doesn't break existing config (quick sanity read)
-
-When describing how to avoid overreach, include this explicit gate: "I will not make major/risky config changes unless you confirm the named files and risks."
-
-If user selected "Dry run only": show what each edit would look like, then stop.
-
-## Edge Cases
-
-- **No changelog access**: Fall back to Perplexity-only research, note reduced confidence
-- **No new features found**: Report "Configuration is up to date — no changes needed" — this is a valid, expected outcome
-- **`--dry-run` flag in arguments**: Show full report, skip Phase 6
-- **Too many suggestions**: Cap at 10, note overflow count
-- **Perplexity unavailable**: Fall back to WebFetch of docs + changelog only
-- **All findings are STILL GOOD**: Celebrate it — a well-maintained config is the goal
-
----
+- Ambiguous target: ask one scoped question before auditing.
+- Missing official docs: use local evidence, lower confidence, and report the gap.
+- Generated file target: report the source path and regeneration command instead of editing it.
+- Secrets or private data: do not quote secret values; identify only the path and key name when needed.
+- Validation failure after a fix: revert the change unless the user asks to keep it, then report the exact error.

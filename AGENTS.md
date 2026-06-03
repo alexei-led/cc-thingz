@@ -77,7 +77,7 @@ Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allo
 ## Developer Tools
 
 - **brainstorming-ideas** — Brainstorm ideas and stress-test draft plans or trade-offs before coding
-- **evolving-config** — Audit and improve agent configuration across platforms; supports review-only audits and apply-fixes mode
+- **evolving-config** — Audit AI coding-agent configuration; review-only by default, explicit approval for fixes
 - **exploring-repos** — Explore public GitHub repositories via DeepWiki AI-generated documentation
 - **looking-up-docs** — Find current docs via Context7, official registries/docs, Perplexity/web, and GitHub fallback
 - **researching-web** — Web research via Perplexity AI

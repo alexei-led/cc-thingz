@@ -1,21 +1,29 @@
-# Phase 5: Apply Fixes
+# Apply Fixes
 
-Load and run this phase only when `--fix` is in `$ARGUMENTS`. Without `--fix`, the
-skill stops after Phase 4 (review only — the user applies fixes).
+Load this file only when the user explicitly asks for fixes or passes `--fix`.
+Review-only requests must stop after the audit report.
 
-If specific fix actions were not pre-approved, use `AskUserQuestion`. Ask one question at a time:
+## Approval gate
 
-- **Action** — Apply fixes from the review? Options: Fix all errors / Fix errors + warnings / Show diffs only / Skip
+If fixes were not already approved, ask one question:
 
-Apply only approved fixes. Confirm before deleting files, removing hooks, broad rewrites, or changing permissions:
+- Action: apply which fixes? Options: critical only, critical and important, selected items, show diffs only, skip.
 
-1. **CLAUDE.md**: Remove flagged lines, move content to skills/hooks
-2. **Skills**: Add missing `context: fork`, trim tool lists, fix descriptions
-3. **Agents**: Add scope boundaries, output format sections
-4. **Hooks**: Fix exit codes, event assignments
+Ask a second confirmation before risky changes. Name the files and risk. Risky
+changes include permissions, sandbox policy, hooks, MCP servers, model routing,
+package installs, deletes, moves, broad rewrites, private config, and managed
+settings.
 
-After each fix, show the diff. Do NOT make changes beyond what was flagged.
+## Fix rules
 
-## Post-fix verification
+- Edit source files, not generated exports.
+- Apply only approved findings. Do not include opportunistic cleanup.
+- Prefer small `edit` changes over rewrites.
+- Keep secrets redacted.
+- Show a concise diff summary.
+- Run the closest validation command for touched config.
 
-After all fixes are applied, re-check modified components against the rules that triggered the fix. Confirm each finding is resolved. Report any regressions.
+## If validation fails
+
+Revert the fix unless the user asks to keep it. Quote the failing line or command
+output and state the next safe action.

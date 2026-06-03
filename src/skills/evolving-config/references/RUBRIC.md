@@ -1,207 +1,71 @@
-# Context Engineering Review Rubric
+# Config Review Rubric
 
-Review rules for Claude Code configuration derived from Anthropic's
-"Effective Context Engineering for AI Agents" (2026) and
-"Best Practices for Claude Code" documentation.
+Use this rubric for AI coding-agent configuration audits. Platform-specific files
+add checks; they do not override local project rules or user intent.
 
-Each rule addresses a specific dimension of context efficiency. Rules are
-grouped by category and have severity levels matching lint conventions.
+## Severity
 
----
+Critical:
 
-## Context Budget (CB-\*) — Manage the finite attention resource
+- Security, privacy, or destructive-action risk.
+- Config cannot load or points at missing required files.
+- Generated output was edited while source remains stale.
+- A hook, permission, sandbox, extension, or MCP server can run risky work without approval.
 
-### CB-STARTUP: Session startup token budget
+Important:
 
-**Severity**: warning  
-**Check**: Sum tokens in CLAUDE.md files + auto-activated skill bodies + hook startup output  
-**Threshold**: <2K ideal, <4K acceptable, >6K bloated  
-**Source**: "Context must be treated as a finite resource with diminishing
-marginal returns." (Context Engineering, p.2) — "As context window tokens
-increase, model accuracy retrieving that information decreases." (Context
-Engineering, p.3)  
-**Rationale**: Every token loaded at session start competes for attention
-throughout the entire conversation. Heavy startup payloads degrade
-instruction-following from the first turn.
+- Stale or unsupported keys, tool names, models, hook events, or manifest fields.
+- Broad routing descriptions that can trigger the wrong skill or agent.
+- Duplicate skills, agents, hooks, prompts, or package entries that create ambiguity.
+- Always-loaded instructions exceed the repo's useful context budget.
+- Missing validation for config that produces artifacts.
 
-### CB-FORK: Skills that read files must use `context: fork`
+Suggested:
 
-**Severity**: error  
-**Check**: Skills with Read/Glob/Grep in allowed-tools have `context: fork` in frontmatter  
-**Exception**: Skills that read only 1-2 specific files by path  
-**Source**: "Detailed search context remains isolated within subagents; lead
-agents focus on synthesizing results." (Context Engineering, p.10)  
-**Rationale**: Without fork, file contents read by a skill persist in the
-main context window, displacing earlier instructions and accumulating noise.
+- Low-risk cleanup that improves clarity, token use, or maintainability.
+- Optional newer features with clear benefit but no immediate correctness risk.
+- Better grouping, naming, or source-to-generated documentation.
 
-### CB-PROGRESSIVE: Prefer just-in-time over upfront loading
+## Shared checks
 
-**Severity**: info  
-**Check**: Skills/agents use runtime discovery (Glob, Grep, Bash) rather than
-hardcoded file reads in their body  
-**Source**: "Just in time approaches maintain lightweight identifiers and
-dynamically load data via tools at runtime." (Context Engineering, p.6) —
-"CLAUDE.md files drop into context initially; primitives like glob and grep
-enable runtime navigation." (Context Engineering, p.7)  
-**Rationale**: Upfront loading assumes relevance. Runtime discovery lets the
-agent find what's actually needed, keeping context lean.
+### Scope and ownership
 
-### CB-COMPACT-SAFE: Long-horizon skills preserve compaction signals
+- Identify user, project, package, and generated config separately.
+- Prefer source files over generated exports.
+- Ask before touching private, global, or managed config.
+- Keep platform-specific rules scoped to that platform.
 
-**Severity**: info  
-**Check**: Skills with >5 phases or multi-step workflows include clear phase
-markers (numbered steps, H2/H3 headings) that compaction can use as boundaries  
-**Source**: "Compaction's art lies in selection decisions — overly aggressive
-approaches lose subtle critical context becoming important later."
-(Context Engineering, p.9)  
-**Rationale**: Well-structured skills survive compaction with minimal
-information loss because the summarizer can identify phase boundaries.
+### Context efficiency
 
----
+- Keep startup context short and durable.
+- Move specialized workflows into skills, commands, or prompts loaded on demand.
+- Remove duplicate rules unless they deliberately enforce a critical behavior.
+- Treat long instruction files as a risk only when content is low-signal or always loaded.
 
-## Signal Density (SD-\*) — Maximize information per token
+### Routing
 
-### SD-CLAUDE-MD: CLAUDE.md contains only non-derivable instructions
+- Names and descriptions must say when to use the component and when not to use it.
+- Adjacent skills or agents should not share the same trigger phrases unless one delegates to the other.
+- Do not route app config, git hygiene, or ordinary docs into this skill.
 
-**Severity**: error  
-**Check**: Each line passes the test: "Would removing this cause Claude to make mistakes?"  
-**Anti-signals**: Standard language conventions, self-evident practices
-("write clean code"), file-by-file descriptions, long tutorials  
-**Source**: "If Claude keeps doing something you don't want despite having a
-rule against it, the file is probably too long and the rule is getting lost."
-(Best Practices) — "Bloated CLAUDE.md files cause Claude to ignore your
-actual instructions!" (Best Practices)  
-**Rationale**: Every unnecessary line dilutes the important lines. CLAUDE.md
-is read every session — it's the highest-cost context component.
+### Safety
 
-### SD-DESCRIPTION: Skill/agent descriptions are precise routing signals
+- Least privilege wins for permissions, sandbox, hooks, extensions, MCP, and package installs.
+- Deterministic enforcement belongs in hooks or extensions, not advisory instructions.
+- Secrets must not be embedded in committed prompt, settings, or package files.
+- Network, filesystem expansion, and command execution need explicit scope.
 
-**Severity**: error  
-**Check**: Description contains specific trigger phrases that uniquely
-identify when this component should activate  
-**Anti-signals**: Generic descriptions ("helps with code"), missing trigger
-phrases, overlapping with other component descriptions  
-**Source**: "Input parameters must be descriptive, unambiguous, and leverage
-model strengths." (Context Engineering, p.4) — "Tools should be...
-extremely clear regarding intended use." (Context Engineering, p.4)  
-**Rationale**: Descriptions are used by the model for routing decisions.
-Ambiguous descriptions cause mis-activation or missed activation.
+### Evidence
 
-### SD-TOOL-MINIMAL: Agents have minimal tool lists
+Every finding needs file, line, setting key, tool output, or official-doc evidence.
+No evidence, no finding.
 
-**Severity**: warning  
-**Check**: Each tool in `allowed-tools` is actually used in the agent's body  
-**Source**: "Bloated tool sets covering excessive functionality or creating
-ambiguous decision points. If humans can't definitively choose appropriate
-tools, agents cannot." (Context Engineering, p.5)  
-**Rationale**: Every tool definition consumes tokens in the agent's context.
-Unused tools waste budget and create choice ambiguity.
+### Fix readiness
 
-### SD-RETURN: Sub-agent responses are condensed
+A fix is ready only when:
 
-**Severity**: warning  
-**Check**: Agent instructions specify expected output format with clear
-scope (e.g., "report in under 200 words", structured tables, specific fields)  
-**Source**: "Specialized sub-agents handle focused tasks with clean context
-windows. Main agents coordinate high-level plans while subagents perform deep
-work, returning condensed summaries (1,000-2,000 tokens)."
-(Context Engineering, p.10)  
-**Rationale**: Raw exploration results from sub-agents flood the parent
-context. Condensed structured output preserves signal.
-
----
-
-## Architecture (AR-\*) — Structural effectiveness
-
-### AR-HOOK-DETERMINISTIC: Deterministic rules in hooks, guidance in CLAUDE.md
-
-**Severity**: error  
-**Check**: Rules requiring 100% enforcement (linting, file protection,
-formatting) are implemented as hooks, not CLAUDE.md lines  
-**Source**: "Unlike CLAUDE.md instructions which are advisory, hooks are
-deterministic and guarantee the action happens." (Best Practices)  
-**Rationale**: CLAUDE.md instructions can be ignored under context pressure.
-Hooks execute unconditionally. Misplacement means critical rules fail silently.
-
-### AR-SKILL-DEMAND: Domain knowledge in skills, universal rules in CLAUDE.md
-
-**Severity**: warning  
-**Check**: CLAUDE.md does not contain domain-specific workflows or specialized
-knowledge that would be better served as an on-demand skill  
-**Source**: "CLAUDE.md is loaded every session, so only include things that
-apply broadly. For domain knowledge or workflows that are only relevant
-sometimes, use skills instead. Claude loads them on demand without bloating
-every conversation." (Best Practices)  
-**Rationale**: Moving domain knowledge from CLAUDE.md to skills reduces
-startup token budget by loading it only when relevant.
-
-### AR-MODEL-MATCH: Model assignment matches task complexity
-
-**Severity**: warning  
-**Check**: Model tiers align with task demands:
-
-- `opus`: Complex multi-dimensional reasoning, deep analysis, security review
-- `sonnet`: Standard implementation, code review, structured workflows
-- `haiku`: Lightweight tasks, documentation, simple scaffolding  
-  **Source**: "Smarter models require less prescriptive engineering."
-  (Context Engineering, p.12) — Opus/Sonnet system cards document distinct
-  behavioral characteristics.  
-  **Rationale**: Over-provisioning wastes cost and may introduce over-exploration
-  (Opus). Under-provisioning risks quality failures on complex tasks.
-
-### AR-VERIFY: Skills include self-verification steps
-
-**Severity**: error  
-**Check**: Skills that produce code, config, or artifacts include a
-verification step (tests, lint, build, diff check)  
-**Source**: "Claude performs dramatically better when it can verify its own work.
-This is the single highest-leverage thing you can do." (Best Practices)  
-**Rationale**: Without verification, Claude produces plausible-looking output
-that may not actually work. Verification closes the feedback loop.
-
-### AR-ISOLATION: Each agent has focused, single responsibility
-
-**Severity**: warning  
-**Check**: Agent body addresses one concern area; scope section explicitly
-excludes adjacent concerns  
-**Source**: "Clear separation of concerns — detailed search context remains
-isolated within subagents." (Context Engineering, p.10)  
-**Rationale**: Kitchen-sink agents accumulate context from multiple concerns,
-degrading performance on each. Focused agents start with clean context.
-
----
-
-## Anti-Patterns (AP-\*) — Known failure modes
-
-### AP-TRIGGER-OVERLAP: Multiple components with ambiguous trigger overlap
-
-**Severity**: error  
-**Check**: No two skills/agents have description trigger phrases that would
-match the same user prompt  
-**Source**: "If humans can't definitively choose appropriate tools, agents
-cannot." (Context Engineering, p.5)  
-**Rationale**: When multiple skills match a prompt, the model may pick the
-wrong one or waste tokens deciding. Each prompt pattern should map to
-exactly one component.
-
-### AP-SCOPE-UNBOUNDED: Agents without scope boundaries or exit criteria
-
-**Severity**: error  
-**Check**: Agents have explicit scope limits ("ONLY", "Do not", "exclusively")
-and conditions for stopping  
-**Source**: "You ask Claude to 'investigate' something without scoping it.
-Claude reads hundreds of files, filling the context." (Best Practices)  
-**Rationale**: Unbounded agents consume the entire context window exploring
-tangentially, leaving no room for useful work.
-
-### AP-OVER-SPECIFIED: Configuration is too long, causing rule amnesia
-
-**Severity**: warning  
-**Check**: CLAUDE.md >150 lines, skills >200 lines, agents >100 lines  
-**Threshold**: Soft limits — content density matters more than line count  
-**Source**: "Bloated CLAUDE.md files cause Claude to ignore your actual
-instructions!" (Best Practices) — "Context rot: as context window tokens
-increase, model accuracy retrieving that information decreases."
-(Context Engineering, p.3)  
-**Rationale**: Long instructions create the paradox of more rules leading to
-worse compliance. Shorter, denser instructions outperform.
+- the source file is known
+- the change is small and reversible
+- risky effects are named
+- validation is available or the gap is reported
+- user approval exists for fix mode
