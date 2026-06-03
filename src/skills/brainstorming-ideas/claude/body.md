@@ -85,7 +85,7 @@ If the user chooses history lookup, search claude-mem for topic keywords. Summar
 
 ## Failure handling
 
-- If the user asks for task sequencing, route to `spec-plan`.
+- If the user asks for task sequencing, state that it is outside this skill's scope.
 - If the user asks for generic technology research, route to `researching-web`.
 - If the user asks for docs-only work, route to `documenting-code`.
 - If the user stops mid-session, offer `BRAINSTORM PAUSED` or a short design note.

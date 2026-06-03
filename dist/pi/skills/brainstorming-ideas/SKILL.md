@@ -2,9 +2,8 @@
 description: Brainstorm ideas and stress-test draft plans before coding. Use when
   brainstorming, exploring approaches, designing a feature/API/flow, grilling or debating
   a bounded plan, challenging assumptions, or resolving design-blocking terminology.
-  NOT for implementation task breakdown; use spec-plan. NOT for generic technology
-  comparisons or best-practice research; use researching-web. NOT for docs updates;
-  use documenting-code.
+  NOT for implementation task breakdown. NOT for generic technology comparisons or
+  best-practice research; use researching-web. NOT for docs updates; use documenting-code.
 name: brainstorming-ideas
 ---
 
@@ -25,7 +24,7 @@ session collaborative, question-driven, and small enough to change direction.
 - Inspect code before asking when code can answer.
 - Offer 2-3 options with trade-offs and mark one recommendation.
 - Always allow a free-text or Other answer when options may not fit.
-- Cut speculative features and route task breakdown to `spec-plan`.
+- Cut speculative features and keep implementation task breakdown out of scope.
 
 ## Interactive questions
 
@@ -70,7 +69,7 @@ Use only for a bounded plan, trade-off, or assumption. If none is clear, ask for
 one. Read `references/grill-protocol.md` and follow it.
 
 Stay focused on design quality and assumptions, not implementation task breakdown.
-Route task sequencing to `spec-plan`.
+If the user asks for task sequencing, state that it is outside this skill's scope.
 
 ## Surface requirements and assumptions
 

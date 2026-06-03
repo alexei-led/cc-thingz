@@ -8,9 +8,9 @@
 [![Codex CLI](https://img.shields.io/badge/Codex_CLI-skill_export-10A37F)](https://developers.openai.com/codex/plugins)
 [![Gemini CLI](https://img.shields.io/badge/Gemini_CLI-skill_export-4285F4)](https://geminicli.com/docs/extensions)
 [![Plugins](https://img.shields.io/badge/plugins-7-green)](src/plugins/)
-[![Skills](https://img.shields.io/badge/skills-31-green)](src/plugins/)
+[![Skills](https://img.shields.io/badge/skills-25-green)](src/plugins/)
 
-A portable skill suite for **Pi**, **Claude Code**, **Codex CLI**, and **Gemini CLI** — 31 skills, 3 agents, and 10 hooks. One source of truth in `src/`, compiled to platform-optimized output for each tool. Supports [AGENTS.md](https://agents.md)-compatible tools too. Built over 6+ months of daily use and continuous refinement.
+A portable skill suite for **Pi**, **Claude Code**, **Codex CLI**, and **Gemini CLI** — 25 skills, 3 agents, and 10 hooks. One source of truth in `src/`, compiled to platform-optimized output for each tool. Supports [AGENTS.md](https://agents.md)-compatible tools too. Built over 6+ months of daily use and continuous refinement.
 
 ## Why This Exists
 
@@ -18,7 +18,7 @@ AI coding tools are powerful out of the box, but specialized workflows need spec
 
 - **Code review** with evidence-backed severity scoring, depth modes, optional team/external review, and stable review-score rubrics
 - **Smart hooks** that auto-suggest skills, lint after edits, protect secrets, and run tests
-- **Spec-driven development** with structured requirements, tasks, and a CLI for project management
+- **Spec-driven development** with a lightweight one-task-at-a-time loop, markdown task state, checkpoints, and validation
 - **Infrastructure ops** with validated K8s, Terraform, and Helm deployments
 - **Developer utilities** including git-flow hygiene, docs lookup, web research, and brainstorming
 
@@ -231,7 +231,7 @@ Agent({
 | `notify.ts`            | macOS notification via `terminal-notifier` on completion (requires Homebrew `terminal-notifier`) |
 
 **Pi gets**: all 3 agents — `engineer`, `reviewer`, `advisor` (requires
-`@tintinweb/pi-subagents`) — all 31 skills, and 8 bundled extensions. Each
+`@tintinweb/pi-subagents`) — all 25 skills, and 8 bundled extensions. Each
 agent has a Pi-specific frontmatter overlay tuned for OpenAI Codex models
 (`openai-codex/gpt-5.5`), thinking levels, tool restrictions, and turn limits.
 `advisor` ships to Codex, Gemini, and Pi; Claude is excluded because it has a
@@ -299,14 +299,14 @@ All agents and several skills optionally integrate with [claude-mem](https://git
 | Plugin                                                 | Skills | Agents | Description                                                                       | Depends on  |
 | ------------------------------------------------------ | ------ | ------ | --------------------------------------------------------------------------------- | ----------- |
 | [**dev-flow**](src/plugins/dev-flow/plugin.yaml)       | 6      | 2      | Fix, refactor, review, document, commit; `engineer` and `reviewer` roles; 6 hooks | —           |
-| [**spec-flow**](src/plugins/spec-flow/plugin.yaml)     | 7      | 2      | Spec-driven development: requirements, tasks, and planning workflows              | dev-flow    |
+| [**spec-flow**](src/plugins/spec-flow/plugin.yaml)     | 1      | 2      | Lightweight spec loop: plan one slice, execute one task, checkpoint or close      | dev-flow    |
 | [**git-flow**](src/plugins/git-flow/plugin.yaml)       | 3      | 0      | Worktrees, cleanup, hooks, Gitleaks, `.gitignore`, git config, and guardrails     | —           |
 | [**browser**](src/plugins/browser/plugin.yaml)         | 2      | 1      | Browser testing, validation, screenshots, recordings, and quick automation        | programming |
 | [**infra-ops**](src/plugins/infra-ops/plugin.yaml)     | 2      | 1      | Kubernetes, Terraform, Helm, GitHub Actions, AWS, GCP                             | —           |
 | [**programming**](src/plugins/programming/plugin.yaml) | 5      | 1      | Idiomatic development across Go, Python, TypeScript, shell, and web               | dev-flow    |
 | [**discovery**](src/plugins/discovery/plugin.yaml)     | 6      | 1      | Research, docs lookup, instruction review, reasoning, and agent config audits     | —           |
 
-**Totals**: 31 skills, 2 plugin-owned role agents (`engineer`, `reviewer`), 10 hooks
+**Totals**: 25 skills, 2 plugin-owned role agents (`engineer`, `reviewer`), 10 hooks
 
 ## Skills
 

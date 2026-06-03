@@ -23,9 +23,8 @@ context: fork
 description: Brainstorm ideas and stress-test draft plans before coding. Use when
   brainstorming, exploring approaches, designing a feature/API/flow, grilling or debating
   a bounded plan, challenging assumptions, or resolving design-blocking terminology.
-  NOT for implementation task breakdown; use spec-plan. NOT for generic technology
-  comparisons or best-practice research; use researching-web. NOT for docs updates;
-  use documenting-code.
+  NOT for implementation task breakdown. NOT for generic technology comparisons or
+  best-practice research; use researching-web. NOT for docs updates; use documenting-code.
 name: brainstorming-ideas
 user-invocable: true
 ---
@@ -117,7 +116,7 @@ If the user chooses history lookup, search claude-mem for topic keywords. Summar
 
 ## Failure handling
 
-- If the user asks for task sequencing, route to `spec-plan`.
+- If the user asks for task sequencing, state that it is outside this skill's scope.
 - If the user asks for generic technology research, route to `researching-web`.
 - If the user asks for docs-only work, route to `documenting-code`.
 - If the user stops mid-session, offer `BRAINSTORM PAUSED` or a short design note.

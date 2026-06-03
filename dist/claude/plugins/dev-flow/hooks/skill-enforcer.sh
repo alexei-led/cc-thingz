@@ -161,50 +161,15 @@ if echo "$PROMPT_LOWER" | grep -qE '\bimprove\s*(my|the|these)?\s*tests?\b|\bref
 	skills+="improving-tests "
 fi
 
-# spec-status: Progress overview + orientation for spec-driven projects
-# Triggers: project status, progress, how far along, spec status,
-#           how does spec work, spec guide, spec methodology, spec workflow
-if echo "$PROMPT_LOWER" | grep -qE '\b(project|spec|task)\s*(status|progress|overview)\b|\bhow\s*(far|much|many|is)\s*(along|done|progress|left|remain|complete)\b|\bwhat.*(done|left|remain|progress|status)\b|\bshow\s*(me\s*)?(progress|status|overview)\b|\bhow.*project\s*(going|doing)\b|\bhow\s*does\s*spec\b|\bspec\s*(guide|help|methodology|workflow|reference)\b|\bspec[[:space:]-]driven\s*(guide|help|how)\b|\bwhat\s*(are|is)\s*(the)?\s*spec\s*(command|workflow|phase|skill)'; then
-	skills+="spec-status "
-fi
-
-# spec-init: Initialize .spec/ project structure
-# Triggers: init spec, set up spec, new spec project, start spec
-if echo "$PROMPT_LOWER" | grep -qE '\bspec[[:space:]-]?init\b|\b(init|initialize|setup|set[[:space:]-]up)\s*(a\s*)?spec\b|\bnew\s*spec\s*(project|folder|dir)\b|\bstart\s*(spec[[:space:]-]driven|a\s*spec)\b'; then
-	skills+="spec-init "
-fi
-
-# spec-interview: Requirement extraction with domain/out-of-scope context
-# Triggers: gather requirements, PRD, interview, out-of-scope triage
-if echo "$PROMPT_LOWER" | grep -qE '\b(requirements?|prd|product\s*requirements?)\b|spec[[:space:]-]?interview|interview\s*(me|for|about)|out[[:space:]-]?of[[:space:]-]?scope|triage\s*(issue|request|feature)'; then
-	skills+="spec-interview "
-fi
-
-# spec-plan: Create vertical-slice task plan
-# Triggers: implementation plan, break into tasks/issues, vertical slices
-if echo "$PROMPT_LOWER" | grep -qE 'spec[[:space:]-]?plan|implementation\s*plan|break\s*(this|it)?\s*(into)?\s*(tasks|issues|tickets)|vertical\s*slice|tracer\s*bullet|create\s*(tasks|issues)'; then
+# spec-flow: Lightweight spec-driven loop: plan one slice, execute one task,
+# checkpoint or close with evidence.
+# Triggers: spec status/help/init/plan/work/done, task-by-task spec flow,
+# vertical slices, checkpoints, durable task state.
+if echo "$PROMPT_LOWER" | grep -qE '\bspec[[:space:]-]?flow\b|\bspec[[:space:]-]?(status|progress|overview|guide|help|methodology|workflow|reference|init|new|plan|work|done)\b|\bspec[[:space:]-]driven\b|\b(task|project)\s*(status|progress|overview)\b|\bhow\s*(does|to)\s*spec\b|\bnext\s*(ready\s*)?(task|work)\b|\bwork\s*on\s*(the\s*)?(next|a)\s*task\b|\b(start|begin|continue|resume)\s*(spec\s*)?(work|task|implementation)\b|\b(mark|close|finish|complete)\s*(a\s*)?(spec\s*)?(task|ticket)\b|\bcheckpoint\s*(task|work|session)\b|\bvertical\s*slice\b|\btracer\s*bullet\b|\bbreak\s*(this|it)?\s*(into)?\s*(tasks|issues|tickets)'; then
 	# Plan review/grilling belongs to brainstorming-ideas, not task generation.
 	if ! echo "$PROMPT_LOWER" | grep -qE '\b(grill|stress[[:space:]-]?test|challenge|review)\b.*\bplan\b|\bplan\b.*\b(grill|stress[[:space:]-]?test|challenge|review)\b'; then
-		skills+="spec-plan "
+		skills+="spec-flow "
 	fi
-fi
-
-# spec-new: Create a single task or requirement from a template
-# Triggers: new task, new req, add a task, create task file
-if echo "$PROMPT_LOWER" | grep -qE '\b(new|add|create)\s*(a\s*)?(spec\s*)?(task|req|requirement)\b|spec[[:space:]-]?new\b|\badd\s*(a\s*)?task\s*to\s*spec\b'; then
-	skills+="spec-new "
-fi
-
-# spec-work: Main workflow - select, plan, implement, verify
-# Triggers: start/continue spec work, next task
-if echo "$PROMPT_LOWER" | grep -qE '\b(start|begin|continue|resume)\s*(spec\s*)?(work|task|implementation)\b|\bnext\s*(ready\s*)?(task|work)\b|\bwork\s*on\s*(the\s*)?(next|a)\s*task\b|\bspec[[:space:]-]?work\b|\bpick\s*up\s*(a\s*)?(new\s*)?task\b'; then
-	skills+="spec-work "
-fi
-
-# spec-done: Mark a task complete with evidence
-# Triggers: mark done, task complete, close task, finish task
-if echo "$PROMPT_LOWER" | grep -qE '\b(mark|close|finish|complete)\s*(a\s*)?(spec\s*)?(task|ticket)\b|\btask\s*(done|complete|finished|closed)\b|spec[[:space:]-]?done\b|\bmark.*done\b'; then
-	skills+="spec-done "
 fi
 
 # sequential-thinking: Externalized stepwise reasoning with revisions and branches
