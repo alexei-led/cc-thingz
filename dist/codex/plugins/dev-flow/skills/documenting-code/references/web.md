@@ -1,85 +1,56 @@
-# Web Documentation Slice
+# Web Documentation
 
-Language-specific documentation conventions for HTML/CSS/JS/HTMX. The host skill supplies workflow and verification — this file supplies only the web doc-comment conventions and examples.
+Use this only for HTML, CSS, JavaScript, HTMX, or browser-facing docs. The host
+skill owns scope, editing, and verification.
 
-## run tooling first
+## Human-facing web docs
 
-```bash
-npx html-validate . 2>&1 || true
-```
+- Explain what the user can do, then show the shortest useful example.
+- Keep setup, routes, UI states, and browser requirements current.
+- Use screenshots or Mermaid only when existing docs support them and they answer
+  a real layout, state, or flow question.
+- Match existing visual style instead of inventing fonts, colors, or custom sections.
 
-Include tool output in findings. If not installed, skip and proceed with manual review.
+## Comments
 
-## comment conventions
+Keep comments that explain:
 
-Comments explain why, not what.
+- non-obvious event ordering
+- browser quirks
+- accessibility constraints
+- HTMX target or trigger choices that are not self-evident
+- complex regex or layout hacks
 
-Delete:
+Delete comments that restate selectors, loops, obvious DOM operations, or CSS property names.
+
+Good:
 
 ```javascript
-// Loop through users
-users.forEach((user) => process(user));
-```
-
-Keep:
-
-```javascript
-// Sequential to avoid rate limit
-for (const user of users) {
-  await process(user);
+// Sequential to avoid API rate limiting during search-as-you-type.
+for (const query of queuedQueries) {
+  await search(query);
 }
 ```
 
-Comment when:
+## Accessibility docs
 
-- logic is non-obvious
-- working around a browser quirk
-- explaining a complex regex
+Document accessibility behavior when it is part of the user contract: keyboard
+shortcuts, focus behavior, ARIA labels, announcements, and reduced-motion support.
+Do not add redundant ARIA guidance when semantic HTML already explains behavior.
 
-Do not comment:
+## Tests
 
-- obvious code
-- every function
+Avoid comments in browser tests unless they explain timing, external browser
+behavior, or why a specific accessibility edge case matters.
 
-## ARIA labels
+## Checks
 
-Icon buttons and form hints require explicit ARIA attributes.
+Prefer configured project checks. If available, use narrow web checks:
 
-Required patterns:
-
-```html
-<!-- Icon button — label describes the action, not the icon -->
-<button aria-label="Close"><svg>...</svg></button>
-
-<!-- Form hint — input references the hint element by ID -->
-<input id="email" aria-describedby="email-hint" />
-<span id="email-hint">We won't share your email</span>
+```bash
+npx html-validate .
+npm run lint
+npm run test
 ```
 
-Do not:
-
-- Add redundant ARIA to semantic HTML that already conveys its role
-- Use `aria-hidden` on focusable elements
-
-## HTMX comments
-
-Mark HTMX targets and explain non-obvious triggers.
-
-```html
-<!-- HTMX target: /api/search -->
-<div id="results"></div>
-
-<!-- Debounced search: waits 300ms after typing stops -->
-<input
-  hx-get="/api/search"
-  hx-trigger="keyup changed delay:300ms"
-  hx-target="#results"
-/>
-```
-
-## failure handling
-
-- If the HTML validator is not installed, skip and proceed with manual review; note this in findings.
-- If an ARIA issue cannot be confirmed without running the page in a browser, flag it as "needs verification" rather than a definite finding.
-- If comments are absent entirely, note it only for non-obvious logic sections — do not flag well-named, self-evident code.
-- If a file has no HTML (pure JS/CSS only), skip ARIA checks and focus on comment quality.
+If a browser is needed to verify behavior, state the gap instead of guessing.

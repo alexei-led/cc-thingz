@@ -7,13 +7,14 @@ allowed-tools:
   - TaskList
   - AskUserQuestion
   - Read
+  - Edit
+  - Write
   - Bash(git diff *)
   - Bash(git status *)
-  - Bash(make *)
-  - Bash(npm *)
-  - Bash(go test *)
-  - Bash(pytest *)
-  - Bash(uv *)
+  - Bash(markdownlint-cli2 *)
+  - Bash(make lint-markdown)
+  - Bash(make validate)
+  - Bash(make check)
   - Bash(ctx7 *)
   - Bash(npx ctx7@latest *)
   - Bash(bunx ctx7@latest *)

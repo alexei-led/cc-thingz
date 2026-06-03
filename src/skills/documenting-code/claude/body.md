@@ -1,116 +1,120 @@
 # Documentation Update
 
-Scope: documentation files only. Not for code-quality review (use reviewing-code).
+Scope: documentation files, agent instruction files, and useful code comments
+only. Not for code-quality review; use `reviewing-code` for that.
 
-Update project documentation to reflect current code state. Do not delete or overwrite existing docs without confirmation. If verification fails or required evidence is unavailable, report the failure instead of claiming docs are current.
+Update docs from implementation facts. Identify the reader first. Apply edits
+only when write tools are available. If evidence or validation is missing, report
+the gap instead of claiming docs are current.
 
-## Roles
+## Tool use
 
-Detect your capability from your tools, not from prose:
+- Use Read for implementation, tests, and existing docs.
+- Use Edit for targeted doc changes. Use Write only for new docs or full rewrites.
+- Use Bash only for status, diffs, markdown lint, docs checks, and narrow repo validation.
+- Use TaskCreate only for a large documentation audit that needs a bounded read-only mapping pass. Verify the returned claims before editing.
+- Use AskUserQuestion only when scope or reader is ambiguous.
 
-- Write-capable role (engineer): run the 4-phase flow below — apply the doc edits and verify.
-- Read-only role (reviewer): do not run the phases. You have no edit or Bash tools (no `git diff`). Work from the changed-file list the caller supplies, read the relevant code and existing docs, then emit the stale or missing docs as a proposal in the Reviewer Output contract at the end. Apply nothing; run nothing.
+## Reader model
 
-**Use TaskCreate / TaskUpdate** to track these 4 phases:
+Human reader:
 
-1. Determine documentation scope
-2. Analyze recent changes
-3. Analyze and update documentation
-4. Verify and report
+- Short, structured, readable, and useful.
+- Start with what the reader can do after reading.
+- Use examples close to the concept.
+- Use Mermaid diagrams only for non-trivial structure, flow, lifecycle,
+  ownership, or trade-offs.
+- Match existing docs style; do not invent custom fonts, colors, or visual design.
 
-## Phase 1: Determine Scope
+Agent reader:
 
-Ask one question at a time:
+- Concise operational instructions for LLMs.
+- Use headers, bullets, numbered steps, and exact output contracts.
+- Remove fluff, duplicate rules, generic knowledge, tables, diagrams, and visual polish.
+- Route scoring or quality review of instructions to `reviewing-instructions`.
 
-- **Doc scope** — What documentation should I update?
-  1. **Auto-detect** — scan for outdated docs based on recent changes
-  2. **README** — update project README
-  3. **API docs** — update API/function documentation
-  4. **All** — comprehensive documentation refresh
+Code reader:
 
-## Phase 2-3: Analyze and Update Documentation
+- Comments/docstrings explain contracts, constraints, invariants, side effects,
+  errors, or non-obvious choices.
+- Delete comments that restate code.
+- Avoid comments in tests unless they explain an essential external behavior or edge case.
 
-Use a documentation subagent when available; otherwise inspect and update docs directly.
+## Workflow
 
+1. Determine scope from the user request or changed files. Do not ask if clear.
+2. Read relevant code, tests, and existing docs.
+3. Choose reader type: human, agent, code, or mixed.
+4. Compare docs to current behavior. Code wins unless the user says docs are the contract.
+5. Update the smallest useful docs.
+6. Verify docs and runnable examples when practical.
+7. Report changed files, checks, and remaining issues.
+
+For large audits only, spawn one bounded read-only subagent with a narrow brief:
+map changed behavior, existing docs, stale sections, and missing docs. Require
+file paths and line evidence. Do not let the subagent edit.
+
+## What to update
+
+- README usage, setup, quick start, and release notes for user-visible changes.
+- API docs for parameter, output, error, side effect, or example changes.
+- Architecture docs for boundary, data-flow, ownership, deployment, or major trade-off changes.
+- Agent docs for skills, agents, hooks, commands, tools, routing, and operating rules.
+- Generated catalogs only through source files and generator scripts.
+- Code comments only when they add useful contract or reasoning value.
+
+## Verification
+
+Prefer the narrowest relevant checks:
+
+```bash
+git diff --stat
+markdownlint-cli2 '**/*.md'
+make lint-markdown
+make validate
 ```
-Task with engineer agent:
-"Update documentation for this project.
 
-## Your Task
+Run documented commands or examples when practical. If a check cannot run, state why.
 
-1. Analyze current state:
-   - Run `git diff --name-only HEAD~5` for recent changes
-   - Find existing docs: `find . -name '*.md' -o -name 'doc.go'`
-   - Check project structure and dependencies
+## Output
 
-2. Scope: {user's choice from Step 1}
-
-3. Update focus:
-   - Accurate function/method documentation
-   - README sections matching current state
-   - API endpoint documentation
-   - Architecture notes if significant changes
-
-4. Verify:
-   - No broken links
-   - Code examples compile/run
-   - Markdown renders correctly
-
-## Output Format
-
-DOCUMENTATION UPDATE
-====================
-Updated:
-- file.md (what changed)
-- pkg/doc.go (added GoDoc)
-
-Verified: All links valid, examples compile"
-```
-
-## Phase 4: Verify and Present Summary
-
-Write-capable role only — a read-only reviewer skips Phase 4 and uses the Reviewer Output contract instead.
-
-**Independent verification** (do not trust the agent's self-report):
-
-When describing parent verification, explicitly mention checking runnable code examples or documented commands when practical. If examples/commands cannot be run, state why.
-
-1. Run `git diff --stat` to confirm files were actually changed
-2. For each changed file, verify the diff looks correct (no broken links, no placeholder text)
-3. Run or compile documented code examples and commands when practical; if not practical, state why the check was skipped
-4. If no files changed, report that no documentation modifications were needed
-
-If no recent changes are found or documentation scope is unclear, ask the user what to document rather than generating speculative documentation.
-
-Report using this format:
-
-```
+```markdown
 ## Documentation Update
 
 Updated:
-- <file> — <one-line change summary>
+
+- `path` — <what changed and reader served>
 
 Verified:
-- git diff confirmed N files changed
-- <check>: passed / skipped (<reason>)
 
-Issues: <issue> or "none"
+- <check>: passed | skipped (<reason>)
+
+Issues: none | <remaining issue>
 ```
 
-## Reviewer Output
+## Reviewer output
 
-Read-only role only. You applied nothing and ran nothing — emit the stale or missing docs as a proposal:
+Read-only role only. Apply nothing and run nothing.
 
-```text
+```markdown
 ## Proposed Changes
 
 ### Change 1: <brief description>
 
 File: `path/to/doc`
 Action: CREATE | MODIFY | DELETE
+Reader: human | agent | code
 
 Code:
-<the doc content, with enough surrounding context to locate it>
+<doc content or patch-sized replacement with enough context>
 
-Rationale: <which code change makes this doc stale or missing>
+Rationale: <code fact that makes this stale or missing>
 ```
+
+## Failure handling
+
+- Ambiguous scope: ask one scoped question.
+- No recent changes: ask what to document instead of inventing docs.
+- Generated doc target: edit source and rebuild, not generated output.
+- Docs/code conflict: report it; update docs to code unless user says docs are intended contract.
+- Verification failure: quote the exact failure and do not claim success.
