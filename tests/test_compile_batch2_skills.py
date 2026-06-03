@@ -52,7 +52,7 @@ BATCH_2_CLAUDE_ONLY = ("deploying-infra",)
 SWAP_SKILLS_AND_CLAUDE_TOKENS = {
     "browser-automation": "claude-in-chrome",
     "exploring-repos": "mcp__deepwiki__",
-    "evolving-config": "TaskCreate",
+    "evolving-config": "WebFetch",
     "documenting-code": "TaskCreate",
     "fixing-code": "TaskCreate",
     "improving-tests": "TaskCreate",
