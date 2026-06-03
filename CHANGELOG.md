@@ -8,6 +8,22 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [5.4.0] - 2026-06-03
+
+### Changed
+
+- Collapsed the spec-driven workflow from seven public spec skills into one lightweight `spec-flow` skill that plans one slice, executes one task, checkpoints or closes, and repeats.
+- Replaced the multi-skill `specctl` helper with a smaller state-only CLI for `.spec/` artifacts, readiness, sessions, checkpoints, validation, dependencies, and completion evidence.
+- Updated spec-flow documentation, method guidance, README catalog counts, and generated Claude, Codex, Gemini, and Pi artifacts for the 25-skill catalog.
+
+### Removed
+
+- Removed the separate `spec-init`, `spec-interview`, `spec-plan`, `spec-new`, `spec-status`, `spec-work`, and `spec-done` skills from the installable spec-flow plugin.
+
+### Fixed
+
+- Updated spec-related skill-enforcer routing and tests to match the single `spec-flow` skill while keeping neighboring skills independent.
+
 ## [5.3.0] - 2026-06-03
 
 ### Changed
