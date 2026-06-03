@@ -65,7 +65,7 @@ Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allo
 
 ## Infrastructure & Operations
 
-- **deploying-infra** — Validate and deploy Kubernetes, Terraform, Helm, Kustomize, GitHub Actions, and Docker configs
+- **deploying-infra** — Validate infrastructure changes and, after explicit confirmation, apply Terraform, Helm, Kustomize, or Kubernetes deployments; Dockerfiles and GitHub Actions are validate-only
 - **operating-infra** — Author, inspect, troubleshoot, and review infrastructure across IaC, Kubernetes, cloud resources, containers, CI/CD, and Linux hosts
 
 ## Git Workflow
@@ -79,7 +79,7 @@ Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allo
 - **brainstorming-ideas** — Brainstorm ideas and stress-test draft plans or trade-offs before coding
 - **evolving-config** — Audit AI coding-agent configuration; review-only by default, explicit approval for fixes
 - **looking-up-docs** — Find current docs via Context7, official registries/docs, Perplexity/web, and GitHub fallback
-- **researching-web** — Web research via Perplexity AI
+- **researching-web** — Web research via platform web tools with grounded source selection, source-following, and stale-source reporting
 - **reviewing-instructions** — Review and score AI-facing instruction files with scoped lint, model resolution, scoring caps, confidence, and calibration anchors
 - **sequential-thinking** — Structured stepwise reasoning with explicit revisions and branches
 

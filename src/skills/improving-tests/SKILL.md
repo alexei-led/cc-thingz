@@ -19,6 +19,10 @@ Detect capability from tools:
 
 - Write-capable role: inspect tests, apply changes, and run verification.
 - Read-only role: inspect supplied files/output and emit changes in the Proposed Changes contract. Apply nothing; run nothing.
+- Missing key tool or permission: stop with Blocked and ask for the exact artifact, access, or approval needed.
+
+Use an interactive question tool when available for mode selection, missing scope,
+missing framework approval, or unsafe test-stack choices.
 
 ## Route elsewhere
 
@@ -28,6 +32,7 @@ Do not use this for:
 - production-code refactors → `refactoring-code`
 - non-test code review → `reviewing-code`
 - new feature implementation unless the user asked for TDD
+- browser-only UI investigation without a test-improvement goal → `browser-automation`
 
 ## References
 
@@ -48,6 +53,8 @@ Use generic rules only for unsupported languages.
 - `tdd`: one red-green-refactor slice at a time
 - `full`: review, refactor, and add coverage
 
+If mode is missing, ask one question with these options.
+
 ## Choose the seam
 
 Test through the contract that users or adjacent modules rely on:
@@ -56,10 +63,10 @@ Test through the contract that users or adjacent modules rely on:
 - Integration seam when behavior depends on real wiring: database, filesystem, HTTP, queue, cache, framework routing, serialization, or config.
 - Unit seam when behavior is pure, local, deterministic, and cheap to exercise.
 
-Use graph tools when they help choose the seam or risk:
+Use graph tools only when available and when they help choose the seam or risk:
 
 - GitNexus: use query/context to find flows around a behavior; use impact or detect-changes to choose regression tests for changed symbols and affected processes.
-- codegraph: check status first; if fresh, use affected/context to find callers, high fan-in surfaces, and modules that need regression coverage.
+- codegraph: check freshness first; if fresh, use affected/context to find callers, high fan-in surfaces, and modules that need regression coverage.
 - Stale graph indexes are not evidence. Refresh if allowed; otherwise report the gap and use search, coverage output, and source reads.
 
 ## Test rules
@@ -71,6 +78,7 @@ Use graph tools when they help choose the seam or risk:
 - Use coverage to find gaps; do not write low-value assertions just to raise a number.
 - Delete shallow or duplicate tests once stronger public-boundary tests cover the behavior.
 - Extract helpers only after repeated setup or assertions make tests harder to read.
+- Follow project conventions before introducing new frameworks, helpers, or generators.
 
 ## TDD and characterization
 
@@ -94,7 +102,7 @@ Look for:
 
 - tests coupled to private helpers, internals, or incidental call order
 - mocks hiding real behavior or contracts
-- duplicate scenario matrices that should be parameterized
+- duplicate scenario matrices that should be parameterized when readability stays high
 - missing business, error, edge, concurrency, or permission cases
 - flaky tests from time, randomness, ordering, shared state, or real external services
 - slow tests that could move down a seam without losing confidence
@@ -105,6 +113,8 @@ Preferred consolidation:
 - Go: table-driven tests with subtests.
 - Python: parametrized pytest cases.
 - TypeScript: `it.each` or equivalent project pattern.
+
+Do not force consolidation when separate tests make distinct behavior clearer.
 
 ## Verification
 
@@ -117,7 +127,7 @@ bun test
 ```
 
 Use coverage commands only when coverage mode or review needs them. Report skipped
-checks with reasons.
+checks with exact reasons.
 
 ## Output
 
@@ -136,24 +146,25 @@ Key improvements:
 - path:line — change
 
 Verification:
-- <command> — pass/fail
+- <command> — pass/fail/skipped with reason
 ```
 
-Reviewer:
+Reviewer or blocked:
 
 ```text
-## Proposed Changes
+## Proposed Changes | BLOCKED
+
+Blocker:
+- <missing artifact, framework, tool, permission, or safe seam>
 
 ### Change 1: <brief description>
 
 File: `path/to/test_file`
 Action: CREATE | MODIFY | DELETE
-
-Code:
-<complete test code or changed region with enough context>
-
+Code: <complete test code or changed region with enough context>
 Rationale: <weak, missing, brittle, slow, or duplicate test this fixes>
 Verification: <command the applier should run>
 ```
 
-If no test framework exists, ask before adding one.
+If no test framework exists, ask before adding one. Do not claim clean without a
+passing check or an explicit skipped-check reason.

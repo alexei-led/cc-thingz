@@ -8,9 +8,26 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [5.3.0] - 2026-06-03
+
+### Changed
+
+- Reworked `documenting-code` around reader-aware documentation updates: human docs, agent-facing docs, code comments, and language-specific documentation guidance now stay grounded in code facts, use smaller doc deltas, and apply tighter Claude tool and workflow limits.
+- Reworked `brainstorming-ideas` to prefer interactive question tools over plain-text numbered menus, tightened the grill protocol, reduced the Claude overlay to platform-specific deltas, and added paused/routed output handling.
+- Reworked `deploying-infra` into a validate-first deployment workflow with explicit apply confirmation for every environment, validate-only handling for Dockerfiles and GitHub Actions, repo-detected deploy commands, stronger blocked/failure outputs, and more realistic validation checklists.
+- Reworked `fixing-code` so the Claude overlay and tool envelope now support read/edit/write/questioning flows, scoped one-defect fixes, blocked/proposed-change handling, and tighter route-away rules for browser-only debugging.
+- Reworked `improving-tests` so the Claude overlay can actually apply test changes, emits blocked/proposed-change outputs, follows convention-first language references, and uses leaner Go, Python, TypeScript, and Web test guidance without absolute rules.
+- Reworked `researching-web` around a single canonical `Research Result` output contract, task-driven web-tool selection, stronger source-grounding, explicit source-conflict handling, and stale-source-risk reporting.
+- Updated README and AGENTS catalog copy to match the 31-skill suite and the revised deployment and research skill scopes.
+
 ### Removed
 
 - Removed the low-use `exploring-repos` skill and DeepWiki routing. Public repo architecture questions now fall back to normal web research, docs lookup, GitHub CLI, or local exploration instead of a dedicated skill.
+
+### Fixed
+
+- Fixed the README skill-count badge so it matches the current 31-skill catalog.
+- Fixed instruction/tool drift across the updated skills by regenerating all target-specific `dist/` artifacts from `src/`.
 
 ## [5.2.0] - 2026-06-03
 

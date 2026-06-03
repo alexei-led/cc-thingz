@@ -1,9 +1,8 @@
 ---
-description: Web research via Perplexity and platform web tools. Use for technical
-  comparisons, recent facts, ecosystem news, best practices, standards, or questions
-  needing grounded web evidence. NOT for API syntax lookup or code examples — use
-  looking-up-docs for those. NOT for repo-specific questions — search local files
-  first.
+description: Web research via platform web tools. Use for technical comparisons, recent
+  facts, ecosystem news, best practices, standards, or questions needing grounded
+  web evidence. NOT for API syntax lookup or code examples — use looking-up-docs for
+  those. NOT for repo-specific questions — search local files first.
 name: researching-web
 ---
 
@@ -14,48 +13,68 @@ name: researching-web
 
 # Web Research
 
-Use the runtime's available web-retrieval tools for grounded external research.
-Prefer primary sources and current vendor docs.
+Use web tools for grounded external research. Prefer primary sources, official docs,
+and current evidence. Do not answer from memory when the user asked for research.
 
-## Platform tool selection
-
-- Simple factual question: use the platform's focused answer or search tool.
-- Source selection: search the web, then fetch or read the best official or primary sources when supported.
-- Broad investigation: use the platform's deep or asynchronous research tool when available.
-
-## Boundaries
+## Scope
 
 Use this for:
 
 - comparisons and trade-offs
 - recent facts and release behavior
 - standards and external best practices
-- vendor docs or public evidence
+- ecosystem, licensing, or market facts
+- vendor docs as evidence for non-syntax claims
 
-Do not use web tools for private code, secrets, credentials, proprietary data,
-or local code exploration. Use local search first for repo-specific questions.
+Do not use this for:
+
+- exact API syntax or code examples → `looking-up-docs`
+- repo-specific questions that local files can answer
+- private code, secrets, credentials, or proprietary data
+
+## Tool selection
+
+Choose tools by question type:
+
+- Simple factual question: use the platform's focused answer or search tool.
+- Source selection: search first, then fetch or read the best official or primary sources.
+- Broad investigation: use deep or asynchronous research when available.
+- Follow-up detail on a cited source: fetch the relevant source directly.
+
+Do not hardcode one provider as the answer for every question. Use the tool that
+best matches the question and the available runtime.
 
 ## Workflow
 
-1. Restate the research question and decide if it is simple or broad.
-2. For simple factual questions, use a focused answer query.
-3. For source selection, search first, then cite the best official or primary
-   sources from the returned results.
-4. For broad investigations, use deep or asynchronous research when available;
-   tell the user when the final report will arrive later.
-5. Compare claims against local project constraints before recommending changes.
-6. Report uncertainty and source gaps directly.
+1. Restate the research question and the decision it should inform.
+2. Decide whether the question is simple, source-selection, or broad investigation.
+3. Gather sources with the matching tool.
+4. Prefer primary or official sources when they can answer the question.
+5. Compare sourced facts against local project constraints before recommending changes.
+6. Separate sourced facts from recommendation or judgment.
+7. Report unknowns, stale-source risk, and gaps directly.
 
-## Failure Cases
+If the user asks for the workflow itself, describe the source-gathering plan and
+output structure; do not present an uncited recommendation as fact.
 
-- Web tools return no useful results: report the gap directly in the Gaps section; do not fabricate sources.
-- Question requires private code or credentials to answer: refuse the web query, answer from local context only, and note the limitation.
-- Deep research is unavailable: fall back to search plus focused answer queries and note the fallback.
+## Failure handling
 
-## Output Contract
+- No useful results: report the gap directly; do not fabricate sources.
+- Live web unavailable: say so explicitly and report that the answer is limited.
+- Question requires private code or credentials: refuse the web query and answer only from local context.
+- Deep research unavailable: fall back to search plus focused answer queries and note the fallback.
+- Sources conflict: describe the conflict, cite both sides, and avoid a confident recommendation unless one source is more authoritative or current.
+- Only secondary sources found: say that primary-source confidence is limited.
+- Source looks stale and recency matters: flag stale-source risk explicitly.
+
+## Output contract
 
 ```markdown
 ## Research Result
+
+### Research Question
+
+<question and decision it informs>
 
 ### Answer
 
@@ -63,13 +82,21 @@ or local code exploration. Use local search first for repo-specific questions.
 
 ### Evidence
 
-- <source title/url or grounded result> — <why it matters>
+- <source title/url> — <what it supports>
+
+### Recommendation
+
+<recommendation separated from sourced facts, or none>
 
 ### Fit For This Repo
 
 <what changes because of local constraints>
 
+### Unknowns and Stale-Source Risk
+
+<unknowns, conflicting sources, or recency risk>
+
 ### Gaps
 
-<any missing evidence>
+<any missing evidence or blocked retrieval>
 ```

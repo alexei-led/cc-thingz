@@ -1,71 +1,63 @@
 # Web Test Slice
 
-Language-specific test material for E2E tests with Playwright. The host skill supplies scope, workflow, and the output contract — this file supplies only the Playwright tooling, patterns, and focus-area checks.
+Use this only for browser, Playwright, HTMX, or DOM-flow test work. The host skill
+owns scope, workflow, and output.
 
-## Run tooling first
+## Commands
+
+Use project commands first. If Playwright is configured, safe discovery commands include:
 
 ```bash
-npx playwright test --list                  # list tests (or bunx)
-npx playwright test --reporter=list         # run only when explicitly asked (or bunx)
+npx playwright test --list
+bunx playwright test --list
 ```
 
-If Playwright is not configured, say so in the report rather than guessing.
+Run browser tests only when explicitly needed or requested:
+
+```bash
+npx playwright test --reporter=list
+bunx playwright test --reporter=list
+```
+
+If Playwright is not configured, say so instead of guessing.
 
 ## Locator strategy
 
-Prefer in this order:
+Prefer:
 
-1. `getByRole()` — semantic
-2. `getByLabel()` — forms
-3. `getByText()` — visible text
-4. `getByTestId()` — last resort
+1. `getByRole()`
+2. `getByLabel()`
+3. `getByText()`
+4. `getByTestId()` only when semantic queries cannot express the behavior
 
-Avoid XPath, deep CSS selectors, and generated IDs.
+Avoid XPath, deep CSS selectors, generated IDs, and sleeps.
 
-```javascript
-// GOOD
-await page.getByRole("button", { name: "Submit" }).click();
-await page.getByLabel("Email").fill("test@test.com");
+## Flow quality
 
-// BAD
-await page.click(".btn-primary");
-```
+- Test one user-visible flow per test.
+- Use descriptive names.
+- Prefer assertions that prove the user-visible outcome.
+- Delete tests that only prove a page loads when stronger flow tests exist.
+- For HTMX, assert the partial update or removed/added element, not internal events.
 
 ## Waiting
 
-Playwright auto-waits — do not add sleeps. Use `expect(locator).toBeVisible()` for assertions.
+Playwright auto-waits. Prefer assertions such as `expect(locator).toBeVisible()`
+or `not.toBeVisible()` over fixed timeouts.
 
-```javascript
-// GOOD
-await expect(page.getByText("Success")).toBeVisible();
+## Review focus
 
-// BAD
-await page.waitForTimeout(2000);
-```
+Flag:
 
-## Test quality
-
-- One flow per test
-- Descriptive names: `test('user can submit form')`
-- No duplicate tests
-- Delete pointless tests (tests that only check the page loads)
-
-## HTMX testing
-
-```javascript
-// Wait for HTMX to complete
-await page.getByRole("button", { name: "Load" }).click();
-await expect(page.getByText("Loaded content")).toBeVisible();
-
-// Check partial update
-await page.getByRole("button", { name: "Delete" }).click();
-await expect(page.getByRole("row", { name: "Item 1" })).not.toBeVisible();
-```
+- brittle selectors
+- fixed sleeps
+- tests with no assertions
+- duplicate page-load smoke tests
+- missing loading, error, empty, permission, or validation states
+- tests that require real external services when a fixture or route mock would suffice
 
 ## Failure handling
 
-- If Playwright is not configured, note it in the report and skip test execution steps.
-- If `playwright test --list` returns no tests, report that and do not make assumptions about test coverage.
-- If tests fail during execution (when explicitly asked to run), quote the failure output and identify whether the cause is a locator issue, timing issue, or test logic issue.
-- If test files exist but have no assertions, flag each as a finding — a test without assertions proves nothing.
-- If no issues are found, output "No issues found." — do not invent findings.
+- If tests fail, quote output and classify likely cause: locator, timing, app behavior, test logic, or environment.
+- If `--list` returns no tests, report that and do not infer coverage.
+- If no issues are found, say so; do not invent findings.

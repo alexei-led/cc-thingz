@@ -1,116 +1,74 @@
 # Fix and Diagnose Code
 
-Fix until clean. For hard bugs, diagnose before editing. No guessing. Confirm before any destructive command; never use `git reset --hard`, `git clean`, or force push as a fix.
+Follow the base skill. This Claude overlay only defines tool use and execution details.
 
-## Parse `$ARGUMENTS`
+Fix the requested defect or failing gate one verified issue at a time. Do not expand
+to unrelated failures without asking. No guessing.
 
-- `diagnose` or `investigate` → hard-bug workflow: feedback loop, repro, hypotheses, probes, regression test.
-- `team` → parallel analysis agents challenge root causes before fixes.
+## Arguments
 
-Use TaskCreate / TaskUpdate to track:
+- `diagnose` or `investigate`: use the hard-bug workflow with hypotheses and probes.
+- `team`: spawn read-only analysis agents to challenge root cause before editing.
 
-1. Run validation or build a repro
-2. Analyze root causes
-3. Fix one issue at a time
-4. Verify after each fix
-5. Final verification and cleanup
+Use `TaskCreate` and `TaskUpdate` when the fix has more than two steps:
 
-## Phase 1: Feedback Loop First
+1. Reproduce or run the failing gate.
+2. Read the failing path.
+3. Diagnose root cause.
+4. Patch one issue.
+5. Verify narrow and broad checks.
+6. Clean up probes.
 
-For lint/build/test failures, run validation:
+## Tool order
 
-```bash
-make lint 2>&1 | head -150
-make test 2>&1 | head -150
-```
+1. Run the smallest known failing command or project gate.
+2. Use `Read`, `Grep`, and `Glob` to inspect the exact failing path.
+3. Use `AskUserQuestion` if logs, payloads, access, repro steps, environment, or instrumentation approval are missing.
+4. Use `Edit` for existing files and `Write` only for new files or complete rewrites.
+5. Run the narrow repro after each patch.
+6. Run the relevant broader check before final output.
 
-No Makefile? Detect language:
+Do not use destructive git commands. Do not use `--no-verify`.
 
-- Go: `golangci-lint run ./... 2>&1 | head -150 && go test -race ./... 2>&1 | head -150`
-- Python: `ruff check . 2>&1 | head -150 && pytest --tb=short 2>&1 | head -150`
-- TypeScript: `bun lint 2>&1 | head -150 && bun test 2>&1 | head -150`
-- Web: `bunx eslint "**/*.js" 2>&1 | head -100 && bunx stylelint "**/*.css" 2>&1 | head -100`
+## Repro commands
 
-If all checks pass: report `All checks pass` and stop.
-
-For reported bugs or `diagnose`/`investigate`, build a fast, deterministic pass/fail signal before editing. Try, in order:
-
-1. Failing unit/integration/e2e test at the right seam.
-2. CLI or HTTP script with fixture input.
-3. Playwright/headless browser script for UI bugs.
-4. Replay captured payload/log/trace.
-5. Throwaway harness around the smallest real code path.
-6. Property/fuzz loop for intermittent wrong output.
-7. `git bisect run` harness for regressions.
-8. Human-in-the-loop script if manual steps are unavoidable.
-
-Do not proceed to fixes until the loop reproduces the user's symptom. If no loop is possible, stop and ask for access, logs, HAR/core dump, screen recording with timestamps, or permission to add temporary instrumentation.
-
-## Phase 2: Analyze Root Causes
-
-Read the failing output and relevant files. If claude-mem is available, search for prior gotchas on failing files.
-
-For straightforward check failures, catalog every distinct issue:
-
-- file:line
-- exact error/test failure
-- tool that reported it
-- priority: critical / important / minor
-
-For hard bugs, generate **3–5 ranked falsifiable hypotheses** before testing any one of them:
-
-```text
-If <cause> is true, then <probe/change> will make <specific symptom> disappear or change.
-```
-
-Avoid testing only the first plausible hypothesis; that anchors the fix on guesswork.
-
-If `team` is set, spawn relevant language QA/test/implementation agents in parallel. Agents analyze only; they must not edit. Ask them for root cause, evidence, suggested fix, priority, and confidence.
-
-## Phase 3: Instrument Carefully
-
-Probe one hypothesis at a time.
-
-- Prefer debugger/REPL inspection when available.
-- Otherwise add targeted logs at boundaries that distinguish hypotheses.
-- Tag temporary logs with a unique prefix like `[DEBUG-a4f2]`.
-- For performance regressions: measure baseline first, then bisect/profile. Do not fix from guesswork.
-
-## Phase 4: Fix One Issue at a Time
-
-For each issue, in priority order:
-
-1. Read the exact code path.
-2. Apply the smallest root-cause fix.
-3. Add or update a regression test at the correct seam when possible.
-4. Run the narrow check.
-5. Run broader lint/test before moving on.
-
-If the only available test seam is too shallow, say so. Do not write a fake-confidence test that only proves a helper works while the real bug path stays uncovered.
-
-If a fix causes new failures, revert or adjust it before touching the next issue.
-
-## Phase 5: Final Verification and Cleanup
-
-Required before done:
-
-- Original repro no longer reproduces.
-- Regression test passes, or missing test seam is explicitly reported.
-- Full validation passes.
-- All `[DEBUG-...]` probes are removed.
-- Throwaway harnesses are deleted or clearly moved into test fixtures.
-
-Run:
+Prefer configured project commands. Examples:
 
 ```bash
-make lint && make test
+make lint
+make test
+go test ./...
+ruff check .
+pytest --tb=short
+bun test
+npm test
 ```
 
-Or language equivalents.
+Use only commands supported by the repo and available tools. Browser-only debugging
+belongs in `browser-automation` unless a cheaper CLI/unit signal exists.
 
-Loop back to Phase 2 if anything still fails.
+## Hard-bug mode
+
+Before editing, write 3-5 ranked falsifiable hypotheses. Probe one at a time. If
+you add temporary logs, tag them with `[DEBUG-<short-id>]` and remove them before
+final output.
+
+If claude-mem is available, search for prior gotchas on failing files. Treat memory
+as a hint, not proof.
+
+If `team` is set, agents analyze only. Ask for root cause, evidence, suggested fix,
+priority, and confidence. Verify their claims before editing.
+
+## Scope control
+
+- If all checks pass and no bug is reproduced, report that and ask for a repro artifact.
+- If the failing gate contains unrelated failures, fix the requested issue first and ask before expanding.
+- If the only test seam is too shallow, say so; do not create fake-confidence tests.
+- If a patch causes new failures, diagnose that failure before continuing.
 
 ## Output
+
+Use `FIX COMPLETE` for applied fixes:
 
 ```text
 FIX COMPLETE
@@ -122,13 +80,16 @@ Remaining: Z
 Status: CLEAN | NEEDS ATTENTION
 
 Root cause:
-- <short verified cause>
+- <verified cause and evidence>
 
 Changes:
 - file:line — fix
 
 Verification:
-- <command> — pass/fail
+- <command> — pass/fail/skipped with reason
 ```
 
-If unresolved, state the blocker and the exact artifact/access needed. Do not pretend clean.
+Use `BLOCKED` or `Proposed Changes` when tools, access, permission, or user input
+prevents applying the fix. Include the exact missing artifact or permission needed.
+
+Do not claim clean without a passing check or explicit skipped-check reason.

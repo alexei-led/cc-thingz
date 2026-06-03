@@ -5,15 +5,23 @@ allowed-tools:
 - TaskCreate
 - TaskUpdate
 - TaskList
-- Bash(go test *)
-- Bash(pytest *)
-- Bash(bun test *)
-- Bash(npm test *)
 - Read
 - Grep
 - Glob
 - LS
+- Edit
+- Write
 - AskUserQuestion
+- Bash(go test *)
+- Bash(go tool *)
+- Bash(golangci-lint *)
+- Bash(pytest *)
+- Bash(uv run pytest *)
+- Bash(bun test *)
+- Bash(bun run *)
+- Bash(npm test *)
+- Bash(npx playwright *)
+- Bash(bunx playwright *)
 argument-hint: '[review|refactor|coverage|tdd|full]'
 context: fork
 description: Improve test design and coverage with behavior-focused tests, useful
@@ -27,112 +35,78 @@ user-invocable: true
 
 # Test Improvement
 
-Improve tests by making them behavioral, lean, and useful. Tests are a design tool, not a line-count sport.
+Follow the base skill. This Claude overlay only defines tool use and execution details.
 
-Use TaskCreate / TaskUpdate to track:
+Improve tests through public behavior seams. Do not inflate coverage with low-value
+assertions. Do not change production behavior unless the selected TDD slice requires it.
 
-1. Choose mode
-2. Explore test structure
-3. Run coverage or failing-test loop
-4. Review with language agent
-5. Apply improvements one cluster at a time
-6. Verify and report
+## Arguments
 
-## Phase 1: Choose Mode
+- `review`: find weak, duplicate, brittle, missing, slow, or flaky tests.
+- `refactor`: simplify tests without changing covered behavior.
+- `coverage`: add useful tests for uncovered business behavior or error paths.
+- `tdd`: one red-green-refactor slice at a time.
+- `full`: review, refactor, and add coverage.
 
-`$ARGUMENTS`:
+If mode is missing, use `AskUserQuestion` with those options. Ask before adding a
+new test framework.
 
-- `review` → identify weak, duplicate, brittle, or missing tests
-- `refactor` → combine to table-driven/parametrized/test.each, remove waste
-- `coverage` → add tests for uncovered business behavior
-- `tdd` → red-green-refactor loop for a feature or bug
-- `full` → review + refactor + coverage
-- empty → ask what to do
+Use `TaskCreate` and `TaskUpdate` when the session has more than two steps:
 
-If empty, ask one question at a time with options: review existing, refactor tests, fill coverage gaps, TDD loop, or full improvement.
+1. Choose mode and scope.
+2. Inspect test structure and project conventions.
+3. Select behavior seam.
+4. Apply one cluster or one TDD slice.
+5. Verify and report.
 
-## Testing Principles
+## Tool order
 
-- Test behavior through public interfaces, not implementation details.
-- The module interface is the test surface.
-- Mock only system boundaries: external APIs, network, time, randomness, filesystem, subprocesses.
-- Do not mock your own internal collaborators just to make tests easy.
-- Prefer integration-style tests when they give a clear, stable signal.
-- One logical assertion per test case; multiple property checks are fine after one setup.
-- Delete old shallow tests once deeper interface tests cover the behavior.
-- No pointless tests for getters, constructors, default props, or generated glue.
+1. Use `Read`, `Grep`, `Glob`, and `LS` to find tests, fixtures, helpers, and nearby patterns.
+2. Load only matching language references.
+3. Run the narrow test or coverage command only when it helps the selected mode.
+4. Use `Edit` for existing tests and `Write` only for new files.
+5. Run the relevant verification before final output.
 
-## Phase 2: Background Exploration
+Use direct reads/search for small scopes. Spawn read-only agents only for broad or
+mixed-language audits.
 
-Spawn exploration agents in parallel when available:
+## Command discipline
 
-```text
-Test structure scan:
-- Find test files: *_test.go, test_*.py, *.test.ts, *.spec.ts
-- Identify frameworks and helpers
-- Find table-driven / parametrize / test.each patterns
-- Locate mocks, fixtures, integration tests
-
-Coverage analysis:
-- Go: go test -coverprofile=/tmp/cc-cov.out ./... && go tool cover -func=/tmp/cc-cov.out
-- Python: pytest --cov=. --cov-report=term-missing
-- TypeScript: bun test --coverage
-```
-
-Exclude generated code, mocks, fixtures, type-only files, and trivial CLI entrypoints from coverage pressure.
-
-## Phase 3: TDD Mode
-
-Use this for `tdd`, `test-first`, or `red-green-refactor` requests.
-
-1. Confirm the public interface and the first behavior.
-2. Write one failing test for one behavior.
-3. Run it and watch it fail for the expected reason.
-4. Implement the smallest code that passes.
-5. Run the narrow test.
-6. Repeat one vertical slice at a time.
-7. Refactor only when green.
-
-Do not write all tests first. Bulk RED creates imagined tests coupled to guessed implementation.
-
-## Phase 4: Review and Improve
-
-Detect the language from file extensions and load `references/<lang>.md` (go/python/typescript/web; mixed → load several; unknown → generic core). The active role handles it: write-capable (engineer) applies improvements; read-only (reviewer) emits them as a structured proposal.
-
-Focus findings on:
-
-- tests coupled to private helpers or call counts
-- tests that should be table-driven / parametrized / `test.each`
-- duplicate scenarios
-- weak mocks (`mock.Anything`, unspecced mocks, untyped `vi.fn`) hiding real behavior
-- missing success, error, and edge cases on business logic
-- no usable seam for testing real behavior
-
-## Phase 5: Apply Improvements
-
-For refactoring brittle private-helper tests, state the public behavior surface first. Example: `create_user(payload)` is the primary test surface; `_normalize_user_payload()` is not. Replace duplicate helper tests and internal call-count assertions with behavior checks through the public API. Mock only system boundaries. Delete shallow duplicates once the public behavior tests cover them.
-
-Preferred consolidation patterns:
-
-- **Go** — table-driven with `t.Run(tc.name, ...)`
-- **Python** — `@pytest.mark.parametrize` with `pytest.param()`
-- **TypeScript** — `it.each([{ input, expected, name }])`
-
-Extract helpers only after 3+ repetitions and only when the helper improves readability. Hide setup noise; do not hide the behavior under test.
-
-## Phase 6: Verify and Report
-
-Run and name the relevant verification command for the project. Examples:
+Use only commands supported by the repo and available tools. Examples:
 
 ```bash
 go test ./...
+go tool cover -func=/tmp/coverage.out
+golangci-lint run ./...
 pytest -v
+uv run pytest -v
 bun test
+bun run tsc --noEmit
+npm test
+npx playwright test --list
+bunx playwright test --list
 ```
 
-For Python, mention `pytest` or the project-specific equivalent explicitly. For refactor plans in Python projects, include `pytest -v` or the repository's configured `uv run pytest` command by name instead of only saying "run tests." For other stacks, name the equivalent test command instead of saying only "tests passed."
+If a referenced command is unavailable, report it as skipped with the exact reason.
+Do not install a test framework or tool without user approval.
 
-Output:
+## TDD mode
+
+For `tdd`, write one failing test for one behavior, confirm it fails for the expected
+reason, implement the smallest passing code, then refactor only while green. Do not
+write a bulk suite for imagined future behavior.
+
+## Scope control
+
+- Test through public module, package, API, CLI, component, or service boundaries.
+- Mock only system boundaries.
+- Delete shallow duplicates only after stronger public-boundary tests cover them.
+- Do not force table-driven, parametrized, or `it.each` consolidation when separate tests make distinct behavior clearer.
+- If no safe behavior seam exists, use `BLOCKED` or `Proposed Changes`.
+
+## Output
+
+Use `TEST IMPROVEMENT COMPLETE` for applied changes:
 
 ```text
 TEST IMPROVEMENT COMPLETE
@@ -140,13 +114,18 @@ TEST IMPROVEMENT COMPLETE
 Mode: review | refactor | coverage | tdd | full
 Tests changed: N
 Waste removed: N
-Coverage: before → after (if measured)
+Coverage: before → after | not measured
+Status: CLEAN | NEEDS ATTENTION
 
 Key improvements:
 - file:line — change
 
 Verification:
-- <command> — pass/fail
+- <command> — pass/fail/skipped with reason
 ```
 
-If no tests or framework exist, report that and ask before creating a new testing stack.
+Use `BLOCKED` or `Proposed Changes` when tools, framework, scope, permission, or a
+safe seam is missing. Include the exact missing input and the command the applier
+should run.
+
+Do not claim clean without a passing check or explicit skipped-check reason.

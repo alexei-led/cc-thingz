@@ -1,4 +1,6 @@
+user-invocable: true
 context: fork
+argument-hint: <research question>
 allowed-tools:
   - Task
   - Read

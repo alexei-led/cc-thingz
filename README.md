@@ -8,7 +8,7 @@
 [![Codex CLI](https://img.shields.io/badge/Codex_CLI-skill_export-10A37F)](https://developers.openai.com/codex/plugins)
 [![Gemini CLI](https://img.shields.io/badge/Gemini_CLI-skill_export-4285F4)](https://geminicli.com/docs/extensions)
 [![Plugins](https://img.shields.io/badge/plugins-7-green)](src/plugins/)
-[![Skills](https://img.shields.io/badge/skills-32-green)](src/plugins/)
+[![Skills](https://img.shields.io/badge/skills-31-green)](src/plugins/)
 
 A portable skill suite for **Pi**, **Claude Code**, **Codex CLI**, and **Gemini CLI** — 31 skills, 3 agents, and 10 hooks. One source of truth in `src/`, compiled to platform-optimized output for each tool. Supports [AGENTS.md](https://agents.md)-compatible tools too. Built over 6+ months of daily use and continuous refinement.
 
@@ -20,7 +20,7 @@ AI coding tools are powerful out of the box, but specialized workflows need spec
 - **Smart hooks** that auto-suggest skills, lint after edits, protect secrets, and run tests
 - **Spec-driven development** with structured requirements, tasks, and a CLI for project management
 - **Infrastructure ops** with validated K8s, Terraform, and Helm deployments
-- **Developer utilities** including git-flow hygiene, AST-first codebase search, web research, and brainstorming
+- **Developer utilities** including git-flow hygiene, docs lookup, web research, and brainstorming
 
 Every skill has been manually crafted and refined through real-world use — not generated boilerplate.
 
@@ -322,13 +322,13 @@ Invoke as `/skill-name` or let the skill enforcer suggest them.
 | `cleanup-git`             | Remove merged branches and stale worktrees                                                                                         | "cleanup branches", "tidy git"        |
 | `committing-code`         | Smart git commits with logical grouping                                                                                            | "commit", "save changes"              |
 | `configuring-git-hygiene` | Configure git hooks, Gitleaks, `.gitignore`, git config, and guardrails                                                            | "setup pre-commit", "gitleaks"        |
-| `deploying-infra`         | Validate + deploy K8s/Terraform/Helm                                                                                               | "deploy to staging", "rollout"        |
+| `deploying-infra`         | Validate infrastructure changes and, after explicit confirmation, apply Terraform, Helm, Kustomize, or Kubernetes deployments      | "deploy to staging", "rollout"        |
 | `documenting-code`        | Update docs based on recent changes                                                                                                | "update docs", "document"             |
 | `evolving-config`         | Audit AI coding-agent configuration; review-only by default, explicit approval for fixes                                           | "evolve", "audit config"              |
 | `fixing-code`             | Reproduce, diagnose, patch, regression-test, and verify one code defect at a time                                                  | "fix errors", "make it pass"          |
 | `improving-tests`         | Improve test design and coverage with behavior seams, characterization tests, TDD, and test refactoring                            | "improve tests", "coverage"           |
 | `looking-up-docs`         | Find current docs via Context7, official registries/docs, Perplexity/web, and GitHub fallback                                      | "ctx7", "latest API", "look up"       |
-| `researching-web`         | Web research via Perplexity AI                                                                                                     | "research", "X vs Y"                  |
+| `researching-web`         | Web research via platform web tools with grounded source selection and stale-source reporting                                      | "research", "X vs Y"                  |
 | `reviewing-code`          | Evidence-backed code review with severity/confidence rubric, quick/deep/team/external modes, and optional graph evidence           | "review code", "check this"           |
 | `browser-automation`      | Rendered UI exploration, validation, screenshots, recordings, and browser test flows                                               | "use browser", "screenshot", "e2e"    |
 | `reviewing-instructions`  | Review and score AI-facing instruction files with scoped lint, model resolution, scoring caps, confidence, and calibration anchors | "lint instructions", "audit prompts"  |

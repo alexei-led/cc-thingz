@@ -10,9 +10,13 @@ allowed-tools:
   - Grep
   - Glob
   - Write
+  - Edit
   - mcp__perplexity-ask__perplexity_ask
   - mcp__plugin_claude-mem_mcp-search__timeline
   - mcp__plugin_claude-mem_mcp-search__search
   - WebFetch
-  - Bash(git *)
+  - Bash(git status *)
+  - Bash(git log *)
+  - Bash(git diff *)
+  - Bash(git show *)
 argument-hint: '[idea|plan|grill|debate] <topic-or-plan>'

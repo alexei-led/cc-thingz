@@ -7,12 +7,20 @@ allowed-tools:
   - TaskCreate
   - TaskUpdate
   - TaskList
-  - Bash(go test *)
-  - Bash(pytest *)
-  - Bash(bun test *)
-  - Bash(npm test *)
   - Read
   - Grep
   - Glob
   - LS
+  - Edit
+  - Write
   - AskUserQuestion
+  - Bash(go test *)
+  - Bash(go tool *)
+  - Bash(golangci-lint *)
+  - Bash(pytest *)
+  - Bash(uv run pytest *)
+  - Bash(bun test *)
+  - Bash(bun run *)
+  - Bash(npm test *)
+  - Bash(npx playwright *)
+  - Bash(bunx playwright *)

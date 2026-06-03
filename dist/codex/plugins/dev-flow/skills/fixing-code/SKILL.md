@@ -9,8 +9,11 @@ name: fixing-code
 
 # Fix and Diagnose Code
 
-Fix one verified problem at a time. Do not patch from guesses. Do not use destructive
-git commands such as hard reset, clean, force push, or checkout-overwrites as a fix.
+Fix the requested defect or failing gate one verified issue at a time. Do not
+patch from guesses. Do not expand to unrelated failures without asking.
+
+Never use destructive git commands such as hard reset, clean, force push, or
+checkout-overwrites as a fix.
 
 ## Role-gated action
 
@@ -18,6 +21,10 @@ Detect capability from tools:
 
 - Write-capable role: reproduce, diagnose, patch, test, and clean up.
 - Read-only role: diagnose from files and supplied output, then emit the fix in the Proposed Changes contract. Apply nothing; run nothing.
+- Missing key tool or permission: stop with Blocked and ask for the exact artifact, access, or approval needed.
+
+Use an interactive question tool when available for missing logs, payloads,
+repro steps, environment details, access, or permission for temporary instrumentation.
 
 ## Route elsewhere
 
@@ -27,12 +34,13 @@ Do not use this for:
 - test-only improvement or coverage work → `improving-tests`
 - review-only findings → `reviewing-code`
 - broad architecture redesign → architecture skills
+- browser-only UI investigation without a cheaper signal → `browser-automation`
 
 ## Reproduce first
 
-For lint/build/test failures, run the project gate first. Prefer `make lint` and
-`make test` when present; otherwise use the configured language tools from the
-nearest project root.
+For lint/build/test failures, run the relevant project gate first. Prefer `make
+lint` and `make test` when present; otherwise use configured language tools from
+the nearest project root.
 
 For reported bugs, build the fastest reliable pass/fail signal:
 
@@ -40,26 +48,28 @@ For reported bugs, build the fastest reliable pass/fail signal:
 2. CLI, HTTP, or browser script with fixture input.
 3. Replay captured payload, log, trace, or production-like case.
 4. Small harness around the real code path.
-5. Property, fuzz, race, or bisect harness for intermittent or regression bugs.
+5. Property, fuzz, race, or bisect harness when supported and safe.
 
-If no repro is possible, stop and ask for the missing artifact: logs, payload,
-steps, environment, access, or permission to add temporary instrumentation.
+If no repro is possible, stop and ask for the missing artifact. Do not proceed to
+a speculative fix.
 
 ## Diagnose with evidence
 
 Record each issue as `file:line`, exact symptom, reporting tool, and priority.
-For hard bugs, write 3–5 ranked falsifiable hypotheses:
+Trace from the failing boundary toward the first bad state, contract mismatch, or
+missing side effect.
+
+For hard bugs, write 3-5 ranked falsifiable hypotheses:
 
 ```text
 If <cause> is true, then <probe/change> will make <specific symptom> change in <specific way>.
 ```
 
-Trace from the failing boundary toward the first bad state, contract mismatch,
-or missing side effect. Use graph tools when they reduce search space:
+Use graph tools only when available and when they reduce search space:
 
 - GitNexus: query the error text or symptom; use context for suspect symbols; use impact before changing widely called code; use detect-changes after a fix to see affected flows.
-- codegraph: check status first; if fresh, use context or affected to inspect callers, callees, references, and blast radius.
-- Stale graph indexes are not evidence. Refresh if allowed; otherwise report the gap and use search, LSP, tests, and source reads.
+- codegraph: check freshness first; if fresh, inspect callers, callees, references, and blast radius.
+- Stale graph indexes are not evidence. Refresh if allowed; otherwise report the gap and use search, source reads, LSP, and tests.
 
 ## Patch narrowly
 
@@ -74,13 +84,15 @@ For each issue:
 Do not write helper-level tests that miss the user-visible bug path. If the only
 available seam is too shallow, report the risk.
 
+If a fix causes new failures, diagnose that failure before touching the next issue.
+
 ## Cleanup and verify
 
 Before done:
 
 - Original repro no longer fails.
 - Regression test passes, or the missing seam is reported.
-- Full relevant validation passes.
+- Full relevant validation passes, or skipped checks have exact reasons.
 - Temporary logs, probes, harnesses, and debug flags are removed or promoted to real tests.
 - New failures are diagnosed before any second patch.
 
@@ -91,6 +103,7 @@ Engineer:
 ```text
 FIX COMPLETE
 ============
+Mode: standard | diagnose | team | diagnose+team
 Issues found: X
 Fixed: Y
 Remaining: Z
@@ -103,26 +116,26 @@ Changes:
 - path:line — fix
 
 Verification:
-- <command> — pass/fail
+- <command> — pass/fail/skipped with reason
 ```
 
-Reviewer:
+Reviewer or blocked:
 
 ```text
-## Proposed Changes
+## Proposed Changes | BLOCKED
 
 Root cause:
-- <verified cause and evidence>
+- <verified cause and evidence, or unknown because blocked>
+
+Blocker:
+- <missing artifact, access, tool, or permission>
 
 ### Change 1: <brief description>
 
 File: `path/to/file`
 Action: CREATE | MODIFY | DELETE
-
-Code:
-<complete code block or changed region with enough context>
-
+Code: <complete code block or changed region with enough context>
 Rationale: <why this fixes the root cause>
 ```
 
-If unresolved, state the blocker and exact artifact or access needed. Do not claim clean without a clean check or an explicit skipped-check reason.
+Do not claim clean without a clean check or an explicit skipped-check reason.

@@ -1,10 +1,12 @@
 ---
 description:
-  Validate and deploy Kubernetes, Terraform, Helm, Kustomize, GitHub Actions,
-  and Docker configs. Use when user says "deploy", "deploy to staging", "apply changes",
-  "terraform apply", "helm upgrade", "kubectl apply", "rollout", "deploy check", "validate
-  deployment", "validate infrastructure", or wants to verify or apply infrastructure
-  changes.
+  Validate infrastructure changes and, after explicit confirmation, apply Terraform,
+  Helm, Kustomize, or Kubernetes deployments. Use when the user says "deploy",
+  "deploy to staging", "terraform apply", "helm upgrade", "kubectl apply",
+  "rollout", "deploy check", "validate deployment", or "validate infrastructure".
+  Dockerfiles and GitHub Actions are validate-only here. NOT for ongoing service
+  troubleshooting, cloud inspection, rollback investigation, or authoring infra from
+  scratch; use operating-infra for those.
 name: deploying-infra
 targets:
   - claude
@@ -12,199 +14,133 @@ targets:
 
 # Deploy Infrastructure
 
+Validate first. Apply only after explicit confirmation. Never invent deploy paths,
+release names, workspaces, namespaces, accounts, or environments.
+
+## Scope
+
+Use for dry-run validation, Terraform/Helm/Kustomize/Kubernetes apply after
+confirmation, and rollout verification after apply.
+
+Do not use for live troubleshooting, rollback investigation, cloud inspection,
+authoring infra, pushing Docker images, triggering GitHub Actions workflows, or
+applying without plan/diff evidence. Use `operating-infra` for inspection and
+troubleshooting.
+
+Dockerfiles and GitHub Actions are validate-only in this skill.
+
 ## Usage
 
-```
-/deploying-infra --dry-run              # Validate only (default)
-/deploying-infra --apply staging        # Apply to staging
-/deploying-infra --apply production     # Apply to production (requires confirmation)
-```
+`/deploying-infra --dry-run [environment] [scope]` validates only. `/deploying-infra --apply <environment> [scope]` validates, asks, applies, then verifies. `/deploying-infra --background --dry-run [environment] [scope]` starts background validation.
 
-`--dry-run` runs steps 1–5 (validation only). `--apply` runs all 8 steps.
+Rules:
 
-## Step 1: Parse Arguments
+- Default mode is `--dry-run`.
+- `--background` is valid only with `--dry-run`.
+- `--apply` always stops for confirmation after showing plan/diff evidence.
+- Production confirmation must include the exact environment name.
+- If environment, context, namespace, workspace, chart, release, path, or account is unclear, ask one question.
 
-**Default**: `--dry-run` (safe mode)
+## Workflow
 
-- `--dry-run` → Validate without applying (stops after step 5)
-- `--apply` → Apply changes after validation
-- `[environment]` → Target environment (staging, production, dev)
-- `--background` → Run validation in background, return agent ID
+1. Parse mode, environment, and optional scope.
+2. Detect infra with `Glob`, `Grep`, and `Read` before shell commands.
+3. Classify detected types: apply-capable Terraform/Helm/Kustomize/Kubernetes; validate-only Dockerfile/GitHub Actions.
+4. Check required CLIs with safe version or discovery commands.
+5. Read `references/validation-checklists.md` and use only detected sections.
+6. Run validation and inspect source-backed policy checks.
+7. For apply-capable types, show plan/diff evidence.
+8. Stop on `--dry-run`; ask and apply on `--apply`.
+9. Verify changed resources after apply.
 
-## Step 2: Detect Infrastructure Type
+Use a background or delegated validation agent only for large scans or explicit
+`--background`. The agent validates only; it must not apply changes.
 
-Use Glob to find infrastructure files (quick scan):
+## Validation and evidence
 
-- `**/*.yaml`, `**/*.yml` - K8s, Helm, Kustomize
-- `.github/workflows/*.yml` - GitHub Actions
-- `**/*.tf` - Terraform
-- `**/Dockerfile*`, `**/docker-compose*.yml` - Docker
-- `**/kustomization.yaml` - Kustomize
-- `**/Chart.yaml` - Helm
+Every validation claim needs exact command output, `file:line`, or a skipped-check
+reason. For apply-capable types, plan/diff evidence is mandatory before confirmation.
+Use the reference checklist for commands. Do not run commands with unresolved
+placeholders; ask first.
 
-### If no infrastructure detected
+Before confirmation, show:
 
-Stop: "No infrastructure files found. Looking for: \*.tf, Chart.yaml, kustomization.yaml, k8s/, Dockerfile"
+```markdown
+## Pre-flight: READY | BLOCKED
 
-### If required CLI tools are absent
+### Scope
 
-Stop: "Missing tools: {list}. Install before proceeding." Do not attempt commands with unavailable tools.
+- Environment: <env>
+- Type: <terraform|helm|kustomize|kubernetes>
+- Context/account/namespace/workspace: <value>
 
-## Step 3: Pre-flight Validation
+### Plan or Diff Evidence
 
-Dry-run-before-apply safety doctrine: `operating-infra` `## Boundary`.
-
-Read `references/validation-checklists.md` (skill-relative). Map
-`{detected_type}` to its section header, then copy that section verbatim into
-`{checklist}` below:
-
-- `k8s` → `## Kubernetes`
-- `helm` → `## Helm`
-- `kustomize` → `## Kustomize`
-- `terraform` → `## Terraform`
-- `docker` → `## Dockerfile`
-- `github-actions` → `## GitHub Actions`
-
-The spawned engineer has no skill-relative access, so the checklist must be
-inlined — do not pass a path.
-
-Spawn the engineer agent for validation:
-
-```
-Task(
-  subagent_type="engineer",
-  run_in_background={true if --background else false},
-  description="Pre-flight validation",
-  prompt="Validate infrastructure before deployment.
-
-  Type: {detected_type}
-  Environment: {environment}
-  Mode: {dry-run|apply}
-
-  Run these pre-flight checks:
-  {checklist}
-
-  Output format:
-  READY/BLOCKED per category with file:line for issues.
-  Severity: CRITICAL / IMPORTANT / SUGGESTION"
-)
-```
-
-### If --background
-
-Return agent ID immediately for later collection.
-
-## Step 4: Review Changes
-
-### Present diff/plan to user
-
-```
-## Pre-flight: {READY|BLOCKED}
-
-### Changes Summary
-{terraform plan output / helm diff / kubectl diff}
+- `<command>` — <summary>
 
 ### Resources Affected
-- {resource type}: {count} to create, {count} to modify, {count} to destroy
 
-### Warnings
-- {any destructive changes}
-- {any security concerns}
+- Create: <count or unknown>
+- Modify: <count or unknown>
+- Delete: <count or unknown>
+
+### Risks
+
+- <destructive changes, security concerns, missing evidence, or none>
 ```
 
-### If BLOCKED
+If validation is blocked, stop. Do not continue to confirmation.
 
-Stop and show blockers. Do not proceed to Step 5.
+## Confirmation and apply
 
-## Step 5: Research Best Practices (if needed)
+Ask before every apply with options: apply now, review plan again, cancel. For
+production, require the exact environment name. Cancel on ambiguous or mismatched
+confirmation.
 
-For uncertain findings, use Perplexity for current best practices:
+Allowed apply patterns only:
 
-```
-mcp__perplexity-ask__perplexity_ask with:
-"Current best practices for {specific concern} in {technology} 2024-2025"
-```
+- `terraform apply tfplan`
+- `helm upgrade --install <release> <chart> --values <values-file>`
+- `kustomize build <overlay> | kubectl apply -f -`
+- `kubectl apply -f <path>`
 
-### If --dry-run
+Use only commands already matched to the repo layout. Do not write deployment logs
+unless the repo already documents that convention.
 
-Stop here. Output the Step 4 pre-flight summary as the final result.
+If apply fails, stop with `DEPLOYMENT FAILED`. Do not rollback without separate
+confirmation.
 
-## Step 6: Confirm Production Deploys
+## Verification
 
-### If environment = production
+After apply, verify the changed resources with the relevant checklist command or
+repo convention. If rollout times out or health is degraded, show investigation
+and rollback options, then ask what to do next.
 
-**STOP**: `AskUserQuestion`
+## Output contracts
 
-- **Production** — Deploy to PRODUCTION? Options: 1. **Yes, deploy** - Apply changes now 2. **Review again** - Show full diff 3. **Cancel** - Abort deployment
+Use the matching header, then the listed fields.
 
-## Step 7: Apply Changes
+```text
+DRY RUN COMPLETE
+Status; Environment; Types; Validation; Plan/Diff; Blockers; Skipped
 
-```bash
-# Record deployment start
-echo "$(date -Iseconds) DEPLOY_START env=$environment" >> .deploy.log
+AWAITING CONFIRMATION
+Environment; Type; Command; Destructive changes; Confirmation needed
 
-# Apply based on type
-case $type in
-  terraform)
-    terraform apply tfplan
-    ;;
-  helm)
-    helm upgrade --install {release} {chart} -f values-{env}.yaml
-    ;;
-  kustomize)
-    kustomize build overlays/{env} | kubectl apply -f -
-    ;;
-  k8s)
-    kubectl apply -f k8s/{env}/ --recursive
-    ;;
-esac
+BACKGROUND VALIDATION STARTED
+Agent ID; Mode; Scope
 
-# Record completion
-echo "$(date -Iseconds) DEPLOY_END status=$?" >> .deploy.log
-```
-
-## Step 8: Post-Deploy Verification
-
-```bash
-# Wait for rollout
-kubectl rollout status deployment/{name} --timeout=300s
-
-# Health check
-kubectl get pods -l app={name}
-```
-
-### If rollout status times out
-
-Do not wait further. Show rollback commands and ask: "Rollout is taking longer than expected — rollback or investigate?"
-
-### If rollout fails
-
-```
-ROLLBACK AVAILABLE
-
-kubectl rollout undo deployment/{name}
-# or
-terraform apply -target=... (previous state)
-# or
-helm rollback {release}
-```
-
-## Output
-
-```
 DEPLOYMENT COMPLETE
-===================
-Environment: {env}
-Type: {terraform|helm|kustomize|k8s}
-Duration: {time}
-Agent ID: {id} (use /agent:resume {id} to continue)
+Environment; Type; Status; Applied; Verification; Rollback option
 
-Applied:
-- {resource}: {action}
-
-Status: {HEALTHY|DEGRADED|FAILED}
-
-Rollback: {command if needed}
+DEPLOYMENT BLOCKED | DEPLOYMENT FAILED
+Environment; Type; Reason; Evidence; Next step
 ```
 
-Pairs with `operating-infra` for patterns, inspection, and troubleshooting.
+## Failure handling
+
+- Unknown target detail: ask one question.
+- Missing tool, missing plan/diff evidence, unshown destructive change, or blocked validation: stop.
+- Apply failure or partial deployment: report exact evidence and ask before rollback.
+- Rollout timeout or degraded health: show rollback and investigation options, then ask.
+- User cancels or gives ambiguous confirmation: stop cleanly.

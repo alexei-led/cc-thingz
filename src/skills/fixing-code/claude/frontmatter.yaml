@@ -7,6 +7,12 @@ allowed-tools:
   - TaskCreate
   - TaskUpdate
   - TaskList
+  - Read
+  - Grep
+  - Glob
+  - Edit
+  - Write
+  - AskUserQuestion
   - Bash(make *)
   - Bash(go *)
   - Bash(golangci-lint *)
