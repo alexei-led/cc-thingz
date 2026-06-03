@@ -27,7 +27,7 @@
     {
       "name": "discovery",
       "source": "./dist/claude/plugins/discovery",
-      "description": "Research, docs lookup, repo exploration, instruction review, and agent configuration audits",
+      "description": "Research, docs lookup, instruction review, reasoning, and agent configuration audits",
       "version": "5.2.0"
     },
     {

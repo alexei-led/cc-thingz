@@ -30,7 +30,6 @@ from conftest import REPO_ROOT, TARGETS, make_batch_skill_staging_root
 
 BATCH_2_ALL_TARGETS = (
     "browser-automation",
-    "exploring-repos",
     "researching-web",
     "evolving-config",
     "fixing-code",
@@ -51,7 +50,6 @@ BATCH_2_CLAUDE_ONLY = ("deploying-infra",)
 # covered by BATCH_2_ALL_TARGETS.
 SWAP_SKILLS_AND_CLAUDE_TOKENS = {
     "browser-automation": "claude-in-chrome",
-    "exploring-repos": "mcp__deepwiki__",
     "evolving-config": "WebFetch",
     "documenting-code": "TaskCreate",
     "fixing-code": "TaskCreate",

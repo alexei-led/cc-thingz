@@ -51,7 +51,6 @@ Do not use this skill for:
 - Commit grouping or commit messages — use `committing-code`.
 - Worktree creation — use `using-git-worktrees`.
 - Branch/worktree cleanup — use `cleanup-git`.
-- Public repository research — use `exploring-repos`.
 
 ## Step 1: Inspect Current State
 

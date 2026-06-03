@@ -228,12 +228,6 @@ if echo "$PROMPT_LOWER" | grep -qE '\b(lint|audit|review|score|check)\s+(the\s+|
 	skills+="reviewing-instructions "
 fi
 
-# exploring-repos: Explore public GitHub repos via DeepWiki
-# Triggers: explicit DeepWiki, GitHub URL, or owner/name public repo requests
-if echo "$PROMPT_LOWER" | grep -qE '\bdeepwiki\b|github\.com/[a-z0-9_.-]+/[a-z0-9_.-]+|\b(public\s*)?(github\s*)?(repo|repository)\s+[a-z0-9_.-]+/[a-z0-9_.-]+\b|\b(how\s*does|explore|understand|wiki\s*(for|of|about))\s+[a-z0-9_.-]+/[a-z0-9_.-]+\b'; then
-	skills+="exploring-repos "
-fi
-
 # Output only if skills detected (silent when no match)
 if [[ -n "$skills" ]]; then
 	skills="${skills% }"

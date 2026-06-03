@@ -10,7 +10,7 @@
 [![Plugins](https://img.shields.io/badge/plugins-7-green)](src/plugins/)
 [![Skills](https://img.shields.io/badge/skills-32-green)](src/plugins/)
 
-A portable skill suite for **Pi**, **Claude Code**, **Codex CLI**, and **Gemini CLI** — 32 skills, 3 agents, and 10 hooks. One source of truth in `src/`, compiled to platform-optimized output for each tool. Supports [AGENTS.md](https://agents.md)-compatible tools too. Built over 6+ months of daily use and continuous refinement.
+A portable skill suite for **Pi**, **Claude Code**, **Codex CLI**, and **Gemini CLI** — 31 skills, 3 agents, and 10 hooks. One source of truth in `src/`, compiled to platform-optimized output for each tool. Supports [AGENTS.md](https://agents.md)-compatible tools too. Built over 6+ months of daily use and continuous refinement.
 
 ## Why This Exists
 
@@ -231,7 +231,7 @@ Agent({
 | `notify.ts`            | macOS notification via `terminal-notifier` on completion (requires Homebrew `terminal-notifier`) |
 
 **Pi gets**: all 3 agents — `engineer`, `reviewer`, `advisor` (requires
-`@tintinweb/pi-subagents`) — all 32 skills, and 8 bundled extensions. Each
+`@tintinweb/pi-subagents`) — all 31 skills, and 8 bundled extensions. Each
 agent has a Pi-specific frontmatter overlay tuned for OpenAI Codex models
 (`openai-codex/gpt-5.5`), thinking levels, tool restrictions, and turn limits.
 `advisor` ships to Codex, Gemini, and Pi; Claude is excluded because it has a
@@ -266,7 +266,6 @@ assume MCP tools.
 
 | MCP Server                                                   | Purpose                                     | Used By                                                                 |
 | ------------------------------------------------------------ | ------------------------------------------- | ----------------------------------------------------------------------- |
-| [DeepWiki](https://cognition.ai/blog/deepwiki-mcp-server)    | AI-generated wiki for public GitHub repos   | Claude Code discovery                                                   |
 | [Perplexity](https://github.com/ppl-ai/modelcontextprotocol) | Web research and technical comparisons      | Claude Code dev-flow, discovery, infra-ops                              |
 | [MorphLLM](https://github.com/morphllm/morph-claude-code)    | Fast codebase search and batch file editing | Claude Code `engineer` role via dev-flow, programming, infra, spec-flow |
 
@@ -297,17 +296,17 @@ All agents and several skills optionally integrate with [claude-mem](https://git
 
 ## Plugins
 
-| Plugin                                                 | Skills | Agents | Description                                                                          | Depends on  |
-| ------------------------------------------------------ | ------ | ------ | ------------------------------------------------------------------------------------ | ----------- |
-| [**dev-flow**](src/plugins/dev-flow/plugin.yaml)       | 6      | 2      | Fix, refactor, review, document, commit; `engineer` and `reviewer` roles; 6 hooks    | —           |
-| [**spec-flow**](src/plugins/spec-flow/plugin.yaml)     | 7      | 2      | Spec-driven development: requirements, tasks, and planning workflows                 | dev-flow    |
-| [**git-flow**](src/plugins/git-flow/plugin.yaml)       | 3      | 0      | Worktrees, cleanup, hooks, Gitleaks, `.gitignore`, git config, and guardrails        | —           |
-| [**browser**](src/plugins/browser/plugin.yaml)         | 2      | 1      | Browser testing, validation, screenshots, recordings, and quick automation           | programming |
-| [**infra-ops**](src/plugins/infra-ops/plugin.yaml)     | 2      | 1      | Kubernetes, Terraform, Helm, GitHub Actions, AWS, GCP                                | —           |
-| [**programming**](src/plugins/programming/plugin.yaml) | 5      | 1      | Idiomatic development across Go, Python, TypeScript, shell, and web                  | dev-flow    |
-| [**discovery**](src/plugins/discovery/plugin.yaml)     | 7      | 1      | Research, docs lookup, repo exploration, instruction review, and agent config audits | —           |
+| Plugin                                                 | Skills | Agents | Description                                                                       | Depends on  |
+| ------------------------------------------------------ | ------ | ------ | --------------------------------------------------------------------------------- | ----------- |
+| [**dev-flow**](src/plugins/dev-flow/plugin.yaml)       | 6      | 2      | Fix, refactor, review, document, commit; `engineer` and `reviewer` roles; 6 hooks | —           |
+| [**spec-flow**](src/plugins/spec-flow/plugin.yaml)     | 7      | 2      | Spec-driven development: requirements, tasks, and planning workflows              | dev-flow    |
+| [**git-flow**](src/plugins/git-flow/plugin.yaml)       | 3      | 0      | Worktrees, cleanup, hooks, Gitleaks, `.gitignore`, git config, and guardrails     | —           |
+| [**browser**](src/plugins/browser/plugin.yaml)         | 2      | 1      | Browser testing, validation, screenshots, recordings, and quick automation        | programming |
+| [**infra-ops**](src/plugins/infra-ops/plugin.yaml)     | 2      | 1      | Kubernetes, Terraform, Helm, GitHub Actions, AWS, GCP                             | —           |
+| [**programming**](src/plugins/programming/plugin.yaml) | 5      | 1      | Idiomatic development across Go, Python, TypeScript, shell, and web               | dev-flow    |
+| [**discovery**](src/plugins/discovery/plugin.yaml)     | 6      | 1      | Research, docs lookup, instruction review, reasoning, and agent config audits     | —           |
 
-**Totals**: 32 skills, 2 plugin-owned role agents (`engineer`, `reviewer`), 10 hooks
+**Totals**: 31 skills, 2 plugin-owned role agents (`engineer`, `reviewer`), 10 hooks
 
 ## Skills
 
@@ -326,7 +325,6 @@ Invoke as `/skill-name` or let the skill enforcer suggest them.
 | `deploying-infra`         | Validate + deploy K8s/Terraform/Helm                                                                                               | "deploy to staging", "rollout"        |
 | `documenting-code`        | Update docs based on recent changes                                                                                                | "update docs", "document"             |
 | `evolving-config`         | Audit AI coding-agent configuration; review-only by default, explicit approval for fixes                                           | "evolve", "audit config"              |
-| `exploring-repos`         | Explore public GitHub repos and architecture                                                                                       | "explore repo", "how does repo work"  |
 | `fixing-code`             | Reproduce, diagnose, patch, regression-test, and verify one code defect at a time                                                  | "fix errors", "make it pass"          |
 | `improving-tests`         | Improve test design and coverage with behavior seams, characterization tests, TDD, and test refactoring                            | "improve tests", "coverage"           |
 | `looking-up-docs`         | Find current docs via Context7, official registries/docs, Perplexity/web, and GitHub fallback                                      | "ctx7", "latest API", "look up"       |

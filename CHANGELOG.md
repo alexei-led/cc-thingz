@@ -8,6 +8,10 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+### Removed
+
+- Removed the low-use `exploring-repos` skill and DeepWiki routing. Public repo architecture questions now fall back to normal web research, docs lookup, GitHub CLI, or local exploration instead of a dedicated skill.
+
 ## [5.2.0] - 2026-06-03
 
 ### Changed
