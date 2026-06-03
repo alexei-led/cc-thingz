@@ -1,220 +1,81 @@
-# TypeScript Review Slice
+# TypeScript Review Reference
 
-Language-specific review material for TypeScript 5.x. The host skill supplies scope, workflow, and the findings/output contract — this file supplies only the TypeScript tooling, version-specific traps, and focus-area checks.
+Host skill owns scope, severity, scoring, and output. This file adds TypeScript-specific evidence gathering and checks.
 
-## Run tooling first
+## Tool-enabled review
 
-Execute these before manual review to catch issues programmatically:
+Run configured project tools only when the active role can execute commands. Prefer project commands and package manager conventions when present.
+
+Useful TypeScript gates:
 
 ```bash
-# Type checking
-bunx tsc --noEmit 2>&1
-
-# Run tests
-bun test 2>&1
-
-# Security audit
-npm audit --production 2>&1
+bunx tsc --noEmit
+bun test
+npm audit --omit=dev
 ```
 
-Include tool output in findings. Security issues are blocking. Focus manual review on files flagged by tools plus direct callers found via LSP. Do not scan the entire codebase manually.
+Use the project's package manager instead of forcing Bun or npm. Treat tool output as evidence, then map it through the severity rubric. If a tool is missing or not configured, report the gap and continue source review. Do not install tools.
 
-If a tool is not installed or fails, note the failure in findings and continue with manual review of remaining focus areas. Do not attempt to install missing tools.
+## Read-only review
 
-## LSP navigation (trace security-sensitive data flow)
+When commands are unavailable, use supplied diff, file reads, and caller-supplied output. Follow direct callers for changed exported functions, route handlers, components, schemas, API clients, and persistence code.
 
-- `goToDefinition` — trace function calls to understand data flow
-- `findReferences` — find all callers of security-sensitive functions
-- `incomingCalls` — trace who calls a function (input validation checks)
-- `goToImplementation` — find concrete implementations of interfaces
+## Focus checks
 
-## Logic correctness
+Correctness:
 
-- Type assumptions at runtime: TypeScript types don't exist at runtime — external data must be validated
+- Runtime data trusted only by TypeScript types instead of validation at the boundary.
+- Missing null or undefined guards before dereference.
+- Non-exhaustive discriminated union handling.
+- Floating promises, missing `await`, or lost rejection handling.
+- API, schema, or component prop contract changed without updating callers.
 
-```typescript
-// BAD: trusting runtime data
-type Status = "pending" | "approved" | "rejected";
-const status: Status = req.body.status; // could be anything at runtime!
+Security:
 
-// GOOD: runtime validation
-const StatusSchema = z.enum(["pending", "approved", "rejected"]);
-const status = StatusSchema.parse(req.body.status);
-```
+- SQL, NoSQL, command, template, or HTML injection from untrusted input.
+- Missing auth or ownership check at route, resolver, server action, or service boundary.
+- Prototype pollution from merging untrusted objects.
+- XSS through raw HTML sinks or unsafe markdown/rendering paths.
+- Weak crypto, insecure cookies, token leakage, or secrets in client bundles/logs.
+- CORS or security-header changes that expose credentials or debug details.
 
-- Exhaustiveness errors: missing cases in discriminated union switches
-- Null/undefined handling: missing guards before dereferencing
-- Off-by-one errors: array bounds, loop boundaries
-- Floating promises: promises not awaited (silently fails)
+Reliability:
 
-## Security (OWASP)
+- Missing timeout or abort handling for external calls.
+- Resource or subscription cleanup missing in server streams, workers, or React effects.
+- Retry loops without cap, backoff, or idempotency check.
+- Shared mutable state in request handlers or tests.
 
-### Injection (SQL/NoSQL/Command)
+Performance:
 
-```typescript
-// BAD: SQL injection
-const query = `SELECT * FROM users WHERE id = '${userId}'`;
+- Blocking sync I/O in request or render paths.
+- N+1 database/API calls or sequential awaits that should be batched.
+- Unbounded concurrency, memory growth, or cache retention.
+- Expensive React renders from unstable dependencies or unnecessary state, only when user-visible or realistic.
 
-// GOOD: parameterized query
-const result = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
+Tests:
 
-// BAD: command injection
-exec(`ping -c 1 ${host}`);
+- Changed behavior without tests for success, failure, and boundary cases.
+- Bug fixes without a regression test at the route, service, or component contract.
+- Tests that assert implementation details instead of observable behavior.
 
-// GOOD: use execFile with array args
-execFile("ping", ["-c", "1", host]);
+## Boundary validation
 
-// BAD: NoSQL injection (MongoDB)
-const user = await User.findOne({ username: req.query.username }); // could be {"$ne": null}
+Do not flag all external data usage just because no schema library is visible. Flag concrete cases where untrusted input reaches sensitive behavior without a visible guard.
 
-// GOOD: validate first
-const { username } = UsernameSchema.parse(req.query);
-const user = await User.findOne({ username });
-```
+External input includes HTTP bodies, params, query strings, headers, cookies, environment variables, storage, messages, webhooks, database rows crossing trust boundaries, and third-party API responses.
 
-### XSS (Cross-Site Scripting)
+## Framework checks
 
-```typescript
-// BAD: unescaped user input in HTML
-res.send(`<h1>Hello ${req.query.name}</h1>`);
+Apply only when the framework is present in scope:
 
-// GOOD: escape or use templating engine that escapes by default
-import { escape } from "lodash";
-res.send(`<h1>Hello ${escape(name)}</h1>`);
-```
-
-### Broken Access Control (IDOR)
-
-```typescript
-// BAD: no ownership check
-app.get("/api/orders/:id", async (req, res) => {
-  const order = await Order.findById(req.params.id);
-  res.json(order); // any user can access any order!
-});
-
-// GOOD: verify ownership
-app.get("/api/orders/:id", async (req, res) => {
-  const order = await Order.findOne({
-    _id: req.params.id,
-    userId: req.user.id, // ownership check
-  });
-  if (!order) return res.status(404).end();
-  res.json(order);
-});
-```
-
-### Prototype Pollution
-
-```typescript
-// BAD: spreading untrusted data
-const settings = { ...defaultSettings, ...req.body }; // __proto__ pollution possible
-
-// GOOD: validate and whitelist fields
-const input = SettingsSchema.parse(req.body);
-const settings = { ...defaultSettings, ...input };
-```
-
-### Sensitive data exposure
-
-- Logging secrets: tokens, passwords in logs
-- Weak crypto: MD5/SHA1 for passwords — use bcrypt/argon2
-- Insecure cookies: missing httpOnly, secure, sameSite
-
-```typescript
-// BAD: weak password hashing
-const hash = crypto.createHash("sha1").update(password).digest("hex");
-
-// GOOD: use bcrypt
-import bcrypt from "bcryptjs";
-const hash = await bcrypt.hash(password, 12);
-
-// BAD: insecure cookie
-res.cookie("session", token);
-
-// GOOD: secure cookie
-res.cookie("session", token, {
-  httpOnly: true,
-  secure: true,
-  sameSite: "lax",
-});
-```
-
-## Performance
-
-### Blocking event loop
-
-```typescript
-// BAD: sync I/O in request handler
-app.get("/report", (req, res) => {
-  const data = fs.readFileSync("/big/file.json", "utf8");
-  res.json(JSON.parse(data));
-});
-
-// GOOD: streaming or async
-app.get("/report", async (req, res) => {
-  const stream = fs.createReadStream("/big/file.json");
-  stream.pipe(res);
-});
-```
-
-### N+1 queries
-
-```typescript
-// BAD: sequential queries in loop
-for (const id of userIds) {
-  const user = await getUserById(id);
-  users.push(user);
-}
-
-// GOOD: batch query
-const users = await getUsersByIds(userIds);
-// or
-const users = await Promise.all(userIds.map(getUserById));
-```
-
-### Missing timeouts
-
-```typescript
-// BAD: no timeout on external call
-const response = await fetch(url);
-
-// GOOD: with timeout
-const controller = new AbortController();
-const timeout = setTimeout(() => controller.abort(), 5000);
-try {
-  const response = await fetch(url, { signal: controller.signal });
-} finally {
-  clearTimeout(timeout);
-}
-```
-
-## Security configuration
-
-- CORS misconfiguration: `origin: '*'` with credentials
-- Missing helmet: no security headers
-- Debug in production: verbose errors, stack traces exposed
-
-```typescript
-// BAD: permissive CORS
-app.use(cors());
-
-// GOOD: restricted CORS
-app.use(
-  cors({
-    origin: ["https://app.example.com"],
-    credentials: true,
-  }),
-);
-
-// GOOD: security headers
-import helmet from "helmet";
-app.use(helmet());
-```
+- React: hooks dependencies, stale closures, controlled/uncontrolled form state, cleanup in effects, accessible interactive elements.
+- Node servers: request validation, auth, error exposure, timeouts, streaming cleanup.
+- Next or server actions: server/client boundary leaks, cache invalidation, auth at server entry points.
 
 ## Failure handling
 
-- `npm audit` fails or is unavailable: note the gap; skip dependency audit and continue with manual security review.
-- Tests fail: include output as a blocking finding — do not attempt to fix, report and stop.
-- Security issue is ambiguous: err on the side of flagging it — mark as "potential" and explain the attack vector.
-- LSP unavailable: fall back to reading files directly; note that cross-file call-chain checks were skipped.
-- No input validation library detected: flag all external data usage as unvalidated and recommend adding runtime validation — do not assume validation happens elsewhere.
+- Typecheck, test, or audit failure in reviewed scope: map severity by impact; blocking failures are Critical.
+- Ambiguous security risk: use Needs review and name the missing trust boundary, framework behavior, or configuration.
+- Audit output without exploitability in shipped dependencies: do not overstate; report severity by reachability and package scope.
+- LSP or graph unavailable: note reduced cross-file coverage only if it affects the finding.

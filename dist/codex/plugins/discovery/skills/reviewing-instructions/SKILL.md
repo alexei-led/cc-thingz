@@ -1,9 +1,9 @@
 ---
-description: 'Review and score AI agent/skill instruction files for quality — signal
-  density, scope specificity, output structure, failure handling, and routing precision.
-  Use when asked to "lint", "audit", "review", or "score" prompts, SKILL.md, AGENT.md,
-  AGENTS.md, CLAUDE.md, platform-specific body.md, reference markdown, or other markdown
-  files explicitly meant to be read by AI agents.
+description: 'Use when asked to lint, audit, review, or score AI-facing instruction
+  files such as SKILL.md, AGENT.md, AGENTS.md, CLAUDE.md, platform body.md files,
+  prompt files, rules, policies, and agent-facing references. NOT for application
+  code review, harness configuration review, ordinary docs, tests, or generated build
+  output.
 
   '
 name: reviewing-instructions
@@ -11,105 +11,166 @@ name: reviewing-instructions
 
 # Instruction Review
 
-Review AI agent and skill instruction files for quality. Combines a fast structural pre-pass with model-aware semantic scoring across 8 dimensions (0–10 each). Do not fabricate findings — cite exact file/section or missing evidence for every issue.
+Review AI-facing instruction files for routing precision, behavioral signal,
+output contracts, failure handling, grounding, and score stability. Do not score
+ordinary docs or source code.
 
-## Accepted Inputs
+## Read first
+
+- `references/scoring-rubric.md` for gates, 0-10 bands, caps, confidence, and output schema.
+- `references/model-resolution.md` for model alias mapping and fallback rules.
+- `references/calibration.md` only when a score is borderline or confidence is low.
+- `references/models/<family>.md` only after model family resolution.
+
+## Accepted inputs
 
 The user may pass:
 
-- A file path, directory path, or plugin name to scope the review (omitted → review all candidate instruction files)
-- `--model <name>` to override model-specific rule selection (e.g. `--model claude`, `--model gemini`, `--model openai`)
-- Plugin name without path separator → expand to `src/plugins/<name>/`
+- file path, directory path, or plugin name
+- omitted scope, meaning discover likely instruction files
+- `--model <name>` to override model family or variant
+- requests such as lint, audit, review, score, compare, or rerank
 
-Do not review source code, tests, harness config, or ordinary project docs as instruction files. Review markdown that is clearly targeted at AI agents. Do not overlap with reviewing-code (code quality) or evolving-config (harness configuration).
+Plugin name without a path separator expands to matching `src/skills/<name>`,
+`src/agents/<name>`, or `src/plugins/<name>` when present.
 
-## File Discovery
+## Scope boundaries
+
+Review only markdown or prompt files that guide an AI agent or coding assistant.
+Include support files only when an entrypoint tells the agent to read them or when
+they live under that skill or agent folder.
+
+Do not review:
+
+- application source code, tests, or generated artifacts
+- ordinary README, changelog, product, or design docs unless agent-facing
+- harness config quality; use evolving-config
+- code quality; use reviewing-code
+
+If a candidate is ambiguous, put it in Candidates Not Reviewed with the reason.
+
+## Discovery
 
 Build the review set in this order:
 
-1. Start with explicit instruction entrypoints: `SKILL.md`, `AGENT.md`, `AGENTS.md`, `CLAUDE.md`.
-2. Expand to markdown those entrypoints tell the agent to read: platform-specific `body.md`, `references/*.md`, linked `.md` files, and named prompt/context/rules files.
-3. Scan for other likely instruction markdown when the repo uses custom layouts. High-confidence signals:
-   - file or path names such as `body.md`, `prompt*.md`, `instructions*.md`, `rules*.md`, `context*.md`, `policy*.md`
-   - directories such as `agents/`, `skills/`, `prompts/`, `instructions/`, `references/`
-   - frontmatter or metadata like `name:`, `description:`, `model:`, `tools:`, `allowed-tools:`
-   - agent-directed content: imperative rules, tool guidance, output contracts, failure handling, `Use when`, `Do not`, `Read X.md`
-4. Exclude ordinary docs like `README.md`, changelogs, product docs, and design docs unless an instruction file explicitly points to them or the file clearly addresses an AI agent.
-5. If confidence is ambiguous, list the file under `Candidates Not Reviewed` with a short reason instead of forcing a score.
+1. Explicit paths from the user.
+2. Entrypoints: SKILL.md, AGENT.md, AGENTS.md, CLAUDE.md.
+3. Support files referenced by entrypoints: body.md, references, prompt, rules, context, and policy markdown.
+4. High-confidence agent-facing markdown in agents, skills, prompts, instructions, references, or rules directories.
 
-## Model Context Resolution
+For a single explicit file, review that file only unless the user asks for linked files.
+For a directory, include its entrypoint and local support files.
 
-For each confirmed instruction file under review:
+## Model resolution
 
-1. Check `--model` arg first; if absent, check the file's frontmatter `model:` field. Args take precedence.
-2. If the file has no model metadata but is a support file, inherit model context from the parent instruction file when obvious.
-3. Look for `references/models/<model>.md` in this skill's directory. Read it if present.
-4. If no local reference: use available web search/fetch tools to read the model's official prompting guide:
-   - Claude: `https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview`
-   - GPT series: `https://platform.openai.com/docs/guides/prompt-engineering`
-   - Gemini: `https://ai.google.dev/gemini-api/docs/prompting-strategies`
-   - Other: web search for `<model> prompting guide best practices`
-5. If no model anywhere: read `references/models/generic.md`.
+Use `references/model-resolution.md`.
 
-Surface the resolution as a one-line header in the report: `Model context: claude (from frontmatter)`.
+Resolution order:
 
-## Step 1: Structural Pre-Pass
+1. `--model <name>` from the user.
+2. File frontmatter model or platform metadata.
+3. Parent entrypoint model for support files.
+4. Tool or target folder family when obvious.
+5. generic.
+
+Report one line per review set: `Model context: <family>/<variant or generic> — source <arg|frontmatter|parent|folder|generic>`.
+
+If resolution is ambiguous, use generic and set review confidence to medium or low.
+
+## Structural pre-pass
+
+Run the lint script scoped to the review target when Bash is available:
 
 ```bash
-uv run python src/skills/reviewing-instructions/scripts/lint-instructions.py
+uv run python src/skills/reviewing-instructions/scripts/lint-instructions.py <scope>
 ```
 
-If the script fails (missing deps, sandbox restriction, uv cache error), skip the structural pre-pass and record "skipped (script unavailable)" in the Summary. Proceed with semantic review only.
+If scope is omitted, run the whole-repo pre-pass. If the script ignores scope,
+filter reported findings to reviewed files before scoring.
 
-Record which rule IDs flagged (U-SCOPE, K-DESC, F-NO-TABLE, etc.). The semantic review below is authoritative — this is a heuristic baseline for high-confidence instruction files and linked support markdown.
+If the script fails or is unavailable, record `Structural pre-pass: skipped` with
+the exact reason and continue semantic review.
 
-## Step 2: Semantic Review and Scoring
+The pre-pass is advisory. Semantic review and the scoring rubric are authoritative.
 
-Read `references/scoring-rubric.md` for 0–10 anchors and weights per dimension.
+## Semantic review
 
 For each confirmed file:
 
-1. Read it fully.
-2. Confirm it is meant to guide an AI agent, not just a human reader. If not, move it to `Candidates Not Reviewed`.
-3. Identify model from frontmatter or inherited parent context and load model context per resolution above.
-4. Score each of the 8 dimensions 0–10 with a one-line justification.
-5. Rate each applicable lint rule PASS / WARN / FAIL. For WARN/FAIL: cite exact section and propose a concrete fix.
-6. Compute weighted overall score (weights in `references/scoring-rubric.md`).
-7. List top 3 improvements by impact.
+1. Read the file fully.
+2. Confirm it is agent-facing.
+3. Resolve model context.
+4. Apply hard gates from the scoring rubric.
+5. Score each dimension using band-first 0-10 anchors.
+6. Apply caps and confidence rules.
+7. Rate applicable lint rules as PASS, WARN, or FAIL.
+8. List the top 1-3 improvements by impact.
+
+Use evidence for every score and finding: section name, line number, exact text,
+or missing evidence. No evidence, no finding.
+
+## Scoring stability rules
+
+- Choose the rubric band first, then choose the midpoint unless evidence justifies an edge.
+- Apply caps before computing the final score.
+- Round final scores to the nearest 0.5.
+- Use low confidence instead of over-precise scoring when context is partial.
+- Do not let one polished section hide a missing hard gate.
+- For repeated scoring or reranking, use the same scope, model context, and rubric version.
 
 ## Output
 
-```
+```markdown
 ## Instruction Review Report
 
+Model context: <family/variant> — source <source>
+Rubric version: <date or file path>
+Review confidence: high | medium | low
+
 ### Summary
-- Files reviewed: N (model: M or generic)
-- Extra instruction files discovered: N
+
+- Files reviewed: N
 - Candidates not reviewed: N
-- Structural pre-pass: N errors, N warnings (or: skipped)
-- Scores: mean X.X / 10 (range Y.Y–Z.Z)
+- Structural pre-pass: <errors/warnings or skipped reason>
+- Score range: X-Y / 10
+- Main risk: <one sentence>
 
 ### Scores
 
-path/to/SKILL.md — overall 7.8 / 10
-  Signal Density: 8 — most lines carry actionable constraints
-  Scope Specificity: 6 — positive scope only; no exclusions stated
-  Output Structure: 9 — template present with required fields
-  Format Efficiency: 10 — no tables/diagrams/italic; clean
-  Failure Handling: 5 — one failure case; missing exit conditions
-  Grounding Discipline: 7 — grounding required in key steps
-  Routing Precision: 8 — trigger phrases present; minor K-DESC gap
-  Progressive Disclosure: 7 — 180 lines; borderline; consider splitting
+path/to/file.md — overall X / 10, confidence <high|medium|low>
 
-### Critical Findings (FAIL)
-1. path — U-SCOPE: no scope boundary. Fix: add "Do not X; review only Y."
+- Gates: pass | capped at N because <reason>
+- Signal Density: X — <evidence>
+- Scope Specificity: X — <evidence>
+- Output Structure: X — <evidence>
+- Format Efficiency: X — <evidence>
+- Failure Handling: X — <evidence>
+- Grounding Discipline: X — <evidence>
+- Routing Precision: X — <evidence>
+- Progressive Disclosure: X — <evidence>
+- Lint: PASS <ids>; WARN <ids>; FAIL <ids>
 
-### Top Improvements (by impact)
-1. ...
+### Findings
+
+1. path — <severity> <rule or dimension>: <issue>. Evidence: <section/line/text>. Fix: <concrete fix>.
+
+### Top Improvements
+
+1. <highest-impact change>
+2. <next change>
+3. <next change>
 
 ### Candidates Not Reviewed
-- path/to/file.md — why confidence was too low or why it was ordinary documentation
 
-### Per-File Detail
-...
+- path — <reason>
 ```
+
+Omit empty sections. If no findings remain after evidence checks, say `No confirmed findings.`
+
+## Failure handling
+
+- Missing scope and broad review would be expensive: ask one clarifying question.
+- Unknown model alias: use generic, report the alias gap, and lower confidence.
+- Vendor docs unavailable: use local model reference or generic; do not block review.
+- Conflicting local and vendor guidance: local project rules win; report the conflict.
+- Parallel or delegated reviews disagree: apply the same gates and caps, then keep the lower-confidence result out of confirmed findings.

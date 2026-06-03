@@ -821,14 +821,95 @@ ALL_CHECKS = [
 
 
 # -------------------------------------------------------------------
+# Scope filtering
+# -------------------------------------------------------------------
+
+
+def _scope_tokens(argv: list[str]) -> list[str]:
+    tokens: list[str] = []
+    skip_next = False
+    for arg in argv:
+        if skip_next:
+            skip_next = False
+            continue
+        if arg == "--model":
+            skip_next = True
+            continue
+        if arg.startswith("--"):
+            continue
+        tokens.append(arg)
+    return tokens
+
+
+def _candidate_scope_paths(token: str) -> list[Path]:
+    raw = Path(token)
+    paths: list[Path] = []
+    if raw.is_absolute():
+        paths.append(raw)
+    else:
+        paths.append((Path.cwd() / raw).resolve())
+        paths.append((ROOT / raw).resolve())
+        if "/" not in token and "\\" not in token:
+            paths.extend(
+                [
+                    (ROOT / "src" / "skills" / token).resolve(),
+                    (ROOT / "src" / "agents" / token).resolve(),
+                    (ROOT / "src" / "plugins" / token).resolve(),
+                ]
+            )
+    deduped: list[Path] = []
+    seen: set[Path] = set()
+    for path in paths:
+        if path not in seen:
+            deduped.append(path)
+            seen.add(path)
+    return deduped
+
+
+def _matches_scope(item: InstructionFile, scope: Path) -> bool:
+    item_path = item.path.resolve()
+    if scope.is_file():
+        return item_path == scope.resolve()
+    if scope.is_dir():
+        try:
+            item_path.relative_to(scope.resolve())
+            return True
+        except ValueError:
+            return False
+    return False
+
+
+def filter_by_scope(
+    files: list[InstructionFile], argv: list[str]
+) -> list[InstructionFile]:
+    tokens = _scope_tokens(argv)
+    if not tokens:
+        return files
+
+    scopes: list[Path] = []
+    for token in tokens:
+        for path in _candidate_scope_paths(token):
+            if path.exists():
+                scopes.append(path.resolve())
+
+    if not scopes:
+        return []
+
+    filtered = [
+        item for item in files if any(_matches_scope(item, scope) for scope in scopes)
+    ]
+    return sorted(filtered, key=lambda item: item.rel)
+
+
+# -------------------------------------------------------------------
 # Main
 # -------------------------------------------------------------------
 
 
 def main() -> int:
-    files = discover_files()
+    files = filter_by_scope(discover_files(), sys.argv[1:])
     if not files:
-        print("No instruction files found.")
+        print("No instruction files found for scope.")
         return 0
 
     findings: list[Finding] = []

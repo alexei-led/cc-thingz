@@ -1,103 +1,114 @@
 ---
 description:
-  Improve test design and coverage, including TDD/red-green-refactor guidance.
-  Use when improving tests, refactoring tests, adding coverage, using TDD, or removing
-  test waste. NOT for fixing production bugs (use fixing-code) or reviewing non-test
-  code quality (use reviewing-code).
+  Improve test design and coverage with behavior-focused tests, useful seams,
+  characterization tests, TDD, and test refactoring. Use when improving tests,
+  adding coverage, refactoring brittle tests, removing test waste, or working
+  test-first. NOT for fixing production bugs (use fixing-code), production-code
+  refactors (use refactoring-code), or reviewing non-test code quality (use reviewing-code).
 name: improving-tests
 ---
 
 # Test Improvement
 
-Improve tests by making them behavioral, lean, and useful.
+Improve tests so they catch real behavior regressions without blocking safe code
+changes. Coverage is a signal, not the goal.
 
 ## Role-gated action
 
-Detect your capability from your tools, not from prose:
+Detect capability from tools:
 
-- Write-capable role (engineer): apply the test changes and run the verification command.
-- Read-only role (reviewer): identify the weak/missing/brittle tests and emit the changes in the Proposed Changes contract under Verify and report. Apply nothing; run nothing — a reviewer has no edit or Bash tools, so the `review` mode is its natural fit.
+- Write-capable role: inspect tests, apply changes, and run verification.
+- Read-only role: inspect supplied files/output and emit changes in the Proposed Changes contract. Apply nothing; run nothing.
 
-## Language detection and references
+## Route elsewhere
 
-Detect the language from the file extensions in scope and load the matching reference for language-specific test patterns and tooling:
+Do not use this for:
 
-- Go → [references/go.md](references/go.md)
-- Python → [references/python.md](references/python.md)
-- TypeScript → [references/typescript.md](references/typescript.md)
-- Web → [references/web.md](references/web.md)
+- production bug fixes → `fixing-code`
+- production-code refactors → `refactoring-code`
+- non-test code review → `reviewing-code`
+- new feature implementation unless the user asked for TDD
 
-Mixed languages: load each matching reference. Unknown language: use the generic principles below only.
+## References
+
+Detect languages from files in scope and read only the matching reference:
+
+- Go → `references/go.md`
+- Python → `references/python.md`
+- TypeScript → `references/typescript.md`
+- Web → `references/web.md`
+
+Use generic rules only for unsupported languages.
 
 ## Modes
 
-- `review` → identify weak, duplicate, brittle, or missing tests
-- `refactor` → combine to table-driven/parametrized/test.each, remove waste
-- `coverage` → add tests for uncovered business behavior
-- `tdd` → red-green-refactor loop for a feature or bug
-- `full` → review + refactor + coverage
+- `review`: find weak, duplicate, brittle, missing, slow, or flaky tests
+- `refactor`: simplify tests without changing covered behavior
+- `coverage`: add tests for uncovered business behavior or error paths
+- `tdd`: one red-green-refactor slice at a time
+- `full`: review, refactor, and add coverage
 
-## Testing principles
+## Choose the seam
 
-- Test behavior through public interfaces, not implementation details.
-- The module interface is the test surface.
-- Mock only system boundaries: external APIs, network, time, randomness, filesystem, subprocesses.
-- Do not mock your own internal collaborators just to make tests easy.
-- Prefer integration-style tests when they give a clear, stable signal.
-- Delete old shallow tests once deeper interface tests cover the behavior.
-- No pointless tests for getters, constructors, default props, or generated glue.
+Test through the contract that users or adjacent modules rely on:
 
-## TDD workflow
+- Public module, package, API, CLI, component, or service boundary.
+- Integration seam when behavior depends on real wiring: database, filesystem, HTTP, queue, cache, framework routing, serialization, or config.
+- Unit seam when behavior is pure, local, deterministic, and cheap to exercise.
 
-Use this for test-first or red-green-refactor work.
+Use graph tools when they help choose the seam or risk:
 
-1. Confirm the public interface and first behavior.
-2. Write one failing test for one behavior.
-3. Run it and watch it fail for the expected reason.
-4. Implement the smallest code that passes.
-5. Run the narrow test.
-6. Repeat one vertical slice at a time.
-7. Refactor only when green.
+- GitNexus: use query/context to find flows around a behavior; use impact or detect-changes to choose regression tests for changed symbols and affected processes.
+- codegraph: check status first; if fresh, use affected/context to find callers, high fan-in surfaces, and modules that need regression coverage.
+- Stale graph indexes are not evidence. Refresh if allowed; otherwise report the gap and use search, coverage output, and source reads.
 
-Do not write all tests first. Bulk RED creates imagined tests coupled to guessed implementation.
+## Test rules
 
-## Review workflow
+- Test behavior, not private helpers, call counts, or layout.
+- Mock only system boundaries: network, clock, randomness, filesystem, subprocesses, external services.
+- Prefer real collaborators or in-memory fakes for internal domain code.
+- Cover success, failure, edge, boundary, and regression cases that matter.
+- Use coverage to find gaps; do not write low-value assertions just to raise a number.
+- Delete shallow or duplicate tests once stronger public-boundary tests cover the behavior.
+- Extract helpers only after repeated setup or assertions make tests harder to read.
 
-Explore the existing test suite. Engineer runs these commands to gather coverage; reviewer (no Bash) works from the test files in scope plus any coverage output the caller supplies — ask for that context if missing, do not run the commands:
+## TDD and characterization
 
-```bash
-# Go
-go test -coverprofile=/tmp/cc-cov.out ./... && go tool cover -func=/tmp/cc-cov.out
+TDD:
 
-# Python
-pytest --cov=. --cov-report=term-missing
+1. Name one behavior at the public seam.
+2. Write one failing test that fails for the expected reason.
+3. Implement the smallest passing code.
+4. Refactor only while green.
+5. Repeat one behavior at a time.
 
-# TypeScript
-bun test --coverage
-```
+Characterization tests:
+
+- Use before risky changes to legacy or under-specified code.
+- Capture current externally visible behavior, including quirks.
+- Place tests at the public boundary first; add narrower tests only when they add diagnostic value.
+
+## Review checks
 
 Look for:
 
-- tests coupled to private helpers or call counts
-- tests that should be table-driven / parametrized / `test.each`
-- duplicate scenarios
-- weak mocks hiding real behavior
-- missing success, error, and edge cases on business logic
-- no usable seam for testing real behavior
+- tests coupled to private helpers, internals, or incidental call order
+- mocks hiding real behavior or contracts
+- duplicate scenario matrices that should be parameterized
+- missing business, error, edge, concurrency, or permission cases
+- flaky tests from time, randomness, ordering, shared state, or real external services
+- slow tests that could move down a seam without losing confidence
+- dead tests that cover deleted behavior or generated glue
 
-## Preferred consolidation patterns
+Preferred consolidation:
 
-For refactoring brittle private-helper tests, state the public behavior surface first. Example: `create_user(payload)` is the primary test surface; `_normalize_user_payload()` is not. Replace duplicate helper tests and internal call-count assertions with behavior checks through the public API. Mock only system boundaries. Delete shallow duplicates once the public behavior tests cover them.
+- Go: table-driven tests with subtests.
+- Python: parametrized pytest cases.
+- TypeScript: `it.each` or equivalent project pattern.
 
-- **Go** — table-driven with `t.Run(tc.name, ...)`
-- **Python** — `@pytest.mark.parametrize` with `pytest.param()`
-- **TypeScript** — `it.each([{ input, expected, name }])`
+## Verification
 
-Extract helpers only after 3+ repetitions and only when the helper improves readability.
-
-## Verify and report
-
-Engineer runs and names the relevant verification command for the project after applying. Reviewer names the command in the Proposed Changes rationale and does not run it (no Bash). Examples:
+Run the relevant project command after changes. Examples:
 
 ```bash
 go test ./...
@@ -105,9 +116,12 @@ pytest -v
 bun test
 ```
 
-For Python, mention `pytest` or the project-specific equivalent explicitly. For refactor plans in Python projects, include `pytest -v` or the repository's configured `uv run pytest` command by name instead of only saying "run tests." For other stacks, name the equivalent test command instead of saying only "tests passed."
+Use coverage commands only when coverage mode or review needs them. Report skipped
+checks with reasons.
 
-Engineer (applied the changes):
+## Output
+
+Engineer:
 
 ```text
 TEST IMPROVEMENT COMPLETE
@@ -115,16 +129,17 @@ TEST IMPROVEMENT COMPLETE
 Mode: review | refactor | coverage | tdd | full
 Tests changed: N
 Waste removed: N
-Coverage: before → after (if measured)
+Coverage: before → after | not measured
+Status: CLEAN | NEEDS ATTENTION
 
 Key improvements:
-- file:line — change
+- path:line — change
 
 Verification:
 - <command> — pass/fail
 ```
 
-Reviewer (identified only — emit the changes as a proposal, apply nothing):
+Reviewer:
 
 ```text
 ## Proposed Changes
@@ -135,9 +150,10 @@ File: `path/to/test_file`
 Action: CREATE | MODIFY | DELETE
 
 Code:
-<complete test code, in the file's language>
+<complete test code or changed region with enough context>
 
-Rationale: <weak/missing/brittle test this addresses>
+Rationale: <weak, missing, brittle, slow, or duplicate test this fixes>
+Verification: <command the applier should run>
 ```
 
-If no tests or framework exist, report that and ask before creating a new testing stack.
+If no test framework exists, ask before adding one.

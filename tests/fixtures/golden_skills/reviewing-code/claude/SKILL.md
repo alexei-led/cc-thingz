@@ -17,136 +17,249 @@ allowed-tools:
 - mcp__plugin_claude-mem_mcp-search__get_observations
 argument-hint: '[deep] [team] [external]'
 context: fork
-description: Code review covering security, correctness, quality, tests, implementation,
-  and documentation. Use when the user asks to review code, check changes, audit a
-  PR or diff, or find line-level refactoring opportunities. NOT for repo-wide architecture
-  review, codebase analysis, fixing issues (use fixing-code), or applying refactors
-  (use refactoring-code).
+description: Use when reviewing changed code, PRs, diffs, or specific files. Finds
+  evidence-backed defects in security, correctness, tests, reliability, performance,
+  maintainability, and docs. Supports quick, standard, deep, team, and external-review
+  modes. NOT for repo-wide architecture review, general codebase exploration, fixing
+  issues (use fixing-code), improving tests without a code review (use improving-tests),
+  or applying refactors (use refactoring-code).
 name: reviewing-code
 user-invocable: true
 ---
 
 # Code Review
 
-Review changed code for security, correctness, test coverage, maintainability, and documentation. Ground every finding in concrete evidence: a `file:line` reference or tool output.
+Produce findings, not edits. Review only the requested diff, PR, changed files,
+or file list. If scope or diff context is missing, ask one clarifying question.
 
-If a task-tracking facility is available, track these phases as tasks.
+## Read first
 
-## Role and output contract
+Read `references/severity-rubric.md` before scoring or reporting findings.
+Load language references only for languages present in scope:
 
-This skill produces findings, not edits. It owns the tiered-findings output contract below. Emit the findings regardless of role; route the actual fixes to `fixing-code` or the refactor to `refactoring-code`. A reviewer (read-only) cannot run `git diff` or builds — work from the files in scope plus any diff context the caller supplies, and ask for that context if it is missing rather than guessing.
+- Go: `references/go.md`
+- Python: `references/python.md`
+- TypeScript: `references/typescript.md`
+- Web, HTML, CSS, JS, HTMX: `references/web.md`
 
-## Workflow
+Unsupported language: use this skill and the severity rubric only; report reduced coverage.
 
-1. Determine review scope.
-2. Detect languages and load the matching references.
-3. Walk the review dimensions across the scope.
-4. Aggregate findings by severity and report.
+## Review modes
 
-Track progress through the workflow phases using `TaskCreate` / `TaskUpdate`.
+Default mode is standard unless the user asks otherwise.
 
-If `$ARGUMENTS` is passed, the keywords below tune the workflow:
+Quick:
 
-- `deep` — cover all six review dimensions, not just the security and correctness pair.
-- `team` — fan the dimensions to parallel reviewer sub-tasks that challenge each other's findings and converge.
-- `external` — additionally spawn external AI reviewers. Only when explicitly requested; never run by default.
+- Use for small, low-risk diffs.
+- Cover security and correctness only.
+- Review changed lines plus direct local context.
 
-Without `external`, run only this skill's own review. Never spawn external reviewers implicitly.
+Standard:
 
-## Determine scope
+- Use for normal reviews.
+- Cover security, correctness, and tests.
+- Review changed files plus direct callers or callees when needed to validate a finding.
 
-Resolve the scope from the request. Options:
+Deep:
 
-- Uncommitted changes
-- Branch compared to the default branch
-- Specific files (user provides paths)
+- Use when the user asks for deep, thorough, risk, or merge-safety review.
+- Cover all dimensions: security, correctness, tests, reliability, performance, maintainability, and docs.
+- Review changed files, relevant callers/callees, boundary inputs, and affected tests.
 
-If a role with Bash is running this, resolve to the appropriate git invocation and use it consistently across phases. If a read-only role is running this, work from the file list and diff context the caller provides. If the user already named a scope, use it without asking; otherwise ask one clarifying question.
+Team:
 
-Use `AskUserQuestion` with header "Review scope" and the three options spelled out above.
+- Use only when the user asks for team, parallel, multi-agent, or multi-pass review.
+- Split by dimension or file group, then consolidate into one report.
+- Deduplicate by `file:line` plus claim. Keep the strongest severity only when evidence supports it.
+- Put unresolved disagreements under Needs review, not confirmed findings.
 
-## Detect languages and load references
+External:
 
-Scan the changed-file extensions. For each language present, load the matching reference for language-specific review checks:
+- Use only when the user explicitly asks for external, Codex, second model, or second opinion.
+- Keep private code local unless the configured bridge runs locally or the user approved sharing.
+- Consolidate external output with the same severity rubric. Downgrade unsupported external claims to Needs review.
+- Report whether external review completed, was unavailable, or was skipped for privacy/tooling reasons.
 
-- Go → [references/go.md](references/go.md)
-- Python → [references/python.md](references/python.md)
-- TypeScript → [references/typescript.md](references/typescript.md)
-- Web / HTML / CSS / JS → [references/web.md](references/web.md)
+## Scope resolution
 
-Mixed languages: load each matching reference. Unknown or unsupported language: use the generic dimensions below only and note the reduced coverage.
+Use the user's named scope without asking. Otherwise choose one:
+
+- Uncommitted changes.
+- Branch compared to default branch.
+- Specific files or PR diff supplied by the user.
+
+Tool-enabled role: use the matching git or PR command consistently for the whole review.
+Read-only role: work from supplied diff, file list, and tool output. If that context is absent, ask for it instead of guessing.
+
+If there are no changes in scope, report `Nothing to review.`
+
+## Evidence gathering
+
+For each scoped language:
+
+1. Read the relevant language reference.
+2. Inspect changed code and enough nearby code to validate claims.
+3. Use supplied or runnable tooling output when available.
+4. Use graph evidence only when it answers a review question, not as a default fishing pass.
+
+GitNexus is useful for PRs, broad diffs, public API changes, and missed caller/test coverage:
+
+- Detect changes to map changed symbols to affected flows.
+- Impact analysis for non-trivial changed symbols.
+- Context for changed boundary symbols, callers, callees, and tests.
+
+codegraph is useful for dependency/call blast radius and high fan-in surfaces:
+
+- Check status first.
+- If fresh, use context or affected queries for changed symbols or files.
+- Stale or partial indexes are not evidence. Refresh if allowed; otherwise report the gap.
 
 ## Review dimensions
 
-Walk every dimension across the scope. For a standard review, cover the security and correctness dimensions; for a thorough review, cover all six. If the runtime supports parallel sub-tasks and the scope is large, the orchestrator may fan the dimensions out, but the rubric is identical either way.
+Security:
 
-- Logic, security, OWASP, race conditions, unchecked errors, resource leaks
-- Patterns, conventions, stdlib usage, error handling
-- Test coverage, edge cases, mocking discipline
-- Requirements match, dependency injection, boundary inputs
-- Comments, docstrings, API docs, ARIA labels for web
-- Maintainability, dead code, confusing indirection, pass-through wrappers
+- Auth, authorization, injection, unsafe deserialization, secrets, crypto, SSRF, XSS, CSRF, path traversal, data exposure.
 
-Run the dimensions as the read-only `reviewer` role. For large scope, the orchestrator may fan them out as parallel `Task(subagent_type="reviewer", prompt=...)` sub-tasks, one per dimension or per file group; each sub-task's model is set in its own metadata — do not pin a model from the skill.
+Correctness:
 
-When `team` is set, run those sub-tasks as an agent team so they challenge each other's findings; the report prefixes each finding with `[Flagged by: <dimension>]`.
+- Logic errors, edge cases, null or empty handling, contract mismatches, broken callers, unchecked errors, migrations, API compatibility.
 
-When `external` is set, additionally spawn any configured external-AI reviewer bridges in parallel for a second-model pass on security and quality. Do not hard-depend on a specific external agent; skip silently if none is configured.
+Tests:
 
-## Review rules
+- Missing regression tests, uncovered changed behavior, weak assertions, over-mocking, missing error or boundary cases.
 
-- Cite concrete `file:line` evidence or tool output for every finding. No evidence, no finding.
-- Findings include severity and a concrete fix.
-- For security findings, remind the user: keep private code local; do not paste private diffs into web tools. Use web only for external facts (CVE, library docs); cite separately.
-- Ask one clarifying question at a time; do not batch.
-- Keep the review scoped to changed code or the user-provided file list. Do not expand into repo-wide architecture analysis.
+Reliability:
 
-## Historical context (optional)
+- Resource leaks, retries, timeouts, cancellation, concurrency, races, idempotency, cleanup, observability for failures.
 
-If cross-session memory tooling is available, query for prior observations on the files about to be reviewed. Skip already-litigated issues so old findings are not repeated. Skip silently if no such tooling is configured.
+Performance:
 
-If `mcp__plugin_claude-mem_mcp-search__search` is available, query for past findings on the files in scope:
+- Realistic hot paths, unbounded work, N+1 queries, blocking I/O, memory growth, avoidable cost.
 
-```text
-search({ query: "<file paths in review scope>", limit: 10 })
-```
+Maintainability:
 
-Fetch full observations via `get_observations` for relevant hits. Skip already-litigated issues. Skip silently if the MCP is not installed.
-## Report format
+- Dead code, confusing indirection, shallow wrappers, mixed responsibilities, brittle coupling, unclear invariants.
+
+Docs:
+
+- Public API docs, migration notes, user-facing behavior, accessibility text, and operator docs affected by the change.
+
+## Finding rules
+
+- Every confirmed finding needs `file:line` or quoted tool output.
+- Every confirmed finding needs severity, category, confidence, scenario, and fix.
+- No evidence, no finding.
+- Missing context becomes Needs review, not a hedged finding.
+- Do not report style or formatting already handled by project tooling unless it creates real risk.
+- Keep findings scoped. List adjacent suspicious areas as out of scope instead of expanding the review.
+- Security web research is only for public facts such as CVEs or official docs. Do not send private code or diffs to web tools.
+
+## Scoring
+
+If the user asks for a score, apply `references/severity-rubric.md` exactly:
+
+1. Assign severity and confidence for each finding.
+2. Apply caps first.
+3. Apply deductions.
+4. State score confidence: high, medium, or low.
+5. If review coverage is partial, show the cap reason.
+
+Do not invent precision. Use one decimal only when arithmetic needs it.
+
+## Output
 
 ```markdown
 ## Code Review Summary
 
-**Scope**: <description>
-**Languages**: <list>
+Scope: <description>
+Depth: quick | standard | deep | team | external
+Languages: <list>
+Coverage: complete | partial — <reason>
+Graph evidence: none | GitNexus | codegraph | both — <freshness/gaps>
+External review: not requested | completed | unavailable | skipped — <reason>
+Score: <N/10 if requested> — confidence <high|medium|low>
 
-### Critical (must fix)
+### Critical
 
-- `file:line` — issue. Fix.
+- `file:line` — <category>, confidence <level>. <issue> Scenario: <how it fails>. Fix: <concrete fix>.
 
-### Warnings (should fix)
+### Warnings
 
-- `file:line` — issue. Fix.
+- `file:line` — <category>, confidence <level>. <issue> Scenario: <how it fails>. Fix: <concrete fix>.
 
-### Suggestions (consider)
+### Suggestions
 
-- `file:line` — improvement.
+- `file:line` — <category>, confidence <level>. <improvement>. Fix: <concrete fix>.
+
+### Needs review
+
+- `file:line or tool/context gap` — <missing context and why it matters>.
 
 ### Summary
 
-Overall assessment in 2-3 sentences, then a prioritized list of recommended actions.
+<2-3 sentences with merge risk and next actions. Say "No confirmed findings" when clean.>
 ```
 
-## Writing style
-
-- One sentence per finding. No preamble, no "I noticed that…".
-- Cut hedging: "potential", "might", "consider". State what is wrong.
-- Direct: "This leaks memory" not "This could potentially lead to memory issues".
-- Technical precision: include type names, function signatures, line numbers.
+Omit empty severity sections except Needs review when it explains partial coverage.
 
 ## Edge cases
 
-- No changes in scope → "Nothing to review."
-- Linters missing or unrunnable (read-only role) → say so explicitly; still review by reading.
-- Tests missing → flag as a finding under the test-coverage dimension.
-- Scope larger than expected → review only what was asked; list adjacent suspicious files as out of scope.
+- Missing diff or file list in read-only mode: ask for it.
+- Tool unavailable: report the gap and continue with source review.
+- Tests missing for changed behavior: report under tests with the missing behavior named.
+- Large scope: review requested scope first; recommend deep/team mode for more coverage.
+- Generated or vendored files: review only if the change is direct and source generation is in scope.## Platform workflow additions
+
+Track phases with `TaskCreate` and `TaskUpdate` when available:
+
+1. Scope resolved.
+2. References loaded.
+3. Evidence gathered.
+4. Findings consolidated.
+5. Report emitted.
+
+## Arguments
+
+If `$ARGUMENTS` is passed, interpret these keywords:
+
+- `quick`: changed lines plus direct context; security and correctness only.
+- `deep`: all dimensions from the host skill.
+- `team`: parallel reviewer sub-tasks, then one consolidated report.
+- `external`: second-model or external-AI review; only when explicitly requested.
+
+Default is standard. Never run `external` implicitly.
+
+## Scope prompt
+
+When scope is missing, use `AskUserQuestion` with header `Review scope` and these options:
+
+- Uncommitted changes.
+- Branch compared to default branch.
+- Specific files or PR diff supplied by the user.
+
+## Team mode
+
+Run sub-tasks as the read-only `reviewer` role. Split by review dimension or file group. Each sub-task must use the host skill's severity rubric and return only evidence-backed findings.
+
+Consolidate before reporting:
+
+- Deduplicate by `file:line` plus claim.
+- Keep the highest severity only when the evidence matches the rubric.
+- Move unsupported or disputed claims to Needs review.
+- Prefix confirmed findings with `[Flagged by: <dimension or file group>]` only when it helps explain coverage.
+
+## External mode
+
+When `external` is requested, spawn configured external reviewer bridges in parallel if available. Do not depend on a specific bridge or model.
+
+Report the result explicitly:
+
+- `External review: completed` when it ran.
+- `External review: unavailable` when no bridge exists.
+- `External review: skipped` when privacy, missing scope, or tooling prevents it.
+
+Apply the host severity rubric to external output. Do not include external claims as confirmed findings unless the local review can verify the evidence.
+
+## Historical context
+
+If memory search is available, query past observations for files in scope. Use it only to avoid repeating already-litigated findings. Do not treat memory as evidence for a new finding.

@@ -1,80 +1,85 @@
 ---
-description: Batch refactoring for multi-file, repeated-pattern, large-file, or broad
-  behavior-preserving changes. Use for "refactor across files", "batch rename", "update
-  pattern everywhere", large files (500+ lines), or 5+ edits in the same file. NOT
-  for repo-wide architecture design/review, codebase analysis, single-file targeted
-  edits, or code review (use reviewing-code).
+description: Batch behavior-preserving refactors for multi-file, repeated-pattern,
+  large-file, rename, move, extract, split, or restructure work. Use for "refactor
+  across files", "batch rename", "update pattern everywhere", large files (500+ lines),
+  or 5+ coordinated edits in one file. NOT for single targeted edits, behavior changes
+  or bug fixes (use fixing-code), test-only refactors (use improving-tests), code
+  review (use reviewing-code), or architecture redesign (use architecture-design/review).
 name: refactoring-code
 ---
 
 # Batch Refactoring
 
-Refactor in small, verified batches. If behavior changes, it is not a refactor;
-it is a feature or bug fix. State the behavior-preservation target before editing.
+Use this when many edits must preserve externally observable behavior. Stop if you
+cannot name the maintenance value and the behavior that must stay unchanged.
 
 ## Role-gated action
 
-Detect your capability from your tools, not from prose:
+Detect capability from tools:
 
-- Write-capable role (engineer): map the scope, apply the batch edits, run lint/test verification.
-- Read-only role (reviewer): map the scope and produce the refactor plan, then emit it in the Proposed Changes contract under Output. Apply nothing; run nothing.
+- Write-capable role: map scope, apply one batch, run verification.
+- Read-only role: map scope and emit the refactor in the Proposed Changes contract. Apply nothing; run nothing.
 
-## When To Use
+## Route elsewhere
 
-Use this workflow for:
+Do not use this for:
 
-- multi-file refactors
-- repeated pattern updates
-- public or internal renames with callers
-- large files where exact text replacement is brittle
-- 5+ coordinated edits in the same file
-
-Do not use it for:
-
-- one small targeted edit
-- behavior changes
-- broad architecture redesign
-- code review findings without applying changes
+- one small edit that normal coding tools can handle
+- behavior changes, bug fixes, or failing checks → `fixing-code`
+- test-only cleanup, coverage, or TDD → `improving-tests`
+- review findings without edits → `reviewing-code`
+- target architecture design or repo-wide structural audit → architecture skills
 - cosmetic churn with no maintenance value
 
-## Workflow
+## Evidence first
 
-1. Define the refactor goal and non-goals.
-2. Name the behavior that must be preserved.
-3. Map all affected sites before editing with file/text search.
-4. Read representative files and tests.
-5. Add characterization tests when behavior is under-specified.
-6. Apply one coherent batch using the best available edit tool; use a semantic batch editor only when the runtime provides one.
-7. Run narrow tests.
-8. Run broader lint/type/test checks before the next batch.
-9. Delete dead code introduced or exposed by the refactor.
+Before editing:
 
-## Safe Batches
+1. Define goal, non-goals, preservation target, and safety gate.
+2. Map every affected site with text search and language-aware tools.
+3. For renames, moves, extracts, splits, or broad restructures, use graph tools when available:
+   - GitNexus dry-run rename for renames; GitNexus context, impact, and query for callers, callees, execution flows, and string/dynamic refs.
+   - codegraph status first; if fresh, use codegraph context or affected to size dependency/call blast radius.
+4. Treat stale graph indexes as no evidence. Refresh if allowed; otherwise fall back to search/LSP and report the gap.
+5. Check non-code references when names or paths change: config, routes, DI wiring, serialization keys, CLI entries, generated sources, scripts, and docs.
+6. Read representative implementation files and tests.
+7. Add characterization tests at the public boundary when behavior is under-specified and risk is not low.
 
-Good batches:
+No mapped site, no edit.
 
-- rename one public symbol and all callers
-- move one function/module with tests unchanged
+## Batch rules
+
+Good batches are small, reversible, and single-purpose:
+
+- rename one symbol/concept and all callers
+- move one module/function and its tests
+- extract one cohesive responsibility behind the same public behavior
 - remove one duplicate implementation after tests prove equivalence
-- update one repeated pattern across files
+- update one repeated pattern across mapped sites
 
-Bad batches:
+Rules:
 
-- rename many symbols while changing logic
-- reorganize modules and change APIs in one pass
-- add abstractions for imagined future callers
-- edit generated files by hand
+- Separate mechanical structure changes from logic changes.
+- Do not rename many concepts while changing APIs or control flow.
+- Prefer semantic refactoring tools; use precise text edits only for mapped sites.
+- For public APIs, keep compatibility shims or deprecations unless the user approved a breaking change.
+- Run narrow tests after each batch; run broader lint/type/test checks before the next batch or final report.
+- Delete dead code exposed by the refactor. Do not hand-edit generated or vendored files unless the project regenerates them from source.
 
 ## Output
 
-Engineer (applied the refactor):
+Engineer:
 
 ```text
 REFACTOR COMPLETE
 =================
 Preservation target: <behavior that must not change>
+Safety gate: <tests/checks used>
 Files changed: N
 Status: CLEAN | NEEDS ATTENTION
+
+Mapping:
+- <tool/search> — <key affected sites or graph gap>
 
 Changes:
 - path:line — change
@@ -83,12 +88,16 @@ Verification:
 - <command> — pass/fail
 ```
 
-Reviewer (planned only — emit the refactor as a proposal, apply nothing):
+Reviewer:
 
 ```text
 ## Proposed Changes
 
 Preservation target: <behavior that must not change>
+Safety gate: <tests/checks the applier should run>
+
+Mapping:
+- <tool/search> — <affected sites or graph gap>
 
 ### Change 1: <brief description>
 
@@ -101,12 +110,13 @@ Code:
 Rationale: <why this preserves behavior while improving structure>
 ```
 
-For multi-file renames, list every occurrence mapped before the proposal so the
-applier can replay it.
+For multi-file renames, list every mapped occurrence or explicitly mark ambiguous/unmapped references.
 
 ## Failure handling
 
-- Batch-edit tool unavailable: use the runtime's precise edit tools and shrink the batch.
-- Tests fail after a batch: revert or inspect the last batch before continuing.
-- Scope unclear (`refactor this`): ask which files and what behavior to preserve before touching anything.
-- A mapped occurrence is generated or vendored: skip it unless the project regenerates that file from source.
+- Scope unclear: ask which files/concept and what behavior to preserve.
+- Tests/checks missing for risky code: ask to add characterization tests or shrink/defer the refactor.
+- Tests fail after a batch: inspect or revert that batch before continuing.
+- Required behavior change appears: stop and split into refactor first, then feature/fix.
+- Graph tool missing or stale: report the gap and use search/LSP evidence instead.
+- Generated or vendored occurrence: skip it unless regeneration is part of the verified workflow.

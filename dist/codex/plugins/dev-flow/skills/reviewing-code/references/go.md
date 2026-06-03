@@ -1,77 +1,74 @@
-# Go Review Slice
+# Go Review Reference
 
-Language-specific review material for Go 1.25+. The host skill supplies scope, workflow, and the findings/output contract — this file supplies only the Go tooling, version-specific traps, and focus-area checks.
+Host skill owns scope, severity, scoring, and output. This file adds Go-specific evidence gathering and checks.
 
-## Run tooling first
+## Tool-enabled review
 
-Execute these before manual review to catch issues programmatically:
+Run configured project tools only when the active role can execute commands. Prefer project commands when present.
 
-```bash
-# Build and vet (catches logic issues)
-go build ./... 2>&1 && go vet ./... 2>&1
-
-# Security, correctness & performance linters (2 min timeout)
-golangci-lint run --timeout=2m --enable=gosec,bodyclose,nilerr,nilnil,nilnesserr,errcheck,staticcheck,contextcheck,rowserrcheck,sqlclosecheck,nosprintfhostport,prealloc,perfsprint,ineffassign,wastedassign ./... 2>&1
-
-# Race detector on tests (5 min timeout)
-go test -race -short -timeout=5m ./... 2>&1
-```
-
-Include tool output in findings. If tools report issues, those are the primary findings. Focus manual review on files flagged by tools plus their direct callers. Do not scan the whole codebase manually.
-
-If `golangci-lint` fails to run, debug it before falling back to manual review:
+Useful Go gates:
 
 ```bash
-golangci-lint --help          # Main help
-golangci-lint run --help      # Run command options
-golangci-lint linters         # List available linters
-golangci-lint linters --json  # Machine-readable linter list
+go build ./...
+go vet ./...
+go test -race -short ./...
+golangci-lint run ./...
 ```
 
-## LSP navigation (trace security-sensitive data flow)
+Treat tool output as evidence, then map it through the severity rubric. If a tool is missing or too slow, report the gap and continue source review. Do not install tools.
 
-- `goToDefinition` — trace function calls to understand data flow
-- `findReferences` — find all callers of security-sensitive functions
-- `incomingCalls` — trace who calls a function (input-validation checks)
-- `goToImplementation` — find concrete implementations of interfaces
+## Read-only review
 
-## Go 1.25 specific traps
+When commands are unavailable, use supplied diff, file reads, and any caller-supplied tool output. Follow direct callers for changed exported functions, interface implementations, context use, and resource ownership.
 
-- WaitGroup misuse: `go vet` now catches `Add()` after goroutine spawn
-- Host:port formatting: `go vet` catches unsafe `fmt.Sprintf("%s:%d", host, port)`
-- Loop variable capture: fixed in Go 1.22+, but still flag for clarity in closures
+## Focus checks
 
-## Logic correctness
+Correctness:
 
-- Nil pointer dereference: unchecked nil on pointers, maps, channels, interfaces
-- Off-by-one errors: slice bounds, loop boundaries
-- Integer overflow: calculations that could exceed int bounds
-- Missing return: functions with multiple return paths missing values
-- Context ignored: not checking `ctx.Err()` or `ctx.Done()` in long operations
+- Nil pointer, nil map, nil channel, or nil interface paths.
+- Off-by-one slice or loop boundaries.
+- Integer overflow or truncation in sizes, indexes, money, or time.
+- Ignored errors, wrong error wrapping, or swallowed cancellation.
+- Interface contract mismatch between implementation and caller.
 
-## Security (OWASP)
+Security:
 
-- SQL injection: string concatenation in queries → use parameterized queries
-- Command injection: `os/exec` with unsanitized user input
-- Hardcoded secrets: credentials, API keys in source code
-- Weak random: `math/rand` for security → use `crypto/rand`
-- Path traversal: unsanitized file paths from user input
-- Error exposure: returning internal error details to users
-- Timing attacks: non-constant-time comparisons for secrets → `subtle.ConstantTimeCompare()`
+- SQL or command injection from string-built queries or shell commands.
+- Path traversal from untrusted file paths.
+- Weak randomness or crypto for secrets.
+- Secret exposure in logs, errors, config, or responses.
+- Authorization checks missing at concrete handlers or service boundaries.
 
-## Performance
+Reliability:
 
-- Unbounded goroutines: missing worker pools → `wg.Go()` with semaphore
-- `defer` in loops: defers stack up until function returns
-- Slice growth: missing pre-allocation → `make([]T, 0, cap)`
-- String concat in loops: use `strings.Builder`
-- Connection leaks: missing `Close()` on connections, files, `resp.Body`
-- Context without timeout: external calls without `context.WithTimeout`
+- Missing context propagation or timeout on external calls.
+- Goroutine leaks, unbounded goroutines, channel deadlocks, or data races.
+- Missing `Close` on files, connections, response bodies, rows, or statements.
+- Retry loops without backoff, cap, or idempotency check.
+
+Performance:
+
+- N+1 queries or serial external calls on realistic collections.
+- `defer` in hot loops.
+- Repeated string concatenation in loops.
+- Avoidable allocations in hot paths only when the path is plausible.
+
+Tests:
+
+- Changed behavior without table coverage for success, failure, and edge cases.
+- Concurrency changes without race-sensitive tests or race-detector evidence.
+- Tests coupled to private helpers instead of exported behavior.
+
+## Version-gated checks
+
+Inspect `go.mod`, toolchain, and CI before applying version-specific claims.
+
+- Go 1.22 and later fixed loop variable capture semantics; do not flag old guidance unless the code still has a clarity or compatibility issue.
+- Go 1.25 vet can catch more WaitGroup and host-port issues; cite tool output if available.
 
 ## Failure handling
 
-- Build or vet fails: report as blocking; do not proceed with manual review.
-- Race detector finds a data race: blocking; report with goroutine trace if available.
-- `golangci-lint` fails to run: use the debug commands above; continue manual review and note the tool was unavailable.
-- LSP unavailable: skip data-flow tracing, note that cross-file call-chain checks were skipped.
-- Security finding needs context not visible in code: prefix `[NEEDS REVIEW]` rather than asserting a vulnerability.
+- Build, vet, or race failure in reviewed scope: Critical when confirmed by output.
+- Linter warning: severity depends on impact; do not auto-promote to Critical.
+- Security context missing: use Needs review and name the missing caller, config, or trust boundary.
+- LSP or graph unavailable: note reduced cross-file coverage only if it affects the finding.

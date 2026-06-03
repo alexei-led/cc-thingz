@@ -1,7 +1,9 @@
 ---
-description: Fix code problems with disciplined diagnosis — run checks, build a repro
-  for bugs, rank falsifiable hypotheses, fix one issue at a time, and verify until
-  clean. Use when fixing, debugging, diagnosing, or resolving lint/test/build failures.
+description: Fix code defects with a reproducible feedback loop, root-cause diagnosis,
+  minimal patch, regression test, and clean verification. Use when debugging, diagnosing,
+  or resolving lint/test/build failures. NOT for behavior-preserving refactors (use
+  refactoring-code), test-suite cleanup without a production bug (use improving-tests),
+  or code review findings without fixes (use reviewing-code).
 name: fixing-code
 ---
 
@@ -12,148 +14,110 @@ name: fixing-code
 
 # Fix and Diagnose Code
 
-Fix until clean. For hard bugs, diagnose before editing. No guessing. Confirm before any destructive command; never use `git reset --hard`, `git clean`, or force push as a fix.
+Fix one verified problem at a time. Do not patch from guesses. Do not use destructive
+git commands such as hard reset, clean, force push, or checkout-overwrites as a fix.
 
 ## Role-gated action
 
-Detect your capability from your tools, not from prose:
+Detect capability from tools:
 
-- Write-capable role (engineer): run all steps — diagnose, apply the fix, run verification.
-- Read-only role (reviewer): run Steps 1–3 to diagnose (a reviewer has no Bash — work from the files in scope and caller-supplied error/diff context, skipping any command), then stop before Step 4. Instead of editing, emit the fix in the Proposed Changes contract below. Apply nothing; run nothing.
+- Write-capable role: reproduce, diagnose, patch, test, and clean up.
+- Read-only role: diagnose from files and supplied output, then emit the fix in the Proposed Changes contract. Apply nothing; run nothing.
 
-## Language detection
+## Route elsewhere
 
-Detect the language from the file extensions in scope and use the matching toolchain in Step 1 (build/test/lint commands shown per language). This skill has no per-language reference files — operate from the generic procedure; the language only selects which verification commands to run.
+Do not use this for:
 
-## Step 1: Build a feedback loop
+- pure refactors with unchanged behavior → `refactoring-code`
+- test-only improvement or coverage work → `improving-tests`
+- review-only findings → `reviewing-code`
+- broad architecture redesign → architecture skills
 
-For lint/build/test failures, run validation first:
+## Reproduce first
 
-```bash
-make lint 2>&1 | head -150
-make test 2>&1 | head -150
-```
+For lint/build/test failures, run the project gate first. Prefer `make lint` and
+`make test` when present; otherwise use the configured language tools from the
+nearest project root.
 
-No Makefile? Detect language:
+For reported bugs, build the fastest reliable pass/fail signal:
 
-```bash
-# Go
-golangci-lint run ./... 2>&1 | head -150
-go test -race ./... 2>&1 | head -150
+1. Existing failing test or new regression test at the behavior seam.
+2. CLI, HTTP, or browser script with fixture input.
+3. Replay captured payload, log, trace, or production-like case.
+4. Small harness around the real code path.
+5. Property, fuzz, race, or bisect harness for intermittent or regression bugs.
 
-# Python
-ruff check . 2>&1 | head -150
-pytest --tb=short 2>&1 | head -150
+If no repro is possible, stop and ask for the missing artifact: logs, payload,
+steps, environment, access, or permission to add temporary instrumentation.
 
-# TypeScript
-bun lint 2>&1 | head -150
-bun test 2>&1 | head -150
-```
+## Diagnose with evidence
 
-If all checks pass, report `All checks pass` and stop.
-
-For reported bugs, first build a fast pass/fail signal that reproduces the user's symptom:
-
-1. Failing test at the right seam.
-2. CLI or HTTP script with fixture input.
-3. Browser script for UI bugs.
-4. Replay captured payload/log/trace.
-5. Throwaway harness around the smallest real code path.
-6. Property/fuzz loop for intermittent wrong output.
-7. `git bisect run` harness for regressions.
-
-Do not proceed to fixes until the loop reproduces the symptom. If no loop is possible, stop and ask for access, logs, captured payloads, or permission to add temporary instrumentation.
-
-## Step 2: Analyze root causes
-
-Catalog every distinct issue:
-
-- file:line
-- exact error/test failure
-- tool that reported it
-- priority: critical / important / minor
-
-For hard bugs, write **3–5 ranked falsifiable hypotheses** before testing one:
+Record each issue as `file:line`, exact symptom, reporting tool, and priority.
+For hard bugs, write 3–5 ranked falsifiable hypotheses:
 
 ```text
-If <cause> is true, then <probe/change> will make <specific symptom> disappear or change.
+If <cause> is true, then <probe/change> will make <specific symptom> change in <specific way>.
 ```
 
-Read files and tool output. Do not guess at code content.
+Trace from the failing boundary toward the first bad state, contract mismatch,
+or missing side effect. Use graph tools when they reduce search space:
 
-## Step 3: Instrument carefully
+- GitNexus: query the error text or symptom; use context for suspect symbols; use impact before changing widely called code; use detect-changes after a fix to see affected flows.
+- codegraph: check status first; if fresh, use context or affected to inspect callers, callees, references, and blast radius.
+- Stale graph indexes are not evidence. Refresh if allowed; otherwise report the gap and use search, LSP, tests, and source reads.
 
-Probe one hypothesis at a time.
+## Patch narrowly
 
-- Prefer debugger/REPL inspection when available.
-- Otherwise add targeted logs at boundaries that distinguish hypotheses.
-- Tag temporary logs with a unique prefix like `[DEBUG-a4f2]`.
-- For performance regressions: measure baseline first, then bisect/profile.
-
-## Step 4: Fix one issue at a time
-
-For each issue, in priority order:
+For each issue:
 
 1. Read the exact code path.
-2. Apply the smallest root-cause fix.
-3. Add or update a regression test at the correct seam when possible.
-4. Run the narrow check.
-5. Run broader lint/test before moving on.
+2. Change the smallest root cause, not adjacent style or structure.
+3. Add or update a regression test when a real seam exists.
+4. Run the narrow repro.
+5. Run broader lint/test before moving to another issue.
 
-If the only available test seam is too shallow, report that. Do not write fake-confidence tests against helpers while the real bug path stays uncovered.
+Do not write helper-level tests that miss the user-visible bug path. If the only
+available seam is too shallow, report the risk.
 
-If a fix causes new failures, revert or adjust it before touching the next issue.
+## Cleanup and verify
 
-## Step 5: Final verification and cleanup
+Before done:
 
-Required before done:
+- Original repro no longer fails.
+- Regression test passes, or the missing seam is reported.
+- Full relevant validation passes.
+- Temporary logs, probes, harnesses, and debug flags are removed or promoted to real tests.
+- New failures are diagnosed before any second patch.
 
-- Original repro no longer reproduces.
-- Regression test passes, or missing test seam is explicitly reported.
-- Full validation passes.
-- All `[DEBUG-...]` probes are removed.
-- Throwaway harnesses are deleted or moved into test fixtures.
+## Output
 
-Run:
-
-```bash
-make lint && make test
-```
-
-Or language equivalents. Loop back to root-cause analysis if anything still fails.
-
-## Output format
-
-Engineer (applied the fix):
+Engineer:
 
 ```text
 FIX COMPLETE
 ============
-Mode: standard | diagnose
 Issues found: X
 Fixed: Y
 Remaining: Z
 Status: CLEAN | NEEDS ATTENTION
 
 Root cause:
-- <short verified cause>
+- <verified cause and evidence>
 
 Changes:
-- file:line — fix
+- path:line — fix
 
 Verification:
 - <command> — pass/fail
 ```
 
-If unresolved, state the blocker and exact artifact/access needed. Do not pretend clean.
-
-Reviewer (diagnosed only — emit the fix as a proposal, apply nothing):
+Reviewer:
 
 ```text
 ## Proposed Changes
 
 Root cause:
-- <short verified cause>
+- <verified cause and evidence>
 
 ### Change 1: <brief description>
 
@@ -161,9 +125,9 @@ File: `path/to/file`
 Action: CREATE | MODIFY | DELETE
 
 Code:
-<complete code block, in the file's language>
+<complete code block or changed region with enough context>
 
-Rationale: <why this change>
+Rationale: <why this fixes the root cause>
 ```
 
-For MODIFY, include enough surrounding context (signatures, nearby lines) to locate the change precisely. For large fixes, show one representative change and describe the pattern rather than every file.
+If unresolved, state the blocker and exact artifact or access needed. Do not claim clean without a clean check or an explicit skipped-check reason.

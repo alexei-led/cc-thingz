@@ -16,10 +16,11 @@ allowed-tools:
 - AskUserQuestion
 argument-hint: '[review|refactor|coverage|tdd|full]'
 context: fork
-description: Improve test design and coverage, including TDD/red-green-refactor guidance.
-  Use when improving tests, refactoring tests, adding coverage, using TDD, or removing
-  test waste. NOT for fixing production bugs (use fixing-code) or reviewing non-test
-  code quality (use reviewing-code).
+description: Improve test design and coverage with behavior-focused tests, useful
+  seams, characterization tests, TDD, and test refactoring. Use when improving tests,
+  adding coverage, refactoring brittle tests, removing test waste, or working test-first.
+  NOT for fixing production bugs (use fixing-code), production-code refactors (use
+  refactoring-code), or reviewing non-test code quality (use reviewing-code).
 name: improving-tests
 user-invocable: true
 ---

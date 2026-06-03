@@ -43,10 +43,10 @@ Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allo
 
 - **committing-code** — Smart git commits with logical grouping
 - **documenting-code** — Update project documentation based on recent changes
-- **fixing-code** — Fix code problems with disciplined diagnosis
-- **improving-tests** — Improve test design and coverage, including TDD/red-green-refactor guidance
-- **refactoring-code** — Batch refactoring via MorphLLM edit_file
-- **reviewing-code** — Sequential code review for security, quality, tests, implementation, and docs
+- **fixing-code** — Reproduce, diagnose, patch, regression-test, and verify code defects
+- **improving-tests** — Improve test design and coverage with behavior seams, characterization tests, TDD, and refactoring
+- **refactoring-code** — Behavior-preserving batch refactors with mapped sites and optional graph-backed impact checks
+- **reviewing-code** — Evidence-backed code review with severity/confidence rubric, depth modes, and optional team/external review
 - **spec-init** — Bootstrap a new `.spec/` project or import requirements from a design doc
 - **spec-interview** — Capture PRD-quality requirements via structured Q&A
 - **spec-plan** — Turn a requirement into an EPIC with vertical-slice TASKs
@@ -81,7 +81,7 @@ Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allo
 - **exploring-repos** — Explore public GitHub repositories via DeepWiki AI-generated documentation
 - **looking-up-docs** — Find current docs via Context7, official registries/docs, Perplexity/web, and GitHub fallback
 - **researching-web** — Web research via Perplexity AI
-- **reviewing-instructions** — Review and score AI agent/skill instruction files and related agent-targeted markdown such as `body.md`, `references/*.md`, and custom prompt/context/rules docs
+- **reviewing-instructions** — Review and score AI-facing instruction files with scoped lint, model resolution, scoring caps, confidence, and calibration anchors
 - **sequential-thinking** — Structured stepwise reasoning with explicit revisions and branches
 
 ## Browser Automation

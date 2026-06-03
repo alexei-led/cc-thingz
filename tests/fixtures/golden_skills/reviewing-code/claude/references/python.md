@@ -1,78 +1,75 @@
-# Python Review Slice
+# Python Review Reference
 
-Language-specific review material for Python 3.12+. The host skill supplies scope, workflow, and the findings/output contract — this file supplies only the Python tooling, version-specific traps, and focus-area checks.
+Host skill owns scope, severity, scoring, and output. This file adds Python-specific evidence gathering and checks.
 
-## Run tooling first
+## Tool-enabled review
 
-Execute these before manual review to catch issues programmatically:
+Run configured project tools only when the active role can execute commands. Prefer project commands when present.
+
+Useful Python gates:
 
 ```bash
-# Static analysis and linting
 ruff check .
-
-# Security vulnerability scanning
-bandit -r . -f json
-
-# Type checking for logic errors
-pyright src/
+pyright .
+pytest --tb=short
+bandit -r .
 ```
 
-Include tool output in findings. Tool-reported issues take priority over manual findings. Focus manual review on files flagged by tools plus direct callers found via LSP. Do not scan the entire codebase manually.
+Treat tool output as evidence, then map it through the severity rubric. If a tool is missing or not configured, report the gap and continue source review. Do not install tools.
 
-If a tool is not installed or fails, note the failure in findings and continue with manual review of remaining focus areas. Do not attempt to install missing tools.
+## Read-only review
 
-## LSP navigation (trace security-sensitive data flow)
+When commands are unavailable, use supplied diff, file reads, and caller-supplied output. Follow imports and direct callers for changed public functions, CLI commands, routes, async boundaries, and persistence code.
 
-- `goToDefinition` — trace function calls to understand data flow
-- `findReferences` — find all callers of security-sensitive functions
-- `incomingCalls` — trace who calls a function (input validation checks)
-- `goToImplementation` — find concrete implementations of Protocols
+## Focus checks
 
-## Python 3.14 specific traps
+Correctness:
 
-- Deferred annotations: no need for `from __future__ import annotations`
-- `concurrent.interpreters`: true multi-core parallelism without GIL — review for race conditions in code migrating from multiprocessing
-- Free-threaded build: thread safety assumptions changed — shared mutable state that was previously safe under the GIL may now race
-- Incremental GC: large memory apps benefit; review object lifecycle patterns for unexpected retention
+- `None` handling at optional inputs and lookup results.
+- Mutable defaults or shared mutable module state.
+- Broad exception handling that hides failures or loses cause.
+- Type hints that do not match runtime shape at boundaries.
+- Off-by-one ranges, slicing, pagination, and timezone handling.
 
-### Performance opportunities
+Security:
 
-- `concurrent.interpreters`: for CPU-bound work, consider subinterpreters over multiprocessing
-- Free-threaded Python: threading now viable for CPU-bound code
+- SQL injection from string-built queries.
+- Command injection via shell execution or unsafe argument construction.
+- Unsafe deserialization, dynamic import, `eval`, or `exec` on untrusted input.
+- Path traversal from user-controlled paths.
+- Weak crypto, weak token generation, or secrets in logs/errors/config.
+- Missing authorization at concrete route, command, or service boundary.
 
-## Logic correctness
+Reliability:
 
-- None handling: missing None checks, incorrect `is None` vs `== None`
-- Mutable defaults: `def func(x=[]):` creates shared state bug
-- Off-by-one errors: range boundaries, slice indices
-- Type mismatches: passing wrong types despite type hints
-- Exception handling: catching too broad, missing exception chaining (`raise ... from e`)
+- Blocking I/O in async code.
+- Missing timeout, cancellation, or cleanup for network and subprocess calls.
+- Unclosed files, responses, sessions, cursors, or temporary resources.
+- Global caches or background tasks without bounds or shutdown.
 
-## Security (OWASP)
+Performance:
 
-- SQL injection: string concatenation in queries — use parameterized queries
-- Command injection: `subprocess` with `shell=True` and unsanitized input
-- Deserialization: `pickle.loads()` on untrusted data
-- Eval/Exec: `eval()` or `exec()` with user input
-- Path traversal: unsanitized file paths from user input
-- Weak crypto: MD5/SHA1 for passwords, `random` instead of `secrets`
+- N+1 database or API calls.
+- Quadratic loops on realistic input sizes.
+- Repeated expensive parsing, compiling, or filesystem work in hot paths.
+- Unbounded memory growth from caches, list materialization, or retained objects.
 
-## Performance
+Tests:
 
-- N+1 queries: database queries in loops — batch fetch instead
-- Missing indexes: repeated list lookups — use dict/set
-- Memory leaks: unbounded caches, circular references, unclosed file handles
-- Inefficient algorithms: O(n²) when O(n) exists
-- Blocking I/O in async: synchronous calls in async functions
+- Changed business behavior without success, failure, and edge tests.
+- Bug fixes without a regression test at the public seam.
+- Over-mocked tests that skip the route, CLI, or service contract.
 
-## Thread safety (Python 3.14 free-threading)
+## Version-gated checks
 
-- Shared mutable state: global variables accessed from multiple threads
-- Race conditions: non-atomic operations on shared data
-- Missing locks: concurrent access without synchronization
+Inspect `pyproject.toml`, `.python-version`, lockfiles, and CI before applying version-specific claims.
+
+- Python 3.14 free-threading and subinterpreters matter only when the project opts in or the code explicitly targets them.
+- Do not recommend version-specific syntax or APIs unless the project supports them.
 
 ## Failure handling
 
-- Tool not installed or fails: note the gap in findings; continue with manual review of remaining areas.
-- Security issue is ambiguous: err on the side of flagging it — mark as "potential" and explain the attack vector.
-- LSP unavailable: fall back to reading files directly; note that cross-file call-chain checks were skipped.
+- Test, typecheck, or lint failure in reviewed scope: map severity by impact; build/test blockers are Critical.
+- Ambiguous security risk: use Needs review and name the missing trust boundary or configuration.
+- No validation library: do not flag every boundary. Flag only concrete unvalidated external input that reaches sensitive behavior.
+- LSP or graph unavailable: note reduced cross-file coverage only if it affects the finding.

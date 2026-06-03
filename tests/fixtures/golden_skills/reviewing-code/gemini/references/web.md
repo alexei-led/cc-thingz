@@ -1,48 +1,62 @@
-# Web Review Slice
+# Web Review Reference
 
-Language-specific review material for HTML/CSS/JS/HTMX. The host skill supplies scope, workflow, and the findings/output contract — this file supplies only the web tooling and focus-area checks.
+Host skill owns scope, severity, scoring, and output. This file adds HTML, CSS, JavaScript, and HTMX checks.
 
-## Run tooling first
+## Tool-enabled review
 
-Execute these before manual review to catch issues programmatically:
+Run configured validators only when the active role can execute commands and the project already uses them.
+
+Useful web gates:
 
 ```bash
-npx html-validate <files>  # if configured (or bunx)
-npx stylelint <files>      # if configured (or bunx)
+npx html-validate <files>
+npx stylelint <files>
 ```
 
-If a validator is missing, note it in findings rather than guessing. Ground every finding in tool output — quote the line of output that drives each finding.
+Use project scripts when present. Treat tool output as evidence, then map it through the severity rubric. If validators are missing, report the gap and continue source review.
 
-## Security
+## Read-only review
 
-- XSS: don't use `innerHTML` with user data; use `textContent`
-- CSRF: forms need tokens (HTMX: `hx-headers` with CSRF token)
-- Secrets: no API keys or passwords in JS/HTML
-- Links: validate URLs before `window.location` redirect
+When commands are unavailable, read the changed templates, scripts, and styles. For server-rendered templates, inspect enough surrounding context to identify whether data is escaped, trusted, or supplied by users.
 
-```html
-<!-- HTMX CSRF pattern -->
-<body hx-headers='{"X-CSRF-Token": "{{.CSRFToken}}"}'></body>
-```
+## Focus checks
 
-## Performance
+Security:
 
-- Scripts: use `defer` on `<script>` tags
-- Images: add `loading="lazy"` for below-fold images
-- Images: include `width`/`height` to prevent layout shift
-- CSS: one stylesheet, no `@import` chains
+- XSS from raw HTML sinks, unsafe markdown, inline event handlers, or user data inserted without escaping.
+- CSRF missing from state-changing forms or HTMX requests when server context shows the need.
+- Secrets, tokens, API keys, or internal URLs in client-side code.
+- Unsafe redirects or navigation from unvalidated URLs.
+- Mixed-content or insecure external resource loading.
 
-## Accessibility
+Correctness:
 
-- Images need `alt` text
-- Form inputs need `<label>`
-- Color contrast: 4.5:1 for text
-- Interactive elements must be keyboard-accessible
-- Don't remove focus outlines without a replacement
+- Broken form names, missing required fields, invalid IDs, duplicate IDs, or mismatched labels.
+- HTMX target, swap, trigger, or header mismatch that breaks the intended flow.
+- Client-side code relying on elements that may not exist.
+
+Accessibility:
+
+- Images missing useful alt text.
+- Inputs without labels or accessible names.
+- Buttons or links that are not keyboard-accessible.
+- Focus outline removed without a visible replacement.
+- ARIA that conflicts with native semantics.
+
+Performance:
+
+- Blocking scripts without defer or module use where it affects page load.
+- Large images without dimensions, lazy loading, or appropriate formats.
+- CSS import chains or unused heavy assets in the changed path.
+- Expensive DOM work on repeated events.
+
+Tests and docs:
+
+- Changed user-visible flow without browser, integration, or template test coverage when the project has such tests.
+- User-facing text, API behavior, or accessibility behavior changed without matching docs when docs are in scope.
 
 ## Failure handling
 
-- Validators not installed: note it and proceed with manual review only.
-- Security issue cannot be confirmed without server-side context (e.g., CSRF token source): flag as "needs server-side verification" rather than a definite finding.
-- Contrast ratios cannot be measured without tooling: note the limitation and flag visually suspect colors for manual check.
-- Codebase uses a framework outside this scope: note it and limit findings to the HTML/CSS/JS layer only.
+- Server-side escaping or CSRF context missing: use Needs review and name the missing template engine, route, or middleware.
+- Contrast cannot be measured: use Needs review for visually suspicious colors rather than a confirmed finding.
+- Framework outside this scope: limit findings to changed HTML, CSS, JS, or HTMX behavior and report reduced coverage.

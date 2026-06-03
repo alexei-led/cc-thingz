@@ -1,25 +1,18 @@
-# Generic LLM Context
+# Generic Model Context
 
-Applies when no specific model is identified. Covers universal best practices that hold across frontier LLMs (Claude, GPT, Gemini, Llama, etc.).
+Use when no model family is known or when model-specific rules do not apply.
 
-## Universal instruction principles
+## Stable guidance
 
-- **Specificity** is the strongest performance predictor: +15–20% zero-shot improvement over generic instructions (PromptBench).
-- **Structure** (numbered steps, `#` headers, code blocks) improves instruction following across all models. XML-tagged sections add +5–15%.
-- **Verbosity hurts**: minimal zero-shot outperforms verbose few-shot on recall. Over-specifying past ~200 lines causes rule amnesia.
-- **Grounding**: ReAct-style tool grounding reduces hallucination ~30%. Explicitly require evidence-anchored outputs.
-- **Failure handling**: without explicit failure vocabulary, models fabricate workarounds or hallucinate success.
-- **Output format**: define a concrete template — models pattern-match well against structure; prose descriptions of format are less reliable.
+- Specific scope and concrete output contracts improve instruction following.
+- Short, structured instructions are more reliable than broad narrative guidance.
+- Evidence requirements reduce hallucinated findings and scores.
+- Failure handling prevents fabricated completion when inputs or tools are missing.
+- Progressive disclosure keeps common workflow in the main file and rare detail in references.
 
-## Rules to apply
+## Scoring use
 
-All rules are in `references/scoring-rubric.md`. Apply universal (U-prefix), format (F-prefix), and skill-structure (K-prefix) rules. Do NOT apply Opus-specific (O-prefix) or Sonnet-specific (S-prefix) rules — those are Claude-only.
+Apply universal, format, and skill-structure rules from `references/scoring-rubric.md`.
+Do not apply Claude-only, OpenAI-only, or Gemini-only rules.
 
-## When to fetch model docs
-
-If the instruction file targets a specific model and no reference file exists in `references/models/`, use available web tools to read the vendor's prompting guide and extract:
-
-1. Documented behavioral quirks (over-exploration, verbosity, lecture tendency, etc.)
-2. Recommended prompt structure (system/user format, XML tags, markdown conventions)
-3. Token efficiency guidance
-4. Any safety or refusal patterns to account for in failure-handling instructions
+If generic context hides a likely model-specific issue, keep the score grounded in universal rules and lower confidence rather than guessing.

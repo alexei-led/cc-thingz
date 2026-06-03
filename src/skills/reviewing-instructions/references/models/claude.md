@@ -1,51 +1,35 @@
 # Claude Model Context
 
-Applies to Claude agents/skills (any version). Universal rules and scoring dimensions are in
-`references/scoring-rubric.md`. This file adds Claude-specific behavioral traits and the
-Opus-specific (O-prefix) and Sonnet-specific (S-prefix) lint rules.
+Use after `references/model-resolution.md` maps the target to Claude.
 
-## Behavioral traits and model-specific rules
+## Family guidance
 
-### Opus (model: opus)
+- Claude follows explicit scope and output contracts well.
+- Ambiguous broad tasks can trigger over-exploration; narrow scope and stop conditions help.
+- Short rationale can help with critical constraints, but long explanation hurts signal density.
+- Tool-grounded instructions and evidence requirements reduce unsupported claims.
 
-Documented tendency: "excessive time exploring codebase, studying related patterns, or
-investigating tangential concerns before executing the straightforward task" (SC p.103).
-Prompting does not suppress over-eagerness on impossible tasks (SC p.92).
+## Variant rules
 
-Lint rules — severity: warning:
+Opus:
 
-- **O-EFFICIENCY** — body contains efficiency-bounding language ("focused", "stay focused",
-  "don't over-explore", "efficient", "concise").
-- **O-SCOPE-ONLY** — body contains "ONLY these" or "exclusively" or "Focus … ONLY".
-- **O-EFFORT-MATCH** — if `effort: high`, body has at least 3 distinct focus area sections.
-  High effort must be justified by genuinely complex multi-dimensional tasks. Severity: info.
+- Check for effort bounds on narrow tasks.
+- Check for strong scope-only language when the task should not expand.
+- High-effort settings should match genuinely complex, multi-dimensional work.
 
-### Sonnet (model: sonnet)
+Sonnet:
 
-Documented tendency: lecture users on suboptimal requests (SC p.72); over-eagerness on
-explicit non-exploratory actions (SC p.73). Anti-eagerness instructions are highly effective
-on Sonnet — unlike Opus where prompting does not decrease the behavior (SC p.73-74).
+- Check for anti-eagerness language when the task is bounded.
+- Check that the file avoids lecture-inducing instructions.
+- Decisive action language is useful for implementation or review workflows.
 
-Lint rules — severity: warning:
+Haiku:
 
-- **S-NO-LECTURE** — body does NOT contain lecture-inducing patterns ("explain why … wrong",
-  "educate the user", "tell them why").
-- **S-DECISIVE** — body contains decisive action language ("execute", "act", "decisive",
-  "complete", "deliver", "propose"). Severity: info.
-- **S-ANTI-EAGER** — body contains anti-eagerness language ("do not fabricate", "report …
-  impossible", "do not take unapproved", "ask … before").
+- Prefer explicit step order and concrete output fields.
+- Do not require extra Claude-only rules beyond universal scoring unless the file targets Haiku directly.
 
-### Haiku (model: haiku)
+## Scoring use
 
-Lighter reasoning budget. Instructions should be more explicit and step-by-step.
-Apply only universal (U-prefix), format (F-prefix), and skill-structure (K-prefix) rules.
-No O-prefix or S-prefix rules.
-
-## Prompting best practices
-
-- Be explicit and direct — Claude follows instructions literally; ambiguity causes interpretation errors.
-- Explain the why behind critical constraints — Claude uses intent to handle edge cases better than rigid rules.
-- Long instruction files cause rule amnesia. If Claude ignores a rule, the file is too long.
-- Tool-grounded analysis reduces hallucination ("use tools as much as possible" improved both models on SWE-bench).
-- Format signal hierarchy (MDEval benchmark): `#` headers and numbered lists highest; bold medium
-  (≤15% of lines); italic and tables lowest — avoid.
+Apply universal, format, and skill-structure rules to all Claude files.
+Apply Opus, Sonnet, or Haiku variant rules only when the variant is explicit.
+If the file says only Claude, use family guidance and keep variant-specific rules not applicable.

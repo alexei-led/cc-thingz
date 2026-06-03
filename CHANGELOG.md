@@ -8,6 +8,45 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [5.1.0] - 2026-06-03
+
+### Changed
+
+- Tightened `refactoring-code` into a focused batch-refactor workflow with
+  explicit route-away rules, behavior-preservation gates, mapped-site evidence,
+  public API compatibility guidance, and optional GitNexus/codegraph impact
+  checks for renames, moves, extracts, and broad restructures.
+- Reworked `fixing-code` around a reproducible feedback loop: reproduce first,
+  diagnose with evidence, patch the smallest root cause, add regression coverage
+  where a real seam exists, and clean up temporary instrumentation before
+  reporting success.
+- Reworked `improving-tests` around behavior seams, characterization tests,
+  TDD slices, coverage-as-signal guidance, flaky/slow/dead-test review checks,
+  and optional GitNexus/codegraph evidence for affected flows and high fan-in
+  regression surfaces.
+- Upgraded `reviewing-code` with quick, standard, deep, team, and external modes;
+  a dedicated severity/confidence rubric; explicit score caps; Needs review
+  handling for missing context; consolidated subagent/external-review rules; and
+  focused GitNexus/codegraph guidance for PR blast radius and missed caller or
+  test coverage checks.
+- Rebuilt `reviewing-instructions` around a canonical 0-10 band-first scoring
+  rubric with hard gates, caps, confidence, calibration anchors, model alias
+  resolution, and scoped lint pre-pass support for more stable repeated scores.
+- Simplified review language references for Go, Python, TypeScript, and Web so
+  they are read-only compatible, tool-aware without being tool-first, and focused
+  on concrete defect classes instead of tutorial-style examples.
+
+### Fixed
+
+- `lint-instructions.py` now honors explicit file, directory, and plugin scopes
+  instead of reporting unrelated whole-repo findings during targeted instruction
+  reviews.
+- The instruction-scoring rubric and model references now pass their own format
+  lint rules, avoiding self-reported horizontal-rule, italic, and bold-overuse
+  findings.
+- README and AGENTS skill catalogs now describe the updated review, debugging,
+  testing, refactoring, and instruction-scoring workflows.
+
 ## [5.0.0] - 2026-06-02
 
 ### Changed

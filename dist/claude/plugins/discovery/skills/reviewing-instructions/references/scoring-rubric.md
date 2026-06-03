@@ -1,134 +1,352 @@
-# Scoring Rubric and Lint Rules
+# Instruction Scoring Rubric
 
-Scoring dimensions (0–10 each) used by the semantic review, plus the heuristic lint rules used
-by the structural pre-pass (`lint-instructions.py`). Scores are authoritative; lint rules are
-heuristic baselines that feed into dimension scores.
+Rubric version: 2026-06-03.
 
-## Weights for overall score
+Use this file as the canonical scoring source for reviewing-instructions. Scores
+stay in the 0-10 range, but scoring is band-first to reduce run-to-run drift.
 
-Signal Density 15%, Scope Specificity 15%, Output Structure 15%, Failure Handling 15%,
-Format Efficiency 10%, Grounding Discipline 10%, Routing Precision 10%, Progressive Disclosure 10%.
+## Scoring procedure
 
----
+1. Confirm the file is agent-facing. If not, do not score it.
+2. Apply hard gates and caps.
+3. Score each dimension by choosing a band first.
+4. Use the band midpoint unless concrete evidence supports the top or bottom of the band.
+5. Compute the weighted score.
+6. Apply caps again if needed.
+7. Round to the nearest 0.5.
+8. Assign confidence: high, medium, or low.
 
-## 1. Signal Density
+Band defaults:
 
-Every line earns its place with a non-derivable behavioral constraint. Lines removable without
-behavior change score against this dimension.
+- 0-2 band: default 1.
+- 3-4 band: default 3.5.
+- 5-6 band: default 5.5.
+- 7-8 band: default 7.5.
+- 9-10 band: default 9.5.
 
-- **0–2**: Majority is generic advice, rationale bloat, or tutorial-style prose
-- **3–4**: Some constraints diluted by repeated rationale or verbose narrative
-- **5–6**: Mostly actionable but 20–30% of lines are skippable
-- **7–8**: Tight; ≤15% skippable content
-- **9–10**: Every line is a behavioral constraint, workflow step, or concrete example. No filler.
+Use 0, 2, 3, 4, 5, 6, 7, 8, 9, or 10 only when the evidence clearly matches an edge. Avoid unsupported decimals inside dimensions.
 
-No single lint rule. Check manually: "Would removing this line change the model's behavior?"
+## Weights
 
-## 2. Scope Specificity
+- Signal Density: 15 percent.
+- Scope Specificity: 15 percent.
+- Output Structure: 15 percent.
+- Failure Handling: 15 percent.
+- Format Efficiency: 10 percent.
+- Grounding Discipline: 10 percent.
+- Routing Precision: 10 percent.
+- Progressive Disclosure: 10 percent.
 
-Explicit boundaries — what to do AND what not to do.
+## Hard gates and caps
 
-Lint rule: **U-SCOPE** — body contains scope-limiting language ("ONLY", "exclusively", "Do not",
-"no … feedback"). Severity: error.
+Do not score:
 
-- **0–2**: No scope limits; instructions could justify almost any action
-- **3–4**: Implicit scope; no explicit "do not" or exclusions
-- **5–6**: Positive scope defined but no exclusions stated
-- **7–8**: Explicit exclusions or "only these" markers for the main scope
-- **9–10**: Clear in/out scope; exit conditions; neighbor-skill overlap explicitly resolved
+- The file is not written for an AI agent or coding assistant.
+- The file is ordinary source code, tests, generated output, or human-only docs.
+- The review scope is too ambiguous to know what file is being judged.
 
-## 3. Output Structure
+Overall caps:
 
-The instruction defines a concrete output format.
+- Contradictory instructions that can cause unsafe or impossible behavior: maximum 6.
+- Destructive or risky actions allowed without confirmation: maximum 5.
+- No clear scope boundary for the main task: maximum 7.
+- No output contract for a task that reports findings, plans, edits, or reviews: maximum 6.
+- No failure handling: maximum 7.
+- No evidence or grounding rule for review, audit, research, planning, or scoring tasks: maximum 7.
+- Referenced required file is missing or unreadable: maximum 8.
+- Unknown model context when model-specific behavior matters: maximum 8.
+- Partial review due to missing linked files or unavailable tools: maximum 8.
 
-Lint rule: **U-OUTPUT** — body contains output format section ("Output Format", "Output:",
-"Findings", structured template markers like `###`). Severity: error.
+Caps apply after dimension scores. If several caps apply, use the strictest cap.
 
-- **0–2**: No output format; model must guess
-- **3–4**: Output type mentioned but no structure
-- **5–6**: Output described in prose; no template or example
-- **7–8**: Template, required sections, or explicit field list provided
-- **9–10**: Exact template with headers, fields, length bounds
+## Confidence
 
-## 4. Format Efficiency
+High:
 
-Instruction uses only high-signal markdown elements.
+- Scope, model context, and linked files are clear.
+- Scores cite direct evidence.
+- No major tool or discovery gaps affected scoring.
 
-Lint rules (all severity info/warning):
+Medium:
 
-- **F-NO-TABLE** — no `| --- |` table syntax (use `- **Label**: desc` bullets instead)
-- **F-NO-DIAGRAM** — no ` ```mermaid` blocks or ASCII box-drawing characters
-- **F-NO-HR** — no standalone `---` horizontal rules outside frontmatter
-- **F-NO-ITALIC** — no `_word_` or `*word*` italic in prose
-- **F-BOLD-SPARSE** — bold on ≤15% of non-blank, non-code lines
+- One relevant context gap exists, but scores are still mostly grounded.
+- Model family is clear but variant is unknown.
+- Some linked files were not needed or could not be read.
 
-Anchors:
+Low:
 
-- **0–2**: Multiple tables, diagrams, heavy italic, or bold >30% of prose lines
-- **3–4**: 1–2 tables or diagrams; OR bold on 20–30% of lines
-- **5–6**: No tables/diagrams but italic present; OR bold 15–20%; OR standalone HR
-- **7–8**: Clean; only `#` headers, bullets, lists, code blocks; bold ≤15%; no standalone `---`
-- **9–10**: Fully optimized: no tables/diagrams/italic/HR; bold reserved for labels and critical terms
+- Scope is partial, model context is ambiguous, or linked files are missing.
+- Several dimensions depend on inference.
+- Subagent or repeated passes disagree by more than 1 point overall.
 
-## 5. Failure Handling
+Low confidence is not a score penalty by itself. Use caps only when the gap affects review completeness.
 
-Behavior is specified when things go wrong.
+## Dimension 1: Signal Density
 
-Lint rule: **U-FAILURE** — body contains failure-handling language ("impossible", "cannot",
-"report", "If … not available", "skip", "clean"). Severity: error.
+Question: Would removing lines change model behavior?
 
-Additional: **U-NO-DESTROY** — if agent has write tools, body contains destructive-action caution
-("force", "destructive", "careful", "irreversible"). Severity: warning.
+0-2:
 
-- **0–2**: No failure cases; model will fabricate workarounds or hallucinate completion
-- **3–4**: Vague ("use your judgment if something fails")
-- **5–6**: One or two failure cases explicitly covered
-- **7–8**: Most predictable failures covered with specific vocabulary
-- **9–10**: Comprehensive: missing input, unavailable tools, ambiguous data, impossible tasks — all explicit
+- Most content is generic advice, persona filler, tutorial prose, or repeated rationale.
+- Many lines restate global rules the model already has.
 
-## 6. Grounding Discipline
+3-4:
 
-Outputs are evidence-anchored; claims cite tool output or file/line.
+- Some useful constraints, but generic or repeated prose dominates important sections.
+- Examples or rationale are long and not tied to decisions.
 
-Lint rule: **U-GROUND** — body contains grounding language ("actual", "tool output",
-"include … output", "verify", "ground"). Severity: warning.
+5-6:
 
-Additional: **U-TOOL-FIRST** — for agents with Bash, body contains bash blocks before analysis
-instructions. Severity: warning.
+- Mostly actionable, but 20-30 percent of lines are skippable.
+- Several instructions describe obvious coding-agent defaults.
 
-- **0–2**: No grounding requirement; model can state conclusions from inference
-- **3–4**: Soft language ("try to cite sources")
-- **5–6**: Grounding required but not uniformly enforced
-- **7–8**: Explicit policy: findings must cite file/section; tool output must be referenced
-- **9–10**: Strict: "No evidence, no finding"; verification step before reporting
+7-8:
 
-## 7. Routing Precision
+- Tight operational guidance; at most 15 percent skippable.
+- Most examples or rationale change decisions.
 
-The description and name enable correct activation without false positives.
+9-10:
 
-Lint rules:
+- Nearly every line is a routing rule, behavioral constraint, workflow step, failure rule, or output contract.
+- No filler.
 
-- **K-NAME** — frontmatter `name` is kebab-case and not cryptic. Severity: warning.
-- **K-DESC** — frontmatter `description` includes trigger language ("Use when", "Use for",
-  "Auto-activates"). Severity: warning.
+## Dimension 2: Scope Specificity
 
-- **0–2**: Description is generic or missing trigger language
-- **3–4**: Capability described but no explicit "Use when" triggers
-- **5–6**: Some trigger phrases but overlaps with adjacent skills or too broad/narrow
-- **7–8**: Specific triggers; kebab-case name; covers main activation paths
-- **9–10**: Unique activation context; phrasing variants covered; no neighbor overlap
+Question: Does the file say when to use it and when not to use it?
 
-## 8. Progressive Disclosure
+0-2:
 
-Body length fits the skill's scope; rare detail lives in sibling reference files.
+- Scope is absent or broad enough to justify unrelated work.
 
-Lint rules:
+3-4:
 
-- **K-PROGRESSIVE** — skill body over 220 lines with no sibling support files. Severity: warning.
-- **I-ONE-QUESTION** — interactive skills instruct one-question-at-a-time. Severity: warning.
+- Positive scope exists, but exclusions and neighboring skills are missing.
 
-- **0–2**: Monolithic 300+ line body with embedded reference material; OR trivial skill padded to 100+ lines
-- **3–4**: 220–300 lines with detail that could be split
-- **5–6**: 150–220 lines; borderline; reference material inlined instead of linked
-- **7–8**: Body under 150 lines (agents) / 180 lines (skills); clear pointers to sibling files
-- **9–10**: Focused workflow body; all rare/reference detail in named sibling files with conditional read instructions
+5-6:
+
+- Scope is understandable, but important boundaries are implied rather than explicit.
+
+7-8:
+
+- Clear in-scope and out-of-scope rules for the main task.
+- Neighbor-skill overlap is mostly resolved.
+
+9-10:
+
+- Clear in/out scope, exit conditions, and routing to adjacent skills or roles.
+- Ambiguous inputs have a stated handling path.
+
+## Dimension 3: Output Structure
+
+Question: Can the model produce the expected answer without guessing the format?
+
+0-2:
+
+- No output format.
+
+3-4:
+
+- Output type is named but structure is vague.
+
+5-6:
+
+- Required fields are described in prose, but no stable template exists.
+
+7-8:
+
+- Template or explicit field list covers normal output.
+
+9-10:
+
+- Exact template covers normal, partial, blocked, and no-finding outputs.
+- Required fields and length or precision rules are clear.
+
+## Dimension 4: Format Efficiency
+
+Question: Does markdown formatting improve instruction following without visual noise?
+
+0-2:
+
+- Tables, diagrams, heavy bold, italic, or horizontal rules dominate.
+
+3-4:
+
+- One or two low-signal structures distract from the workflow, or bold appears on more than 30 percent of prose lines.
+
+5-6:
+
+- Mostly clean, but italic, horizontal rules, or bold overuse remain.
+
+7-8:
+
+- Uses headers, bullets, lists, and code blocks cleanly.
+- Bold is sparse and meaningful.
+
+9-10:
+
+- Fully optimized for model parsing: clear headers, concise bullets, no tables, no diagrams, no italic, no horizontal rules, no bold overuse.
+
+## Dimension 5: Failure Handling
+
+Question: Does the file say what to do when normal execution fails?
+
+0-2:
+
+- No failure cases.
+
+3-4:
+
+- Vague fallback language without concrete triggers.
+
+5-6:
+
+- One or two common failures covered.
+
+7-8:
+
+- Most predictable failures have specific responses.
+
+9-10:
+
+- Missing input, ambiguous scope, unavailable tools, unsafe actions, impossible tasks, partial results, and verification failures are all covered.
+
+## Dimension 6: Grounding Discipline
+
+Question: Are claims tied to source text, tool output, or verification?
+
+0-2:
+
+- Conclusions can be asserted without evidence.
+
+3-4:
+
+- Grounding is encouraged but not required.
+
+5-6:
+
+- Evidence is required for some outputs but not all findings or scores.
+
+7-8:
+
+- Findings must cite file, section, line, or tool output.
+- Missing evidence changes the result.
+
+9-10:
+
+- Strict evidence policy: no evidence, no finding.
+- Verification or source reads are required before reporting success.
+
+## Dimension 7: Routing Precision
+
+Question: Will the description and name activate this file at the right time?
+
+0-2:
+
+- Name or description is generic, missing, or misleading.
+
+3-4:
+
+- Capability is described, but trigger language is missing.
+
+5-6:
+
+- Trigger phrases exist, but overlap with adjacent skills is unresolved.
+
+7-8:
+
+- Description includes use cases, exclusions, and common phrasing.
+
+9-10:
+
+- Unique activation context, strong trigger phrases, and explicit non-triggers.
+- Platform-specific routing details do not leak into generic routing.
+
+## Dimension 8: Progressive Disclosure
+
+Question: Is the main file short enough while still pointing to needed detail?
+
+0-2:
+
+- Monolithic 300 or more lines, or trivial skill padded with reference material.
+
+3-4:
+
+- 220-300 lines with details that should move to references.
+
+5-6:
+
+- 150-220 lines and noticeably dense, or reference detail is inlined.
+
+7-8:
+
+- Main body is under 180 lines for skills or under 150 lines for agents.
+- References are loaded conditionally.
+
+9-10:
+
+- Main body is focused, rare detail lives in named references, and read conditions are explicit.
+
+## Lint rule mapping
+
+Universal rules:
+
+- U-SCOPE: body contains scope-limiting language such as Do not, only, or explicit exclusions.
+- U-OUTPUT: body defines an output section, template, findings structure, or required fields.
+- U-FAILURE: body covers failure, unavailable tools, impossible work, skipped checks, or blocked states.
+- U-GROUND: body requires evidence, actual file content, tool output, verification, or grounded claims.
+- U-TOOL-FIRST: for tool-heavy files, commands appear before manual analysis instructions.
+- U-NO-DESTROY: files with write or shell power warn before destructive actions.
+
+Format rules:
+
+- F-NO-TABLE: avoid markdown tables in instruction prose.
+- F-NO-DIAGRAM: avoid mermaid and ASCII diagrams.
+- F-NO-HR: avoid standalone horizontal rules outside frontmatter.
+- F-NO-ITALIC: avoid italic emphasis.
+- F-BOLD-SPARSE: bold on no more than 15 percent of prose lines.
+
+Skill-structure rules:
+
+- K-NAME: frontmatter name is clear kebab-case.
+- K-DESC: frontmatter description includes trigger language such as Use when or Use for.
+- K-PROGRESSIVE: long bodies use references instead of inlining detail.
+- I-ONE-QUESTION: interactive files ask one question at a time.
+
+Claude-only rules:
+
+- O-EFFICIENCY: Opus-targeted files bound exploration and effort.
+- O-SCOPE-ONLY: Opus-targeted files use strong scope-only language for narrow tasks.
+- O-EFFORT-MATCH: high-effort Opus tasks have enough distinct focus areas to justify effort.
+- S-NO-LECTURE: Sonnet-targeted files avoid instructions that invite lecturing the user.
+- S-DECISIVE: Sonnet-targeted files include decisive action language.
+- S-ANTI-EAGER: Sonnet-targeted files include anti-eagerness or ask-before-expanding rules.
+
+## Lint status rules
+
+PASS:
+
+- Rule applies and evidence shows it is satisfied.
+
+WARN:
+
+- Rule applies, evidence is weak or partial, or the issue is low-risk.
+
+FAIL:
+
+- Rule applies and evidence shows a material gap that changes model behavior.
+
+Not applicable:
+
+- Rule does not apply to the file type, model, tools, or task.
+
+## Score reporting
+
+For each file, report:
+
+- hard gates and caps
+- dimension scores with evidence
+- weighted overall score after caps
+- confidence
+- lint statuses grouped as PASS, WARN, FAIL, and not applicable when useful
+
+If a second run differs by more than 1 point overall, compare hard gates and caps first. Most instability should be resolved there before adjusting dimension scores.

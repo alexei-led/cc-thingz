@@ -17,9 +17,11 @@ allowed-tools:
 - mcp__plugin_claude-mem_mcp-search__get_observations
 argument-hint: '[diagnose|investigate] [team]'
 context: fork
-description: Fix code problems with disciplined diagnosis — run checks, build a repro
-  for bugs, rank falsifiable hypotheses, fix one issue at a time, and verify until
-  clean. Use when fixing, debugging, diagnosing, or resolving lint/test/build failures.
+description: Fix code defects with a reproducible feedback loop, root-cause diagnosis,
+  minimal patch, regression test, and clean verification. Use when debugging, diagnosing,
+  or resolving lint/test/build failures. NOT for behavior-preserving refactors (use
+  refactoring-code), test-suite cleanup without a production bug (use improving-tests),
+  or code review findings without fixes (use reviewing-code).
 name: fixing-code
 user-invocable: true
 ---
