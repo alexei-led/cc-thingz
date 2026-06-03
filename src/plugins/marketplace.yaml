@@ -1,6 +1,6 @@
 name: alexei-led-cc-thingz
 display_name: cc-thingz
-version: 5.1.0
+version: 5.2.0
 description: Portable development skills for Claude Code, Codex CLI, Gemini CLI, and
   Pi — code review, language tooling, infrastructure, testing, and more
 owner:

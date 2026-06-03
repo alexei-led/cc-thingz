@@ -1,5 +1,5 @@
 name: git-flow
-version: 5.1.0
+version: 5.2.0
 description: Git worktrees, branch cleanup, hooks, secret scanning, config hygiene, and guardrails
 skills:
   - cleanup-git
