@@ -8,6 +8,19 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [5.4.1] - 2026-06-04
+
+### Added
+
+- Added turnkey Playwright screenshot helpers for single URLs and URL-template sequences, including JSON manifests with titles, screenshot paths, console errors, network failures, and bad HTTP responses.
+- Added regression tests for the Playwright runner and screenshot helpers.
+
+### Fixed
+
+- Hardened the Playwright support runtime so scripts can import Node modules or Playwright explicitly while still receiving injected browser globals.
+- Kept runner status logs off stdout for reliable JSON output, preserved caller working directories, and stopped writing execution temp files into the skill directory.
+- Improved browser automation guidance for Pi and headless harnesses to prefer screenshot and manifest evidence when no visible browser is exposed.
+
 ## [5.4.0] - 2026-06-03
 
 ### Changed
