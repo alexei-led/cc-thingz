@@ -1,7 +1,25 @@
-// playwright-helpers.js
-// Reusable utility functions for Playwright automation
+// Reusable utility functions for Playwright automation.
 
-const { chromium, firefox, webkit } = require("playwright");
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
+const { loadPlaywright } = require("./runtime");
+
+const { chromium, firefox, webkit } = loadPlaywright({ quiet: isQuiet() });
+
+function isQuiet() {
+  return process.env.PLAYWRIGHT_SKILL_QUIET === "1";
+}
+
+function log(...parts) {
+  if (!isQuiet()) {
+    console.error(...parts);
+  }
+}
+
+function warn(...parts) {
+  console.error(...parts);
+}
 
 /**
  * Parse extra HTTP headers from environment variables.
@@ -30,9 +48,9 @@ function getExtraHeadersFromEnv() {
       ) {
         return parsed;
       }
-      console.warn("PW_EXTRA_HEADERS must be a JSON object, ignoring...");
-    } catch (e) {
-      console.warn("Failed to parse PW_EXTRA_HEADERS as JSON:", e.message);
+      warn("PW_EXTRA_HEADERS must be a JSON object, ignoring...");
+    } catch (error) {
+      warn("Failed to parse PW_EXTRA_HEADERS as JSON:", error.message);
     }
   }
 
@@ -40,14 +58,35 @@ function getExtraHeadersFromEnv() {
 }
 
 /**
- * Launch browser with standard configuration
+ * Merge environment-provided extra HTTP headers into browser context options.
+ * @param {Object} options - Browser context options
+ * @returns {Object} Options with extraHTTPHeaders merged in
+ */
+function getContextOptionsWithHeaders(options = {}) {
+  const extraHeaders = getExtraHeadersFromEnv();
+
+  if (!extraHeaders) {
+    return options;
+  }
+
+  return {
+    ...options,
+    extraHTTPHeaders: {
+      ...extraHeaders,
+      ...(options.extraHTTPHeaders || {}),
+    },
+  };
+}
+
+/**
+ * Launch browser with standard configuration.
  * @param {string} browserType - 'chromium', 'firefox', or 'webkit'
  * @param {Object} options - Additional launch options
  */
 async function launchBrowser(browserType = "chromium", options = {}) {
   const defaultOptions = {
     headless: process.env.HEADLESS !== "false",
-    slowMo: process.env.SLOW_MO ? parseInt(process.env.SLOW_MO) : 0,
+    slowMo: process.env.SLOW_MO ? parseInt(process.env.SLOW_MO, 10) : 0,
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
   };
 
@@ -62,7 +101,7 @@ async function launchBrowser(browserType = "chromium", options = {}) {
 }
 
 /**
- * Create a new page with viewport and user agent
+ * Create a new page with viewport and user agent.
  * @param {Object} context - Browser context
  * @param {Object} options - Page options
  */
@@ -79,41 +118,149 @@ async function createPage(context, options = {}) {
     });
   }
 
-  // Set default timeout
   page.setDefaultTimeout(options.timeout || 30000);
-
   return page;
 }
 
+async function waitForAnimationFrames(page, frames = 2) {
+  const frameCount = Math.max(0, Number(frames) || 0);
+  if (frameCount === 0) {
+    return;
+  }
+
+  await page.evaluate(
+    (count) =>
+      new Promise((resolve) => {
+        let remaining = count;
+        function tick() {
+          remaining -= 1;
+          if (remaining <= 0) {
+            resolve();
+            return;
+          }
+          window.requestAnimationFrame(tick);
+        }
+        window.requestAnimationFrame(tick);
+      }),
+    frameCount,
+  );
+}
+
+async function waitForFonts(page) {
+  await page.evaluate(async () => {
+    if (document.fonts?.ready) {
+      await document.fonts.ready;
+    }
+  });
+}
+
+async function waitForStableBoundingBox(page, selector, options = {}) {
+  const timeout = options.timeout || 10000;
+  const requiredStableFrames = options.frames || 2;
+  const locator = page.locator(selector).first();
+  const deadline = Date.now() + timeout;
+  let lastBox = null;
+  let stableFrames = 0;
+
+  while (Date.now() < deadline) {
+    let box = null;
+    try {
+      box = await locator.boundingBox({ timeout: Math.min(1000, timeout) });
+    } catch (_error) {
+      // Dynamic pages can briefly detach/recreate nodes during animation.
+    }
+
+    if (!box) {
+      stableFrames = 0;
+      await waitForAnimationFrames(page, 1);
+      continue;
+    }
+
+    const stable =
+      lastBox &&
+      Math.abs(lastBox.x - box.x) < 0.5 &&
+      Math.abs(lastBox.y - box.y) < 0.5 &&
+      Math.abs(lastBox.width - box.width) < 0.5 &&
+      Math.abs(lastBox.height - box.height) < 0.5;
+
+    stableFrames = stable ? stableFrames + 1 : 0;
+    lastBox = box;
+
+    if (stableFrames >= requiredStableFrames) {
+      return;
+    }
+
+    await waitForAnimationFrames(page, 1);
+  }
+
+  throw new Error(`Element bounding box did not stabilize: ${selector}`);
+}
+
 /**
- * Smart wait for page to be ready
+ * Wait for SPA/page readiness using load state, a rendered selector, fonts, and
+ * animation frames. Prefer this before screenshots of dynamic pages.
+ * @param {Object} page - Playwright page
+ * @param {Object} options - Wait options
+ */
+async function waitForStablePage(page, options = {}) {
+  const timeout = options.timeout || 30000;
+  const waitUntil = options.waitUntil || "domcontentloaded";
+  const selector = options.selector || options.waitForSelector;
+  const selectorState = options.state || "visible";
+  const animationFrames = options.animationFrames ?? 2;
+
+  if (waitUntil) {
+    try {
+      await page.waitForLoadState(waitUntil, { timeout });
+    } catch (_error) {
+      log(
+        `Page did not reach load state '${waitUntil}' before timeout; continuing...`,
+      );
+    }
+  }
+
+  if (selector) {
+    await page.waitForSelector(selector, { state: selectorState, timeout });
+  }
+
+  if (options.fonts !== false) {
+    try {
+      await waitForFonts(page);
+    } catch (_error) {
+      log("Font readiness check failed; continuing...");
+    }
+  }
+
+  await waitForAnimationFrames(page, animationFrames);
+
+  if (selector && options.stableBoundingBox) {
+    await waitForStableBoundingBox(page, selector, {
+      timeout,
+      frames: options.stableFrames || 2,
+    });
+  }
+}
+
+/**
+ * Smart wait for page to be ready. Kept for compatibility; prefer
+ * waitForStablePage for SPA screenshots.
  * @param {Object} page - Playwright page
  * @param {Object} options - Wait options
  */
 async function waitForPageReady(page, options = {}) {
-  const waitOptions = {
+  await waitForStablePage(page, {
     waitUntil: options.waitUntil || "networkidle",
+    selector: options.selector || options.waitForSelector,
     timeout: options.timeout || 30000,
-  };
-
-  try {
-    await page.waitForLoadState(waitOptions.waitUntil, {
-      timeout: waitOptions.timeout,
-    });
-  } catch (e) {
-    console.warn("Page load timeout, continuing...");
-  }
-
-  // Additional wait for dynamic content if selector provided
-  if (options.waitForSelector) {
-    await page.waitForSelector(options.waitForSelector, {
-      timeout: options.timeout,
-    });
-  }
+    animationFrames: options.animationFrames ?? 2,
+    fonts: options.fonts,
+    stableBoundingBox: options.stableBoundingBox,
+    stableFrames: options.stableFrames,
+  });
 }
 
 /**
- * Safe click with retry logic
+ * Safe click with retry logic.
  * @param {Object} page - Playwright page
  * @param {string} selector - Element selector
  * @param {Object} options - Click options
@@ -122,7 +269,7 @@ async function safeClick(page, selector, options = {}) {
   const maxRetries = options.retries || 3;
   const retryDelay = options.retryDelay || 1000;
 
-  for (let i = 0; i < maxRetries; i++) {
+  for (let i = 0; i < maxRetries; i += 1) {
     try {
       await page.waitForSelector(selector, {
         state: "visible",
@@ -133,21 +280,23 @@ async function safeClick(page, selector, options = {}) {
         timeout: options.timeout || 5000,
       });
       return true;
-    } catch (e) {
+    } catch (error) {
       if (i === maxRetries - 1) {
         console.error(
           `Failed to click ${selector} after ${maxRetries} attempts`,
         );
-        throw e;
+        throw error;
       }
-      console.log(`Retry ${i + 1}/${maxRetries} for clicking ${selector}`);
+      log(`Retry ${i + 1}/${maxRetries} for clicking ${selector}`);
       await page.waitForTimeout(retryDelay);
     }
   }
+
+  return false;
 }
 
 /**
- * Safe text input with clear before type
+ * Safe text input with clear before type.
  * @param {Object} page - Playwright page
  * @param {string} selector - Input selector
  * @param {string} text - Text to type
@@ -171,7 +320,7 @@ async function safeType(page, selector, text, options = {}) {
 }
 
 /**
- * Extract text from multiple elements
+ * Extract text from multiple elements.
  * @param {Object} page - Playwright page
  * @param {string} selector - Elements selector
  */
@@ -182,15 +331,34 @@ async function extractTexts(page, selector) {
   );
 }
 
+function timestampedScreenshotPath(name) {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const parsed = path.parse(name);
+  const stem = parsed.ext ? parsed.name : name;
+  const filename = `${stem}-${timestamp}.png`;
+
+  if (path.isAbsolute(name)) {
+    return parsed.ext ? name : `${name}-${timestamp}.png`;
+  }
+
+  if (name.includes(path.sep) || name.includes("/")) {
+    const resolved = path.resolve(process.cwd(), name);
+    const resolvedParsed = path.parse(resolved);
+    return resolvedParsed.ext ? resolved : `${resolved}-${timestamp}.png`;
+  }
+
+  return path.join(os.tmpdir(), `playwright-${filename}`);
+}
+
 /**
- * Take screenshot with timestamp
+ * Take screenshot with timestamp. Simple names are saved under /tmp.
  * @param {Object} page - Playwright page
- * @param {string} name - Screenshot name
+ * @param {string} name - Screenshot name or path
  * @param {Object} options - Screenshot options
  */
 async function takeScreenshot(page, name, options = {}) {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const filename = `${name}-${timestamp}.png`;
+  const filename = timestampedScreenshotPath(name);
+  fs.mkdirSync(path.dirname(filename), { recursive: true });
 
   await page.screenshot({
     path: filename,
@@ -198,12 +366,12 @@ async function takeScreenshot(page, name, options = {}) {
     ...options,
   });
 
-  console.log(`Screenshot saved: ${filename}`);
+  log(`Screenshot saved: ${filename}`);
   return filename;
 }
 
 /**
- * Handle authentication
+ * Handle authentication.
  * @param {Object} page - Playwright page
  * @param {Object} credentials - Username and password
  * @param {Object} selectors - Login form selectors
@@ -222,7 +390,6 @@ async function authenticate(page, credentials, selectors = {}) {
   await safeType(page, finalSelectors.password, credentials.password);
   await safeClick(page, finalSelectors.submit);
 
-  // Wait for navigation or success indicator
   await Promise.race([
     page.waitForNavigation({ waitUntil: "networkidle" }),
     page.waitForSelector(
@@ -230,12 +397,12 @@ async function authenticate(page, credentials, selectors = {}) {
       { timeout: 10000 },
     ),
   ]).catch(() => {
-    console.log("Login might have completed without navigation");
+    log("Login might have completed without navigation");
   });
 }
 
 /**
- * Scroll page
+ * Scroll page.
  * @param {Object} page - Playwright page
  * @param {string} direction - 'down', 'up', 'top', 'bottom'
  * @param {number} distance - Pixels to scroll (for up/down)
@@ -254,12 +421,14 @@ async function scrollPage(page, direction = "down", distance = 500) {
     case "bottom":
       await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
       break;
+    default:
+      throw new Error(`Invalid scroll direction: ${direction}`);
   }
-  await page.waitForTimeout(500); // Wait for scroll animation
+  await waitForAnimationFrames(page, 2);
 }
 
 /**
- * Extract table data
+ * Extract table data.
  * @param {Object} page - Playwright page
  * @param {string} tableSelector - Table selector
  */
@@ -281,9 +450,8 @@ async function extractTableData(page, tableSelector) {
           obj[headers[index] || `column_${index}`] = cell.textContent?.trim();
           return obj;
         }, {});
-      } else {
-        return cells.map((cell) => cell.textContent?.trim());
       }
+      return cells.map((cell) => cell.textContent?.trim());
     });
 
     return { headers, rows };
@@ -291,7 +459,7 @@ async function extractTableData(page, tableSelector) {
 }
 
 /**
- * Wait for and dismiss cookie banners
+ * Wait for and dismiss cookie banners.
  * @param {Object} page - Playwright page
  * @param {number} timeout - Max time to wait
  */
@@ -315,11 +483,11 @@ async function handleCookieBanner(page, timeout = 3000) {
       });
       if (element) {
         await element.click();
-        console.log("Cookie banner dismissed");
+        log("Cookie banner dismissed");
         return true;
       }
-    } catch (e) {
-      // Continue to next selector
+    } catch (_error) {
+      // Continue to next selector.
     }
   }
 
@@ -327,7 +495,7 @@ async function handleCookieBanner(page, timeout = 3000) {
 }
 
 /**
- * Retry a function with exponential backoff
+ * Retry a function with exponential backoff.
  * @param {Function} fn - Function to retry
  * @param {number} maxRetries - Maximum retry attempts
  * @param {number} initialDelay - Initial delay in ms
@@ -335,13 +503,13 @@ async function handleCookieBanner(page, timeout = 3000) {
 async function retryWithBackoff(fn, maxRetries = 3, initialDelay = 1000) {
   let lastError;
 
-  for (let i = 0; i < maxRetries; i++) {
+  for (let i = 0; i < maxRetries; i += 1) {
     try {
       return await fn();
     } catch (error) {
       lastError = error;
-      const delay = initialDelay * Math.pow(2, i);
-      console.log(`Attempt ${i + 1} failed, retrying in ${delay}ms...`);
+      const delay = initialDelay * 2 ** i;
+      log(`Attempt ${i + 1} failed, retrying in ${delay}ms...`);
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
@@ -350,19 +518,11 @@ async function retryWithBackoff(fn, maxRetries = 3, initialDelay = 1000) {
 }
 
 /**
- * Create browser context with common settings
+ * Create browser context with common settings.
  * @param {Object} browser - Browser instance
  * @param {Object} options - Context options
  */
 async function createContext(browser, options = {}) {
-  const envHeaders = getExtraHeadersFromEnv();
-
-  // Merge environment headers with any passed in options
-  const mergedHeaders = {
-    ...envHeaders,
-    ...options.extraHTTPHeaders,
-  };
-
   const defaultOptions = {
     viewport: { width: 1280, height: 720 },
     userAgent: options.mobile
@@ -372,68 +532,71 @@ async function createContext(browser, options = {}) {
     geolocation: options.geolocation,
     locale: options.locale || "en-US",
     timezoneId: options.timezoneId || "America/New_York",
-    // Only include extraHTTPHeaders if we have any
-    ...(Object.keys(mergedHeaders).length > 0 && {
-      extraHTTPHeaders: mergedHeaders,
-    }),
   };
 
-  return await browser.newContext({ ...defaultOptions, ...options });
+  return await browser.newContext(
+    getContextOptionsWithHeaders({ ...defaultOptions, ...options }),
+  );
+}
+
+function requestUrl(port) {
+  return `http://localhost:${port}`;
+}
+
+async function probeHttpPort(http, port) {
+  return await new Promise((resolve) => {
+    const req = http.request(
+      {
+        hostname: "localhost",
+        port,
+        path: "/",
+        method: "HEAD",
+        timeout: 500,
+      },
+      (res) => {
+        resolve(res.statusCode < 500);
+      },
+    );
+
+    req.on("error", () => resolve(false));
+    req.on("timeout", () => {
+      req.destroy();
+      resolve(false);
+    });
+
+    req.end();
+  });
 }
 
 /**
- * Detect running dev servers on common ports
+ * Detect running dev servers on common ports.
  * @param {Array<number>} customPorts - Additional ports to check
  * @returns {Promise<Array>} Array of detected server URLs
  */
 async function detectDevServers(customPorts = []) {
   const http = require("http");
-
-  // Common dev server ports
   const commonPorts = [
-    3000, 3001, 3002, 5173, 8080, 8000, 4200, 5000, 9000, 1234,
+    3000, 3001, 3002, 3030, 4173, 4200, 4321, 5000, 5173, 5174, 6006, 8000,
+    8080, 9000, 1234,
   ];
   const allPorts = [...new Set([...commonPorts, ...customPorts])];
-
   const detectedServers = [];
 
-  console.log("🔍 Checking for running dev servers...");
+  log("🔍 Checking for running dev servers...");
 
   for (const port of allPorts) {
     try {
-      await new Promise((resolve, reject) => {
-        const req = http.request(
-          {
-            hostname: "localhost",
-            port: port,
-            path: "/",
-            method: "HEAD",
-            timeout: 500,
-          },
-          (res) => {
-            if (res.statusCode < 500) {
-              detectedServers.push(`http://localhost:${port}`);
-              console.log(`  ✅ Found server on port ${port}`);
-            }
-            resolve();
-          },
-        );
-
-        req.on("error", () => resolve());
-        req.on("timeout", () => {
-          req.destroy();
-          resolve();
-        });
-
-        req.end();
-      });
-    } catch (e) {
-      // Port not available, continue
+      if (await probeHttpPort(http, port)) {
+        detectedServers.push(requestUrl(port));
+        log(`  ✅ Found server on port ${port}`);
+      }
+    } catch (_error) {
+      // Port not available, continue.
     }
   }
 
   if (detectedServers.length === 0) {
-    console.log("  ❌ No dev servers detected");
+    log("  ❌ No dev servers detected");
   }
 
   return detectedServers;
@@ -443,6 +606,9 @@ module.exports = {
   launchBrowser,
   createPage,
   waitForPageReady,
+  waitForStablePage,
+  waitForAnimationFrames,
+  waitForStableBoundingBox,
   safeClick,
   safeType,
   extractTexts,
@@ -455,4 +621,5 @@ module.exports = {
   createContext,
   detectDevServers,
   getExtraHeadersFromEnv,
+  getContextOptionsWithHeaders,
 };

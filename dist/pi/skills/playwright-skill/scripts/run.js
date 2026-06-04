@@ -1,221 +1,221 @@
 #!/usr/bin/env node
 /**
- * Universal Playwright Executor for Claude Code
+ * Playwright support-runtime executor.
  *
  * Executes Playwright automation code from:
  * - File path: node run.js script.js
  * - Inline code: node run.js 'await page.goto("...")'
  * - Stdin: cat script.js | node run.js
  *
- * Ensures proper module resolution by running from skill directory.
+ * The runner preserves the caller's working directory, keeps runner logs on
+ * stderr, and exposes Playwright primitives as globals without blocking normal
+ * require("fs"), require("path"), or require("playwright") usage.
  */
 
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
-const { execSync } = require("child_process");
+const Module = require("module");
+const runtime = require("./lib/runtime");
 
-// Change to skill directory for proper module resolution
-process.chdir(__dirname);
+const SCRIPT_DIR = __dirname;
+const ORIGINAL_CWD = process.cwd();
 
-/**
- * Check if Playwright is installed
- */
-function checkPlaywrightInstalled() {
-  try {
-    require.resolve("playwright");
-    return true;
-  } catch (e) {
-    return false;
+function usage() {
+  console.error(`Usage:
+  node scripts/run.js [--quiet|--json] script.js
+  node scripts/run.js [--quiet|--json] "await browser code"
+  cat script.js | node scripts/run.js [--quiet|--json]
+
+Options:
+  --quiet, -q   suppress runner status logs; script stdout stays untouched
+  --json        alias for --quiet, intended for scripts that print JSON
+  --help, -h    show this help`);
+}
+
+function parseArgs(argv) {
+  const options = { quiet: false, help: false };
+  const input = [];
+
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+
+    if (arg === "--quiet" || arg === "-q") {
+      options.quiet = true;
+      continue;
+    }
+
+    if (arg === "--json") {
+      options.quiet = true;
+      continue;
+    }
+
+    if (arg === "--help" || arg === "-h") {
+      options.help = true;
+      continue;
+    }
+
+    if (arg === "--") {
+      input.push(...argv.slice(i + 1));
+      break;
+    }
+
+    input.push(arg);
+  }
+
+  return { options, input };
+}
+
+function log(options, ...parts) {
+  if (!options.quiet) {
+    console.error(...parts);
   }
 }
 
-/**
- * Install Playwright if missing
- */
-function installPlaywright() {
-  console.log("📦 Playwright not found. Installing...");
-  try {
-    execSync("bun install", { stdio: "inherit", cwd: __dirname });
-    execSync("bunx playwright install chromium", {
-      stdio: "inherit",
-      cwd: __dirname,
-    });
-    console.log("✅ Playwright installed successfully");
-    return true;
-  } catch (e) {
-    console.error("❌ Failed to install Playwright:", e.message);
-    console.error("Please run manually: cd", __dirname, "&& bun run setup");
-    return false;
+function resolveFromCaller(inputPath) {
+  if (path.isAbsolute(inputPath)) {
+    return inputPath;
   }
+  return path.resolve(ORIGINAL_CWD, inputPath);
 }
 
-/**
- * Get code to execute from various sources
- */
-function getCodeToExecute() {
-  const args = process.argv.slice(2);
+function stripShebang(code) {
+  return code.replace(/^#!.*(?:\r?\n|$)/, "");
+}
 
-  // Case 1: File path provided
-  if (args.length > 0 && fs.existsSync(args[0])) {
-    const filePath = path.resolve(args[0]);
-    console.log(`📄 Executing file: ${filePath}`);
-    return fs.readFileSync(filePath, "utf8");
+function tempFilename(label) {
+  const safeLabel = label.replace(/[^a-z0-9_-]/gi, "-").toLowerCase();
+  return path.join(
+    os.tmpdir(),
+    `playwright-skill-${safeLabel}-${process.pid}-${Date.now()}.js`,
+  );
+}
+
+function getCodeToExecute(input, options) {
+  if (input.length > 0) {
+    const candidate = resolveFromCaller(input[0]);
+    if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+      log(options, `📄 Executing file: ${candidate}`);
+      return {
+        code: fs.readFileSync(candidate, "utf8"),
+        filename: candidate,
+        kind: "file",
+      };
+    }
+
+    log(options, "⚡ Executing inline code");
+    return {
+      code: input.join(" "),
+      filename: tempFilename("inline"),
+      kind: "inline",
+    };
   }
 
-  // Case 2: Inline code provided as argument
-  if (args.length > 0) {
-    console.log("⚡ Executing inline code");
-    return args.join(" ");
-  }
-
-  // Case 3: Code from stdin
   if (!process.stdin.isTTY) {
-    console.log("📥 Reading from stdin");
-    return fs.readFileSync(0, "utf8");
+    log(options, "📥 Reading from stdin");
+    return {
+      code: fs.readFileSync(0, "utf8"),
+      filename: tempFilename("stdin"),
+      kind: "stdin",
+    };
   }
 
-  // No input
-  console.error("❌ No code to execute");
-  console.error("Usage:");
-  console.error("  node run.js script.js          # Execute file");
-  console.error('  node run.js "code here"        # Execute inline');
-  console.error("  cat script.js | node run.js    # Execute from stdin");
+  usage();
   process.exit(1);
 }
 
-/**
- * Clean up old temporary execution files from previous runs
- */
-function cleanupOldTempFiles() {
-  try {
-    const files = fs.readdirSync(__dirname);
-    const tempFiles = files.filter(
-      (f) => f.startsWith(".temp-execution-") && f.endsWith(".js"),
-    );
-
-    if (tempFiles.length > 0) {
-      tempFiles.forEach((file) => {
-        const filePath = path.join(__dirname, file);
-        try {
-          fs.unlinkSync(filePath);
-        } catch (e) {
-          // Ignore errors - file might be in use or already deleted
-        }
-      });
-    }
-  } catch (e) {
-    // Ignore directory read errors
-  }
+function getContextOptionsWithHeaders(helpers, options = {}) {
+  return helpers.getContextOptionsWithHeaders(options);
 }
 
-/**
- * Wrap code in async IIFE if not already wrapped
- */
-function wrapCodeIfNeeded(code) {
-  // Check if code already has require() and async structure
-  const hasRequire = code.includes("require(");
-  const hasAsyncIIFE =
-    code.includes("(async () => {") || code.includes("(async()=>{");
-
-  // If it's already a complete script, return as-is
-  if (hasRequire && hasAsyncIIFE) {
-    return code;
-  }
-
-  // If it's just Playwright commands, wrap in full template
-  if (!hasRequire) {
-    return `
-const { chromium, firefox, webkit, devices } = require('playwright');
-const helpers = require('./lib/helpers');
-
-// Extra headers from environment variables (if configured)
-const __extraHeaders = helpers.getExtraHeadersFromEnv();
-
-/**
- * Utility to merge environment headers into context options.
- * Use when creating contexts with raw Playwright API instead of helpers.createContext().
- * @param {Object} options - Context options
- * @returns {Object} Options with extraHTTPHeaders merged in
- */
-function getContextOptionsWithHeaders(options = {}) {
-  if (!__extraHeaders) return options;
-  return {
-    ...options,
-    extraHTTPHeaders: {
-      ...__extraHeaders,
-      ...(options.extraHTTPHeaders || {})
-    }
+function installRuntimeGlobals(playwright, helpers) {
+  const globals = {
+    playwright,
+    chromium: playwright.chromium,
+    firefox: playwright.firefox,
+    webkit: playwright.webkit,
+    devices: playwright.devices,
+    helpers,
+    getContextOptionsWithHeaders: (options = {}) =>
+      getContextOptionsWithHeaders(helpers, options),
   };
+
+  for (const [name, value] of Object.entries(globals)) {
+    Object.defineProperty(globalThis, name, {
+      configurable: true,
+      enumerable: false,
+      writable: true,
+      value,
+    });
+  }
 }
 
-(async () => {
+function wrapCode(code) {
+  return `
+module.exports = (async () => {
   try {
-    ${code}
+${stripShebang(code)}
   } catch (error) {
     console.error('❌ Automation error:', error.message);
     if (error.stack) {
       console.error(error.stack);
     }
-    process.exit(1);
+    process.exitCode = 1;
   }
 })();
 `;
-  }
-
-  // If has require but no async wrapper
-  if (!hasAsyncIIFE) {
-    return `
-(async () => {
-  try {
-    ${code}
-  } catch (error) {
-    console.error('❌ Automation error:', error.message);
-    if (error.stack) {
-      console.error(error.stack);
-    }
-    process.exit(1);
-  }
-})();
-`;
-  }
-
-  return code;
 }
 
-/**
- * Main execution
- */
+function createExecutionModule(filename) {
+  const executionModule = new Module(filename, module.parent);
+  executionModule.filename = filename;
+  executionModule.paths = [
+    ...Module._nodeModulePaths(path.dirname(filename)),
+    ...Module._nodeModulePaths(SCRIPT_DIR),
+  ];
+  return executionModule;
+}
+
+async function executeCode(source) {
+  const executionModule = createExecutionModule(source.filename);
+  executionModule._compile(wrapCode(source.code), source.filename);
+
+  if (
+    executionModule.exports &&
+    typeof executionModule.exports.then === "function"
+  ) {
+    await executionModule.exports;
+  }
+}
+
 async function main() {
-  console.log("🎭 Playwright Skill - Universal Executor\n");
+  const { options, input } = parseArgs(process.argv.slice(2));
 
-  // Clean up old temp files from previous runs
-  cleanupOldTempFiles();
-
-  // Check Playwright installation
-  if (!checkPlaywrightInstalled()) {
-    const installed = installPlaywright();
-    if (!installed) {
-      process.exit(1);
-    }
+  if (options.help) {
+    usage();
+    return;
   }
 
-  // Get code to execute
-  const rawCode = getCodeToExecute();
-  const code = wrapCodeIfNeeded(rawCode);
+  process.env.PLAYWRIGHT_SKILL_QUIET = options.quiet ? "1" : "0";
 
-  // Create temporary file for execution
-  const tempFile = path.join(__dirname, `.temp-execution-${Date.now()}.js`);
+  log(options, "🎭 Playwright Skill - Universal Executor");
+
+  let playwright;
+  try {
+    playwright = runtime.loadPlaywright(options);
+  } catch (error) {
+    console.error("❌", error.message);
+    process.exit(1);
+  }
+
+  const helpers = require("./lib/helpers");
+  installRuntimeGlobals(playwright, helpers);
+
+  const source = getCodeToExecute(input, options);
 
   try {
-    // Write code to temp file
-    fs.writeFileSync(tempFile, code, "utf8");
-
-    // Execute the code
-    console.log("🚀 Starting automation...\n");
-    require(tempFile);
-
-    // Note: Temp file will be cleaned up on next run
-    // This allows long-running async operations to complete safely
+    log(options, "🚀 Starting automation...");
+    await executeCode(source);
   } catch (error) {
     console.error("❌ Execution failed:", error.message);
     if (error.stack) {
@@ -226,7 +226,6 @@ async function main() {
   }
 }
 
-// Run main function
 main().catch((error) => {
   console.error("❌ Fatal error:", error.message);
   process.exit(1);

@@ -6,6 +6,9 @@
   "main": "run.js",
   "scripts": {
     "setup": "bun install && bunx playwright install chromium",
+    "setup:npm": "npm install && npx playwright install chromium",
+    "screenshot-url": "node screenshot-url.js",
+    "screenshot-sequence": "node screenshot-sequence.js",
     "install-all-browsers": "bunx playwright install chromium firefox webkit"
   },
   "keywords": [

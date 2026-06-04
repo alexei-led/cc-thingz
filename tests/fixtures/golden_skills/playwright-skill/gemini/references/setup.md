@@ -1,6 +1,7 @@
 # Setup — Playwright Support Runtime
 
-Install Playwright and Chromium for the bundled `scripts/run.js` executor used by `browser-automation`.
+Install Playwright and Chromium for the bundled executor and screenshot helpers
+used by `browser-automation`.
 
 ## Prerequisites
 
@@ -9,7 +10,7 @@ Install Playwright and Chromium for the bundled `scripts/run.js` executor used b
 
 ## Install
 
-Run from the `playwright-skill` directory.
+Run from the `playwright-skill` directory, then `cd scripts`.
 
 ### With bun
 
@@ -23,17 +24,32 @@ cd scripts && bun install && bunx playwright install chromium
 cd scripts && npm install && npx playwright install chromium
 ```
 
-## Verify
+## Verify runner
 
 ```bash
-node scripts/run.js "const browser = await chromium.launch({ headless: true }); console.log(await browser.version()); await browser.close();"
+node scripts/run.js --json "console.log(JSON.stringify({ hasChromium: !!chromium }))"
 ```
 
-If it prints a Chromium version, setup is good.
+If it prints JSON with `hasChromium: true`, setup is good.
+
+## Verify screenshot helper
+
+```bash
+node scripts/screenshot-url.js \
+  --url https://example.com \
+  --out /tmp/playwright-example.png \
+  --json
+```
+
+If it prints a manifest and `/tmp/playwright-example.png` exists, screenshot
+capture is good.
 
 ## Auto-install fallback
 
-`run.js` installs Playwright on first use when missing. If auto-install fails, run one of the install commands above from the `playwright-skill` directory.
+`run.js`, `screenshot-url.js`, and `screenshot-sequence.js` install Playwright
+on first use when missing. They try bun first and npm second. If auto-install
+fails, run one of the install commands above from the `playwright-skill`
+directory.
 
 ## Other browsers
 

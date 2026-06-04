@@ -39,6 +39,19 @@
         "The output records screenshot or rendered-state evidence.",
         "The output does not frame the task as only writing E2E tests."
       ]
+    },
+    {
+      "id": "headless-pi-screenshot-evidence",
+      "name": "headless Pi screenshot evidence",
+      "prompt": "In Pi, no visible browser tool is exposed. A user wants visual verification of a rendered page. Describe the workflow.",
+      "expected_output": "The response uses browser-automation with project tooling or playwright-skill fallback, prefers headless screenshots and manifests as evidence, waits for rendered state, and avoids insisting on headed mode.",
+      "assertions": [
+        "The output does not require headed mode when no visible browser is exposed.",
+        "The output uses headless screenshots or manifests as visual evidence.",
+        "The output waits for a rendered selector, URL, accessibility snapshot, or other observable browser state.",
+        "The output reports artifact paths and pass/fail/blocked status.",
+        "The output uses playwright-skill only as a fallback/runtime rather than as the user-facing skill."
+      ]
     }
   ]
 }

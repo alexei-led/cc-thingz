@@ -24,7 +24,9 @@ Playwright MCP when its browser tools are visible, then `playwright-skill`.
 ## Pi
 
 Use browser tools if the active session exposes them. Otherwise use the project
-runner, then `playwright-skill`.
+runner, then `playwright-skill`. In ordinary Pi harnesses, prefer headless
+screenshots and manifests over headed mode because the visible browser is not
+usually exposed to the agent.
 
 ## Gemini
 
@@ -34,7 +36,8 @@ runner, then `playwright-skill`.
 ## Playwright Fallback
 
 Use Playwright for repeatable scripts/tests, cross-browser checks, traces,
-video, or when no platform browser tool is available.
+video, screenshot batches, or when no platform browser tool is available.
 
 `playwright-skill` is support-only. Use it after `browser-automation` selects
-the fallback; do not route user intent to it directly.
+the fallback; do not route user intent to it directly. Use its screenshot CLIs
+before writing custom one-off batch scripts.

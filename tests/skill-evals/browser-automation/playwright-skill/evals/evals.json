@@ -25,6 +25,32 @@
         "The output frames these as support for higher-level browser-automation workflows.",
         "The output avoids expanding scope into general browser strategy beyond helper/runtime responsibilities."
       ]
+    },
+    {
+      "id": "reliable-runner-contract",
+      "name": "reliable runner contract",
+      "prompt": "A generated Playwright script needs fs/path imports, clean JSON stdout, and relative screenshot paths from the caller workspace. Describe how playwright-skill should run it.",
+      "expected_output": "The response says to use run.js with --quiet or --json, keep runner logs on stderr, preserve the caller cwd, expose Playwright globals even when the script uses require(), and keep generated temp/artifacts out of the skill directory.",
+      "assertions": [
+        "The output says --quiet or --json keeps runner/status logs away from script stdout.",
+        "The output says the runner preserves the caller working directory or avoids chdir surprises.",
+        "The output says Playwright globals remain available even when the script uses require('fs') or similar imports.",
+        "The output says generated temporary scripts or artifacts should live under /tmp/playwright-* rather than the skill directory.",
+        "The output does not recommend tailing stdout or redirecting runner noise to recover JSON."
+      ]
+    },
+    {
+      "id": "turnkey-screenshot-batch",
+      "name": "turnkey screenshot batch",
+      "prompt": "A browser-automation task needs screenshots for http://localhost:3030/{slide}?clicks=20 from slides 1 through 17, waiting for .slidev-page and collecting titles. Describe the playwright-skill approach.",
+      "expected_output": "The response recommends screenshot-sequence before custom scripting, uses the URL template with {n}, waits for .slidev-page, writes screenshots and a manifest under /tmp, and mentions the manifest includes titles and diagnostics.",
+      "assertions": [
+        "The output recommends scripts/screenshot-sequence.js or an equivalent turnkey screenshot helper before a custom one-off script.",
+        "The output uses a URL template containing {n} and a from/to range.",
+        "The output waits for the rendered selector .slidev-page or equivalent rendered state.",
+        "The output writes screenshots and manifests under /tmp/playwright-* or another explicit safe temp location.",
+        "The output mentions manifest data such as title, URL, screenshot path, console errors, or network failures."
+      ]
     }
   ]
 }
