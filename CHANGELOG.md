@@ -8,6 +8,12 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [5.4.2] - 2026-06-16
+
+### Added
+
+- Added a Simplicity (over-engineering) review dimension and a Simplify-focus delete-list mode (`delete`/`stdlib`/`native`/`yagni`/`shrink`, net-lines metric) to the `reviewing-code` skill.
+
 ## [5.4.1] - 2026-06-04
 
 ### Added
