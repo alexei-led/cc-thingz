@@ -1,6 +1,6 @@
 {
   "name": "programming",
-  "version": "5.4.1",
+  "version": "5.4.2",
   "description": "Idiomatic development across Go, Python, TypeScript, shell, and web",
   "author": {
     "name": "Alexei Ledenev",
