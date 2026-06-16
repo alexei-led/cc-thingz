@@ -140,9 +140,19 @@ Maintainability:
 
 - Dead code, confusing indirection, shallow wrappers, mixed responsibilities, brittle coupling, unclear invariants.
 
+Simplicity (over-engineering):
+
+- Reinvented stdlib or native behavior, single-implementation abstractions, factories with one product, speculative flexibility, dependencies a few lines would replace, dead flags or config.
+
 Docs:
 
 - Public API docs, migration notes, user-facing behavior, accessibility text, and operator docs affected by the change.
+
+Simplify focus:
+
+- When the user asks for a simplification, over-engineering, or "what can we delete" review, scope to the Simplicity dimension only and emit a delete-list instead of the standard template.
+- One line per finding: `file:line — <tag> <what>. <replacement>.` Tags: `delete` (dead or speculative, nothing replaces it), `stdlib` / `native` (name the function or platform feature), `yagni` (one implementation, inline it), `shrink` (same logic, fewer lines).
+- End with `net: -N lines possible.` Nothing to cut: `Lean already. Ship.`
 
 ## Finding rules
 
