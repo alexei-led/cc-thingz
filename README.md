@@ -149,7 +149,7 @@ works; [`nicobailon/pi-subagents`](https://github.com/nicobailon/pi-subagents)
 is the recommended choice):
 
 ```bash
-pi install git:github.com/nicobailon/pi-subagents
+pi install npm:pi-subagents
 ```
 
 **Install extensions and skills** — one command installs skills and extensions
