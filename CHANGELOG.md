@@ -8,6 +8,12 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [5.4.4] - 2026-06-23
+
+### Fixed
+
+- `lint_json` in the smart-lint hook now skips files that have a shebang on line 1, preventing false JSON parse errors on scripts stored with a `.json` extension.
+
 ## [5.4.3] - 2026-06-23
 
 ### Changed
