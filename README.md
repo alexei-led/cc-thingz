@@ -144,10 +144,12 @@ Pi uses generated skills, agents, **and TypeScript extensions** that mirror
 Claude-Code-native features (plan mode, todos, AskUserQuestion, subagents,
 file/path protection, post-edit lint, completion notifications).
 
-**Required prerequisite** — install the subagent runtime once:
+**Required prerequisite** — install a Pi subagents package (any compatible one
+works; [`nicobailon/pi-subagents`](https://github.com/nicobailon/pi-subagents)
+is the recommended choice):
 
 ```bash
-pi install npm:@tintinweb/pi-subagents
+pi install git:github.com/nicobailon/pi-subagents
 ```
 
 **Install extensions and skills** — one command installs skills and extensions
@@ -165,8 +167,8 @@ cd ~/src/cc-thingz && make build
 pi install "$(pwd)"
 ```
 
-**Install agents** — Pi's subagent runtime (`@tintinweb/pi-subagents`) loads
-agents from `~/.pi/agent/agents/`. After `pi install`, the repo is already at
+**Install agents** — Pi's subagent runtime loads agents from
+`~/.pi/agent/agents/`. After `pi install`, the repo is already at
 `~/.pi/agent/git/github.com/alexei-led/cc-thingz` — symlink the agent tree
 from there:
 
@@ -226,12 +228,11 @@ Agent({
 | `protected-paths.ts`   | Blocks writes to `.env`, `.git/`, `node_modules/`                                                |
 | `plan-mode/`           | `/plan` toggle for read-only exploration and step tracking                                       |
 | `todo.ts`              | `todo` tool + `/todos` command, branch-aware state                                               |
-| `subagent/`            | Spawns isolated `pi` processes (single, parallel, chain)                                         |
 | `structured-output.ts` | `structured_output` tool that terminates the agent loop                                          |
 | `notify.ts`            | macOS notification via `terminal-notifier` on completion (requires Homebrew `terminal-notifier`) |
 
-**Pi gets**: all 3 agents — `engineer`, `reviewer`, `advisor` (requires
-`@tintinweb/pi-subagents`) — all 25 skills, and 8 bundled extensions. Each
+**Pi gets**: all 3 agents — `engineer`, `reviewer`, `advisor` (requires a Pi
+subagents package) — all 25 skills, and 7 bundled extensions. Each
 agent has a Pi-specific frontmatter overlay tuned for OpenAI Codex models
 (`openai-codex/gpt-5.5`), thinking levels, tool restrictions, and turn limits.
 `advisor` ships to Codex, Gemini, and Pi; Claude is excluded because it has a
