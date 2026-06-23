@@ -1,4 +1,3 @@
 tools: read, grep, find, ls
 thinking: medium
 model: openai-codex/gpt-5.4
-max_turns: 30

@@ -1,4 +1,3 @@
 tools: read, edit, write, bash, grep, find, ls
 thinking: high
 model: openai-codex/gpt-5.4
-max_turns: 50

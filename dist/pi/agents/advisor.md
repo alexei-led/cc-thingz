@@ -2,11 +2,8 @@
 description: Strategic risk reviewer — delivers a verdict, ranked risks, and ordered
   next actions, no code changes. Use for go/no-go calls, risk triage, and escalation
   when stuck. Not for applying changes (engineer) or line-level code review (reviewer).
-max_turns: 12
 model: openai-codex/gpt-5.5
 name: advisor
-prompt_mode: replace
-skills: none
 thinking: xhigh
 tools: read, grep, find, ls, bash
 ---
