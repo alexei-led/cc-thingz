@@ -8,6 +8,16 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [5.4.3] - 2026-06-23
+
+### Changed
+
+- Removed the bundled Pi `subagent` extension — cc-thingz now delegates to any compatible external pi-subagents package (`nicobailon/pi-subagents` recommended, install with `pi install npm:pi-subagents`).
+
+### Fixed
+
+- Aligned Pi agent frontmatter with nicobailon/pi-subagents field names: removed `skills: none` (was causing a missing-skill error), `max_turns` (unrecognized field), and `prompt_mode` (already the default).
+
 ## [5.4.2] - 2026-06-16
 
 ### Added
