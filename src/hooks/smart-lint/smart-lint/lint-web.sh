@@ -43,6 +43,10 @@ lint_json() {
 		mark_tool_ran
 		log_debug "Running JSON formatter on files: ${files[*]}"
 		for file in "${files[@]}"; do
+			if head -1 "$file" | grep -q '^#!'; then
+				log_debug "Skipping $file (script with .json extension)"
+				continue
+			fi
 			if ! jq . "$file" >"${file}.tmp" 2>/dev/null; then
 				rm -f "${file}.tmp"
 				add_error "JSON Formatter (jq)" "Failed to format $file"
