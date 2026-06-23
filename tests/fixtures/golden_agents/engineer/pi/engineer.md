@@ -1,10 +1,8 @@
 ---
-description:
-  Sole mutator role — applies and verifies code, test, doc, and infra changes.
+description: Sole mutator role — applies and verifies code, test, doc, and infra changes.
   Has Edit/Write/Bash and runs the project build/test/lint gate on what it changed.
   Use for implement, fix, refactor, or apply tasks. Not for read-only review (reviewer)
   or risk advice (advisor).
-max_turns: 50
 model: openai-codex/gpt-5.4
 name: engineer
 thinking: high
