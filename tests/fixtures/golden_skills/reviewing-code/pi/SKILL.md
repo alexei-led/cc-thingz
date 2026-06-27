@@ -25,7 +25,9 @@ Load language references only for languages present in scope:
 
 - C#: `references/csharp.md`
 - Go: `references/go.md`
+- Java/Kotlin: `references/java-kotlin.md`
 - Python: `references/python.md`
+- Rust: `references/rust.md`
 - TypeScript: `references/typescript.md`
 - Web, HTML, CSS, JS, HTMX: `references/web.md`
 
