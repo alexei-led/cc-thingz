@@ -1,6 +1,6 @@
 {
   "name": "alexei-led-cc-thingz",
-  "version": "5.5.0",
+  "version": "5.6.0",
   "description": "Portable development skills for Claude Code, Codex CLI, Gemini CLI, and Pi \u2014 code review, language tooling, infrastructure, testing, and more",
   "contextFileName": "AGENTS.md"
 }
