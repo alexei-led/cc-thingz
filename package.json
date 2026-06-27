@@ -1,6 +1,6 @@
 {
   "name": "cc-thingz",
-  "version": "5.4.2",
+  "version": "5.5.0",
   "private": true,
   "description": "Portable development skills for Claude Code, Codex CLI, Gemini CLI, and Pi.",
   "keywords": [
