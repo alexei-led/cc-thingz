@@ -18,7 +18,7 @@ TEST_RUNNER_DIFF_FALLBACK_LIMIT="${TEST_RUNNER_DIFF_FALLBACK_LIMIT:-50}"
 TEST_RUNNER_FULL="${TEST_RUNNER_FULL:-0}"
 TEST_RUNNER_DEBUG="${TEST_RUNNER_DEBUG:-0}"
 TEST_RUNNER_COMPACT_LINES=120
-HOOK_PROJECT_FALLBACK="${HOOK_PROJECT_FALLBACK:-0}"
+HOOK_PROJECT_FALLBACK="${HOOK_PROJECT_FALLBACK:-1}"
 TESTS_RAN=0
 
 log_debug() { [[ "$TEST_RUNNER_DEBUG" == "1" ]] && echo -e "${CYAN}[DEBUG]${NC} $*" >&2; }
@@ -209,7 +209,8 @@ path_is_excluded() {
 
 has_code_extension() {
 	case "$1" in
-	*.py | *.go | *.js | *.jsx | *.ts | *.tsx | *.mjs | *.cjs | *.mts | *.cts | *.sh | *.bash | *.bats) return 0 ;;
+	*.py | *.go | *.rs | *.js | *.jsx | *.ts | *.tsx | *.mjs | *.cjs | *.mts | *.cts | *.sh | *.bash | *.bats | \
+		Cargo.toml | Cargo.lock | rust-toolchain | rust-toolchain.toml) return 0 ;;
 	*) return 1 ;;
 	esac
 }
@@ -282,6 +283,51 @@ run_package_test_fallback() {
 	done
 	log_debug "No test/tests/check/verify package scripts found"
 	return 0
+}
+
+nearest_non_root_makefile_for_file() {
+	local file="$1" dir
+	dir=$(dirname "$file")
+	while [[ -n "$dir" && "$dir" != "." && "$dir" != "/" ]]; do
+		if [[ -f "$dir/Makefile" ]]; then
+			printf '%s\n' "$dir/Makefile"
+			return 0
+		fi
+		dir=$(dirname "$dir")
+	done
+	return 1
+}
+
+makefile_target_for_path() {
+	local makefile="$1" target
+	for target in test tests check verify; do
+		if grep -qE "^[[:space:]]*${target}[[:space:]]*:" "$makefile" 2>/dev/null; then
+			printf '%s\n' "$target"
+			return 0
+		fi
+	done
+	return 1
+}
+
+run_nearest_makefile_tests() {
+	project_fallback_enabled || return 0
+	local focus_files=("$@")
+	local tmp dir makefile target status=0
+	tmp=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-local-make-tests.%s' "$$")
+	for file in "${focus_files[@]}"; do
+		makefile=$(nearest_non_root_makefile_for_file "$file" || true)
+		[[ -n "$makefile" ]] || continue
+		target=$(makefile_target_for_path "$makefile" || true)
+		[[ -n "$target" ]] || continue
+		dir=$(dirname "$makefile")
+		printf '%s|%s\n' "$dir" "$target"
+	done | sort -u >"$tmp"
+	while IFS='|' read -r dir target; do
+		[[ -n "$dir" && -n "$target" ]] || continue
+		run_and_capture "make $target" make -C "$dir" "$target" || status=2
+	done <"$tmp"
+	rm -f "$tmp"
+	return "$status"
 }
 
 compact_output() {
@@ -610,6 +656,47 @@ run_go_tests() {
 	return "$status"
 }
 
+rust_nearest_manifest() {
+	local file="$1" dir
+	dir=$(dirname "$file")
+	while [[ -n "$dir" && "$dir" != "/" ]]; do
+		[[ "$dir" == "." ]] && break
+		if [[ -f "$dir/Cargo.toml" ]]; then
+			printf '%s\n' "$dir/Cargo.toml"
+			return 0
+		fi
+		dir=$(dirname "$dir")
+	done
+	[[ -f Cargo.toml ]] && printf '%s\n' "Cargo.toml"
+}
+
+run_rust_tests() {
+	local focus_files=("$@")
+	local manifests=()
+	local file manifest tmp status=0
+	for file in "${focus_files[@]}"; do
+		case "$file" in
+		*.rs | Cargo.toml | Cargo.lock | rust-toolchain | rust-toolchain.toml) ;;
+		*) continue ;;
+		esac
+		manifest=$(rust_nearest_manifest "$file" || true)
+		[[ -n "$manifest" ]] && manifests+=("$manifest")
+	done
+	[[ "${#manifests[@]}" -gt 0 ]] || return 0
+	command_exists cargo || {
+		log_warn "cargo not found — skipping focused Rust tests"
+		return 0
+	}
+	tmp=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-rust-tests.%s' "$$")
+	printf '%s\n' "${manifests[@]}" | unique_lines >"$tmp"
+	while IFS= read -r manifest; do
+		[[ -n "$manifest" ]] || continue
+		run_and_capture "Rust tests" cargo test --manifest-path "$manifest" --all-targets || status=2
+	done <"$tmp"
+	rm -f "$tmp"
+	return "$status"
+}
+
 is_js_test_file() {
 	local base
 	base=$(basename "$1")
@@ -825,6 +912,13 @@ run_full_override() {
 		run_and_capture "go test" go test -failfast ./...
 		return $?
 	fi
+	if [[ -f Cargo.toml ]]; then
+		if command_exists cargo; then
+			run_and_capture "cargo test" cargo test --all-targets
+			return $?
+		fi
+		log_warn "cargo not found — skipping full Rust tests"
+	fi
 	local pytest_runner=() pytest_arg
 	while IFS= read -r pytest_arg; do
 		[[ -n "$pytest_arg" ]] && pytest_runner+=("$pytest_arg")
@@ -891,10 +985,14 @@ main() {
 
 	log_debug "Focus files: ${focus_files[*]}"
 	local status=0
-	run_python_tests "${focus_files[@]}" || status=2
-	run_go_tests "${focus_files[@]}" || status=2
-	run_javascript_tests "${focus_files[@]}" || status=2
-	run_shell_tests "${focus_files[@]}" || status=2
+	run_nearest_makefile_tests "${focus_files[@]}" || status=2
+	if [[ "$status" -eq 0 && "$TESTS_RAN" -eq 0 ]]; then
+		run_python_tests "${focus_files[@]}" || status=2
+		run_go_tests "${focus_files[@]}" || status=2
+		run_rust_tests "${focus_files[@]}" || status=2
+		run_javascript_tests "${focus_files[@]}" || status=2
+		run_shell_tests "${focus_files[@]}" || status=2
+	fi
 	if [[ "$status" -eq 0 && "$TESTS_RAN" -eq 0 ]]; then
 		run_package_test_fallback || status=2
 	fi

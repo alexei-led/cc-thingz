@@ -113,6 +113,87 @@ SH
 	[ "$(cat eslint.args)" = "--fix src/app.ts" ]
 }
 
+@test "smart-lint: Rust uses rustfmt and Cargo clippy on nearest manifest" {
+	cd "$WORK_DIR" || exit
+	git init -q
+	git config user.email test@example.com
+	git config user.name Test
+	mkdir -p bin crates/app/src
+	cat >crates/app/Cargo.toml <<'TOML'
+[package]
+name = "app"
+version = "0.1.0"
+edition = "2024"
+TOML
+	touch crates/app/src/lib.rs
+	cat >bin/rustfmt <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/rustfmt.args"
+SH
+	cat >bin/cargo <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/cargo.args"
+SH
+	chmod +x bin/rustfmt bin/cargo
+
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_rust\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"crates/app/src/lib.rs\"}}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat rustfmt.args)" = "--edition 2024 crates/app/src/lib.rs" ]
+	[ "$(cat cargo.args)" = "clippy --manifest-path crates/app/Cargo.toml --fix --allow-dirty --allow-staged --all-targets -- -D warnings" ]
+}
+
+@test "smart-lint: Rust falls back to cargo check when clippy is unavailable" {
+	cd "$WORK_DIR" || exit
+	git init -q
+	git config user.email test@example.com
+	git config user.name Test
+	mkdir -p bin src
+	cat >Cargo.toml <<'TOML'
+[package]
+name = "app"
+version = "0.1.0"
+edition = "2021"
+TOML
+	touch src/lib.rs
+	cat >bin/cargo <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"$PWD/cargo.args"
+if [ "$1" = "clippy" ]; then
+	echo "error: no such command: \`clippy\`" >&2
+	exit 101
+fi
+SH
+	chmod +x bin/cargo
+
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_rust_check\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"src/lib.rs\"}}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	grep -q 'clippy --manifest-path Cargo.toml' cargo.args
+	grep -q 'check --manifest-path Cargo.toml --all-targets' cargo.args
+}
+
+@test "smart-lint: Cargo manifest edits still run Rust lint" {
+	cd "$WORK_DIR" || exit
+	git init -q
+	git config user.email test@example.com
+	git config user.name Test
+	mkdir -p bin
+	cat >Cargo.toml <<'TOML'
+[package]
+name = "app"
+version = "0.1.0"
+edition = "2021"
+TOML
+	cat >bin/cargo <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/cargo.args"
+SH
+	chmod +x bin/cargo
+
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_rust_manifest\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"Cargo.toml\"}}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat cargo.args)" = "clippy --manifest-path Cargo.toml --fix --allow-dirty --allow-staged --all-targets -- -D warnings" ]
+}
+
 @test "smart-lint: HOOK_PROJECT_FALLBACK=0 disables project fallback" {
 	cd "$WORK_DIR" || exit
 	git init -q

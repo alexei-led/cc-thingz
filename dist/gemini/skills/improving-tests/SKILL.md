@@ -41,6 +41,7 @@ Detect languages from files in scope and read only the matching reference:
 - Go → `references/go.md`; for slow-suite or feedback-loop work, also read `references/go-performance.md`
 - Python → `references/python.md`; for slow-suite or feedback-loop work, also read `references/python-performance.md`
 - TypeScript → `references/typescript.md`; for slow-suite or feedback-loop work, also read `references/typescript-performance.md`
+- Rust → `references/rust.md`
 - Web → `references/web.md`
 
 Use generic rules only for unsupported languages.
@@ -129,6 +130,7 @@ Look for:
 Preferred consolidation:
 
 - Go: table-driven tests with subtests.
+- Rust: small case tables or focused `#[test]` functions.
 - Python: parametrized pytest cases.
 - TypeScript: `it.each` or equivalent project pattern.
 
@@ -141,6 +143,8 @@ Run the relevant project command after changes. Examples:
 ```bash
 go test ./pkg/name -run TestName
 go test ./...
+cargo test -p crate_name test_name
+cargo test --all-targets
 pytest -q --maxfail=1 --tb=short
 pytest -q --durations=10 --durations-min=0.5
 vitest run path/to/file.test.ts

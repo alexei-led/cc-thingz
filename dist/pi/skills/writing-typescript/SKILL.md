@@ -2,7 +2,7 @@
 description: Idiomatic TypeScript development. Use when writing TypeScript code, Node.js
   services, React apps, or TypeScript design advice. Emphasizes strict typing, boundary
   validation, composition, fast feedback, behavior tests, and project-configured tooling.
-  NOT for Go, Python, plain HTML/CSS/JS, or server-rendered templates.
+  NOT for Go, Python, Rust, plain HTML/CSS/JS, or server-rendered templates.
 name: writing-typescript
 ---
 
@@ -16,7 +16,7 @@ name: writing-typescript
 ## Scope
 
 - Use for `.ts` and `.tsx`, Node.js services, React apps, typed APIs, and TypeScript design advice.
-- Do not use for Go, Python, plain HTML/CSS/JS, or server-rendered templates.
+- Do not use for Go, Python, Rust, plain HTML/CSS/JS, or server-rendered templates.
 - Follow the repository's TypeScript version, tsconfig, package manager, framework, test runner, and lint rules.
 - Do not add dependencies or switch frameworks unless the project already uses them or the user approves.
 

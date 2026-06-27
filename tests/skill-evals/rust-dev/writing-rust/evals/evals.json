@@ -1,0 +1,33 @@
+{
+  "skill_name": "writing-rust",
+  "evals": [
+    {
+      "id": "rust-crate-design",
+      "name": "rust crate design",
+      "prompt": "A user asks you to write a Rust library crate for parsing and validating account IDs. Describe the implementation approach before coding.",
+      "expected_output": "The response uses idiomatic Rust: typed domain values, Result-based validation, small public APIs, stdlib or existing crates first, rustfmt/clippy verification, and behavior tests.",
+      "assertions": [
+        "The output models the account ID with a concrete type or newtype rather than a raw string everywhere.",
+        "The output returns Result for validation failures instead of panicking in normal flow.",
+        "The output keeps the public API small and follows Cargo crate conventions.",
+        "The output avoids adding unnecessary dependencies.",
+        "The output includes behavior tests for valid, invalid, and boundary cases.",
+        "The output mentions cargo fmt, cargo clippy, and cargo test or equivalent project gates."
+      ]
+    },
+    {
+      "id": "rust-test-lint-flow",
+      "name": "rust test lint flow",
+      "prompt": "A user asks how to improve Rust tests and linting for a Cargo workspace. Describe the guidance.",
+      "expected_output": "The response recommends focused Cargo package checks, cargo fmt, cargo clippy, cargo test, nextest only when configured, doctests where public examples matter, and preserving incremental caches.",
+      "assertions": [
+        "The output prefers project-configured Cargo commands before inventing new tooling.",
+        "The output recommends focused package or manifest checks during edits and broader gates before final output.",
+        "The output mentions cargo fmt and Clippy as the normal formatting and lint path.",
+        "The output handles doctests separately when nextest is used.",
+        "The output warns against cargo clean or cache-busting as a routine fix.",
+        "The output keeps tests behavior-focused rather than coupled to private helper details."
+      ]
+    }
+  ]
+}

@@ -8,6 +8,24 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [5.5.0] - 2026-06-27
+
+### Added
+
+- Added a new `writing-rust` skill with Rust-specific principles, patterns, testing, and linting guidance.
+- Added Rust hook regression coverage for Cargo manifest edits and generated Rust skill-eval fixtures.
+
+### Changed
+
+- Expanded the `programming` plugin and skill catalogs to include Rust as a first-class language workflow.
+- Updated hook docs to describe nearest non-root Makefile precedence and the focused-test fallback order.
+
+### Fixed
+
+- `smart-lint` now runs Rust linting for `Cargo.toml`, `Cargo.lock`, and Rust toolchain edits instead of only `.rs` files.
+- `test-runner` now restores project fallback by default, honors nearest non-root Makefile test targets, and runs focused Cargo tests for manifest-only Rust changes.
+- Regenerated marketplace manifests and target-specific artifacts to keep distributed outputs aligned with source behavior.
+
 ## [5.4.4] - 2026-06-23
 
 ### Fixed

@@ -8,13 +8,13 @@
 [![Codex CLI](https://img.shields.io/badge/Codex_CLI-skill_export-10A37F)](https://developers.openai.com/codex/plugins)
 [![Gemini CLI](https://img.shields.io/badge/Gemini_CLI-skill_export-4285F4)](https://geminicli.com/docs/extensions)
 [![Plugins](https://img.shields.io/badge/plugins-7-green)](src/plugins/)
-[![Skills](https://img.shields.io/badge/skills-25-green)](src/plugins/)
+[![Skills](https://img.shields.io/badge/skills-26-green)](src/plugins/)
 
-A portable skill suite for **Pi**, **Claude Code**, **Codex CLI**, and **Gemini CLI** — 25 skills, 3 agents, and 10 hooks. One source of truth in `src/`, compiled to platform-optimized output for each tool. Supports [AGENTS.md](https://agents.md)-compatible tools too. Built over 6+ months of daily use and continuous refinement.
+A portable skill suite for **Pi**, **Claude Code**, **Codex CLI**, and **Gemini CLI** — 26 skills, 3 agents, and 10 hooks. One source of truth in `src/`, compiled to platform-optimized output for each tool. Supports [AGENTS.md](https://agents.md)-compatible tools too. Built over 6+ months of daily use and continuous refinement.
 
 ## Why This Exists
 
-AI coding tools are powerful out of the box, but specialized workflows need specialized prompts. After months of iterating on skills, agents, and hooks across Go, Python, TypeScript, infrastructure, and planning workflows, these plugins encode hard-won patterns:
+AI coding tools are powerful out of the box, but specialized workflows need specialized prompts. After months of iterating on skills, agents, and hooks across Go, Python, Rust, TypeScript, infrastructure, and planning workflows, these plugins encode hard-won patterns:
 
 - **Code review** with evidence-backed severity scoring, depth modes, optional team/external review, and stable review-score rubrics
 - **Smart hooks** that auto-suggest skills, lint after edits, protect secrets, and run tests
@@ -232,7 +232,7 @@ Agent({
 | `notify.ts`            | macOS notification via `terminal-notifier` on completion (requires Homebrew `terminal-notifier`) |
 
 **Pi gets**: all 3 agents — `engineer`, `reviewer`, `advisor` (requires a Pi
-subagents package) — all 25 skills, and 7 bundled extensions. Each
+subagents package) — all 26 skills, and 7 bundled extensions. Each
 agent has a Pi-specific frontmatter overlay tuned for OpenAI Codex models
 (`openai-codex/gpt-5.5`), thinking levels, tool restrictions, and turn limits.
 `advisor` ships to Codex, Gemini, and Pi; Claude is excluded because it has a
@@ -304,10 +304,10 @@ All agents and several skills optionally integrate with [claude-mem](https://git
 | [**git-flow**](src/plugins/git-flow/plugin.yaml)       | 3      | 0      | Worktrees, cleanup, hooks, Gitleaks, `.gitignore`, git config, and guardrails     | —           |
 | [**browser**](src/plugins/browser/plugin.yaml)         | 2      | 1      | Browser testing, validation, screenshots, recordings, and quick automation        | programming |
 | [**infra-ops**](src/plugins/infra-ops/plugin.yaml)     | 2      | 1      | Kubernetes, Terraform, Helm, GitHub Actions, AWS, GCP                             | —           |
-| [**programming**](src/plugins/programming/plugin.yaml) | 5      | 1      | Idiomatic development across Go, Python, TypeScript, shell, and web               | dev-flow    |
+| [**programming**](src/plugins/programming/plugin.yaml) | 6      | 1      | Idiomatic development across Go, Python, Rust, TypeScript, shell, and web         | dev-flow    |
 | [**discovery**](src/plugins/discovery/plugin.yaml)     | 6      | 1      | Research, docs lookup, instruction review, reasoning, and agent config audits     | —           |
 
-**Totals**: 25 skills, 2 plugin-owned role agents (`engineer`, `reviewer`), 10 hooks
+**Totals**: 26 skills, 2 plugin-owned role agents (`engineer`, `reviewer`), 10 hooks
 
 ## Skills
 
@@ -346,6 +346,7 @@ These activate silently when relevant patterns are detected — no `/skill-name`
 | `refactoring-code`   | Behavior-preserving batch refactors with mapped sites and optional graph-backed impact checks |
 | `writing-go`         | Go files, tests, lint, Go-specific terms                                                      |
 | `writing-python`     | Python files, pytest, fast test feedback, pip, frameworks                                     |
+| `writing-rust`       | Rust files, Cargo crates/workspaces, tests, rustfmt, Clippy                                   |
 | `writing-shell`      | Shell scripts, pipelines, shell lint/test                                                     |
 | `writing-typescript` | TS/TSX files, tests, lint, npm/bun, React, Node.js                                            |
 | `writing-web`        | HTML/CSS/JS/HTMX templates                                                                    |
@@ -366,7 +367,7 @@ Three role agents: a capability envelope plus a reasoning stance no skill can su
 | `reviewer` | Read, Grep, Glob, LS — no writes | Adversarial evaluator: emits findings/proposals, applies nothing | sonnet              | gpt-5.4 thinking:medium |
 | `advisor`  | Read + read-only Bash            | Strategic escalation: verdict, ranked risks, next actions        | built-in (Opus 4.7) | gpt-5.5 thinking:xhigh  |
 
-`engineer` is the fork target for `writing-{go,python,typescript,web}` and `operating-infra`. `reviewer` absorbs the review family, code search, and planning (via `spec`). `advisor` ships to Codex, Gemini, and Pi; Claude is excluded because it has a built-in advisor. On Pi, `advisor` is invoked via transcript forwarding; on Gemini and Codex it is spawned as a normal custom subagent under its tool/sandbox envelope.
+`engineer` is the fork target for `writing-{go,python,rust,shell,typescript,web}` and `operating-infra`. `reviewer` absorbs the review family, code search, and planning (via `spec`). `advisor` ships to Codex, Gemini, and Pi; Claude is excluded because it has a built-in advisor. On Pi, `advisor` is invoked via transcript forwarding; on Gemini and Codex it is spawned as a normal custom subagent under its tool/sandbox envelope.
 
 Model tiers are matched per role across vendors. `engineer`/`reviewer` use Claude `sonnet`; their Pi counterparts pin `gpt-5.4` (not `gpt-5.5`) because GPT-5.5 is a frontier tier above Sonnet 4.6 — using it for the same role would make the Pi agent materially stronger and ~2× costlier for no parity reason. `advisor` is an escalation role: Claude's built-in advisor runs Opus 4.7 (frontier), so the Pi advisor stays at `gpt-5.5 thinking:xhigh` to match that tier. On Codex, the agent inherits the model chosen at `codex` launch, so there is no model to pin without brittleness.
 
@@ -400,20 +401,21 @@ Focused checks matter. Project-wide scripts are slower, burn context, and often 
 
 #### Tool order
 
-| Ecosystem       | Format / lint path                                                   | Test path                                                                      |
-| --------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| Python          | `ruff` format once, `ruff check --fix`; `black` / `flake8` fallback  | matching `test_*.py` / `*_test.py` via `pytest -q --maxfail=1 --tb=short`      |
-| Pyright         | `pyright --outputjson`; `reportMissingImports` filtered structurally | —                                                                              |
-| JavaScript / TS | local/global `prettier --write`, local/global `eslint --fix`         | Vitest `related <sources> --run`, Jest `--findRelatedTests`, direct test files |
-| Bun             | package-script fallback via `bun run <script>` when selected by lock | `bun test <tests>` or package-script fallback                                  |
-| Go              | `gofmt -w`, package-scoped `golangci-lint --fix` / `go vet`          | `go test -failfast ./changed/pkg`                                              |
-| Shell / Bash    | `shfmt -w`, `shellcheck`                                             | matching `.bats` files                                                         |
-| Package scripts | last fallback for missing side: `fmt` / `format`, then `lint`        | last fallback: `test`, `tests`, `check`, `verify` scripts                      |
-| Makefile        | last fallback for missing side: root `fmt`, then `lint`              | last fallback: nearest non-root `test`, `tests`, `check`, `verify` target      |
+| Ecosystem       | Format / lint path                                                   | Test path                                                                                                            |
+| --------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Python          | `ruff` format once, `ruff check --fix`; `black` / `flake8` fallback  | matching `test_*.py` / `*_test.py` via `pytest -q --maxfail=1 --tb=short`                                            |
+| Pyright         | `pyright --outputjson`; `reportMissingImports` filtered structurally | —                                                                                                                    |
+| JavaScript / TS | local/global `prettier --write`, local/global `eslint --fix`         | Vitest `related <sources> --run`, Jest `--findRelatedTests`, direct test files                                       |
+| Bun             | package-script fallback via `bun run <script>` when selected by lock | `bun test <tests>` or package-script fallback                                                                        |
+| Go              | `gofmt -w`, package-scoped `golangci-lint --fix` / `go vet`          | `go test -failfast ./changed/pkg`                                                                                    |
+| Rust            | `rustfmt`, manifest-scoped `cargo clippy --fix` / `cargo check`      | `cargo test --manifest-path <Cargo.toml> --all-targets`                                                              |
+| Shell / Bash    | `shfmt -w`, `shellcheck`                                             | matching `.bats` files                                                                                               |
+| Package scripts | last fallback for missing side: `fmt` / `format`, then `lint`        | last fallback: `test`, `tests`, `check`, `verify` scripts                                                            |
+| Makefile        | last fallback for missing side: root `fmt`, then `lint`              | nearest non-root `test`, `tests`, `check`, `verify` target before generic runners; root only in `TEST_RUNNER_FULL=1` |
 
 Package-script selection: `yarn.lock` → `yarn run`, `bun.lock` / `bun.lockb` → `bun run`, otherwise `npm run --silent` when npm is available. npm and Yarn run package scripts and expose local binaries on the script PATH; Bun `run` can run package scripts and local executables.
 
-Fallbacks fill gaps only. If focused formatting ran but no focused linter ran, smart-lint may still run project `lint`. If focused linting ran, it skips project `lint`. `TEST_RUNNER_FULL=1` is the explicit project-level test path: root Makefile target first, then Go/Python project runners, then package scripts by the same yarn/bun/npm selection.
+Fallbacks fill gaps only. If focused formatting ran but no focused linter ran, smart-lint may still run project `lint`. If focused linting ran, it skips project `lint`. For tests, a nearest non-root Makefile target wins for files under that subtree; otherwise focused language runners try first, then package-script fallback. `TEST_RUNNER_FULL=1` is the explicit project-level test path: root Makefile target first, then Go/Rust/Python project runners, then package scripts by the same yarn/bun/npm selection.
 
 #### Fallback controls
 
@@ -447,6 +449,10 @@ brew install bun          # runtime + test runner + package manager
 # Go
 go install gotest.tools/gotestsum@latest   # cleaner output than go test
 brew install golangci-lint
+
+# Rust
+rustup component add rustfmt clippy rust-analyzer
+cargo install cargo-nextest                # optional faster test runner
 
 # Shell
 brew install bats-core    # Bash Automated Testing System

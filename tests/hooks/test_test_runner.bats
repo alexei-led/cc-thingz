@@ -317,6 +317,20 @@ SH
 	[ "$(cat bats.args)" = "tests/test_smoke.bats" ]
 }
 
+@test "test-runner: TEST_RUNNER_FULL runs Cargo tests" {
+	mkdir -p bin src
+	touch Cargo.toml src/lib.rs
+	cat >bin/cargo <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/cargo.args"
+SH
+	chmod +x bin/cargo
+
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" TEST_RUNNER_FULL=1 HOOK_INPUT_JSON="{\"session_id\":\"s_full_rust\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat cargo.args)" = "test --all-targets" ]
+}
+
 @test "test-runner: Go tests use failfast without verbose output" {
 	mkdir -p bin pkg
 	touch go.mod pkg/foo.go
@@ -330,6 +344,48 @@ SH
 	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_go\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
 	[ "$(cat go.args)" = "test -failfast ./pkg" ]
+}
+
+@test "test-runner: Rust tests use nearest Cargo manifest" {
+	mkdir -p bin crates/app/src
+	cat >crates/app/Cargo.toml <<'TOML'
+[package]
+name = "app"
+version = "0.1.0"
+edition = "2021"
+TOML
+	touch crates/app/src/lib.rs
+	cat >bin/cargo <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/cargo.args"
+SH
+	chmod +x bin/cargo
+	write_state s_rust crates/app/src/lib.rs
+
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_rust\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat cargo.args)" = "test --manifest-path crates/app/Cargo.toml --all-targets" ]
+}
+
+@test "test-runner: Cargo manifest edits trigger Rust tests" {
+	mkdir -p bin src
+	cat >Cargo.toml <<'TOML'
+[package]
+name = "app"
+version = "0.1.0"
+edition = "2021"
+TOML
+	touch src/lib.rs
+	cat >bin/cargo <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/cargo.args"
+SH
+	chmod +x bin/cargo
+	write_state s_rust_manifest Cargo.toml
+
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_rust_manifest\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat cargo.args)" = "test --manifest-path Cargo.toml --all-targets" ]
 }
 
 @test "test-runner: Vitest uses related for source files" {

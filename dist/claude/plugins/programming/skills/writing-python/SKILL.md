@@ -8,8 +8,8 @@ allowed-tools:
 context: fork
 description: Idiomatic Python 3.12+ development. Use when writing Python code, CLI
   tools, scripts, or services. Emphasizes stdlib, type hints, fast pytest feedback,
-  uv/ruff/pyright toolchain, and minimal dependencies. NOT for Go, TypeScript, or
-  shell-only tasks.
+  uv/ruff/pyright toolchain, and minimal dependencies. NOT for Go, Rust, TypeScript,
+  or shell-only tasks.
 name: writing-python
 user-invocable: false
 ---

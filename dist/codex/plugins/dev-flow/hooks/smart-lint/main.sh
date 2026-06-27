@@ -36,6 +36,8 @@ fi
 source "$SCRIPT_DIR/lint-go.sh"
 # shellcheck source=lint-python.sh
 source "$SCRIPT_DIR/lint-python.sh"
+# shellcheck source=lint-rust.sh
+source "$SCRIPT_DIR/lint-rust.sh"
 # shellcheck source=lint-typescript.sh
 source "$SCRIPT_DIR/lint-typescript.sh"
 # shellcheck source=lint-web.sh
@@ -55,6 +57,10 @@ detect_project_type() {
 	# Python project
 	if [[ -f "pyproject.toml" ]] || [[ -f "setup.py" ]] || [[ -f "requirements.txt" ]] || [[ -n "$(find . -maxdepth 3 -name "*.py" -type f -print -quit 2>/dev/null)" ]]; then
 		types+=("python")
+	fi
+	# Rust project
+	if [[ -f "Cargo.toml" ]] || [[ -f "Cargo.lock" ]] || [[ -n "$(find . -maxdepth 4 \( -name "Cargo.toml" -o -name "*.rs" \) -type f -print -quit 2>/dev/null)" ]]; then
+		types+=("rust")
 	fi
 	# JavaScript/TypeScript project
 	if [[ -f "package.json" ]] || [[ -f "tsconfig.json" ]] || [[ -n "$(find . -maxdepth 3 \( -name "*.js" -o -name "*.ts" -o -name "*.jsx" -o -name "*.tsx" \) -type f -print -quit 2>/dev/null)" ]]; then
@@ -111,6 +117,7 @@ for type in "${types[@]}"; do
 	case "$type" in
 	go) lint_go ;;
 	python) lint_python ;;
+	rust) lint_rust ;;
 	javascript) lint_typescript ;;
 	yaml) lint_yaml ;;
 	json) lint_json ;;

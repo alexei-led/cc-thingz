@@ -108,11 +108,13 @@ Disable project fallbacks with `HOOK_PROJECT_FALLBACK=0` or a
 
 `test-runner.sh` runs on `Stop`, using the edited-file state from
 `smart-lint.sh`; it runs focused tests only unless `TEST_RUNNER_FULL=1` is set.
-Focused tests use pytest, Go packages, Vitest related tests, Jest related tests,
-Bun tests, or Bats where applicable. If no focused test runs, package scripts
-(`test`, `tests`, `check`, `verify`) run before nearest non-root Makefile test
-targets. `TEST_RUNNER_FULL=1` runs one project-level target: root Makefile,
-then Go/Python runners, then package scripts selected by yarn/bun/npm lockfiles.
+Focused tests use pytest, Go packages, Cargo manifests, Vitest related tests,
+Jest related tests, Bun tests, or Bats where applicable. If a changed file lives
+under a nearest non-root Makefile with `test`, `tests`, `check`, or `verify`,
+that target runs before the generic language runners. Otherwise focused runners
+try first, then package scripts (`test`, `tests`, `check`, `verify`).
+`TEST_RUNNER_FULL=1` runs one project-level target: root Makefile,
+then Go/Rust/Python runners, then package scripts selected by yarn/bun/npm lockfiles.
 
 Mute individual hooks (bundled or user) by basename without disabling the
 whole bundled set:

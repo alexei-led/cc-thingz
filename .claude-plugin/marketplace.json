@@ -45,7 +45,7 @@
     {
       "name": "programming",
       "source": "./dist/claude/plugins/programming",
-      "description": "Idiomatic development across Go, Python, TypeScript, shell, and web",
+      "description": "Idiomatic development across Go, Python, Rust, TypeScript, shell, and web",
       "version": "5.4.2"
     },
     {

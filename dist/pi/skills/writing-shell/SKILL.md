@@ -3,8 +3,8 @@ description: Idiomatic shell development for POSIX sh, Bash, Zsh, Fish, hooks, C
   shell steps, and scriptable CLI glue. Use when writing or changing `.sh`, `.bash`,
   `.zsh`, `.fish`, `.bats`, shell functions, shell pipelines, or command-runner recipes.
   Emphasizes portability, quoting, safe filesystem/process handling, non-TUI CLI tools,
-  ShellCheck, shfmt, Bats, and ShellSpec. NOT for Python, TypeScript, Go, web code,
-  or infrastructure operations.
+  ShellCheck, shfmt, Bats, and ShellSpec. NOT for Python, Rust, TypeScript, Go, web
+  code, or infrastructure operations.
 name: writing-shell
 ---
 
@@ -19,7 +19,7 @@ name: writing-shell
 
 - Use for shell scripts, hooks, CI shell blocks, command pipelines, and local automation glue.
 - Do not use for cloud, Kubernetes, Terraform, host, or network operations; use `operating-infra`.
-- Do not use for application logic that belongs in Python, Go, TypeScript, or another project language.
+- Do not use for application logic that belongs in Python, Rust, Go, TypeScript, or another project language.
 
 ## Read references
 

@@ -9,7 +9,8 @@ context: fork
 description: Idiomatic Go development. Use when writing Go code, designing APIs, reviewing
   Go implementations, or changing Go tests. Follow the module's target Go version.
   Prefer stdlib, concrete types, explicit errors, context propagation, fast feedback,
-  and behavior tests. NOT for Python, TypeScript, shell scripts, or infra-only work.
+  and behavior tests. NOT for Python, Rust, TypeScript, shell scripts, or infra-only
+  work.
 name: writing-go
 user-invocable: false
 ---

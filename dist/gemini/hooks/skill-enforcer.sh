@@ -26,6 +26,12 @@ if echo "$PROMPT_LOWER" | grep -qE '\.go\b|go\.(mod|sum)|go (test|build|run|fmt|
 	skills+="writing-go "
 fi
 
+# writing-rust: Idiomatic Rust development
+# Triggers: .rs files, Cargo commands, Rust-specific terms
+if echo "$PROMPT_LOWER" | grep -qE '\.rs\b|cargo\.(toml|lock)|\bcargo (test|build|run|check|fmt|clippy|doc|bench|nextest)\b|rustfmt|\bclippy\b|rust-analyzer|\brustc\b|\brustup\b|\brust\b|\bcrate\b|borrow checker|\bownership\b|\blifetime\b|\btraits?\b.*\bimpl\b|\bimpl\b.*\btraits?\b|\bderive\b.*\bdebug\b|tokio|serde|idiomatic rust|write.*rust|implement.*rust'; then
+	skills+="writing-rust "
+fi
+
 # writing-python: Idiomatic Python 3.12+ development
 # Triggers: .py files, Python commands, Python frameworks
 if echo "$PROMPT_LOWER" | grep -qE '\.pyi?\b|pyproject|requirements\.txt|setup\.py|__init__|python[3]?\b|\buv (run|pip|sync|add|lock)|\bruff\b|pytest|poetry\b|mypy\b|django|flask|fastapi|pandas|numpy|pydantic|dataclass|type\s*hint|\btyping\b|asyncio|\basync\b.*\bawait\b|pip install|write.*python|implement.*python'; then

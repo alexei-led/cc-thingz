@@ -34,6 +34,12 @@ FIXTURES="$BATS_TEST_DIRNAME/fixtures"
 	[[ "$output" == *"writing-shell"* ]]
 }
 
+@test "skill-enforcer: Rust cargo work routes to writing-rust" {
+	run bash "$HOOK" <<<'{"prompt":"fix the Rust borrow checker error in src/lib.rs and run cargo test"}'
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"writing-rust"* ]]
+}
+
 @test "skill-enforcer: codebase flow is left to companion workflows" {
 	run bash "$HOOK" <"$FIXTURES/skill_enforcer_codebase_search.json"
 	[ "$status" -eq 0 ]

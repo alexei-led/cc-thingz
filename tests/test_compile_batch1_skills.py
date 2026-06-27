@@ -24,6 +24,7 @@ from conftest import TARGETS, make_batch_skill_staging_root
 BATCH_1_SKILLS_ALL_TARGETS = (
     "writing-go",
     "writing-python",
+    "writing-rust",
     "writing-typescript",
     "writing-web",
     "sequential-thinking",
@@ -44,6 +45,12 @@ SKILLS_WITH_REFERENCES = {
         "references/patterns.md",
         "references/cli.md",
         "references/testing.md",
+    ),
+    "writing-rust": (
+        "references/principles.md",
+        "references/patterns.md",
+        "references/testing.md",
+        "references/linting.md",
     ),
     "writing-typescript": (
         "references/principles.md",

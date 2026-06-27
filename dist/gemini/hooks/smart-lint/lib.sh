@@ -411,10 +411,13 @@ path_is_excluded() {
 _matches_extension() {
 	local file="$1"
 	shift
-	local ext
+	local ext base
+	base=$(basename "$file")
 	for ext in "$@"; do
-		if [[ "$file" == *"$ext" ]]; then
-			return 0
+		if [[ "$ext" == .* ]]; then
+			[[ "$file" == *"$ext" ]] && return 0
+		else
+			[[ "$base" == "$ext" ]] && return 0
 		fi
 	done
 	return 1
