@@ -209,8 +209,8 @@ path_is_excluded() {
 
 has_code_extension() {
 	case "$1" in
-	*.py | *.go | *.rs | *.cs | *.csproj | *.sln | *.props | *.targets | *.js | *.jsx | *.ts | *.tsx | *.mjs | *.cjs | *.mts | *.cts | *.sh | *.bash | *.bats | \
-		Cargo.toml | Cargo.lock | rust-toolchain | rust-toolchain.toml) return 0 ;;
+	*.py | *.go | *.rs | *.cs | *.csproj | *.sln | *.props | *.targets | *.java | *.kt | *.kts | *.js | *.jsx | *.ts | *.tsx | *.mjs | *.cjs | *.mts | *.cts | *.sh | *.bash | *.bats | \
+		Cargo.toml | Cargo.lock | rust-toolchain | rust-toolchain.toml | pom.xml | build.gradle | settings.gradle | gradle.properties) return 0 ;;
 	*) return 1 ;;
 	esac
 }
@@ -857,6 +857,228 @@ csharp_full_test_target() {
 	[[ -n "$candidate" ]] && printf '%s\n' "${candidate#./}"
 }
 
+jvm_nearest_gradle_root() {
+	local file="$1" dir build_candidate=""
+	dir=$(dirname "$file")
+	while [[ -n "$dir" && "$dir" != "/" ]]; do
+		if [[ -f "$dir/settings.gradle" || -f "$dir/settings.gradle.kts" || -x "$dir/gradlew" ]]; then
+			printf '%s\n' "$dir"
+			return 0
+		fi
+		if [[ -z "$build_candidate" ]] && { [[ -f "$dir/build.gradle" ]] || [[ -f "$dir/build.gradle.kts" ]]; }; then
+			build_candidate="$dir"
+		fi
+		[[ "$dir" == "." ]] && break
+		dir=$(dirname "$dir")
+	done
+	if [[ -f settings.gradle || -f settings.gradle.kts || -x gradlew ]]; then
+		printf '%s\n' "."
+		return 0
+	fi
+	[[ -n "$build_candidate" ]] && printf '%s\n' "$build_candidate"
+}
+
+jvm_nearest_gradle_project_dir() {
+	local root="$1" file="$2" dir
+	dir=$(dirname "$file")
+	while [[ -n "$dir" && "$dir" != "/" ]]; do
+		if [[ -f "$dir/build.gradle" || -f "$dir/build.gradle.kts" ]]; then
+			printf '%s\n' "$dir"
+			return 0
+		fi
+		[[ "$dir" == "$root" || "$dir" == "." ]] && break
+		dir=$(dirname "$dir")
+	done
+	printf '%s\n' "$root"
+}
+
+jvm_gradle_test_task() {
+	local root="$1" file="$2" project_dir rel
+	project_dir=$(jvm_nearest_gradle_project_dir "$root" "$file")
+	if [[ "$project_dir" == "$root" || "$project_dir" == "." ]]; then
+		printf '%s\n' "test"
+		return 0
+	fi
+	rel="${project_dir#./}"
+	if [[ "$root" != "." ]]; then
+		rel="${rel#"$root"/}"
+	fi
+	printf ':%s:test\n' "${rel//\//:}"
+}
+
+jvm_nearest_pom() {
+	local file="$1" dir
+	if [[ "$file" == pom.xml && -f "$file" ]]; then
+		printf '%s\n' "$file"
+		return 0
+	fi
+	dir=$(dirname "$file")
+	while [[ -n "$dir" && "$dir" != "/" ]]; do
+		if [[ -f "$dir/pom.xml" ]]; then
+			printf '%s\n' "$dir/pom.xml"
+			return 0
+		fi
+		[[ "$dir" == "." ]] && break
+		dir=$(dirname "$dir")
+	done
+	[[ -f pom.xml ]] && printf '%s\n' "pom.xml"
+}
+
+jvm_test_filter_for_file() {
+	local file="$1" base stem
+	base=$(basename "$file")
+	stem="${base%.*}"
+	case "$base" in
+	*Test.java | *Tests.java | *Spec.java | *IT.java | *Test.kt | *Tests.kt | *Spec.kt | *IT.kt) printf '%s\n' "$stem" ;;
+	esac
+}
+
+jvm_find_tests_for_source() {
+	local base_dir="$1" file="$2" stem candidate
+	stem=$(basename "$file")
+	stem="${stem%.*}"
+	[[ -d "$base_dir" ]] || base_dir="."
+	find "$base_dir" -type f \( \
+		-name "${stem}Test.java" -o -name "${stem}Tests.java" -o -name "${stem}Spec.java" -o -name "${stem}IT.java" -o \
+		-name "${stem}Test.kt" -o -name "${stem}Tests.kt" -o -name "${stem}Spec.kt" -o -name "${stem}IT.kt" \
+		\) 2>/dev/null | while IFS= read -r candidate; do
+		jvm_test_filter_for_file "$candidate"
+	done
+}
+
+jvm_is_build_file() {
+	case "$(basename "$1")" in
+	pom.xml | build.gradle | build.gradle.kts | settings.gradle | settings.gradle.kts | gradle.properties) return 0 ;;
+	*) return 1 ;;
+	esac
+}
+
+jvm_gradle_available() {
+	local root="$1"
+	[[ -x "$root/gradlew" ]] || command_exists gradle
+}
+
+jvm_maven_available() {
+	local pom="$1" dir
+	dir=$(dirname "$pom")
+	[[ -x "$dir/mvnw" ]] || command_exists mvn
+}
+
+jvm_run_gradle_tests() {
+	local root="$1" task="$2" filter="${3:-}" old_pwd status
+	if [[ -x "$root/gradlew" ]]; then
+		old_pwd=$PWD
+		cd "$root" || return 0
+		if [[ -n "$filter" ]]; then
+			run_and_capture "JVM tests (Gradle)" ./gradlew "$task" --tests "$filter"
+			status=$?
+		else
+			run_and_capture "JVM tests (Gradle)" ./gradlew "$task"
+			status=$?
+		fi
+		cd "$old_pwd" || return "$status"
+		return "$status"
+	elif command_exists gradle; then
+		if [[ -n "$filter" ]]; then
+			run_and_capture "JVM tests (Gradle)" gradle -p "$root" "$task" --tests "$filter"
+		else
+			run_and_capture "JVM tests (Gradle)" gradle -p "$root" "$task"
+		fi
+	else
+		log_warn "gradle not found — skipping focused JVM Gradle tests"
+		return 0
+	fi
+}
+
+jvm_run_maven_tests() {
+	local pom="$1" filter="${2:-}" dir old_pwd status
+	dir=$(dirname "$pom")
+	if [[ -x "$dir/mvnw" ]]; then
+		old_pwd=$PWD
+		cd "$dir" || return 0
+		if [[ -n "$filter" ]]; then
+			run_and_capture "JVM tests (Maven)" ./mvnw -q "-Dtest=$filter" test
+			status=$?
+		else
+			run_and_capture "JVM tests (Maven)" ./mvnw -q test
+			status=$?
+		fi
+		cd "$old_pwd" || return "$status"
+		return "$status"
+	elif command_exists mvn; then
+		if [[ -n "$filter" ]]; then
+			run_and_capture "JVM tests (Maven)" mvn -q -f "$pom" "-Dtest=$filter" test
+		else
+			run_and_capture "JVM tests (Maven)" mvn -q -f "$pom" test
+		fi
+	else
+		log_warn "mvn not found — skipping focused JVM Maven tests"
+		return 0
+	fi
+}
+
+run_jvm_tests() {
+	local focus_files=("$@")
+	local tmp file root project_dir task filter pom status=0
+	tmp=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-jvm-tests.%s' "$$")
+	for file in "${focus_files[@]}"; do
+		case "$file" in
+		*.java | *.kt | *.kts | pom.xml | build.gradle | settings.gradle | gradle.properties) ;;
+		*) continue ;;
+		esac
+		root=$(jvm_nearest_gradle_root "$file" || true)
+		if [[ -n "$root" ]] && jvm_gradle_available "$root"; then
+			task=$(jvm_gradle_test_task "$root" "$file")
+			project_dir=$(jvm_nearest_gradle_project_dir "$root" "$file")
+			filter=$(jvm_test_filter_for_file "$file" || true)
+			if [[ -z "$filter" ]] && ! jvm_is_build_file "$file"; then
+				filter=$(jvm_find_tests_for_source "$project_dir" "$file" | head -n 1)
+			fi
+			printf 'g|%s|%s|%s\n' "$root" "$task" "$filter"
+			continue
+		fi
+		pom=$(jvm_nearest_pom "$file" || true)
+		if [[ -n "$pom" ]] && jvm_maven_available "$pom"; then
+			filter=$(jvm_test_filter_for_file "$file" || true)
+			if [[ -z "$filter" ]] && ! jvm_is_build_file "$file"; then
+				filter=$(jvm_find_tests_for_source "$(dirname "$pom")" "$file" | head -n 1)
+			fi
+			printf 'm|%s|test|%s\n' "$pom" "$filter"
+		fi
+	done | sort -u >"$tmp"
+	while IFS='|' read -r kind target task filter; do
+		[[ -n "$kind" && -n "$target" ]] || continue
+		case "$kind" in
+		g) jvm_run_gradle_tests "$target" "$task" "$filter" || status=2 ;;
+		m) jvm_run_maven_tests "$target" "$filter" || status=2 ;;
+		esac
+	done <"$tmp"
+	rm -f "$tmp"
+	return "$status"
+}
+
+run_full_jvm_tests() {
+	local root pom
+	root=$(find . -maxdepth 3 \( -name settings.gradle -o -name settings.gradle.kts -o -name gradlew -o -name build.gradle -o -name build.gradle.kts \) -print 2>/dev/null | sort | head -n 1)
+	if [[ -n "$root" ]]; then
+		root=$(dirname "$root")
+		if jvm_gradle_available "$root"; then
+			jvm_run_gradle_tests "$root" test
+			return $?
+		fi
+		log_warn "gradle not found — skipping full JVM Gradle tests"
+	fi
+	pom=$(find . -maxdepth 4 -type f -name pom.xml | sort | head -n 1)
+	if [[ -n "$pom" ]]; then
+		if jvm_maven_available "$pom"; then
+			jvm_run_maven_tests "$pom"
+			return $?
+		fi
+		log_warn "mvn not found — skipping full JVM Maven tests"
+	fi
+	return 1
+}
+
 is_js_test_file() {
 	local base
 	base=$(basename "$1")
@@ -1079,6 +1301,11 @@ run_full_override() {
 		fi
 		log_warn "cargo not found — skipping full Rust tests"
 	fi
+	run_full_jvm_tests
+	full_status=$?
+	case "$full_status" in
+	0 | 2) return "$full_status" ;;
+	esac
 	local csharp_target
 	csharp_target=$(csharp_full_test_target || true)
 	if [[ -n "$csharp_target" ]]; then
@@ -1159,6 +1386,7 @@ main() {
 		run_python_tests "${focus_files[@]}" || status=2
 		run_go_tests "${focus_files[@]}" || status=2
 		run_rust_tests "${focus_files[@]}" || status=2
+		run_jvm_tests "${focus_files[@]}" || status=2
 		run_csharp_tests "${focus_files[@]}" || status=2
 		run_javascript_tests "${focus_files[@]}" || status=2
 		run_shell_tests "${focus_files[@]}" || status=2

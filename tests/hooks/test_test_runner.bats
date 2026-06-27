@@ -460,6 +460,49 @@ SH
 	[ "$(cat dotnet.args)" = "test src/App/App.Tests.csproj" ]
 }
 
+@test "test-runner: Gradle Java source maps to matching test class" {
+	mkdir -p app/src/main/java/com/example app/src/test/java/com/example
+	touch settings.gradle.kts app/build.gradle.kts app/src/main/java/com/example/Service.java app/src/test/java/com/example/ServiceTest.java
+	cat >gradlew <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/gradle.args"
+SH
+	chmod +x gradlew
+	write_state s_gradle_java app/src/main/java/com/example/Service.java
+
+	run env PATH="/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_gradle_java\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat gradle.args)" = ":app:test --tests ServiceTest" ]
+}
+
+@test "test-runner: Maven Kotlin test file uses surefire class filter" {
+	mkdir -p bin src/test/kotlin/com/example
+	touch pom.xml src/test/kotlin/com/example/ServiceTest.kt
+	cat >bin/mvn <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/mvn.args"
+SH
+	chmod +x bin/mvn
+	write_state s_maven_kotlin src/test/kotlin/com/example/ServiceTest.kt
+
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_maven_kotlin\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat mvn.args)" = "-q -f ./pom.xml -Dtest=ServiceTest test" ]
+}
+
+@test "test-runner: TEST_RUNNER_FULL runs Gradle test" {
+	touch build.gradle.kts
+	cat >gradlew <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/gradle.args"
+SH
+	chmod +x gradlew
+
+	run env PATH="/usr/bin:/bin" TEST_RUNNER_FULL=1 HOOK_INPUT_JSON="{\"session_id\":\"s_full_gradle\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat gradle.args)" = "test" ]
+}
+
 @test "test-runner: Vitest uses related for source files" {
 	mkdir -p node_modules/.bin src
 	touch vitest.config.ts src/foo.ts

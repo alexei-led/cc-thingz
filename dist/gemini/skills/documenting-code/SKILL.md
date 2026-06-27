@@ -51,8 +51,11 @@ Code reader:
 
 Load only references matching changed implementation files:
 
+- C# /.NET: `references/csharp.md`
 - Go: `references/go.md`
+- Java/Kotlin: `references/java-kotlin.md`
 - Python: `references/python.md`
+- Rust: `references/rust.md`
 - TypeScript: `references/typescript.md`
 - Web: `references/web.md`
 

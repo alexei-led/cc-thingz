@@ -36,6 +36,8 @@ fi
 source "$SCRIPT_DIR/lint-csharp.sh"
 # shellcheck source=lint-go.sh
 source "$SCRIPT_DIR/lint-go.sh"
+# shellcheck source=lint-java-kotlin.sh
+source "$SCRIPT_DIR/lint-java-kotlin.sh"
 # shellcheck source=lint-python.sh
 source "$SCRIPT_DIR/lint-python.sh"
 # shellcheck source=lint-rust.sh
@@ -67,6 +69,10 @@ detect_project_type() {
 	# Rust project
 	if [[ -f "Cargo.toml" ]] || [[ -f "Cargo.lock" ]] || [[ -n "$(find . -maxdepth 4 \( -name "Cargo.toml" -o -name "*.rs" \) -type f -print -quit 2>/dev/null)" ]]; then
 		types+=("rust")
+	fi
+	# Java/Kotlin JVM project
+	if [[ -f "pom.xml" ]] || [[ -f "build.gradle" ]] || [[ -f "build.gradle.kts" ]] || [[ -f "settings.gradle" ]] || [[ -f "settings.gradle.kts" ]] || [[ -n "$(find . -maxdepth 4 \( -name "*.java" -o -name "*.kt" -o -name "*.kts" \) -type f -print -quit 2>/dev/null)" ]]; then
+		types+=("jvm")
 	fi
 	# JavaScript/TypeScript project
 	if [[ -f "package.json" ]] || [[ -f "tsconfig.json" ]] || [[ -n "$(find . -maxdepth 3 \( -name "*.js" -o -name "*.ts" -o -name "*.jsx" -o -name "*.tsx" \) -type f -print -quit 2>/dev/null)" ]]; then
@@ -123,6 +129,7 @@ for type in "${types[@]}"; do
 	case "$type" in
 	csharp) lint_csharp ;;
 	go) lint_go ;;
+	jvm) lint_java_kotlin ;;
 	python) lint_python ;;
 	rust) lint_rust ;;
 	javascript) lint_typescript ;;

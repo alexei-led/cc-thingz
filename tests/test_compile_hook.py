@@ -96,6 +96,7 @@ def test_smart_lint_support_dir_mirrored():
         "lib.sh",
         "lint-csharp.sh",
         "lint-go.sh",
+        "lint-java-kotlin.sh",
         "lint-python.sh",
         "lint-rust.sh",
         "lint-shell.sh",

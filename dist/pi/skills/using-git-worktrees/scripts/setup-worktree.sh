@@ -172,6 +172,14 @@ run_setup() {
 		pip install -r requirements.txt
 	elif [ -f Cargo.toml ]; then
 		cargo build
+	elif [ -x ./gradlew ]; then
+		./gradlew testClasses
+	elif [ -f build.gradle ] || [ -f build.gradle.kts ]; then
+		gradle testClasses
+	elif [ -x ./mvnw ]; then
+		./mvnw -q -DskipTests compile
+	elif [ -f pom.xml ]; then
+		mvn -q -DskipTests compile
 	else
 		echo "No known dependency setup detected; skipped." >&2
 	fi
@@ -189,6 +197,14 @@ run_tests() {
 		pytest
 	elif [ -f Cargo.toml ]; then
 		cargo test
+	elif [ -x ./gradlew ]; then
+		./gradlew test
+	elif [ -f build.gradle ] || [ -f build.gradle.kts ]; then
+		gradle test
+	elif [ -x ./mvnw ]; then
+		./mvnw -q test
+	elif [ -f pom.xml ]; then
+		mvn -q test
 	else
 		echo "No known baseline test command detected; skipped." >&2
 	fi

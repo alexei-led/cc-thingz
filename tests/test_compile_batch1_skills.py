@@ -24,6 +24,7 @@ from conftest import TARGETS, make_batch_skill_staging_root
 BATCH_1_SKILLS_ALL_TARGETS = (
     "writing-csharp",
     "writing-go",
+    "writing-java-kotlin",
     "writing-python",
     "writing-rust",
     "writing-typescript",
@@ -47,6 +48,13 @@ SKILLS_WITH_REFERENCES = {
         "references/cli.md",
         "references/patterns.md",
         "references/testing.md",
+    ),
+    "writing-java-kotlin": (
+        "references/cli.md",
+        "references/principles.md",
+        "references/patterns.md",
+        "references/testing.md",
+        "references/linting.md",
     ),
     "writing-python": (
         "references/principles.md",

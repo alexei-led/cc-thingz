@@ -50,6 +50,12 @@ if echo "$PROMPT_LOWER" | grep -qE '\.cs\b|\.csproj\b|\.sln\b|\bdotnet\b|(^|[^[:
 	skills+="writing-csharp "
 fi
 
+# writing-java-kotlin: Modern Java/Kotlin JVM development
+# Triggers: .java/.kt/.kts files, Gradle/Maven, JVM frameworks, JUnit, ktlint, detekt
+if echo "$PROMPT_LOWER" | grep -qE '\.java\b|\.kt\b|\.kts\b|pom\.xml|build\.gradle(\.kts)?|settings\.gradle(\.kts)?|\bgradle\b|\bmaven\b|\bmvnw?\b|\bjunit\b|\bmockito\b|\bmockk\b|\bkotest\b|\bktlint\b|\bdetekt\b|\bspotless\b|\bgoogle-java-format\b|\bopenjdk\b|\bjdk\b|\bjvm\b|(^|[^[:alnum:]])java([^[:alnum:]]|$)|\bkotlin\b|\bkotlinc\b|\bspring\s*boot\b|\bmicronaut\b|\bquarkus\b|\bktor\b|\bjakarta\b|\bhibernate\b|\bvirtual\s+threads?\b|\bsealed\s+(class|interface)s?\b|\brecords?\b.*\bjava\b|\bsuspend\s+fun\b|\bcoroutines?\b'; then
+	skills+="writing-java-kotlin "
+fi
+
 # operating-infra: IaC, Kubernetes, cloud resources, containers, CI/CD, Linux hosts
 # Triggers: infra files/tools, cloud services, IAM, logs, instances, service health
 if echo "$PROMPT_LOWER" | grep -qE '\.tf\b|\.tfvars|dockerfile|docker-compose|chart\.yaml|kustomization|values\.yaml|\bkubectl\b|\bhelm\b|\bkustomize\b|\bterraform\b|\btofu\b|kubernetes|k8s\b|\bpod[s]?\b|\bdeployment[s]?\b|\bingress\b|\bconfigmap|\bnamespace[s]?\b|\bstatefulset|\bdaemonset|cronjob|\bhpa\b|networkpolic|manifest|container.*(image|registry|port)|service\s*account|node\s*pool|github.*action|\.github/workflows|workflow.*yaml|\bgcloud\b|\bgsutil\b|\bbq\s|\baws\s|bigquery|cloud\s*(run|function|sql|storage)|gke\b|gcs\b|pubsub|dataflow|firestore|spanner|\bs3\b|\bec2\b|aws.*lambda|lambda.*(function|handler)|\becs\b|\beks\b|\brds\b|dynamodb|\bsqs\b|\bsns\b|cloudformation|cloudwatch|iam.*(role|policy|permission)|\bbucket[s]?\b|--project\b|--region\b|systemctl|journalctl|\bnginx\b|\blinux\s*(host|service|instance)'; then

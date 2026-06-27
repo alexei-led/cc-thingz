@@ -204,6 +204,9 @@ def _show_project_hints(cwd: Path) -> None:
         ("package.json", CYAN, "📦 Node.js project"),
         ("pyproject.toml", CYAN, "🐍 Python project"),
         ("Cargo.toml", CYAN, "🦀 Rust project"),
+        ("build.gradle.kts", CYAN, "☕ JVM Gradle project"),
+        ("build.gradle", CYAN, "☕ JVM Gradle project"),
+        ("pom.xml", CYAN, "☕ JVM Maven project"),
         ("README.md", BLUE, "📖 README.md available"),
         ("CLAUDE.md", BLUE, "🤖 CLAUDE.md available"),
     ]

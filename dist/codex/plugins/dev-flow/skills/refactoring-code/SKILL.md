@@ -31,6 +31,19 @@ Do not use this for:
 - target architecture design or repo-wide structural audit → architecture skills
 - cosmetic churn with no maintenance value
 
+## Language references
+
+Load the matching reference for the language being refactored:
+
+- C# /.NET: `references/csharp.md`
+- Go: `references/go.md`
+- Java/Kotlin: `references/java-kotlin.md`
+- Python: `references/python.md`
+- Rust: `references/rust.md`
+- TypeScript/JavaScript: `references/typescript.md`
+
+Unsupported language: use the general workflow in this file only.
+
 ## Evidence first
 
 Before editing:

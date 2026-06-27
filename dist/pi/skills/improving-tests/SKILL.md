@@ -45,6 +45,7 @@ Detect languages from files in scope and read only the matching reference:
 
 - C# → `references/csharp.md`
 - Go → `references/go.md`; for slow-suite or feedback-loop work, also read `references/go-performance.md`
+- Java/Kotlin → `references/java-kotlin.md`
 - Python → `references/python.md`; for slow-suite or feedback-loop work, also read `references/python-performance.md`
 - TypeScript → `references/typescript.md`; for slow-suite or feedback-loop work, also read `references/typescript-performance.md`
 - Rust → `references/rust.md`
@@ -136,6 +137,7 @@ Look for:
 Preferred consolidation:
 
 - Go: table-driven tests with subtests.
+- Java/Kotlin: parameterized JUnit/Kotest cases when they stay readable.
 - Rust: small case tables or focused `#[test]` functions.
 - Python: parametrized pytest cases.
 - TypeScript: `it.each` or equivalent project pattern.
@@ -151,6 +153,8 @@ dotnet test path/to/Tests.csproj
 dotnet test path/to/App.sln
 go test ./pkg/name -run TestName
 go test ./...
+./gradlew :module:test --tests '*FooTest'
+./mvnw -q -Dtest=FooTest test
 cargo test -p crate_name test_name
 cargo test --all-targets
 pytest -q --maxfail=1 --tb=short

@@ -46,6 +46,24 @@ FIXTURES="$BATS_TEST_DIRNAME/fixtures"
 	[[ "$output" == *"writing-csharp"* ]]
 }
 
+@test "skill-enforcer: Java Gradle work routes to writing-java-kotlin" {
+	run bash "$HOOK" <<<'{"prompt":"fix the failing JUnit test in src/main/java/com/acme/App.java and run gradle test"}'
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"writing-java-kotlin"* ]]
+}
+
+@test "skill-enforcer: Kotlin ktlint work routes to writing-java-kotlin" {
+	run bash "$HOOK" <<<'{"prompt":"format the Ktor route in src/main/kotlin/App.kt with ktlint"}'
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"writing-java-kotlin"* ]]
+}
+
+@test "skill-enforcer: JavaScript does not route to writing-java-kotlin" {
+	run bash "$HOOK" <<<'{"prompt":"fix this JavaScript file src/app.js and run npm test"}'
+	[ "$status" -eq 0 ]
+	[[ "$output" != *"writing-java-kotlin"* ]]
+}
+
 @test "skill-enforcer: codebase flow is left to companion workflows" {
 	run bash "$HOOK" <"$FIXTURES/skill_enforcer_codebase_search.json"
 	[ "$status" -eq 0 ]

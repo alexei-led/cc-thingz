@@ -105,20 +105,22 @@ files first, then uses project fallbacks only for the missing side: package
 scripts (`fmt` / `format`, `lint`) before Makefile targets (`fmt`, `lint`). For
 C# /.NET, source edits use `dotnet format` on the nearest project or containing
 solution with `--include`; `.csproj`, `.sln`, `.props`, and `.targets` edits use
-the nearest safe project or solution target. Disable project fallbacks with
-`HOOK_PROJECT_FALLBACK=0` or a `.nohooks-project` file.
+the nearest safe project or solution target. For Java/Kotlin, file-scoped
+`google-java-format`, `ktlint --format`, and `detekt --input` run first, with
+configured Gradle/Maven Spotless/detekt fallbacks only when needed. Disable
+project fallbacks with `HOOK_PROJECT_FALLBACK=0` or a `.nohooks-project` file.
 
 `test-runner.sh` runs on `Stop`, using the edited-file state from
 `smart-lint.sh`; it runs focused tests only unless `TEST_RUNNER_FULL=1` is set.
-Focused tests use pytest, Go packages, Cargo manifests, `dotnet test` on the
-nearest obvious test `*.csproj`, else the containing `*.sln`, else the nearest
-`*.csproj`, Vitest related tests, Jest related tests, Bun tests, or Bats where
-applicable. If a changed file lives
+Focused tests use pytest, Go packages, Cargo manifests, Gradle/Maven Java/Kotlin
+module filters, `dotnet test` on the nearest obvious test `*.csproj`, else the
+containing `*.sln`, else the nearest `*.csproj`, Vitest related tests, Jest
+related tests, Bun tests, or Bats where applicable. If a changed file lives
 under a nearest non-root Makefile with `test`, `tests`, `check`, or `verify`,
 that target runs before the generic language runners. Otherwise focused runners
 try first, then package scripts (`test`, `tests`, `check`, `verify`).
 `TEST_RUNNER_FULL=1` runs one project-level target: root Makefile,
-then Go/Rust/C#/.NET/Python runners, then package scripts selected by yarn/bun/npm lockfiles.
+then Go/Rust/Java/Kotlin/C#/.NET/Python runners, then package scripts selected by yarn/bun/npm lockfiles.
 
 Mute individual hooks (bundled or user) by basename without disabling the
 whole bundled set:

@@ -8,6 +8,33 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+### Added
+
+- New `writing-java-kotlin` skill: idiomatic modern Java and Kotlin JVM development with language-specific references for principles, patterns, testing, linting, and CLI guidance. Covers Gradle/Maven toolchains, JUnit 5/Kotest, Mockito/MockK, ktlint, detekt, Spotless, and google-java-format.
+- `smart-lint` JVM module (`lint-java-kotlin.sh`): runs `google-java-format -i` on changed `.java` files, `ktlint --format` and `detekt --input` on changed `.kt`/`.kts` files, and falls back to configured Gradle Spotless/detekt tasks when file-scoped tools are absent.
+- `test-runner` JVM support: focused Gradle module test filtering (`./gradlew :module:test --tests <Class>`), Maven Surefire class filtering (`-Dtest=<Class> test`), source-to-test mapping for both build systems, and `TEST_RUNNER_FULL=1` Gradle/Maven project-level runs.
+- `session-start` JVM project detection: displays `☕ JVM Gradle project` or `☕ JVM Maven project` in session context for repos with `build.gradle*` or `pom.xml`.
+- `skill-enforcer` Java/Kotlin routing: auto-suggests `writing-java-kotlin` on `.java`/`.kt`/`.kts` files, Gradle/Maven commands, JVM framework terms (Spring Boot, Ktor, Micronaut, Quarkus), and tooling terms (ktlint, detekt, JUnit, Kotest).
+- Language references for `fixing-code` (new `references/` directory): fast repro commands and key failure patterns for C# /.NET, Go, Java/Kotlin, Python, Rust, and TypeScript. Language routing section added to `fixing-code` SKILL.md.
+- Language references for `refactoring-code` (new `references/` directory): scope-mapping tools, safe verification gates, and language-specific caveats (binary API compatibility, serialization key breakage, module path changes) for C# /.NET, Go, Java/Kotlin, Python, Rust, and TypeScript. Language routing section added to `refactoring-code` SKILL.md.
+- Rust review reference for `reviewing-code`: unsafe block invariants, lifetime edge cases, async/blocking executor conflicts, Rust-specific security checks, and edition-gated version guidance.
+- C# and Rust documentation references for `documenting-code`: XML doc comment patterns for .NET, and Rustdoc conventions including `# Safety`, `# Errors`, `# Panics`, and `# Examples` sections.
+- Java/Kotlin references for `reviewing-code` and `improving-tests` expanded to full depth matching Go/Rust/TypeScript: tool-enabled gates, all review dimensions (correctness, security, reliability, performance, tests), version-gated checks, and detailed test patterns with JUnit/Kotest/MockK guidance.
+- `using-git-worktrees` setup script: JVM dependency setup (`./gradlew testClasses` or `./mvnw -q -DskipTests compile`) and baseline test run (`./gradlew test` or `./mvnw -q test`) alongside existing Go/Python/Rust/Node.
+- macOS toolchain documentation: `brew install --cask temurin@25` (JDK 25 LTS) plus `gradle`, `maven`, `kotlin`, `google-java-format`, `ktlint`, `detekt` for fast focused feedback on this laptop.
+
+### Changed
+
+- `programming` plugin expanded from 7 to 8 skills; description updated to include Java/Kotlin alongside C# /.NET, Go, Python, Rust, TypeScript, shell, and web.
+- `engineer` fork target list in AGENTS.md and README extended to include `writing-java-kotlin`.
+- Hook behavior documentation in README and `docs/pi-extensions.md` updated to cover JVM lint path, focused test commands, and `TEST_RUNNER_FULL=1` JVM behavior.
+- GitHub repository description and topics updated: 28 skills, 3 agents, 10 hooks; topics now include `java`, `kotlin`, `rust`, `typescript`.
+
+### Fixed
+
+- `smart-lint` now correctly detects JVM projects from Gradle/Maven build files or `.java`/`.kt`/`.kts` source files without interfering with TypeScript/JavaScript detection (separate `jvm` vs `javascript` project types).
+- `test-runner` correctly maps Gradle Java/Kotlin source edits to the nearest module test task with class-level filtering and falls back to the full module test task when no matching test class is found nearby.
+
 ## [5.6.0] - 2026-06-27
 
 ### Added

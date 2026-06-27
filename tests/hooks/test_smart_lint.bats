@@ -248,6 +248,64 @@ SH
 	[ "$(cat dotnet.args)" = "format App.sln" ]
 }
 
+@test "smart-lint: Java files use google-java-format on the edited file" {
+	cd "$WORK_DIR" || exit
+	git init -q
+	git config user.email test@example.com
+	git config user.name Test
+	mkdir -p bin src/main/java/com/example
+	touch build.gradle src/main/java/com/example/App.java
+	cat >bin/google-java-format <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/google-java-format.args"
+SH
+	chmod +x bin/google-java-format
+
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_java\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"src/main/java/com/example/App.java\"}}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat google-java-format.args)" = "-i src/main/java/com/example/App.java" ]
+}
+
+@test "smart-lint: Kotlin files use ktlint format and detekt input" {
+	cd "$WORK_DIR" || exit
+	git init -q
+	git config user.email test@example.com
+	git config user.name Test
+	mkdir -p bin src/main/kotlin/com/example
+	touch build.gradle.kts src/main/kotlin/com/example/App.kt
+	cat >bin/ktlint <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/ktlint.args"
+SH
+	cat >bin/detekt <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/detekt.args"
+SH
+	chmod +x bin/ktlint bin/detekt
+
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_kotlin\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"src/main/kotlin/com/example/App.kt\"}}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat ktlint.args)" = "--format src/main/kotlin/com/example/App.kt" ]
+	[ "$(cat detekt.args)" = "--input src/main/kotlin/com/example/App.kt" ]
+}
+
+@test "smart-lint: Gradle Kotlin build edits run a fast Gradle sanity task" {
+	cd "$WORK_DIR" || exit
+	git init -q
+	git config user.email test@example.com
+	git config user.name Test
+	touch build.gradle.kts
+	cat >gradlew <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/gradle.args"
+SH
+	chmod +x gradlew
+
+	run env PATH="/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_gradle_build\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"build.gradle.kts\"}}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat gradle.args)" = "help --quiet" ]
+}
+
 @test "smart-lint: HOOK_PROJECT_FALLBACK=0 disables project fallback" {
 	cd "$WORK_DIR" || exit
 	git init -q

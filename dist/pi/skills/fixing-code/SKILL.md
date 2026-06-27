@@ -41,6 +41,19 @@ Do not use this for:
 - broad architecture redesign → architecture skills
 - browser-only UI investigation without a cheaper signal → `browser-automation`
 
+## Language references
+
+Load the matching reference for the language under repair:
+
+- C# /.NET: `references/csharp.md`
+- Go: `references/go.md`
+- Java/Kotlin: `references/java-kotlin.md`
+- Python: `references/python.md`
+- Rust: `references/rust.md`
+- TypeScript/JavaScript: `references/typescript.md`
+
+Unsupported language: use the general workflow in this file only.
+
 ## Reproduce first
 
 For lint/build/test failures, run the fastest reliable failing signal first.

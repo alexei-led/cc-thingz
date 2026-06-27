@@ -1,7 +1,7 @@
 {
   "name": "programming",
   "version": "5.6.0",
-  "description": "Idiomatic development across C# /.NET, Go, Python, Rust, TypeScript, shell, and web",
+  "description": "Idiomatic development across C# /.NET, Go, Java/Kotlin, Python, Rust, TypeScript, shell, and web",
   "author": {
     "name": "Alexei Ledenev",
     "email": "alexei.led@gmail.com"
