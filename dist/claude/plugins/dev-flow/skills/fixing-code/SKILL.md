@@ -55,14 +55,14 @@ Use `TaskCreate` and `TaskUpdate` when the fix has more than two steps:
 
 ## Tool order
 
-1. Run the smallest known failing command or project gate.
+1. Run the smallest known failing command or project gate. Prefer focused tests, lint, or typecheck while editing and the broader project gate before final output.
 2. Use `Read`, `Grep`, and `Glob` to inspect the exact failing path.
 3. Use `AskUserQuestion` if logs, payloads, access, repro steps, environment, or instrumentation approval are missing.
 4. Use `Edit` for existing files and `Write` only for new files or complete rewrites.
 5. Run the narrow repro after each patch.
 6. Run the relevant broader check before final output.
 
-Do not use destructive git commands. Do not use `--no-verify`.
+Do not use destructive git commands. Do not use `--no-verify`. Do not clear caches, disable rules, or skip fast tests as a routine speed fix.
 
 ## Repro commands
 
@@ -73,8 +73,9 @@ make lint
 make test
 go test ./...
 ruff check .
-pytest --tb=short
-bun test
+pytest -q --maxfail=1 --tb=short
+bunx vitest run path/to/file.test.ts
+bun test path/to/file.test.ts
 npm test
 ```
 

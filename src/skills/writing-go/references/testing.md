@@ -34,6 +34,13 @@ Read before adding or reshaping Go tests.
 - Put external dependencies behind fakes, local test services, or disposable integration fixtures.
 - Use integration build tags only when the project already separates slow or external tests that way.
 
+## Fast feedback
+
+- Prefer package-list mode such as `go test ./pkg/name`; bare `go test` disables the successful-result cache.
+- Avoid `-count=1` unless bypassing cache is required for side effects or flake diagnosis.
+- Use `testing.Short()` and `go test -short` for slow external tiers.
+- Keep `-race`, coverage profiles, and benchmarks out of the hot path unless the change touches that risk.
+
 ## Concurrency and time
 
 - Use `testing/synctest` for deterministic goroutine and timer tests when the module target supports it.
@@ -45,6 +52,7 @@ Read before adding or reshaping Go tests.
 
 - Use `t.Helper`, `t.Cleanup`, and `t.TempDir` for setup helpers and temporary state.
 - Use `t.Parallel` only for independent tests with isolated state.
+- Do not combine process-wide environment changes with parallel tests.
 - Keep table names descriptive and stable.
 - Keep fixtures under `testdata` when files are clearer than inline strings.
 - Do not test trivial getters, setters, or constructors unless they enforce behavior.
@@ -55,3 +63,4 @@ Read before adding or reshaping Go tests.
 - Treat coverage as a signal, not the goal.
 - Prioritize regressions, edge cases, and failure paths over line-count padding.
 - Do not add tests that only assert implementation details or call counts.
+- Do not run coverage in the hot feedback loop unless the task is coverage-specific.

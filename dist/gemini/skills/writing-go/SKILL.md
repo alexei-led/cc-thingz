@@ -1,8 +1,8 @@
 ---
 description: Idiomatic Go development. Use when writing Go code, designing APIs, reviewing
   Go implementations, or changing Go tests. Follow the module's target Go version.
-  Prefer stdlib, concrete types, explicit errors, context propagation, and behavior
-  tests. NOT for Python, TypeScript, shell scripts, or infra-only work.
+  Prefer stdlib, concrete types, explicit errors, context propagation, fast feedback,
+  and behavior tests. NOT for Python, TypeScript, shell scripts, or infra-only work.
 name: writing-go
 ---
 
@@ -17,7 +17,8 @@ Read [principles.md](references/principles.md) before writing, changing, or revi
 ## Conditional References
 
 - [patterns.md](references/patterns.md) — package layout, interfaces, errors, HTTP/service boundaries, concurrency, comments.
-- [testing.md](references/testing.md) — adding or reshaping Go tests.
+- [testing.md](references/testing.md) — adding or reshaping Go tests; keep the local test loop fast.
+- [linting.md](references/linting.md) — changing lint config, lint commands, or slow lint workflows.
 - [cli.md](references/cli.md) — writing or changing Go CLIs.
 
 ## Version-Gated APIs
@@ -33,7 +34,7 @@ Read [principles.md](references/principles.md) before writing, changing, or revi
 
 ## Verification
 
-Run the project-configured build, tests, lint, vet, and formatting checks. Add race or concurrency-specific checks when the change touches goroutines, shared state, timers, or channels.
+Run focused package tests and lint while editing, then the project-configured build, tests, lint, vet, and formatting checks before final output. Add race or concurrency-specific checks when the change touches goroutines, shared state, timers, or channels.
 
 If a check is unavailable, state that and run the closest configured gate. If a check fails, quote the failure, diagnose the cause, fix one issue, and rerun the relevant check.
 

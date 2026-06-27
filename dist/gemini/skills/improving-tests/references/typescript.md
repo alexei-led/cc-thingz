@@ -1,28 +1,32 @@
 # TypeScript Test Slice
 
 Use this only for TypeScript or JavaScript test work. The host skill owns scope,
-workflow, and output.
+workflow, and output. For `performance` mode or slow-suite work, also read
+`typescript-performance.md`.
 
 ## Commands
 
 Use project commands first. If none exist, choose the narrowest useful command:
 
 ```bash
+bun test path/to/file.test.ts
+vitest run path/to/file.test.ts
+jest path/to/file.test.ts -t "case name" --runInBand
+node --test path/to/file.test.ts
 bun test
-bun test --coverage
-bun run tsc --noEmit
 npm test
 ```
 
-Run coverage only for coverage mode or when review needs it. Type errors in test
-files are blocking; quote the relevant output.
+Run coverage only for coverage mode or when review needs it. Keep coverage and
+open-handle diagnostics off the hot feedback path. Test runner failures are
+blocking; quote the relevant output.
 
 ## Learn project patterns
 
 Before changing tests:
 
 - Read nearby `*.test.ts`, `*.spec.ts`, or equivalent files.
-- Check shared test utilities under `tests/`, `__tests__/`, or project-specific dirs.
+- Check shared test utilities under test directories and project-specific helper dirs.
 - Note framework, mock, `describe`, and `it.each` conventions.
 - Follow project conventions unless they are the problem.
 
@@ -30,6 +34,16 @@ Before changing tests:
 
 Prefer public module, API, CLI, component, or service boundaries. For React, test
 user-visible behavior through Testing Library queries, not component state or hooks.
+
+## Fast feedback defaults
+
+- Use the narrowest deterministic file, test name, or related-test command.
+- Keep pure logic tests out of DOM or browser environments.
+- Keep global setup, preloads, and test utilities small enough that focused runs
+  stay focused.
+- Treat worker failures as isolation defects unless evidence says otherwise.
+- Split integration, browser, live-service, visual, and end-to-end tiers from the
+  default local command.
 
 ## Parameterized tests
 
@@ -64,9 +78,11 @@ Flag:
 - untyped or loose mocks hiding contract errors
 - missing async failure, null/undefined, edge, permission, loading, or empty states
 - brittle selectors, snapshots, sleeps, or shared state
+- slow transform, import, setup, DOM environment, coverage, or broad discovery in the fast path
+- worker-count changes that trade determinism for speed
 
 ## Failure handling
 
-- Test runner failures and type errors are blocking.
+- Test runner failures are blocking.
 - If coverage is unavailable, note the gap and continue with visible test review.
 - If no project test pattern exists, state that and apply general framework practices.

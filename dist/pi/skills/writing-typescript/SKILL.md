@@ -1,8 +1,8 @@
 ---
 description: Idiomatic TypeScript development. Use when writing TypeScript code, Node.js
   services, React apps, or TypeScript design advice. Emphasizes strict typing, boundary
-  validation, composition, behavior tests, and project-configured tooling. NOT for
-  Go, Python, plain HTML/CSS/JS, or server-rendered templates.
+  validation, composition, fast feedback, behavior tests, and project-configured tooling.
+  NOT for Go, Python, plain HTML/CSS/JS, or server-rendered templates.
 name: writing-typescript
 ---
 
@@ -27,6 +27,7 @@ name: writing-typescript
 - Read `references/patterns.md` for data models, validation, async flow, or module boundaries.
 - Read `references/react.md` for `.tsx`, hooks, component state, forms, performance, or React tests.
 - Read `references/testing.md` before adding or changing TypeScript tests.
+- Read `references/linting.md` before changing lint config, lint commands, or slow lint workflows.
 
 ## Defaults
 
@@ -42,7 +43,9 @@ name: writing-typescript
 ## Testing and Verification
 
 - For behavior changes, include success and failure tests. For React, cover affected user-visible states.
-- Run the project's configured typecheck, tests, lint, and format checks for the changed package or workspace.
+- Use focused test, typecheck, and lint commands for the changed file, package, or workspace while editing.
+- Run the project's configured typecheck, tests, lint, and format checks for the changed package or workspace before final output.
+- Keep coverage, end-to-end tests, and expensive debug diagnostics off the hot path unless they are the task.
 - Report checks run, failures, and unchecked risks. Do not claim success without a clean check or an explicit reason it was skipped.
 
 ## Failure Handling

@@ -1,6 +1,6 @@
 user-invocable: true
 context: fork
-argument-hint: '[review|refactor|coverage|tdd|full]'
+argument-hint: '[review|refactor|coverage|tdd|performance|full]'
 allowed-tools:
   - Task
   - TaskOutput
@@ -22,5 +22,12 @@ allowed-tools:
   - Bash(bun test *)
   - Bash(bun run *)
   - Bash(npm test *)
+  - Bash(pnpm test *)
+  - Bash(yarn test *)
+  - Bash(vitest *)
+  - Bash(jest *)
+  - Bash(npx vitest *)
+  - Bash(npx jest *)
+  - Bash(node --test *)
   - Bash(npx playwright *)
   - Bash(bunx playwright *)

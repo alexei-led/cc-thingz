@@ -1,8 +1,9 @@
 ---
 description:
   Idiomatic Python 3.12+ development. Use when writing Python code, CLI
-  tools, scripts, or services. Emphasizes stdlib, type hints, uv/ruff/pyright toolchain,
-  and minimal dependencies. NOT for Go, TypeScript, or shell-only tasks.
+  tools, scripts, or services. Emphasizes stdlib, type hints, fast pytest feedback,
+  uv/ruff/pyright toolchain, and minimal dependencies. NOT for Go, TypeScript,
+  or shell-only tasks.
 name: writing-python
 ---
 
@@ -25,11 +26,11 @@ Read [principles.md](references/principles.md) before generating or changing Pyt
 
 - [patterns.md](references/patterns.md) — read for module design, typing, async, config, file I/O, and error patterns.
 - [cli.md](references/cli.md) — read before writing or changing Python CLIs.
-- [testing.md](references/testing.md) — read before adding or reshaping Python tests.
+- [testing.md](references/testing.md) — read before adding or reshaping Python tests; treat slow tests as feedback-loop defects.
 
 ## Verification
 
-Run project-configured tests, lint, format, and type checks. Prefer pytest, ruff, and pyright when present.
+Run project-configured tests, lint, format, and type checks. Prefer focused pytest commands for the edit loop, then the broader project command before final output. Prefer pytest, ruff, and pyright when present.
 
 If a tool is not configured, say so and run the closest available gate. If a check fails, diagnose the cause, make a targeted fix, and rerun the relevant check.
 

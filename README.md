@@ -327,7 +327,7 @@ Invoke as `/skill-name` or let the skill enforcer suggest them.
 | `documenting-code`        | Update docs based on recent changes                                                                                                | "update docs", "document"             |
 | `evolving-config`         | Audit AI coding-agent configuration; review-only by default, explicit approval for fixes                                           | "evolve", "audit config"              |
 | `fixing-code`             | Reproduce, diagnose, patch, regression-test, and verify one code defect at a time                                                  | "fix errors", "make it pass"          |
-| `improving-tests`         | Improve test design and coverage with behavior seams, characterization tests, TDD, and test refactoring                            | "improve tests", "coverage"           |
+| `improving-tests`         | Improve test design, speed, and coverage with behavior seams, fast feedback, TDD, and test refactoring                             | "improve tests", "slow tests"         |
 | `looking-up-docs`         | Find current docs via Context7, official registries/docs, Perplexity/web, and GitHub fallback                                      | "ctx7", "latest API", "look up"       |
 | `researching-web`         | Web research via platform web tools with grounded source selection and stale-source reporting                                      | "research", "X vs Y"                  |
 | `reviewing-code`          | Evidence-backed code review with severity/confidence rubric, quick/deep/team/external modes, and optional graph evidence           | "review code", "check this"           |
@@ -344,10 +344,10 @@ These activate silently when relevant patterns are detected — no `/skill-name`
 | -------------------- | --------------------------------------------------------------------------------------------- |
 | `operating-infra`    | IaC, Kubernetes, cloud resources, CI/CD, Linux                                                |
 | `refactoring-code`   | Behavior-preserving batch refactors with mapped sites and optional graph-backed impact checks |
-| `writing-go`         | Go files, go commands, Go-specific terms                                                      |
-| `writing-python`     | Python files, pytest, pip, frameworks                                                         |
+| `writing-go`         | Go files, tests, lint, Go-specific terms                                                      |
+| `writing-python`     | Python files, pytest, fast test feedback, pip, frameworks                                     |
 | `writing-shell`      | Shell scripts, pipelines, shell lint/test                                                     |
-| `writing-typescript` | TS/TSX files, npm/bun, React, Node.js                                                         |
+| `writing-typescript` | TS/TSX files, tests, lint, npm/bun, React, Node.js                                            |
 | `writing-web`        | HTML/CSS/JS/HTMX templates                                                                    |
 
 ### Support-Only

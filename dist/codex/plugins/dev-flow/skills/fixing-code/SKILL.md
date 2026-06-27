@@ -38,9 +38,10 @@ Do not use this for:
 
 ## Reproduce first
 
-For lint/build/test failures, run the relevant project gate first. Prefer `make
-lint` and `make test` when present; otherwise use configured language tools from
-the nearest project root.
+For lint/build/test failures, run the fastest reliable failing signal first.
+Prefer a focused test, package, or file command while editing; use `make lint`,
+`make test`, or the broader project gate before final output. Use configured
+language tools from the nearest project root.
 
 For reported bugs, build the fastest reliable pass/fail signal:
 
@@ -52,6 +53,22 @@ For reported bugs, build the fastest reliable pass/fail signal:
 
 If no repro is possible, stop and ask for the missing artifact. Do not proceed to
 a speculative fix.
+
+## Fast feedback gates
+
+Tests, lint, typecheck, format, vet, and build commands are feedback loops. Every
+second is paid on each agent iteration.
+
+- Use the narrowest reliable command while editing: one test, package, file,
+  workspace, or changed-file lint when supported.
+- Run the broader relevant gate before final output.
+- Keep coverage, race, mutation, browser, end-to-end, live-service, and deep
+  static-analysis modes off the hot path unless they are the failing signal.
+- Preserve caches and incremental state. Do not clear caches as a routine fix.
+- If a gate is unexpectedly slow, measure enough to name the bottleneck and either
+  fix it in scope or report it as performance debt.
+- Never disable assertions, skip important fast tests, lower lint severity, or
+  ignore files only to make a command faster.
 
 ## Diagnose with evidence
 
@@ -80,6 +97,10 @@ For each issue:
 3. Add or update a regression test when a real seam exists.
 4. Run the narrow repro.
 5. Run broader lint/test before moving to another issue.
+
+For test or lint fixes, prefer targeted fast commands in the edit loop. Keep
+expensive reporting commands for coverage-specific work or final gate parity, not
+every patch attempt.
 
 Do not write helper-level tests that miss the user-visible bug path. If the only
 available seam is too shallow, report the risk.

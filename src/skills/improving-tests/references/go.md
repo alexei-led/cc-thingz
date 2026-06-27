@@ -1,20 +1,25 @@
 # Go Test Slice
 
 Use this only for Go test work. The host skill owns scope, workflow, and output.
+For `performance` mode or slow-suite work, also read `go-performance.md`.
 
 ## Commands
 
 Use project commands first. If none exist, choose the narrowest useful command:
 
 ```bash
+go test ./pkg/name -run TestName
+go test ./pkg/name -run 'TestName/subcase'
+go test -short ./...
 go test ./...
 go test -race ./...
 go test -coverprofile=/tmp/coverage.out ./... && go tool cover -func=/tmp/coverage.out
-golangci-lint run ./...
 ```
 
-Run coverage only for coverage mode or when review needs it. If `golangci-lint` or
-coverage tooling is unavailable, quote the error and continue with source/test reads.
+Run race and coverage only when the change or mode needs them. Keep race and
+coverage off the hot feedback path unless they are the failing signal. If
+coverage tooling is unavailable, quote the error and continue with source/test
+reads.
 
 ## Learn project patterns
 
@@ -28,6 +33,17 @@ Before changing tests:
 
 Prefer public package, API, CLI, or service boundaries. Use narrower unit seams
 only when behavior is pure, local, deterministic, and cheap.
+
+## Fast feedback defaults
+
+- Prefer focused package and `-run` commands.
+- Prefer package-list mode such as `go test ./pkg/name` so successful results can
+  use the Go test cache.
+- Use `testing.Short()` plus `go test -short` or build tags for slow external
+  tiers.
+- Add `t.Parallel()` only when tests have isolated state.
+- Keep `-race`, coverage profiles, and benchmarks out of the every-turn loop
+  unless they are the target signal.
 
 If setup needs many mocks or globals, report the design smell. Do not refactor
 production code unless the selected TDD slice requires it and the user approved it.
@@ -68,6 +84,8 @@ Flag:
 - mocks that hide contracts or accept any business value
 - missing error, edge, permission, concurrency, or regression cases
 - race failures or flaky shared state
+- sleeps, real external services, repeated setup, or cache-busting flags in the fast path
+- unsafe `t.Parallel()` with shared globals, environment variables, ports, or files
 - comments that explain obvious test code instead of improving names/setup
 
 ## Failure handling
