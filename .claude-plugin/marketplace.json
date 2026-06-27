@@ -9,51 +9,51 @@
     "homepage": "https://github.com/alexei-led/cc-forge",
     "repository": "https://github.com/alexei-led/cc-forge",
     "license": "MIT",
-    "version": "5.6.0"
+    "version": "6.0.0"
   },
   "plugins": [
     {
       "name": "browser",
       "source": "./dist/claude/plugins/browser",
       "description": "Browser-based testing, validation, screenshots, recordings, and quick automation",
-      "version": "5.6.0"
+      "version": "6.0.0"
     },
     {
       "name": "dev-flow",
       "source": "./dist/claude/plugins/dev-flow",
       "description": "Code review, fixes, commits, and linting for development workflows",
-      "version": "5.6.0"
+      "version": "6.0.0"
     },
     {
       "name": "discovery",
       "source": "./dist/claude/plugins/discovery",
       "description": "Research, docs lookup, instruction review, reasoning, and agent configuration audits",
-      "version": "5.6.0"
+      "version": "6.0.0"
     },
     {
       "name": "git-flow",
       "source": "./dist/claude/plugins/git-flow",
       "description": "Git worktrees, branch cleanup, hooks, secret scanning, config hygiene, and guardrails",
-      "version": "5.6.0"
+      "version": "6.0.0"
     },
     {
       "name": "infra-ops",
       "source": "./dist/claude/plugins/infra-ops",
       "description": "Kubernetes, Terraform, Helm, GitHub Actions, AWS, GCP, and Linux infrastructure operations",
-      "version": "5.6.0"
+      "version": "6.0.0"
     },
     {
       "name": "programming",
       "source": "./dist/claude/plugins/programming",
       "description": "Idiomatic development across C# /.NET, Go, Java/Kotlin, Python, Rust, TypeScript, shell, and web",
-      "version": "5.6.0"
+      "version": "6.0.0"
     },
     {
       "name": "spec-flow",
       "source": "./dist/claude/plugins/spec-flow",
       "description": "Lightweight spec loop: plan one slice, execute one task, checkpoint or close",
-      "version": "5.6.0"
+      "version": "6.0.0"
     }
   ],
-  "version": "5.6.0"
+  "version": "6.0.0"
 }

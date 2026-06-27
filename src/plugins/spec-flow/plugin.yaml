@@ -1,5 +1,5 @@
 name: spec-flow
-version: 5.6.0
+version: 6.0.0
 description: 'Lightweight spec loop: plan one slice, execute one task, checkpoint or close'
 depends_on:
   - dev-flow

@@ -8,6 +8,9 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.0.0] - 2026-06-27
+
+
 ### Added
 
 - New `writing-java-kotlin` skill: idiomatic modern Java and Kotlin JVM development with language-specific references for principles, patterns, testing, linting, and CLI guidance. Covers Gradle/Maven toolchains, JUnit 5/Kotest, Mockito/MockK, ktlint, detekt, Spotless, and google-java-format.
