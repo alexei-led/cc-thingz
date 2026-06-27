@@ -32,6 +32,8 @@ fi
 [[ -f ".nolint-arch" ]] && export SKIP_ARCH=1
 
 # --- LANGUAGE MODULES ---
+# shellcheck source=lint-csharp.sh
+source "$SCRIPT_DIR/lint-csharp.sh"
 # shellcheck source=lint-go.sh
 source "$SCRIPT_DIR/lint-go.sh"
 # shellcheck source=lint-python.sh
@@ -50,6 +52,10 @@ detect_project_type() {
 	local project_type="unknown"
 	local types=()
 
+	# C# /.NET project
+	if [[ -f "global.json" ]] || [[ -n "$(find . -maxdepth 4 \( -name "*.cs" -o -name "*.csproj" -o -name "*.sln" -o -name "*.props" -o -name "*.targets" \) -type f -print -quit 2>/dev/null)" ]]; then
+		types+=("csharp")
+	fi
 	# Go project
 	if [[ -f "go.mod" ]] || [[ -f "go.sum" ]] || [[ -n "$(find . -maxdepth 3 -name "*.go" -type f -print -quit 2>/dev/null)" ]]; then
 		types+=("go")
@@ -115,6 +121,7 @@ fi
 IFS=',' read -ra types <<<"${PROJECT_TYPE#mixed:}"
 for type in "${types[@]}"; do
 	case "$type" in
+	csharp) lint_csharp ;;
 	go) lint_go ;;
 	python) lint_python ;;
 	rust) lint_rust ;;

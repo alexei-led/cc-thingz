@@ -8,6 +8,23 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [5.6.0] - 2026-06-27
+
+### Added
+
+- Added a new `writing-csharp` skill with C# /.NET-specific principles, patterns, testing, linting, and CLI guidance.
+- Added C# language references for `reviewing-code` and `improving-tests`, plus focused hook regression coverage for `dotnet format` and `dotnet test`.
+
+### Changed
+
+- Expanded the `programming` plugin and public docs to include C# /.NET as a first-class language workflow.
+- Updated Pi extension docs and hook behavior docs to describe focused .NET linting and test-target selection.
+
+### Fixed
+
+- `smart-lint` now recognizes `.cs`, `.csproj`, `.sln`, `.props`, and `.targets` edits and runs focused `dotnet format` commands against the nearest safe target.
+- `test-runner` now keeps focused .NET edits in scope, runs `dotnet test` on the nearest obvious test project, else the containing solution, else the nearest project, and supports `TEST_RUNNER_FULL=1` for .NET repos.
+
 ## [5.5.0] - 2026-06-27
 
 ### Added

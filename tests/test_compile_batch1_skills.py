@@ -22,6 +22,7 @@ import pytest
 from conftest import TARGETS, make_batch_skill_staging_root
 
 BATCH_1_SKILLS_ALL_TARGETS = (
+    "writing-csharp",
     "writing-go",
     "writing-python",
     "writing-rust",
@@ -35,6 +36,13 @@ BATCH_1_SKILLS_ALL_TARGETS = (
 )
 SKILLS_WITH_REFERENCES = {
     "brainstorming-ideas": ("references/grill-protocol.md",),
+    "writing-csharp": (
+        "references/cli.md",
+        "references/principles.md",
+        "references/patterns.md",
+        "references/testing.md",
+        "references/linting.md",
+    ),
     "writing-go": (
         "references/cli.md",
         "references/patterns.md",

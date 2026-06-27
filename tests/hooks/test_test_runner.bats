@@ -331,6 +331,20 @@ SH
 	[ "$(cat cargo.args)" = "test --all-targets" ]
 }
 
+@test "test-runner: TEST_RUNNER_FULL runs dotnet test on the solution" {
+	mkdir -p bin src/App
+	touch App.sln src/App/App.csproj
+	cat >bin/dotnet <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/dotnet.args"
+SH
+	chmod +x bin/dotnet
+
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" TEST_RUNNER_FULL=1 HOOK_INPUT_JSON="{\"session_id\":\"s_full_csharp\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat dotnet.args)" = "test App.sln" ]
+}
+
 @test "test-runner: Go tests use failfast without verbose output" {
 	mkdir -p bin pkg
 	touch go.mod pkg/foo.go
@@ -386,6 +400,64 @@ SH
 	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_rust_manifest\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
 	[ "$(cat cargo.args)" = "test --manifest-path Cargo.toml --all-targets" ]
+}
+
+@test "test-runner: C# source edits fall back to the containing solution" {
+	mkdir -p bin src/App
+	touch App.sln src/App/App.csproj src/App/Program.cs
+	cat >bin/dotnet <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/dotnet.args"
+SH
+	chmod +x bin/dotnet
+	write_state s_csharp src/App/Program.cs
+
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_csharp\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat dotnet.args)" = "test App.sln" ]
+}
+
+@test "test-runner: C# test project edits run dotnet test on that project" {
+	mkdir -p bin tests/App.Tests
+	cat >tests/App.Tests/App.Tests.csproj <<'XML'
+<Project>
+  <PropertyGroup>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+</Project>
+XML
+	cat >bin/dotnet <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/dotnet.args"
+SH
+	chmod +x bin/dotnet
+	write_state s_csharp_proj tests/App.Tests/App.Tests.csproj
+
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_csharp_proj\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat dotnet.args)" = "test tests/App.Tests/App.Tests.csproj" ]
+}
+
+@test "test-runner: C# non-test project edits prefer a same-dir test project" {
+	mkdir -p bin src/App
+	touch App.sln src/App/App.csproj
+	cat >src/App/App.Tests.csproj <<'XML'
+<Project>
+  <PropertyGroup>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+</Project>
+XML
+	cat >bin/dotnet <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/dotnet.args"
+SH
+	chmod +x bin/dotnet
+	write_state s_csharp_same_dir src/App/App.csproj
+
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_csharp_same_dir\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat dotnet.args)" = "test src/App/App.Tests.csproj" ]
 }
 
 @test "test-runner: Vitest uses related for source files" {

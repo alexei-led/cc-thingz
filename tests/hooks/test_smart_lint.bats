@@ -194,6 +194,60 @@ SH
 	[ "$(cat cargo.args)" = "clippy --manifest-path Cargo.toml --fix --allow-dirty --allow-staged --all-targets -- -D warnings" ]
 }
 
+@test "smart-lint: C# source edits use dotnet format include on nearest project" {
+	cd "$WORK_DIR" || exit
+	git init -q
+	git config user.email test@example.com
+	git config user.name Test
+	mkdir -p bin src/App/Controllers
+	touch src/App/App.csproj src/App/Controllers/HomeController.cs
+	cat >bin/dotnet <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/dotnet.args"
+SH
+	chmod +x bin/dotnet
+
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_cs\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"src/App/Controllers/HomeController.cs\"}}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat src/App/dotnet.args)" = "format App.csproj --include Controllers/HomeController.cs" ]
+}
+
+@test "smart-lint: C# project edits lint the project target" {
+	cd "$WORK_DIR" || exit
+	git init -q
+	git config user.email test@example.com
+	git config user.name Test
+	mkdir -p bin src/App
+	touch src/App/App.csproj
+	cat >bin/dotnet <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/dotnet.args"
+SH
+	chmod +x bin/dotnet
+
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_csproj\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"src/App/App.csproj\"}}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat src/App/dotnet.args)" = "format App.csproj" ]
+}
+
+@test "smart-lint: C# props edits prefer the containing solution" {
+	cd "$WORK_DIR" || exit
+	git init -q
+	git config user.email test@example.com
+	git config user.name Test
+	mkdir -p bin src/App
+	touch App.sln Directory.Build.props src/App/App.csproj
+	cat >bin/dotnet <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/dotnet.args"
+SH
+	chmod +x bin/dotnet
+
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_props\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"Directory.Build.props\"}}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat dotnet.args)" = "format App.sln" ]
+}
+
 @test "smart-lint: HOOK_PROJECT_FALLBACK=0 disables project fallback" {
 	cd "$WORK_DIR" || exit
 	git init -q

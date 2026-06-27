@@ -37,6 +37,7 @@ or file list. If scope or diff context is missing, ask one clarifying question.
 Read `references/severity-rubric.md` before scoring or reporting findings.
 Load language references only for languages present in scope:
 
+- C#: `references/csharp.md`
 - Go: `references/go.md`
 - Python: `references/python.md`
 - TypeScript: `references/typescript.md`

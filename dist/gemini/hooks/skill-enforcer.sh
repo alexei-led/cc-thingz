@@ -44,6 +44,12 @@ if echo "$PROMPT_LOWER" | grep -qE '\.(ts|tsx)\b|typescript|tsconfig|package\.js
 	skills+="writing-typescript "
 fi
 
+# writing-csharp: Idiomatic C# /.NET development
+# Triggers: .cs/.csproj/.sln files, dotnet CLI, C#/.NET frameworks, and test stacks
+if echo "$PROMPT_LOWER" | grep -qE '\.cs\b|\.csproj\b|\.sln\b|\bdotnet\b|(^|[^[:alnum:]])c#([^[:alnum:]]|$)|\bcsharp\b|(^|[^[:alnum:]])\.net([^[:alnum:]]|$)|\basp\.net\b|\bmsbuild\b|\bnuget\b|\bxunit\b|\bnunit\b|\bmstest\b|\bblazor\b|entity framework'; then
+	skills+="writing-csharp "
+fi
+
 # operating-infra: IaC, Kubernetes, cloud resources, containers, CI/CD, Linux hosts
 # Triggers: infra files/tools, cloud services, IAM, logs, instances, service health
 if echo "$PROMPT_LOWER" | grep -qE '\.tf\b|\.tfvars|dockerfile|docker-compose|chart\.yaml|kustomization|values\.yaml|\bkubectl\b|\bhelm\b|\bkustomize\b|\bterraform\b|\btofu\b|kubernetes|k8s\b|\bpod[s]?\b|\bdeployment[s]?\b|\bingress\b|\bconfigmap|\bnamespace[s]?\b|\bstatefulset|\bdaemonset|cronjob|\bhpa\b|networkpolic|manifest|container.*(image|registry|port)|service\s*account|node\s*pool|github.*action|\.github/workflows|workflow.*yaml|\bgcloud\b|\bgsutil\b|\bbq\s|\baws\s|bigquery|cloud\s*(run|function|sql|storage)|gke\b|gcs\b|pubsub|dataflow|firestore|spanner|\bs3\b|\bec2\b|aws.*lambda|lambda.*(function|handler)|\becs\b|\beks\b|\brds\b|dynamodb|\bsqs\b|\bsns\b|cloudformation|cloudwatch|iam.*(role|policy|permission)|\bbucket[s]?\b|--project\b|--region\b|systemctl|journalctl|\bnginx\b|\blinux\s*(host|service|instance)'; then

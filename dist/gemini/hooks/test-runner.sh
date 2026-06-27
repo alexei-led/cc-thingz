@@ -209,7 +209,7 @@ path_is_excluded() {
 
 has_code_extension() {
 	case "$1" in
-	*.py | *.go | *.rs | *.js | *.jsx | *.ts | *.tsx | *.mjs | *.cjs | *.mts | *.cts | *.sh | *.bash | *.bats | \
+	*.py | *.go | *.rs | *.cs | *.csproj | *.sln | *.props | *.targets | *.js | *.jsx | *.ts | *.tsx | *.mjs | *.cjs | *.mts | *.cts | *.sh | *.bash | *.bats | \
 		Cargo.toml | Cargo.lock | rust-toolchain | rust-toolchain.toml) return 0 ;;
 	*) return 1 ;;
 	esac
@@ -697,6 +697,166 @@ run_rust_tests() {
 	return "$status"
 }
 
+csharp_find_containing_solution() {
+	local file="$1" dir candidate
+	if [[ "$file" == *.sln && -f "$file" ]]; then
+		printf '%s\n' "$file"
+		return 0
+	fi
+	dir=$(dirname "$file")
+	while [[ -n "$dir" && "$dir" != "/" ]]; do
+		candidate=$(find "$dir" -maxdepth 1 -type f -name "*.sln" | sort | head -n 1)
+		if [[ -n "$candidate" ]]; then
+			printf '%s\n' "${candidate#./}"
+			return 0
+		fi
+		[[ "$dir" == "." ]] && break
+		dir=$(dirname "$dir")
+	done
+	candidate=$(find . -maxdepth 1 -type f -name "*.sln" | sort | head -n 1)
+	[[ -n "$candidate" ]] && printf '%s\n' "${candidate#./}"
+}
+
+csharp_nearest_csproj() {
+	local file="$1" dir candidate
+	if [[ "$file" == *.csproj && -f "$file" ]]; then
+		printf '%s\n' "$file"
+		return 0
+	fi
+	dir=$(dirname "$file")
+	while [[ -n "$dir" && "$dir" != "/" ]]; do
+		candidate=$(find "$dir" -maxdepth 1 -type f -name "*.csproj" | sort | head -n 1)
+		if [[ -n "$candidate" ]]; then
+			printf '%s\n' "${candidate#./}"
+			return 0
+		fi
+		[[ "$dir" == "." ]] && break
+		dir=$(dirname "$dir")
+	done
+	candidate=$(find . -maxdepth 1 -type f -name "*.csproj" | sort | head -n 1)
+	[[ -n "$candidate" ]] && printf '%s\n' "${candidate#./}"
+}
+
+csharp_is_test_project() {
+	local project="$1"
+	case "$(basename "$project")" in
+	*.Tests.csproj | *.Test.csproj | *Tests*.csproj | *Test*.csproj) return 0 ;;
+	esac
+	grep -qiE '<IsTestProject>[[:space:]]*true[[:space:]]*</IsTestProject>|Microsoft\.NET\.Test\.Sdk|xunit|nunit|MSTest\.TestFramework' "$project" 2>/dev/null
+}
+
+csharp_nearest_test_csproj() {
+	local file="$1" dir candidate
+	if [[ "$file" == *.csproj ]] && csharp_is_test_project "$file"; then
+		printf '%s\n' "$file"
+		return 0
+	fi
+	dir=$(dirname "$file")
+	while [[ -n "$dir" && "$dir" != "/" ]]; do
+		while IFS= read -r candidate; do
+			[[ -n "$candidate" ]] || continue
+			if csharp_is_test_project "$candidate"; then
+				printf '%s\n' "${candidate#./}"
+				return 0
+			fi
+		done < <(find "$dir" -maxdepth 1 -type f -name "*.csproj" | sort)
+		[[ "$dir" == "." ]] && break
+		dir=$(dirname "$dir")
+	done
+	return 1
+}
+
+csharp_test_target_for_file() {
+	local file="$1" target
+	case "$file" in
+	*.sln)
+		[[ -f "$file" ]] && printf '%s\n' "$file"
+		return 0
+		;;
+	*.csproj)
+		if csharp_is_test_project "$file"; then
+			printf '%s\n' "$file"
+			return 0
+		fi
+		target=$(csharp_nearest_test_csproj "$file" || true)
+		[[ -n "$target" ]] && {
+			printf '%s\n' "$target"
+			return 0
+		}
+		target=$(csharp_find_containing_solution "$file" || true)
+		[[ -n "$target" ]] && {
+			printf '%s\n' "$target"
+			return 0
+		}
+		printf '%s\n' "$file"
+		return 0
+		;;
+	*.cs | *.props | *.targets)
+		target=$(csharp_nearest_test_csproj "$file" || true)
+		[[ -n "$target" ]] && {
+			printf '%s\n' "$target"
+			return 0
+		}
+		target=$(csharp_find_containing_solution "$file" || true)
+		[[ -n "$target" ]] && {
+			printf '%s\n' "$target"
+			return 0
+		}
+		target=$(csharp_nearest_csproj "$file" || true)
+		[[ -n "$target" ]] && {
+			printf '%s\n' "$target"
+			return 0
+		}
+		;;
+	esac
+	return 1
+}
+
+run_csharp_tests() {
+	local focus_files=("$@")
+	local targets=()
+	local file target tmp status=0
+	for file in "${focus_files[@]}"; do
+		case "$file" in
+		*.cs | *.csproj | *.sln | *.props | *.targets) ;;
+		*) continue ;;
+		esac
+		target=$(csharp_test_target_for_file "$file" || true)
+		[[ -n "$target" ]] && targets+=("$target")
+	done
+	[[ "${#targets[@]}" -gt 0 ]] || return 0
+	command_exists dotnet || {
+		log_warn "dotnet not found — skipping focused C# tests"
+		return 0
+	}
+	tmp=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-csharp-tests.%s' "$$")
+	printf '%s\n' "${targets[@]}" | unique_lines >"$tmp"
+	while IFS= read -r target; do
+		[[ -n "$target" ]] || continue
+		run_and_capture "C# tests" dotnet test "$target" || status=2
+	done <"$tmp"
+	rm -f "$tmp"
+	return "$status"
+}
+
+csharp_full_test_target() {
+	local candidate
+	candidate=$(find . -maxdepth 4 -type f -name "*.sln" | sort | head -n 1)
+	if [[ -n "$candidate" ]]; then
+		printf '%s\n' "${candidate#./}"
+		return 0
+	fi
+	while IFS= read -r candidate; do
+		[[ -n "$candidate" ]] || continue
+		if csharp_is_test_project "$candidate"; then
+			printf '%s\n' "${candidate#./}"
+			return 0
+		fi
+	done < <(find . -maxdepth 5 -type f -name "*.csproj" | sort)
+	candidate=$(find . -maxdepth 5 -type f -name "*.csproj" | sort | head -n 1)
+	[[ -n "$candidate" ]] && printf '%s\n' "${candidate#./}"
+}
+
 is_js_test_file() {
 	local base
 	base=$(basename "$1")
@@ -919,6 +1079,15 @@ run_full_override() {
 		fi
 		log_warn "cargo not found — skipping full Rust tests"
 	fi
+	local csharp_target
+	csharp_target=$(csharp_full_test_target || true)
+	if [[ -n "$csharp_target" ]]; then
+		if command_exists dotnet; then
+			run_and_capture "dotnet test" dotnet test "$csharp_target"
+			return $?
+		fi
+		log_warn "dotnet not found — skipping full C# tests"
+	fi
 	local pytest_runner=() pytest_arg
 	while IFS= read -r pytest_arg; do
 		[[ -n "$pytest_arg" ]] && pytest_runner+=("$pytest_arg")
@@ -990,6 +1159,7 @@ main() {
 		run_python_tests "${focus_files[@]}" || status=2
 		run_go_tests "${focus_files[@]}" || status=2
 		run_rust_tests "${focus_files[@]}" || status=2
+		run_csharp_tests "${focus_files[@]}" || status=2
 		run_javascript_tests "${focus_files[@]}" || status=2
 		run_shell_tests "${focus_files[@]}" || status=2
 	fi

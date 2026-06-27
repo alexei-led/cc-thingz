@@ -94,6 +94,7 @@ def test_smart_lint_support_dir_mirrored():
     assert sub.is_dir()
     expected = {
         "lib.sh",
+        "lint-csharp.sh",
         "lint-go.sh",
         "lint-python.sh",
         "lint-rust.sh",

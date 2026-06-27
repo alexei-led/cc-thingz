@@ -39,6 +39,7 @@ Do not use this for:
 
 Detect languages from files in scope and read only the matching reference:
 
+- C# → `references/csharp.md`
 - Go → `references/go.md`; for slow-suite or feedback-loop work, also read `references/go-performance.md`
 - Python → `references/python.md`; for slow-suite or feedback-loop work, also read `references/python-performance.md`
 - TypeScript → `references/typescript.md`; for slow-suite or feedback-loop work, also read `references/typescript-performance.md`
@@ -142,6 +143,8 @@ Do not force consolidation when separate tests make distinct behavior clearer.
 Run the relevant project command after changes. Examples:
 
 ```bash
+dotnet test path/to/Tests.csproj
+dotnet test path/to/App.sln
 go test ./pkg/name -run TestName
 go test ./...
 cargo test -p crate_name test_name

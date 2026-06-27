@@ -40,6 +40,12 @@ FIXTURES="$BATS_TEST_DIRNAME/fixtures"
 	[[ "$output" == *"writing-rust"* ]]
 }
 
+@test "skill-enforcer: C# dotnet work routes to writing-csharp" {
+	run bash "$HOOK" <<<'{"prompt":"fix the nullable warning in src/Foo/Bar.cs and run dotnet test"}'
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"writing-csharp"* ]]
+}
+
 @test "skill-enforcer: codebase flow is left to companion workflows" {
 	run bash "$HOOK" <"$FIXTURES/skill_enforcer_codebase_search.json"
 	[ "$status" -eq 0 ]

@@ -1,9 +1,10 @@
 name: programming
-version: 5.5.0
-description: Idiomatic development across Go, Python, Rust, TypeScript, shell, and web
+version: 5.6.0
+description: Idiomatic development across C# /.NET, Go, Python, Rust, TypeScript, shell, and web
 depends_on:
   - dev-flow
 skills:
+  - writing-csharp
   - writing-go
   - writing-python
   - writing-rust
