@@ -1,6 +1,6 @@
 {
   "name": "git-flow",
-  "version": "6.0.0",
+  "version": "6.1.0",
   "description": "Git worktrees, branch cleanup, hooks, secret scanning, config hygiene, and guardrails",
   "author": {
     "name": "Alexei Ledenev",

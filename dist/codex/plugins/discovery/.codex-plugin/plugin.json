@@ -1,6 +1,6 @@
 {
   "name": "discovery",
-  "version": "6.0.0",
+  "version": "6.1.0",
   "description": "Research, docs lookup, instruction review, reasoning, and agent configuration audits",
   "author": {
     "name": "Alexei Ledenev",

@@ -8,8 +8,18 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
-## [6.0.0] - 2026-06-27
+## [6.1.0] - 2026-06-29
 
+### Added
+
+- Minimal comment guidance for programming skills across Python, Go, Rust, TypeScript, C# /.NET, Java/Kotlin, shell, and web.
+
+### Changed
+
+- Test guidance now defaults to no comments unless a comment is needed for unobvious fixtures, timing, concurrency, setup, portability, or regression context.
+- Go and C# reference patterns now explicitly keep comments short and move longer rationale to docs, issue links, or design notes.
+
+## [6.0.0] - 2026-06-27
 
 ### Added
 
