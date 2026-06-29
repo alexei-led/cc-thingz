@@ -31,6 +31,7 @@ Use nextest only when the project already has it. Run doctests separately with `
 - Use small case tables for input/output matrices when they improve readability.
 - Name cases so failures explain the broken behavior.
 - Keep fixtures in `tests/fixtures` or `testdata` when files are clearer than inline strings.
+- Avoid comments in tests. Add one only for unobvious fixtures, timing, concurrency, unsafe invariants, or regression context.
 
 ## Assertions
 

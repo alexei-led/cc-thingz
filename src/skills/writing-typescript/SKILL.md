@@ -36,6 +36,15 @@ name: writing-typescript
 - Pass dependencies explicitly; avoid inheritance, singletons, and hidden module state.
 - Avoid unsafe casts, non-null assertions, broad index signatures, boolean-flag state, and new app enums where literal unions fit.
 
+## Comments and JSDoc
+
+- Use JSDoc or TSDoc for exported APIs and non-obvious public properties or methods.
+- Avoid merely restating property, parameter, or type names.
+- Add implementation comments only for non-obvious constraints, invariants, side effects, tradeoffs, or interoperability quirks.
+- Keep comments short. Move longer rationale to docs, issue links, or design notes.
+- Do not comment obvious code.
+- Keep tests readable without comments; add one only for unobvious fixtures, timers, concurrency, browser setup, or regression context.
+
 ## Testing and Verification
 
 - For behavior changes, include success and failure tests. For React, cover affected user-visible states.

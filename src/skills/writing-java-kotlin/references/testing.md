@@ -7,7 +7,7 @@ Read before adding or reshaping JVM tests.
 - Use the project's test framework: JUnit 5/Jupiter, JUnit 4, TestNG, Kotest, Spek, Spring test, Mockito, MockK, AssertJ, Truth, or Hamcrest. Do not switch frameworks in scoped work.
 - Test behavior through public classes, services, handlers, controllers, repositories, CLIs, or other stable seams.
 - Cover success, failure, boundary, cancellation, concurrency, serialization, and regression behavior when relevant.
-- Keep tests readable without comments.
+- Avoid comments in tests. Add one only for unobvious fixtures, timing, concurrency, framework setup, or regression context.
 
 ## Fast commands
 

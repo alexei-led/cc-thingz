@@ -30,6 +30,15 @@ Read [principles.md](references/principles.md) before writing, changing, or revi
 - [linting.md](references/linting.md) — changing lint config, lint commands, or slow lint workflows.
 - [cli.md](references/cli.md) — writing or changing Go CLIs.
 
+## Comments
+
+- Use doc comments for exported declarations. Start with the identifier and end with a period.
+- Comment non-trivial unexported declarations only when their contract is not obvious.
+- Add implementation comments only for non-obvious constraints, invariants, side effects, tradeoffs, or tuning decisions.
+- Keep comments short. Move longer rationale to docs, issue links, or design notes.
+- Do not comment obvious code or restate names and types.
+- Keep tests readable without comments; add one only for unobvious fixtures, timing, concurrency, or regression context.
+
 ## Version-Gated APIs
 
 - Confirm `go.mod`, `toolchain`, CI, and nearby code before using version-specific APIs.

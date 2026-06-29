@@ -21,6 +21,15 @@ Read [principles.md](references/principles.md) before writing, changing, or revi
 - [testing.md](references/testing.md) — adding or reshaping Rust tests; keep the local test loop fast.
 - [linting.md](references/linting.md) — changing rustfmt, Clippy, cargo check, CI gates, or slow lint workflows.
 
+## Comments and Rustdoc
+
+- Use `///` or `//!` rustdoc for public APIs when users need contracts, edge cases, examples, or safety notes.
+- Add implementation comments only for non-obvious constraints, invariants, side effects, tradeoffs, or unsafe assumptions.
+- Keep comments short. Move longer rationale to docs, issue links, or design notes.
+- Do not comment obvious code or restate names and types.
+- Keep tests readable without comments; add one only for unobvious fixtures, timing, concurrency, unsafe invariants, or regression context.
+- Document safety invariants next to `unsafe` blocks.
+
 ## Edition and MSRV
 
 - Inspect `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, CI, and nearby code before using edition- or version-specific APIs.

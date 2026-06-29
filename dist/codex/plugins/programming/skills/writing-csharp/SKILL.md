@@ -30,6 +30,15 @@ Read [principles.md](references/principles.md) before writing, changing, or revi
 - Prefer the BCL and existing NuGet packages before adding a dependency.
 - Use the existing app style: ASP.NET Core controllers vs minimal APIs, records vs classes, MediatR or no mediator, EF or raw SQL, and the configured test framework.
 
+## Comments and XML Docs
+
+- Use XML documentation comments for public APIs when the project emits API docs or enforces CS1591.
+- Summarize contracts, invariants, edge cases, and effects. Do not restate member names or signatures.
+- Use `//` for brief implementation notes; avoid long `/* */` explanations.
+- Keep comments short. Move longer rationale to docs, issue links, or design notes.
+- Do not comment obvious code.
+- Keep tests readable without comments; add one only for unobvious fixtures, timing, concurrency, external services, or regression context.
+
 ## Verification
 
 Run focused `dotnet` checks while editing, then the project-configured build,

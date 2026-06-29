@@ -12,6 +12,7 @@ Use before adding or changing TypeScript tests. Follow the project's test runner
 - Use the project's parameterized-test syntax for input/output matrices and boundary cases.
 - One test should prove one behavior. Multiple assertions are fine when they describe that behavior.
 - Delete shallow or duplicate tests once deeper behavior tests cover the same path.
+- Avoid comments in tests. Add one only for unobvious fixtures, timers, concurrency, browser setup, or regression context.
 
 ## Fast feedback
 

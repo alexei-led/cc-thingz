@@ -26,6 +26,15 @@ Read [principles.md](references/principles.md) before generating or changing Pyt
 - Prefer stdlib and existing dependencies before adding packages.
 - Validate untyped boundary input before it spreads.
 
+## Comments and Docstrings
+
+- Prefer clear names and small functions over explanatory comments.
+- Add comments only for non-obvious constraints, invariants, side effects, tradeoffs, or public contracts.
+- Keep comments short. Move longer rationale to docs, issue links, or design notes.
+- Do not comment obvious code or restate the syntax.
+- Keep tests readable without comments; add one only for unobvious fixtures, timing, concurrency, or regression context.
+- Use docstrings for public or non-obvious modules, classes, functions, and methods. Do not restate the signature.
+
 ## Conditional References
 
 - [patterns.md](references/patterns.md) — read for module design, typing, async, config, file I/O, and error patterns.

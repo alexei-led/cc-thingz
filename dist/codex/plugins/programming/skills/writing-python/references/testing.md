@@ -8,6 +8,7 @@ Use this when adding or reshaping Python tests. Keep generic testing rules out o
 - Prefer integration-style tests when they give a stable signal with less mocking.
 - Cover happy path, invalid input, and boundary values for changed behavior.
 - Delete shallow or duplicate tests when a stronger interface test covers the same behavior.
+- Avoid comments in tests. Add one only for unobvious fixtures, timing, concurrency, or regression context.
 - For risky fixes, use red-green-refactor: failing regression test, minimal fix, cleanup while green.
 
 ## Pytest defaults

@@ -41,4 +41,5 @@ workers, and comments.
 
 - Use domain names over framework names where possible.
 - Comments explain contracts, invariants, or surprising behavior, not what the syntax already says.
+- Keep comments short; move longer rationale to docs, issue links, or design notes.
 - Delete dead wrappers and pass-through services inside the touched scope.

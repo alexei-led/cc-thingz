@@ -42,6 +42,15 @@ name: writing-shell
 - Prefer machine-readable output from tools, then parse it with structured parsers.
 - Use `looking-up-docs` for exact external CLI flags, syntax, or version behavior; do not guess from memory.
 
+## Comments
+
+- Comment only tricky, non-obvious, important, or unusual shell behavior.
+- Use file and function comments for reusable scripts or functions when the contract is not obvious from names and usage.
+- Add a short reason after any `shellcheck disable` directive.
+- Keep comments short. Move longer rationale to docs, issue links, or design notes.
+- Do not comment obvious commands or narrate each pipeline stage.
+- Keep shell tests readable without comments; add one only for unobvious fixtures, environment setup, portability constraints, or regression context.
+
 ## Verification
 
 Run the project-configured shell gates. Prefer:

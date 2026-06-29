@@ -57,6 +57,7 @@ Read for package layout, interfaces, error handling, service boundaries, concurr
 - Use short local names in short scopes; use clear names at package and API boundaries.
 - Receiver names are short and consistent.
 - Comments explain contracts, invariants, surprising behavior, or tuning decisions.
+- Keep comments short; move longer rationale to docs, issue links, or design notes.
 - Do not comment obvious code.
 
 ## Avoid

@@ -27,6 +27,15 @@ name: writing-web
 - Treat accessibility, responsive behavior, and safe rendering as required behavior.
 - Escape untrusted output; avoid `innerHTML` unless project sanitizer marks content trusted.
 
+## Comments
+
+- Use HTML comments only for template boundaries, generated blocks, or security assumptions that are not obvious from markup.
+- Use CSS comments for non-obvious hacks, browser constraints, or integration boundaries.
+- Use JS comments only for non-obvious constraints, invariants, side effects, tradeoffs, or browser quirks.
+- Keep comments short. Move longer rationale to docs, issue links, or design notes.
+- Do not comment obvious markup, selectors, declarations, or event handlers.
+- Keep UI tests readable without comments; add one only for unobvious fixtures, browser setup, timing, or regression context.
+
 ## Verification
 
 - Run project-configured format, lint, validation, tests, and browser checks for the changed files.

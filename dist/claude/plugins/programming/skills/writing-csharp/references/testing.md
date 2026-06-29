@@ -7,7 +7,7 @@ Read before adding or reshaping C# tests.
 - Use the project's test framework: xUnit, NUnit, or MSTest. Do not switch frameworks in scoped work.
 - Test behavior through public APIs, handlers, services, commands, or other stable seams.
 - Cover success, failure, boundary, cancellation, and regression behavior when relevant.
-- Keep tests readable without comments.
+- Avoid comments in tests. Add one only for unobvious fixtures, timing, concurrency, external services, or regression context.
 
 ## Commands
 

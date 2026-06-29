@@ -8,7 +8,7 @@ Read before adding or reshaping Go tests.
 - Test behavior through public APIs and stable package boundaries.
 - Prefer table-driven tests for input matrices, edge cases, and error variants.
 - Cover success, error, boundary, cancellation, and concurrency behavior when relevant.
-- Keep tests readable without comments.
+- Avoid comments in tests. Add one only for unobvious fixtures, timing, concurrency, or regression context.
 
 ## Assertions
 

@@ -19,6 +19,7 @@
 - Assert exit status, stdout, stderr, and changed files when relevant.
 - Keep tests deterministic: set env vars, locale-sensitive values, PATH fixtures, and working directory explicitly.
 - Test the intended shell explicitly instead of relying on the runner's login shell.
+- Avoid comments in tests. Add one only for unobvious fixtures, environment setup, portability constraints, or regression context.
 
 ## Verification flow
 

@@ -41,6 +41,16 @@ Read [principles.md](references/principles.md) before writing, changing, or revi
 - Preview features require explicit user or project approval and a visible compiler/test flag.
 - Kotlin: follow the configured Kotlin language/API version. Do not use a Kotlin 2.x feature unless the build already enables it.
 
+## Comments, Javadoc, and KDoc
+
+- Use Javadoc or KDoc for visible public APIs when the project expects generated docs.
+- Keep API docs to a useful summary, contract, edge case, or effect. Do not restate names and signatures.
+- Omit comments for simple obvious getters, overrides, and data holders when there is nothing useful to add.
+- Add implementation comments only for non-obvious constraints, invariants, side effects, tradeoffs, or framework quirks.
+- Keep comments short. Move longer rationale to docs, issue links, or design notes.
+- Do not comment obvious code.
+- Keep tests readable without comments; add one only for unobvious fixtures, timing, concurrency, framework setup, or regression context.
+
 ## Verification
 
 Run focused module tests and format/lint while editing, then the project-configured build, tests, lint, static analysis, and formatting checks before final output. Prefer Gradle/Maven test filtering over full-suite runs in the hot loop.
