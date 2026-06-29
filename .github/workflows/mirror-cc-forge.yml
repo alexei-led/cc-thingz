@@ -15,7 +15,7 @@ jobs:
     env:
       CC_FORGE_TOKEN: ${{ secrets.CC_FORGE_TOKEN }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
