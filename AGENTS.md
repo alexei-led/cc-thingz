@@ -85,6 +85,7 @@ Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allo
 - **looking-up-docs** — Find current docs via Context7, official registries/docs, Perplexity/web, and GitHub fallback
 - **researching-web** — Web research via platform web tools with grounded source selection, source-following, and stale-source reporting
 - **reviewing-instructions** — Review and score AI-facing instruction files with scoped lint, model resolution, scoring caps, confidence, and calibration anchors
+- **writing-skills** — Create, split, slim, and route repository skills, references, overlays, and plugin placement
 - **sequential-thinking** — Structured stepwise reasoning with explicit revisions and branches
 
 ## Browser Automation

@@ -1,7 +1,7 @@
 {
   "name": "discovery",
   "version": "6.1.0",
-  "description": "Research, docs lookup, instruction review, reasoning, and agent configuration audits",
+  "description": "Research, docs lookup, skill authoring, instruction review, reasoning, and agent configuration audits",
   "author": {
     "name": "Alexei Ledenev",
     "email": "alexei.led@gmail.com"

@@ -2,8 +2,9 @@
 description: Audit and improve AI coding-agent configuration. Use when reviewing or
   changing Claude Code, Pi, Codex, skill, agent, hook, MCP, permission, package, or
   generated-export setup. Default is review-only; fixes require explicit user approval
-  or --fix. NOT for application config, git hygiene, code bugs, ordinary docs, or
-  generated files without their source.
+  or --fix. NOT for score-only instruction review or prompt lint; use reviewing-instructions.
+  NOT for application config, git hygiene, code bugs, ordinary docs, or generated
+  files without their source.
 name: evolving-config
 ---
 
@@ -43,8 +44,14 @@ Review these AI-agent configuration surfaces:
 - Plugin/package manifests and source-to-generated export rules.
 - chezmoi or dotfile copies only when deployment is part of the request.
 
-Do not review app runtime config, git hook hygiene, product docs, source-code
-quality, or generated output as the source of truth.
+Do not review:
+
+- app runtime config
+- git hook hygiene
+- score-only instruction prose or prompt quality; use `reviewing-instructions`
+- product docs
+- source-code quality
+- generated output as the source of truth
 
 ## Workflow
 
@@ -52,11 +59,12 @@ quality, or generated output as the source of truth.
 2. If ambiguous, list detected config surfaces and ask which to audit.
 3. Inventory relevant files with paths, sizes, and source/generated status.
 4. Read current files before recommending changes.
-5. Use the platform reference to check expected structure and high-risk settings.
-6. Use official docs or changelogs when syntax, feature availability, or deprecation status is uncertain.
-7. Use broad web research only for gaps or ecosystem comparisons; do not recommend changes from uncited blogs alone.
-8. Classify findings by impact and disruption.
-9. In fix mode, apply only approved changes and verify with available validation commands.
+5. Use the platform reference and shared rubric to check expected structure, high-risk settings, invocation fit, and always-loaded context cost.
+6. When the audit touches skills, agents, prompts, or package manifests, inspect thin-router risk, weak pointers to must-read support files, and whether plugin grouping forces unrelated instructions into startup context.
+7. Use official docs or changelogs when syntax, feature availability, or deprecation status is uncertain.
+8. Use broad web research only for gaps or ecosystem comparisons; do not recommend changes from uncited blogs alone.
+9. Classify findings by impact and disruption.
+10. In fix mode, apply only approved changes and verify with available validation commands.
 
 ## Priorities
 
@@ -66,7 +74,10 @@ Flag these first:
 - unsafe permissions, sandbox bypasses, broad MCP access, or secret exposure
 - generated exports edited by hand instead of source files
 - duplicate or overlapping skills, agents, hooks, prompts, or trigger descriptions
-- bloated startup context or always-loaded instructions that should be on demand
+- model-invoked descriptions that do not earn their always-loaded cost
+- thin-router skills or prompts with little independent capability
+- weak pointers from entrypoints to must-read support files
+- bloated startup context or plugin grouping that should be on demand
 - hooks or extensions that hide errors, block safe work, or run risky commands
 - missing validation for config that produces skills, agents, hooks, or packages
 

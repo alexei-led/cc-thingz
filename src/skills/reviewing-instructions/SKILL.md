@@ -17,6 +17,7 @@ ordinary docs or source code.
 
 - `references/scoring-rubric.md` for gates, 0-10 bands, caps, confidence, and output schema.
 - `references/model-resolution.md` for model alias mapping and fallback rules.
+- `references/skill-architecture.md` only when reviewing `SKILL.md`, `AGENT.md`, `body.md`, or agent-facing references loaded by them.
 - `references/calibration.md` only when a score is borderline or confidence is low.
 - `references/models/<family>.md` only after model family resolution.
 
@@ -98,11 +99,12 @@ For each confirmed file:
 1. Read the file fully.
 2. Confirm it is agent-facing.
 3. Resolve model context.
-4. Apply hard gates from the scoring rubric.
-5. Score each dimension using band-first 0-10 anchors.
-6. Apply caps and confidence rules.
-7. Rate applicable lint rules as PASS, WARN, or FAIL.
-8. List the top 1-3 improvements by impact.
+4. If the file is a skill or agent instruction file, load `references/skill-architecture.md` and map its heuristics into the existing dimensions. Do not create a separate score.
+5. Apply hard gates from the scoring rubric.
+6. Score each dimension using band-first 0-10 anchors.
+7. Apply caps and confidence rules.
+8. Rate applicable lint rules as PASS, WARN, or FAIL.
+9. List the top 1-3 improvements by impact.
 
 Use evidence for every score and finding: section name, line number, exact text,
 or missing evidence. No evidence, no finding.
@@ -150,7 +152,7 @@ path/to/file.md — overall X / 10, confidence <high|medium|low>
 
 ### Findings
 
-1. path — <severity> <rule or dimension>: <issue>. Evidence: <section/line/text>. Fix: <concrete fix>.
+1. path — <severity> <rule or dimension[/subtype]>: <issue>. Evidence: <section/line/text>. Fix: <concrete fix>.
 
 ### Top Improvements
 

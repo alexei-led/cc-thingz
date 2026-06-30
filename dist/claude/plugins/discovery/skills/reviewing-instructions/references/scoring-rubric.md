@@ -286,6 +286,24 @@ Question: Is the main file short enough while still pointing to needed detail?
 
 - Main body is focused, rare detail lives in named references, and read conditions are explicit.
 
+## Skill-architecture heuristics
+
+Use `references/skill-architecture.md` only for skill or agent instruction files
+such as `SKILL.md`, `AGENT.md`, `body.md`, and agent-facing references loaded by
+those entrypoints.
+
+Map its heuristics into existing dimensions:
+
+- Signal Density: no-op lines, duplicated meaning, sediment.
+- Scope Specificity: branch ambiguity, thin-router scope, missing invocation boundary.
+- Output Structure or Failure Handling: weak completion criteria, premature completion risk in step-based workflows.
+- Grounding Discipline: weak legwork demand that lets the model skip evidence or verification.
+- Routing Precision: invocation fit, one trigger per branch, synonym piles in descriptions.
+- Progressive Disclosure: weak pointers to must-read support files, poor co-location, sprawl in the main file.
+
+Do not score these heuristics separately. They are defect types and sub-checks,
+not extra dimensions.
+
 ## Lint rule mapping
 
 Universal rules:

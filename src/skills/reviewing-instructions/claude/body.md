@@ -28,6 +28,7 @@ Each task prompt must include:
 - resolved model context or instruction to resolve it
 - path to `references/scoring-rubric.md`
 - path to `references/model-resolution.md`
+- path to `references/skill-architecture.md` when the scope includes `SKILL.md`, `AGENT.md`, `body.md`, or agent-facing references
 - requirement to cite evidence for every score
 - requirement to apply gates and caps before final score
 

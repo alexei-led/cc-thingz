@@ -1,12 +1,13 @@
 name: discovery
 version: 6.1.0
-description: Research, docs lookup, instruction review, reasoning, and agent configuration audits
+description: Research, docs lookup, skill authoring, instruction review, reasoning, and agent configuration audits
 skills:
   - brainstorming-ideas
   - evolving-config
   - looking-up-docs
   - researching-web
   - reviewing-instructions
+  - writing-skills
   - sequential-thinking
 agents:
   - reviewer

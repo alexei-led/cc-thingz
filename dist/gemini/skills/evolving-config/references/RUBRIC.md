@@ -39,13 +39,20 @@ Suggested:
 
 - Keep startup context short and durable.
 - Move specialized workflows into skills, commands, or prompts loaded on demand.
+- Check whether a model-invoked description earns its always-loaded cost.
+- Prefer user-invoked or manual reference surfaces for niche or thin-router behavior.
+- Weak pointers from an entrypoint to must-read support files are a config bug, not just a docs gap.
 - Remove duplicate rules unless they deliberately enforce a critical behavior.
 - Treat long instruction files as a risk only when content is low-signal or always loaded.
+- Package or plugin grouping should not load unrelated instruction surfaces together when on-demand loading would work.
 
 ### Routing
 
 - Names and descriptions must say when to use the component and when not to use it.
 - Adjacent skills or agents should not share the same trigger phrases unless one delegates to the other.
+- Keep one trigger surface per branch; synonym piles are duplication, not breadth.
+- A component that mostly delegates to another one needs distinct trigger vocabulary or should fold into the owner.
+- Prose-quality review or score-only prompt lint belongs to `reviewing-instructions`, not this rubric.
 - Do not route app config, git hygiene, or ordinary docs into this skill.
 
 ### Safety

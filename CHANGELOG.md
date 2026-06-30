@@ -8,6 +8,23 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.2.0] - 2026-06-30
+
+### Added
+
+- Added a new `writing-skills` skill for creating, splitting, slimming, and routing repository skills, references, overlays, and plugin placement.
+- Added `skill-principles.md` and `repo-conventions.md` references for skill authoring, invocation decisions, progressive disclosure, pruning, and local build/export rules.
+- Added `skill-architecture.md` for `reviewing-instructions` so skill and agent reviews can diagnose invocation fit, thin-router risk, weak pointers, completion criteria, premature completion, and no-op or sprawl failure modes.
+- Added focused compile coverage for the new `writing-skills` source skill.
+
+### Changed
+
+- Expanded the `discovery` plugin from 6 to 7 skills and updated public catalogs and counts across AGENTS.md, README, marketplace manifests, and generated target exports.
+- `reviewing-instructions` now runs a conditional skill-architecture pass for skill and agent instruction files while keeping the existing score model unchanged.
+- `reviewing-instructions` findings can now label subtypes such as `thin-router`, `weak-pointer`, `no-op`, `duplication`, `sediment`, and `sprawl` under the existing rubric dimensions.
+- `evolving-config` now audits model-invoked context cost, thin-router components, weak pointers to must-read support files, and plugin grouping that loads unrelated instructions together.
+- `evolving-config` now routes score-only instruction or prompt review to `reviewing-instructions` instead of treating it as a generic config audit.
+
 ## [6.1.0] - 2026-06-29
 
 ### Added
