@@ -8,6 +8,13 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.2.1] - 2026-06-30
+
+### Changed
+
+- `reviewing-instructions` now asks for clarification before omitted-scope discovery expands beyond one skill, agent, or plugin, and before any unconfirmed whole-repo structural pre-pass.
+- `evolving-config` output findings now support optional `<category[/subtype]>` tags such as `routing/thin-router` and `context/weak-pointer`.
+
 ## [6.2.0] - 2026-06-30
 
 ### Added

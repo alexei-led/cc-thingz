@@ -84,6 +84,10 @@ Flag these first:
 
 ## Output
 
+Use optional finding tags such as `routing/thin-router`,
+`context/weak-pointer`, or `invocation/over-model-invoked` when they sharpen the
+issue.
+
 ```markdown
 ## Config Audit
 
@@ -100,15 +104,15 @@ Confidence: high | medium | low
 
 ### Critical
 
-- `path:line` — issue. Evidence: <fact>. Fix: <action>.
+- `path:line` — <category[/subtype]>: <issue>. Evidence: <fact>. Fix: <action>.
 
 ### Important
 
-- `path:line` — issue. Evidence: <fact>. Fix: <action>.
+- `path:line` — <category[/subtype]>: <issue>. Evidence: <fact>. Fix: <action>.
 
 ### Suggested
 
-- `path:line` — issue. Evidence: <fact>. Fix: <action>.
+- `path:line` — <category[/subtype]>: <issue>. Evidence: <fact>. Fix: <action>.
 
 ### Working Well
 

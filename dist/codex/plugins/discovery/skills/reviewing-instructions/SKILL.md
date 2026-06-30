@@ -61,6 +61,7 @@ Build the review set in this order:
 
 For a single explicit file, review that file only unless the user asks for linked files.
 For a directory, include its entrypoint and local support files.
+If scope is omitted and discovery would likely expand past one skill, one agent, or one plugin, ask one clarifying question before step 4.
 
 ## Model resolution
 
@@ -86,8 +87,11 @@ Run the lint script scoped to the review target when Bash is available:
 uv run python src/skills/reviewing-instructions/scripts/lint-instructions.py <scope>
 ```
 
-If scope is omitted, run the whole-repo pre-pass. If the script ignores scope,
-filter reported findings to reviewed files before scoring.
+If scope is omitted and broad review was not explicitly confirmed, ask one
+clarifying question before any whole-repo pre-pass.
+If scope is omitted and broad review is confirmed, run the whole-repo pre-pass.
+If the script ignores scope, filter reported findings to reviewed files before
+scoring.
 
 If the script fails or is unavailable, record `Structural pre-pass: skipped` with
 the exact reason and continue semantic review.
@@ -171,7 +175,7 @@ Omit empty sections. If no findings remain after evidence checks, say `No confir
 
 ## Failure handling
 
-- Missing scope and broad review would be expensive: ask one clarifying question.
+- Missing scope and broad discovery or whole-repo lint would be expensive: ask one clarifying question before proceeding.
 - Unknown model alias: use generic, report the alias gap, and lower confidence.
 - Vendor docs unavailable: use local model reference or generic; do not block review.
 - Conflicting local and vendor guidance: local project rules win; report the conflict.
