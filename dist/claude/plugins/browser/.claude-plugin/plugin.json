@@ -1,6 +1,6 @@
 {
   "name": "browser",
-  "version": "6.2.1",
+  "version": "6.2.2",
   "description": "Browser-based testing, validation, screenshots, recordings, and quick automation",
   "author": {
     "name": "Alexei Ledenev",
