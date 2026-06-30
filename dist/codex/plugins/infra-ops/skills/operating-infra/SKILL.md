@@ -1,10 +1,10 @@
 ---
 description: Author, inspect, troubleshoot, and review infrastructure across IaC,
   Kubernetes, cloud resources, containers, CI/CD, and Linux hosts. Use when changing
-  Terraform/OpenTofu, Kubernetes, Helm, Kustomize, Dockerfiles, GitHub Actions, AWS,
-  GCP, Cloud Run, BigQuery, IAM, logs, instances, or service health. NOT for deploy/apply/rollback
-  workflows (see deploying-infra). NOT for shell scripts or generic command pipelines
-  (see writing-shell).
+  Terraform/OpenTofu, Kubernetes, Helm, Kustomize, Dockerfiles, GitHub Actions workflow/job/permissions
+  semantics, AWS, GCP, Cloud Run, BigQuery, IAM, logs, instances, or service health.
+  NOT for deploy/apply/rollback workflows (see deploying-infra). NOT for shell scripts,
+  generic command pipelines, or only the shell body inside `run:` steps (see writing-shell).
 name: operating-infra
 ---
 
@@ -15,7 +15,11 @@ name: operating-infra
 - Work from files, plans, logs, and read-only commands before changing anything.
 - Do not run apply, delete, destroy, or rollback until identity, exact resources, blast radius, and plan/diff/inventory are shown and the user confirms.
 - If the task is deployment, rollout, rollback, or production apply, use `deploying-infra`.
-- If the task is only shell scripts or generic command pipelines, use `writing-shell`.
+- If the task is only shell scripts, generic command pipelines, or the shell body
+  inside a GitHub Actions `run:` step, use `writing-shell`.
+- For GitHub Actions, workflow structure, triggers, jobs, permissions, runners,
+  actions, environments, secrets, caching, concurrency, and policy stay here.
+  Mixed workflow and shell-body changes compose with `writing-shell`.
 
 ## Role behavior
 
@@ -29,7 +33,7 @@ Load every matching reference:
 - Terraform/OpenTofu files, modules, state, or plans → [terraform.md](references/terraform.md)
 - Kubernetes manifests or `kustomization.yaml` → [kubernetes.md](references/kubernetes.md)
 - `Chart.yaml`, Helm values, or chart templates → [helm.md](references/helm.md)
-- GitHub workflow YAML → [github-actions.md](references/github-actions.md)
+- GitHub workflow YAML outside pure `run:` shell bodies → [github-actions.md](references/github-actions.md)
 - `Dockerfile` or container image build/release concerns → [dockerfile.md](references/dockerfile.md)
 - AWS CLI, EC2, ECS, Lambda, S3, RDS, IAM, or CloudWatch → [aws.md](references/aws.md)
 - GCP CLI, GCS, Compute Engine, IAM, quotas, or Cloud Logging → [gcp.md](references/gcp.md)

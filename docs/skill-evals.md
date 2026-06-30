@@ -7,33 +7,35 @@ Skill evals are paid LLM regression tests for `SKILL.md` behavior. Keep them out
 Store fixtures under `tests/skill-evals/<plugin>/<skill>/`:
 
 ```text
-tests/skill-evals/discovery/using-modern-cli/
+tests/skill-evals/discovery/reviewing-instructions/
 └── evals/
     ├── evals.json
     └── files/
         └── optional-fixture.txt
 ```
 
-`make skill-evals-prepare` copies the matching deployable skill from `plugins/<plugin>/skills/<skill>/` into `/tmp/cc-thingz-skill-eval-root` and injects `evals/` there. This gives `agent-skills-eval` the layout it expects without shipping evals in plugin packages.
+`<plugin>` must match the current plugin name from `src/plugins/<plugin>/plugin.yaml`.
+
+`make skill-evals-prepare` copies the matching built skill from `dist/<target>/plugins/<plugin>/skills/<skill>/` into `/tmp/cc-thingz-skill-eval-root` and injects `evals/` there. This gives `agent-skills-eval` the layout it expects without shipping evals in plugin packages.
 
 Use `SKILL_EVAL_SOURCE=skills-codex` to test the Codex/Gemini overlays while preserving the evaluator's expected `plugins/<plugin>/skills/<skill>/` output layout. Pi exports are validated locally by `make validate`; paid eval preparation currently supports source skills and Codex/Gemini overlays only.
 
-`make validate` runs `validate-no-plugin-evals`, which fails if `plugins/*/skills/*/evals` exists.
+`make validate` runs `validate-no-plugin-evals`, which fails if any deployable skill tree under `dist/<target>/plugins/*/skills/*/evals` is populated from source-controlled eval fixtures.
 
 ## Basic eval file
 
 ```json
 {
-  "skill_name": "using-modern-cli",
+  "skill_name": "reviewing-instructions",
   "evals": [
     {
-      "id": "rewrite-legacy-shell-commands",
-      "name": "rewrite legacy shell commands",
-      "prompt": "Rewrite grep/find/cat/ls commands with modern CLI tools.",
-      "expected_output": "The response uses rg, fd, bat, eza, dust, and procs.",
+      "id": "clean-result-keeps-scores",
+      "name": "clean result keeps scores",
+      "prompt": "Review a clean AGENT.md and describe the required output contract.",
+      "expected_output": "The response keeps Summary and per-file Scores with evidence, and uses No confirmed findings only for Findings.",
       "assertions": [
-        "The output uses rg instead of grep for text search.",
-        "The output uses fd instead of find for file discovery."
+        "The output keeps the Summary section.",
+        "The output keeps per-file Scores with evidence."
       ]
     }
   ]
@@ -147,7 +149,7 @@ make skill-evals
 Run one skill:
 
 ```bash
-make skill-evals SKILL_EVAL_INCLUDE='discovery/skills/using-modern-cli'
+make skill-evals SKILL_EVAL_INCLUDE='discovery/skills/reviewing-instructions'
 ```
 
 Run against exported Codex/Gemini skill overlays:

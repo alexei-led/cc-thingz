@@ -1,0 +1,29 @@
+{
+  "skill_name": "researching-web",
+  "evals": [
+    {
+      "id": "release-behavior-current-state",
+      "name": "release behavior current state",
+      "prompt": "A user asks: research what changed in the latest React Router release and whether teams should adopt it now. Describe the research workflow and output.",
+      "expected_output": "The response treats this as current web research, gathers primary release notes or official sources, separates evidence from recommendation, and reports stale-source risk instead of giving exact API syntax from memory.",
+      "assertions": [
+        "The output treats latest release behavior or adoption status as researching-web scope.",
+        "The output uses current web evidence such as official release notes or primary sources.",
+        "The output separates sourced facts from upgrade recommendation or judgment.",
+        "The output reports unknowns, source conflicts, or stale-source risk."
+      ]
+    },
+    {
+      "id": "exact-syntax-routes-docs",
+      "name": "exact syntax routes docs",
+      "prompt": "A user asks: show the exact syntax for React Router createBrowserRouter. Describe how the research skill should respond.",
+      "expected_output": "The response identifies exact API syntax as documentation lookup, routes to looking-up-docs, and avoids broad research unless source discovery is needed for primary docs.",
+      "assertions": [
+        "The output says exact API syntax belongs to looking-up-docs.",
+        "The output routes to documentation lookup rather than a broad research workflow.",
+        "The output avoids answering syntax from memory as the main response.",
+        "The output may mention official docs as the primary source."
+      ]
+    }
+  ]
+}

@@ -9,7 +9,9 @@ Use non-interactive, pipe-friendly tools with stable stdout and useful exit code
 - Do not silently install missing tools.
 - Use JSON, YAML, CSV, TOML, or XML parser output over text scraping.
 - Keep macOS/Linux portability in mind; document GNU-only requirements when unavoidable.
-- Route cloud, Kubernetes, Terraform, host, network, Docker, CI/CD, secrets, and supply-chain work to `operating-infra`.
+- Route cloud, Kubernetes, Terraform, host, network, Docker, secrets,
+  supply-chain policy, and GitHub Actions workflow/job/permissions semantics to
+  `operating-infra`; keep shell code inside `run:` blocks here.
 
 ## Common choices
 

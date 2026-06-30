@@ -147,6 +147,10 @@ Proposed shape:
 Patch summary:
 
 - <small bullet list of edits>
+
+Verification:
+
+- <checks the applier should run, or not run — read-only role>
 ```
 
 ## Failure handling

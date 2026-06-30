@@ -8,6 +8,17 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.2.2] - 2026-06-30
+
+### Fixed
+
+- `discovery` now exposes `engineer` so skill authoring and approved agent-config fixes have a mutating role.
+- Clarified `src/plugins/*/plugin.yaml` ownership: plugin manifests route to `evolving-config`, while `reviewing-instructions` scores only agent-facing markdown/prompt files and keeps scored evidence on clean results.
+- Split GitHub Actions routing between workflow/job/permissions semantics (`operating-infra`) and `run:` shell bodies (`writing-shell`).
+- Tightened exact docs lookup versus current-state/release research routing between `looking-up-docs` and `researching-web`.
+- Added `Verification:` to read-only `writing-skills` proposals and current-plugin eval fixtures for the routing blockers.
+- Updated `docs/skill-evals.md` to match the current plugin/skill layout and built eval-prep path.
+
 ## [6.2.1] - 2026-06-30
 
 ### Changed

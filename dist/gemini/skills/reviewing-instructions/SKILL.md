@@ -1,9 +1,9 @@
 ---
 description: 'Use when asked to lint, audit, review, or score AI-facing instruction
   files such as SKILL.md, AGENT.md, AGENTS.md, CLAUDE.md, platform body.md files,
-  prompt files, rules, policies, and agent-facing references. NOT for application
-  code review, harness configuration review, ordinary docs, tests, or generated build
-  output.
+  prompt files, rules, policies, and agent-facing references. NOT for plugin manifests,
+  application code review, harness configuration review, ordinary docs, tests, or
+  generated build output.
 
   '
 name: reviewing-instructions
@@ -32,19 +32,24 @@ The user may pass:
 - `--model <name>` to override model family or variant
 - requests such as lint, audit, review, score, compare, or rerank
 
-Plugin name without a path separator expands to matching `src/skills/<name>`,
-`src/agents/<name>`, or `src/plugins/<name>` when present.
+A name without a path separator expands to matching `src/skills/<name>` or
+`src/agents/<name>`. If it matches `src/plugins/<name>`, use `plugin.yaml`
+only as routing evidence for agent-facing markdown or prompt files when the user
+explicitly asks for instruction scoring. Route plugin manifest review to
+`evolving-config`.
 
 ## Scope boundaries
 
 Review only markdown or prompt files that guide an AI agent or coding assistant.
 Include support files only when an entrypoint tells the agent to read them or when
-they live under that skill or agent folder.
+they live under that skill or agent folder. For plugins, score only agent-facing
+markdown or prompt files; never score `plugin.yaml`.
 
 Do not review:
 
 - application source code, tests, or generated artifacts
 - ordinary README, changelog, product, or design docs unless agent-facing
+- plugin or package manifests such as `src/plugins/*/plugin.yaml`; use `evolving-config`
 - harness config quality; use evolving-config
 - code quality; use reviewing-code
 
@@ -171,7 +176,9 @@ path/to/file.md — overall X / 10, confidence <high|medium|low>
 - path — <reason>
 ```
 
-Omit empty sections. If no findings remain after evidence checks, say `No confirmed findings.`
+Omit empty optional sections. If no findings remain after evidence checks,
+`No confirmed findings.` replaces only the Findings section; Summary and per-file
+Scores with evidence remain required.
 
 ## Failure handling
 

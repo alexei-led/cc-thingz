@@ -1,0 +1,29 @@
+{
+  "skill_name": "looking-up-docs",
+  "evals": [
+    {
+      "id": "exact-api-syntax-docs",
+      "name": "exact api syntax docs",
+      "prompt": "A user asks: what is the exact current syntax for FastAPI dependency overrides in tests? Describe the docs lookup workflow.",
+      "expected_output": "The response treats this as exact API documentation lookup, identifies package/version when possible, uses Context7 or official docs, and grounds syntax in primary sources instead of broad research.",
+      "assertions": [
+        "The output treats exact API syntax as looking-up-docs scope.",
+        "The output identifies the package or version from local evidence when possible.",
+        "The output uses Context7 or official primary docs before broad web research.",
+        "The output says not to answer syntax from memory when lookup tools are available."
+      ]
+    },
+    {
+      "id": "release-behavior-routes-research",
+      "name": "release behavior routes research",
+      "prompt": "A user asks: what changed in the latest FastAPI release and should our team upgrade now? Describe how the docs lookup skill should respond.",
+      "expected_output": "The response identifies this as current-state or release-behavior research, routes to researching-web, and does not run the exact syntax/docs lookup chain as the primary workflow.",
+      "assertions": [
+        "The output says latest release behavior or upgrade advice is not exact API syntax lookup.",
+        "The output routes the request to researching-web or web research.",
+        "The output avoids using docs lookup alone to answer upgrade recommendation or current-state questions.",
+        "The output may offer docs lookup later for exact APIs after the research decision."
+      ]
+    }
+  ]
+}

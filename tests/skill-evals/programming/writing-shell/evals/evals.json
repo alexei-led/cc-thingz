@@ -1,0 +1,18 @@
+{
+  "skill_name": "writing-shell",
+  "evals": [
+    {
+      "id": "github-actions-run-body-boundary",
+      "name": "github actions run body boundary",
+      "prompt": "A user asks: fix this Bash inside a GitHub Actions run: block; it uses unquoted variables and unsafe rm, but the workflow permissions and jobs should stay unchanged. Describe the workflow and verification.",
+      "expected_output": "The response treats the run: shell body as writing-shell scope, keeps workflow/job/permissions semantics with operating-infra if they change, applies shell safety rules, and verifies with shell and workflow checks as appropriate.",
+      "assertions": [
+        "The output says shell code inside a GitHub Actions run: block belongs to writing-shell.",
+        "The output routes workflow YAML structure, jobs, permissions, or actions to operating-infra if those change.",
+        "The output focuses on shell safety such as quoting, avoiding unsafe rm, and avoiding eval-like patterns.",
+        "The output includes shell verification such as shfmt, ShellCheck, Bats, or ShellSpec.",
+        "The output does not claim workflow permissions are writing-shell scope."
+      ]
+    }
+  ]
+}

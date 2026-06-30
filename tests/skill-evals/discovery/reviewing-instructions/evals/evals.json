@@ -1,0 +1,29 @@
+{
+  "skill_name": "reviewing-instructions",
+  "evals": [
+    {
+      "id": "plugin-manifest-routes-config",
+      "name": "plugin manifest routes config",
+      "prompt": "A user asks: review src/plugins/discovery/plugin.yaml for plugin composition, role fit, and manifest quality. Describe how the reviewing-instructions skill should respond.",
+      "expected_output": "The response treats plugin.yaml as config/routing evidence, routes manifest and composition review to evolving-config, and only scores agent-facing markdown or prompt files when instruction scoring is explicitly requested.",
+      "assertions": [
+        "The output says plugin.yaml is a plugin/config manifest, not an instruction file to score.",
+        "The output routes plugin manifest or plugin composition review to evolving-config.",
+        "The output limits reviewing-instructions scope to AI-facing markdown or prompt files.",
+        "The output avoids assigning instruction scores to the YAML manifest."
+      ]
+    },
+    {
+      "id": "clean-result-keeps-scores",
+      "name": "clean result keeps scores",
+      "prompt": "A user asks: review a clean AGENT.md and there are no confirmed findings after evidence checks. Describe the required clean output contract.",
+      "expected_output": "The response keeps the Instruction Review Report with Summary and per-file Scores containing evidence, and uses No confirmed findings only for the Findings section.",
+      "assertions": [
+        "The output keeps the Summary section in a clean result.",
+        "The output keeps per-file Scores with evidence in a clean result.",
+        "The output says No confirmed findings replaces only the Findings section.",
+        "The output does not collapse the whole report to only No confirmed findings."
+      ]
+    }
+  ]
+}

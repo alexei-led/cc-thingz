@@ -10,5 +10,6 @@ skills:
   - writing-skills
   - sequential-thinking
 agents:
+  - engineer
   - reviewer
 hooks: []

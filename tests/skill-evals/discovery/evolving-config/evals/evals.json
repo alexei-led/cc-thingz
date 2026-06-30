@@ -1,0 +1,18 @@
+{
+  "skill_name": "evolving-config",
+  "evals": [
+    {
+      "id": "plugin-manifest-owner",
+      "name": "plugin manifest owner",
+      "prompt": "A user asks: audit src/plugins/discovery/plugin.yaml for skill grouping, generated export risk, and whether its agents fit its skills. Describe the workflow and output.",
+      "expected_output": "The response treats plugin.yaml as an AI-agent configuration manifest, inventories the source/generated surfaces, checks plugin grouping and role envelopes, proposes the smallest config fix, and verifies with build/validate checks.",
+      "assertions": [
+        "The output treats src/plugins/discovery/plugin.yaml as config or plugin manifest scope.",
+        "The output checks whether listed agents can support the plugin's skills or fix mode.",
+        "The output considers source-to-generated export correctness and avoids editing generated output as source.",
+        "The output proposes scoped config fixes rather than instruction-score findings.",
+        "The output includes validation such as make validate, make build, or generated drift checks."
+      ]
+    }
+  ]
+}

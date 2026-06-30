@@ -247,7 +247,7 @@ The `AGENTS.md` at the repo root provides a skill catalog readable by any tool s
 
 Repo-wide code search, AST evidence, codegraph, and GitNexus workflows are intentionally outside cc-thingz. Use a separate codebase-analysis plugin for repo-wide analysis, such as [architect](https://github.com/alexei-led/architect). cc-thingz does not ship a general repo-wide code-search skill; its review, fix, test, and refactor skills may use GitNexus, codegraph, `rg`, `fd`, LSP, or similar local tools when they are already available and help answer a focused change-safety question.
 
-Portable docs lookup is one public `looking-up-docs` skill. It starts with the [Context7 CLI](https://github.com/upstash/context7), then falls back to official ecosystem docs/registries, Perplexity-backed source discovery, and GitHub releases/source when version-specific docs are missing.
+Portable exact API/docs lookup is one public `looking-up-docs` skill. It starts with the [Context7 CLI](https://github.com/upstash/context7), then falls back to official ecosystem docs/registries, Perplexity-backed source discovery, and GitHub releases/source when version-specific docs are missing. Use `researching-web` instead for comparisons, current-state questions, or release-behavior research.
 
 ```bash
 npm install -g ctx7@latest
@@ -305,7 +305,7 @@ All agents and several skills optionally integrate with [claude-mem](https://git
 | [**browser**](src/plugins/browser/plugin.yaml)         | 2      | 1      | Browser testing, validation, screenshots, recordings, and quick automation                       | programming |
 | [**infra-ops**](src/plugins/infra-ops/plugin.yaml)     | 2      | 1      | Kubernetes, Terraform, Helm, GitHub Actions, AWS, GCP                                            | —           |
 | [**programming**](src/plugins/programming/plugin.yaml) | 8      | 1      | Idiomatic development across C# /.NET, Go, Java/Kotlin, Python, Rust, TypeScript, shell, and web | dev-flow    |
-| [**discovery**](src/plugins/discovery/plugin.yaml)     | 7      | 1      | Research, docs lookup, skill authoring, instruction review, reasoning, and agent config audits   | —           |
+| [**discovery**](src/plugins/discovery/plugin.yaml)     | 7      | 2      | Research, docs lookup, skill authoring, instruction review, reasoning, and agent config audits   | —           |
 
 **Totals**: 29 skills, 2 plugin-owned role agents (`engineer`, `reviewer`), 10 hooks
 
@@ -317,25 +317,25 @@ Skills teach the AI model domain-specific knowledge and workflows. All skills ar
 
 Invoke as `/skill-name` or let the skill enforcer suggest them.
 
-| Skill                     | What It Does                                                                                                                       | Example Trigger                       |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
-| `brainstorming-ideas`     | Brainstorm ideas and stress-test draft plans or trade-offs                                                                         | "brainstorm", "debate plan"           |
-| `cleanup-git`             | Remove merged branches and stale worktrees                                                                                         | "cleanup branches", "tidy git"        |
-| `committing-code`         | Smart git commits with logical grouping                                                                                            | "commit", "save changes"              |
-| `configuring-git-hygiene` | Configure git hooks, Gitleaks, `.gitignore`, git config, and guardrails                                                            | "setup pre-commit", "gitleaks"        |
-| `deploying-infra`         | Validate infrastructure changes and, after explicit confirmation, apply Terraform, Helm, Kustomize, or Kubernetes deployments      | "deploy to staging", "rollout"        |
-| `documenting-code`        | Update docs based on recent changes                                                                                                | "update docs", "document"             |
-| `evolving-config`         | Audit AI coding-agent configuration; review-only by default, explicit approval for fixes                                           | "evolve", "audit config"              |
-| `fixing-code`             | Reproduce, diagnose, patch, regression-test, and verify one code defect at a time                                                  | "fix errors", "make it pass"          |
-| `improving-tests`         | Improve test design, speed, and coverage with behavior seams, fast feedback, TDD, and test refactoring                             | "improve tests", "slow tests"         |
-| `looking-up-docs`         | Find current docs via Context7, official registries/docs, Perplexity/web, and GitHub fallback                                      | "ctx7", "latest API", "look up"       |
-| `researching-web`         | Web research via platform web tools with grounded source selection and stale-source reporting                                      | "research", "X vs Y"                  |
-| `reviewing-code`          | Evidence-backed code review with severity/confidence rubric, quick/deep/team/external modes, and optional graph evidence           | "review code", "check this"           |
-| `browser-automation`      | Rendered UI exploration, validation, screenshots, recordings, and browser test flows                                               | "use browser", "screenshot", "e2e"    |
-| `reviewing-instructions`  | Review and score AI-facing instruction files with scoped lint, model resolution, scoring caps, confidence, and calibration anchors | "lint instructions", "audit prompts"  |
-| `writing-skills`          | Create, split, slim, and route repository skills, references, overlays, and plugin placement                                       | "write a skill", "split this skill"   |
-| `sequential-thinking`     | Structured stepwise reasoning with explicit revisions and branches                                                                 | "think step by step", "plan this out" |
-| `using-git-worktrees`     | Isolated git worktrees for parallel development                                                                                    | "worktree", "isolate"                 |
+| Skill                     | What It Does                                                                                                                  | Example Trigger                       |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| `brainstorming-ideas`     | Brainstorm ideas and stress-test draft plans or trade-offs                                                                    | "brainstorm", "debate plan"           |
+| `cleanup-git`             | Remove merged branches and stale worktrees                                                                                    | "cleanup branches", "tidy git"        |
+| `committing-code`         | Smart git commits with logical grouping                                                                                       | "commit", "save changes"              |
+| `configuring-git-hygiene` | Configure git hooks, Gitleaks, `.gitignore`, git config, and guardrails                                                       | "setup pre-commit", "gitleaks"        |
+| `deploying-infra`         | Validate infrastructure changes and, after explicit confirmation, apply Terraform, Helm, Kustomize, or Kubernetes deployments | "deploy to staging", "rollout"        |
+| `documenting-code`        | Update docs based on recent changes                                                                                           | "update docs", "document"             |
+| `evolving-config`         | Audit AI coding-agent configuration and plugin/package manifests; review-only by default, explicit approval for fixes         | "evolve", "audit config"              |
+| `fixing-code`             | Reproduce, diagnose, patch, regression-test, and verify one code defect at a time                                             | "fix errors", "make it pass"          |
+| `improving-tests`         | Improve test design, speed, and coverage with behavior seams, fast feedback, TDD, and test refactoring                        | "improve tests", "slow tests"         |
+| `looking-up-docs`         | Find exact API/config syntax and versioned docs via Context7, official registries/docs, and GitHub fallback                   | "ctx7", "API syntax", "look up"       |
+| `researching-web`         | Web research for comparisons, current-state, and release-behavior questions with grounded source selection                    | "research", "X vs Y"                  |
+| `reviewing-code`          | Evidence-backed code review with severity/confidence rubric, quick/deep/team/external modes, and optional graph evidence      | "review code", "check this"           |
+| `browser-automation`      | Rendered UI exploration, validation, screenshots, recordings, and browser test flows                                          | "use browser", "screenshot", "e2e"    |
+| `reviewing-instructions`  | Review and score AI-facing markdown/prompt instruction files with scoped lint, model resolution, caps, and evidence           | "lint instructions", "audit prompts"  |
+| `writing-skills`          | Create, split, slim, and route repository skills, references, overlays, and plugin placement                                  | "write a skill", "split this skill"   |
+| `sequential-thinking`     | Structured stepwise reasoning with explicit revisions and branches                                                            | "think step by step", "plan this out" |
+| `using-git-worktrees`     | Isolated git worktrees for parallel development                                                                               | "worktree", "isolate"                 |
 
 ### Auto-Activated
 
@@ -343,14 +343,14 @@ These activate silently when relevant patterns are detected — no `/skill-name`
 
 | Skill                 | Activates When                                                                                |
 | --------------------- | --------------------------------------------------------------------------------------------- |
-| `operating-infra`     | IaC, Kubernetes, cloud resources, CI/CD, Linux                                                |
+| `operating-infra`     | IaC, Kubernetes, cloud resources, GitHub Actions workflow semantics, Linux                    |
 | `refactoring-code`    | Behavior-preserving batch refactors with mapped sites and optional graph-backed impact checks |
 | `writing-csharp`      | C# files, `.csproj`/`.sln`, `dotnet`, ASP.NET Core, xUnit/NUnit/MSTest                        |
 | `writing-go`          | Go files, tests, lint, Go-specific terms                                                      |
 | `writing-java-kotlin` | Java/Kotlin files, Gradle/Maven, JUnit/Kotest, ktlint, detekt, JVM frameworks                 |
 | `writing-python`      | Python files, pytest, fast test feedback, pip, frameworks                                     |
 | `writing-rust`        | Rust files, Cargo crates/workspaces, tests, rustfmt, Clippy                                   |
-| `writing-shell`       | Shell scripts, pipelines, shell lint/test                                                     |
+| `writing-shell`       | Shell scripts, pipelines, CI `run:` bodies, shell lint/test                                   |
 | `writing-typescript`  | TS/TSX files, tests, lint, npm/bun, React, Node.js                                            |
 | `writing-web`         | HTML/CSS/JS/HTMX templates                                                                    |
 

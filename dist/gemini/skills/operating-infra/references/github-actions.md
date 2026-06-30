@@ -1,5 +1,13 @@
 # GitHub Actions
 
+## Boundary
+
+- Own workflow YAML semantics: `on`, jobs, permissions, environments, runners,
+  matrices, actions, secrets, caching, concurrency, artifacts, and policy.
+- For `run:` steps, review the surrounding workflow semantics here but route the
+  shell command body to `writing-shell`.
+- Mixed workflow YAML and shell-body changes compose both skills.
+
 ## Workflow rules
 
 - Keep CI, release, deploy, and security scans in separate workflows when triggers or permissions differ.

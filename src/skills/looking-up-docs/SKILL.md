@@ -1,12 +1,12 @@
 ---
 description:
-  Find current, version-correct library/API/framework docs through one lookup
-  workflow. Use when the user says "look up docs", "how to use",
-  "API for", "syntax for", "examples of", "show me the docs", mentions
-  "ctx7"/"Context7", passes a `/org/project` library ID, or wants the
-  latest/current/actual behavior of a library, framework, CLI, or API. NOT for
-  comparisons, best-practice surveys, or recent ecosystem news — use
-  researching-web.
+  Find exact, version-correct library/API/framework docs through one lookup
+  workflow. Use when the user says "look up docs", "how to use", "API for",
+  "syntax for", "examples of", "show me the docs", mentions "ctx7"/"Context7",
+  passes a `/org/project` library ID, or needs API signatures, config keys,
+  syntax, examples, or versioned docs. NOT for comparisons, current-state or
+  release-behavior questions, best-practice surveys, or recent ecosystem news —
+  use researching-web.
 name: looking-up-docs
 ---
 
@@ -20,16 +20,16 @@ Never answer syntax or API questions from memory when lookup tools are available
 Use this skill for:
 
 - API signatures, options, config keys, syntax, and examples.
-- Version-specific behavior of a known library, framework, language, CLI, or
-  standard library.
+- Versioned API behavior of a known library, framework, language, CLI, or
+  standard library when the question is how to call or configure it.
 - Context7 docs lookup, including explicit `ctx7`, `Context7`, or `/org/project`
   library-ID requests.
-- Confirming current behavior before writing code against an external API.
+- Confirming versioned API behavior before writing code against an external API.
 
 Do not use this skill for:
 
-- Comparisons, recommendations, market research, or best-practice surveys; route
-  to `researching-web`.
+- Comparisons, recommendations, market research, current-state questions,
+  release-behavior questions, or best-practice surveys; route to `researching-web`.
 - Repo-specific questions; search local files first.
 - External queries containing secrets, credentials, personal data, private
   payloads, or proprietary code.
@@ -83,11 +83,12 @@ version-mismatched. Follow `references/official-sources.md` fallback rules.
 Do not treat random issues, PR comments, blogs, or generated summaries as
 authoritative API docs. Use them only as clues to primary sources.
 
-### Tier 4 — Broad Research or Gap Report
+### Tier 4 — Source Discovery or Gap Report
 
-Use broad Perplexity/web research only when focused docs lookup fails or the
-question becomes a comparison/trade-off. If no grounded source exists, report the
-gap, the version needed vs found, and the safest next step.
+Use broad web research only to find primary docs after focused lookup fails. If
+the question becomes a comparison, trade-off, current-state, or release-behavior
+task, stop and route to `researching-web`. If no grounded source exists, report
+the gap, the version needed vs found, and the safest next step.
 
 ## Limits and Failure Handling
 
@@ -113,7 +114,8 @@ Include:
 2. Tier that produced the answer, and fallback used if any.
 3. Syntax or example guidance grounded in the source.
 4. Source URL, Context7 library ID, or GitHub tag/source path for each claim.
-5. Boundary note when the request is actually comparison or broad research.
+5. Boundary note when the request is actually comparison, current-state,
+   release-behavior, or broad research.
 
 If the user asks to describe the workflow, describe the tiers and escalation
 rules instead of answering from memory.

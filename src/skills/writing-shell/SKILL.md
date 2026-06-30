@@ -2,10 +2,11 @@
 description:
   Idiomatic shell development for POSIX sh, Bash, Zsh, Fish, hooks, CI shell
   steps, and scriptable CLI glue. Use when writing or changing `.sh`, `.bash`,
-  `.zsh`, `.fish`, `.bats`, shell functions, shell pipelines, or command-runner
-  recipes. Emphasizes portability, quoting, safe filesystem/process handling,
-  non-TUI CLI tools, ShellCheck, shfmt, Bats, and ShellSpec. NOT for Python,
-  Rust, TypeScript, Go, web code, or infrastructure operations.
+  `.zsh`, `.fish`, `.bats`, shell functions, shell pipelines, CI `run:` shell
+  bodies, or command-runner recipes. Emphasizes portability, quoting, safe
+  filesystem/process handling, non-TUI CLI tools, ShellCheck, shfmt, Bats, and
+  ShellSpec. NOT for Python, Rust, TypeScript, Go, web code, or GitHub Actions
+  workflow/job/permissions semantics; use operating-infra.
 name: writing-shell
 ---
 
@@ -14,6 +15,10 @@ name: writing-shell
 ## Scope
 
 - Use for shell scripts, hooks, CI shell blocks, command pipelines, and local automation glue.
+- In GitHub Actions, own the shell code inside `run:` blocks. Use
+  `operating-infra` for workflow YAML structure, jobs, permissions, runners,
+  actions, secrets, caching, concurrency, and policy. Mixed changes compose both
+  skills.
 - Do not use for cloud, Kubernetes, Terraform, host, or network operations; use `operating-infra`.
 - Do not use for application logic that belongs in Python, Rust, Go, TypeScript, or another project language.
 

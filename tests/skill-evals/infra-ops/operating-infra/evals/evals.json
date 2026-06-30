@@ -52,6 +52,19 @@
         "The output explains deletion blast radius or irreversibility.",
         "The output requires explicit confirmation before destructive delete commands."
       ]
+    },
+    {
+      "id": "github-actions-workflow-boundary",
+      "name": "github actions workflow boundary",
+      "prompt": "A user asks: update a GitHub Actions workflow to tighten job permissions, add concurrency, and also fix unsafe shell quoting inside one run: step. Describe routing, workflow, and validation.",
+      "expected_output": "The response treats workflow/job/permissions and concurrency as operating-infra scope, routes the shell command body inside run: to writing-shell, composes both skills for the mixed change, and validates with actionlint/zizmor plus shell checks when applicable.",
+      "assertions": [
+        "The output says GitHub Actions workflow structure, job permissions, or concurrency belongs to operating-infra.",
+        "The output routes shell code inside run: steps to writing-shell.",
+        "The output composes both skills for mixed workflow and shell-body changes.",
+        "The output includes GitHub Actions validation such as actionlint or zizmor.",
+        "The output does not treat the run: shell body as workflow semantics only."
+      ]
     }
   ]
 }

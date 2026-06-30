@@ -63,14 +63,14 @@ Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allo
 - **writing-java-kotlin** — Modern Java and Kotlin JVM development
 - **writing-python** — Idiomatic Python 3.12+ development
 - **writing-rust** — Idiomatic Rust development
-- **writing-shell** — Portable shell scripting with POSIX sh, Bash, Zsh, Fish, ShellCheck, shfmt, Bats, and ShellSpec
+- **writing-shell** — Portable shell scripting with POSIX sh, Bash, Zsh, Fish, CI `run:` bodies, ShellCheck, shfmt, Bats, and ShellSpec
 - **writing-typescript** — Idiomatic TypeScript development
 - **writing-web** — Simple web development with HTML, CSS, JS, and HTMX
 
 ## Infrastructure & Operations
 
 - **deploying-infra** — Validate infrastructure changes and, after explicit confirmation, apply Terraform, Helm, Kustomize, or Kubernetes deployments; Dockerfiles and GitHub Actions are validate-only
-- **operating-infra** — Author, inspect, troubleshoot, and review infrastructure across IaC, Kubernetes, cloud resources, containers, CI/CD, and Linux hosts
+- **operating-infra** — Author, inspect, troubleshoot, and review infrastructure across IaC, Kubernetes, cloud resources, containers, GitHub Actions workflow semantics, and Linux hosts
 
 ## Git Workflow
 
@@ -81,10 +81,10 @@ Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allo
 ## Developer Tools
 
 - **brainstorming-ideas** — Brainstorm ideas and stress-test draft plans or trade-offs before coding
-- **evolving-config** — Audit AI coding-agent configuration; review-only by default, explicit approval for fixes
-- **looking-up-docs** — Find current docs via Context7, official registries/docs, Perplexity/web, and GitHub fallback
-- **researching-web** — Web research via platform web tools with grounded source selection, source-following, and stale-source reporting
-- **reviewing-instructions** — Review and score AI-facing instruction files with scoped lint, model resolution, scoring caps, confidence, and calibration anchors
+- **evolving-config** — Audit AI coding-agent configuration and plugin/package manifests; review-only by default, explicit approval for fixes
+- **looking-up-docs** — Find exact API/config syntax and versioned docs via Context7, official registries/docs, and GitHub fallback
+- **researching-web** — Web research for comparisons, current-state, and release-behavior questions with grounded source selection and stale-source reporting
+- **reviewing-instructions** — Review and score AI-facing markdown/prompt instruction files with scoped lint, model resolution, scoring caps, confidence, and evidence
 - **writing-skills** — Create, split, slim, and route repository skills, references, overlays, and plugin placement
 - **sequential-thinking** — Structured stepwise reasoning with explicit revisions and branches
 

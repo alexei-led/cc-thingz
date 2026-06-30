@@ -1,9 +1,9 @@
 ---
-description:
-  Web research via platform web tools. Use for technical comparisons, recent facts,
-  ecosystem news, best practices, standards, or questions needing grounded web evidence.
-  NOT for API syntax lookup or code examples — use looking-up-docs for those. NOT for
-  repo-specific questions — search local files first.
+description: Web research via platform web tools. Use for technical comparisons,
+  current-state and release-behavior questions, recent facts, ecosystem news,
+  best practices, standards, or questions needing grounded web evidence. NOT for
+  exact API syntax, config keys, or code examples — use looking-up-docs for
+  those. NOT for repo-specific questions — search local files first.
 name: researching-web
 ---
 
@@ -17,14 +17,14 @@ and current evidence. Do not answer from memory when the user asked for research
 Use this for:
 
 - comparisons and trade-offs
-- recent facts and release behavior
+- recent facts, current-state questions, and release behavior
 - standards and external best practices
 - ecosystem, licensing, or market facts
 - vendor docs as evidence for non-syntax claims
 
 Do not use this for:
 
-- exact API syntax or code examples → `looking-up-docs`
+- exact API syntax, config keys, or code examples → `looking-up-docs`
 - repo-specific questions that local files can answer
 - private code, secrets, credentials, or proprietary data
 
