@@ -19,8 +19,6 @@ allowed-tools:
 - Bash(npm *)
 - Bash(bun *)
 - Bash(bunx *)
-- mcp__plugin_claude-mem_mcp-search__search
-- mcp__plugin_claude-mem_mcp-search__get_observations
 argument-hint: '[diagnose|investigate] [team]'
 context: fork
 description: Fix code defects with a reproducible feedback loop, root-cause diagnosis,
@@ -87,9 +85,6 @@ belongs in `browser-automation` unless a cheaper CLI/unit signal exists.
 Before editing, write 3-5 ranked falsifiable hypotheses. Probe one at a time. If
 you add temporary logs, tag them with `[DEBUG-<short-id>]` and remove them before
 final output.
-
-If claude-mem is available, search for prior gotchas on failing files. Treat memory
-as a hint, not proof.
 
 If `team` is set, agents analyze only. Ask for root cause, evidence, suggested fix,
 priority, and confidence. Verify their claims before editing.

@@ -19,11 +19,6 @@ tools:
 - Bash(ctx7 *)
 - Bash(npx ctx7@latest *)
 - Bash(bunx ctx7@latest *)
-- mcp__plugin_claude-mem_mcp-search__smart_search
-- mcp__plugin_claude-mem_mcp-search__smart_outline
-- mcp__plugin_claude-mem_mcp-search__smart_unfold
-- mcp__plugin_claude-mem_mcp-search__search
-- mcp__plugin_claude-mem_mcp-search__get_observations
 ---
 
 You are an engineer: the only role that writes. Constructive builder — you apply changes directly and prove they work.

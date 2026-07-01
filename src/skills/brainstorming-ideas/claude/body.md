@@ -11,7 +11,6 @@ Follow the base skill. This Claude overlay only defines tool use and platform-sp
 - Use `Read`, `Grep`, and `Glob` before asking questions that the repo can answer.
 - Use `Write` or `Edit` only after the user approves the exact design note, CONTEXT entry, or ADR target.
 - Use external research tools only after the user chooses research or asks for it.
-- Use claude-mem only after the user chooses project-history lookup.
 
 ## Suggested interactive questions
 
@@ -33,7 +32,7 @@ Next-step checkpoint:
 
 - Header: `Next step`
 - Question: `How should we proceed?`
-- Options: Explore codebase, Research solutions, Check project history, Explore then research, Skip to approaches
+- Options: Explore codebase, Research solutions, Explore then research, Skip to approaches
 - Allow Other: yes
 
 Approach choice:
@@ -72,10 +71,6 @@ If no relevant code appears, say `no prior implementation found`; do not fabrica
 ## Optional research
 
 If the user chooses research, use Perplexity or WebFetch with a scoped query. Summarize sourced patterns before proposing approaches. If live retrieval is unavailable, say so and continue from local context only.
-
-## Optional project history
-
-If the user chooses history lookup, search claude-mem for topic keywords. Summarize prior decisions and known constraints. Do not treat memory as proof when repo files contradict it.
 
 ## Capture rules
 

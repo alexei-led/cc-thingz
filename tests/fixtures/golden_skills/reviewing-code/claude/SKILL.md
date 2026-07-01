@@ -13,8 +13,6 @@ allowed-tools:
 - Bash(git *)
 - Bash(gh pr *)
 - Bash(gh api *)
-- mcp__plugin_claude-mem_mcp-search__search
-- mcp__plugin_claude-mem_mcp-search__get_observations
 argument-hint: '[deep] [team] [external]'
 context: fork
 description: Use when reviewing changed code, PRs, diffs, or specific files. Finds

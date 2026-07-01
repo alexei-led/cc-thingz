@@ -54,9 +54,6 @@ Before editing, write 3-5 ranked falsifiable hypotheses. Probe one at a time. If
 you add temporary logs, tag them with `[DEBUG-<short-id>]` and remove them before
 final output.
 
-If claude-mem is available, search for prior gotchas on failing files. Treat memory
-as a hint, not proof.
-
 If `team` is set, agents analyze only. Ask for root cause, evidence, suggested fix,
 priority, and confidence. Verify their claims before editing.
 

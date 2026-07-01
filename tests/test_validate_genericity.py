@@ -62,8 +62,8 @@ _FORBIDDEN: list[tuple[str, str, str]] = [
     ("task_call", 'Delegate using Task(prompt="foo").\n', "Task("),
     (
         "mcp_prefix",
-        "Call mcp__plugin_claude-mem_mcp-search__smart_search.\n",
-        "mcp__plugin_claude",
+        "Call mcp__vendor_tool__search.\n",
+        "mcp__vendor_tool__search",
     ),
     (
         "claude_env_var",

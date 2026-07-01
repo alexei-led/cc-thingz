@@ -274,27 +274,6 @@ assume MCP tools.
 > [Sequential Thinking MCP](https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking).
 > It now ships as the [`sequential-thinking` skill](src/skills/sequential-thinking/SKILL.md) — no MCP install required and portable across Claude Code, Codex, Gemini, and Pi.
 
-### Claude-Mem Integration
-
-All agents and several skills optionally integrate with [claude-mem](https://github.com/thedotmack/claude-mem) for cross-session memory and AST-based code navigation. Install with:
-
-```bash
-/plugin marketplace add thedotmack/claude-mem
-/plugin install claude-mem@thedotmack
-```
-
-**What this enables:**
-
-| Capability                    | Tools Used                                      | Benefit                                            |
-| ----------------------------- | ----------------------------------------------- | -------------------------------------------------- |
-| AST code navigation           | `smart_search`, `smart_outline`, `smart_unfold` | 10-20x fewer tokens than reading full files        |
-| Cross-session memory          | `search`, `get_observations`, `timeline`        | Find past decisions, known gotchas, recurring bugs |
-| Historical context in reviews | `search` + `get_observations`                   | Review agents check past findings before starting  |
-
-**Graceful degradation**: All plugins work without claude-mem. When it's not installed, MCP tools are silently absent — agents fall back to local tools such as `rg`, `fd`, and platform Read/Grep/Glob where needed. No errors, no configuration needed.
-
-**How it works**: Agent frontmatter lists claude-mem MCP tools alongside standard tools. Claude Code silently omits unavailable tools at runtime, so agents always have their core tools (Read, Grep, Glob, LSP) and gain AST/memory tools when claude-mem is present. Skill instructions use "when available" / "if claude-mem available" phrasing to guide Claude's behavior.
-
 ## Plugins
 
 | Plugin                                                 | Skills | Agents | Description                                                                                      | Depends on  |

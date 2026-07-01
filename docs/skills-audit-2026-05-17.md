@@ -35,53 +35,51 @@ Columns: SD Signal Density, SS Scope Specificity, OS Output Structure, FH Failur
 Handling, FE Format Efficiency, GD Grounding, RP Routing Precision, PD Progressive
 Disclosure, L body lines.
 
-| Skill | SD | SS | OS | FH | FE | GD | RP | PD | L | Overall |
-|---|---|---|---|---|---|---|---|---|---|---|
-| looking-up-docs | 4 | 7 | 7 | 5 | 8 | 7 | 8 | 5 | 89 | **5.2** |
-| deploying-infra | 5 | 6 | 8 | 8 | 6 | 6 | 7 | 4 | 232 | **6.1** |
-| analyzing-usage | 7 | 8 | 8 | 6 | 6 | 7 | 8 | 3 | 224 | **6.2** |
-| spec-core | 7 | 7 | 6 | 5 | 9 | 5 | 7 | 9 | 70 | **6.5** |
-| using-cloud-cli | 5 | 7 | 4 | 8 | 7 | 7 | 7 | 5 | 209 | **6.5** |
-| refactoring-code | 6 | 7 | 7 | 7 | 8 | 7 | 8 | 6 | 175 | **6.8** |
-| spec-new | 8 | 8 | 8 | 5 | 9 | 6 | 7 | 9 | 66 | **6.8** |
-| using-modern-cli | 6 | 7 | 5 | 6 | 8 | 6 | 7 | 8 | 82 | **7.0** |
-| spec-work | 7 | 8 | 8 | 8 | 7 | 7 | 8 | 3 | 306 | **7.1** |
-| grill-me | 8 | 7 | 8 | 7 | 9 | 6 | 6 | 8 | 54 | **7.1** |
-| spec-init | 7 | 8 | 8 | 7 | 8 | 6 | 8 | 7 | 138 | **7.2** |
-| reviewing-cc-config | 7 | 8 | 8 | 8 | 7 | 8 | 8 | 6 | 202 | **7.3** |
-| documenting-code | 7 | 8 | 7 | 6 | 9 | 7 | 8 | 9 | 90 | **7.3** |
-| spec-plan | 7 | 9 | 9 | 7 | 8 | 7 | 8 | 4 | 240 | **7.3** |
-| exploring-repos | 7 | 8 | 9 | 8 | 8 | 7 | 7 | 9 | 71 | **7.4** |
-| ccgram-messaging | 7 | 8 | 8 | 7 | 8 | 7 | 8 | 7 | 149 | **7.4** |
-| spec-interview | 7 | 9 | 9 | 8 | 8 | 7 | 8 | 5 | 207 | **7.4** |
-| managing-infra | 8 | 8 | 7 | 7 | 7 | 7 | 8 | 9 | 118 | **7.5** |
-| evolving-config | 8 | 7 | 8 | 8 | 9 | 7 | 7 | 9 | 73 | **7.5** |
-| spec-status | 8 | 8 | 9 | 7 | 8 | 8 | 8 | 8 | 103 | **7.5** |
-| writing-typescript | 7 | 8 | 6 | 8 | 8 | 7 | 8 | 6 | 208 | **7.5** |
-| improve-codebase-architecture | 8 | 8 | 8 | 7 | 8 | 7 | 8 | 8 | 138 | **7.6** |
-| writing-go | 7 | 8 | 6 | 8 | 8 | 7 | 9 | 7 | 191 | **7.6** |
-| spec-done | 8 | 8 | 8 | 8 | 9 | 8 | 8 | 8 | 99 | **7.6** |
-| watch-team | 8 | 7 | 8 | 8 | 9 | 7 | 7 | 9 | 76 | **7.6** |
-| writing-python | 7 | 8 | 6 | 8 | 8 | 7 | 9 | 6 | 196 | **7.7** |
-| searching-code | 8 | 8 | 8 | 8 | 7 | 8 | 8 | 7 | 121 | **7.8** |
-| parsing-documents | 8 | 8 | 8 | 8 | 8 | 7 | 8 | 7 | 128 | **7.8** |
-| brainstorming-ideas | 7 | 8 | 8 | 5 | 8 | 7 | 8 | 7 | 152 | **7.8** |
-| researching-web | 8 | 8 | 9 | 8 | 9 | 8 | 7 | 9 | 67 | **8.0** |
-| writing-web | 8 | 9 | 7 | 8 | 8 | 7 | 9 | 8 | 130 | **7.9** |
-| committing-code | 9 | 8 | 8 | 8 | 9 | 7 | 8 | 9 | 67 | **7.9** |
-| learning-patterns | 8 | 9 | 9 | 8 | 8 | 9 | 8 | 6 | 182 | **7.9** |
-| debating-ideas | 8 | 9 | 9 | 8 | 8 | 9 | 8 | 7 | 139 | **7.9** |
-| testing-e2e | 8 | 8 | 9 | 8 | 9 | 8 | 8 | 9 | 85 | **7.9** |
-| improving-tests | 8 | 9 | 8 | 7 | 8 | 8 | 9 | 9 | 143 | **8.0** |
-| playwright-skill | 9 | 8 | 7 | 8 | 9 | 8 | 8 | 9 | 68 | **8.0** |
-| fixing-code | 9 | 8 | 9 | 9 | 8 | 9 | 8 | 7 | 165 | **8.1** |
-| smart-explore | 9 | 9 | 8 | 8 | 8 | 7 | 8 | 9 | 41 | **8.1** |
-| using-git-worktrees | 8 | 8 | 7 | 9 | 8 | 8 | 8 | 8 | 104 | **8.1** |
-| reviewing-code | 9 | 8 | 9 | 8 | 9 | 9 | 8 | 9 | 124 | **8.2** |
-| mem-history | 9 | 8 | 8 | 8 | 9 | 8 | 8 | 9 | 53 | **8.2** |
-| sequential-thinking | 9 | 8 | 9 | 8 | 8 | 9 | 8 | 7 | 131 | **8.3** |
-| context7-cli | 9 | 9 | 8 | 9 | 9 | 9 | 7 | 8 | 100 | **8.3** |
-| reviewing-instructions | 9 | 9 | 9 | 8 | 9 | 8 | 9 | 9 | 95 | **8.5** |
+| Skill                         | SD  | SS  | OS  | FH  | FE  | GD  | RP  | PD  | L   | Overall |
+| ----------------------------- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ------- |
+| looking-up-docs               | 4   | 7   | 7   | 5   | 8   | 7   | 8   | 5   | 89  | **5.2** |
+| deploying-infra               | 5   | 6   | 8   | 8   | 6   | 6   | 7   | 4   | 232 | **6.1** |
+| analyzing-usage               | 7   | 8   | 8   | 6   | 6   | 7   | 8   | 3   | 224 | **6.2** |
+| spec-core                     | 7   | 7   | 6   | 5   | 9   | 5   | 7   | 9   | 70  | **6.5** |
+| using-cloud-cli               | 5   | 7   | 4   | 8   | 7   | 7   | 7   | 5   | 209 | **6.5** |
+| refactoring-code              | 6   | 7   | 7   | 7   | 8   | 7   | 8   | 6   | 175 | **6.8** |
+| spec-new                      | 8   | 8   | 8   | 5   | 9   | 6   | 7   | 9   | 66  | **6.8** |
+| using-modern-cli              | 6   | 7   | 5   | 6   | 8   | 6   | 7   | 8   | 82  | **7.0** |
+| spec-work                     | 7   | 8   | 8   | 8   | 7   | 7   | 8   | 3   | 306 | **7.1** |
+| grill-me                      | 8   | 7   | 8   | 7   | 9   | 6   | 6   | 8   | 54  | **7.1** |
+| spec-init                     | 7   | 8   | 8   | 7   | 8   | 6   | 8   | 7   | 138 | **7.2** |
+| reviewing-cc-config           | 7   | 8   | 8   | 8   | 7   | 8   | 8   | 6   | 202 | **7.3** |
+| documenting-code              | 7   | 8   | 7   | 6   | 9   | 7   | 8   | 9   | 90  | **7.3** |
+| spec-plan                     | 7   | 9   | 9   | 7   | 8   | 7   | 8   | 4   | 240 | **7.3** |
+| exploring-repos               | 7   | 8   | 9   | 8   | 8   | 7   | 7   | 9   | 71  | **7.4** |
+| ccgram-messaging              | 7   | 8   | 8   | 7   | 8   | 7   | 8   | 7   | 149 | **7.4** |
+| spec-interview                | 7   | 9   | 9   | 8   | 8   | 7   | 8   | 5   | 207 | **7.4** |
+| managing-infra                | 8   | 8   | 7   | 7   | 7   | 7   | 8   | 9   | 118 | **7.5** |
+| evolving-config               | 8   | 7   | 8   | 8   | 9   | 7   | 7   | 9   | 73  | **7.5** |
+| spec-status                   | 8   | 8   | 9   | 7   | 8   | 8   | 8   | 8   | 103 | **7.5** |
+| writing-typescript            | 7   | 8   | 6   | 8   | 8   | 7   | 8   | 6   | 208 | **7.5** |
+| improve-codebase-architecture | 8   | 8   | 8   | 7   | 8   | 7   | 8   | 8   | 138 | **7.6** |
+| writing-go                    | 7   | 8   | 6   | 8   | 8   | 7   | 9   | 7   | 191 | **7.6** |
+| spec-done                     | 8   | 8   | 8   | 8   | 9   | 8   | 8   | 8   | 99  | **7.6** |
+| watch-team                    | 8   | 7   | 8   | 8   | 9   | 7   | 7   | 9   | 76  | **7.6** |
+| writing-python                | 7   | 8   | 6   | 8   | 8   | 7   | 9   | 6   | 196 | **7.7** |
+| searching-code                | 8   | 8   | 8   | 8   | 7   | 8   | 8   | 7   | 121 | **7.8** |
+| parsing-documents             | 8   | 8   | 8   | 8   | 8   | 7   | 8   | 7   | 128 | **7.8** |
+| brainstorming-ideas           | 7   | 8   | 8   | 5   | 8   | 7   | 8   | 7   | 152 | **7.8** |
+| researching-web               | 8   | 8   | 9   | 8   | 9   | 8   | 7   | 9   | 67  | **8.0** |
+| writing-web                   | 8   | 9   | 7   | 8   | 8   | 7   | 9   | 8   | 130 | **7.9** |
+| committing-code               | 9   | 8   | 8   | 8   | 9   | 7   | 8   | 9   | 67  | **7.9** |
+| learning-patterns             | 8   | 9   | 9   | 8   | 8   | 9   | 8   | 6   | 182 | **7.9** |
+| debating-ideas                | 8   | 9   | 9   | 8   | 8   | 9   | 8   | 7   | 139 | **7.9** |
+| testing-e2e                   | 8   | 8   | 9   | 8   | 9   | 8   | 8   | 9   | 85  | **7.9** |
+| improving-tests               | 8   | 9   | 8   | 7   | 8   | 8   | 9   | 9   | 143 | **8.0** |
+| playwright-skill              | 9   | 8   | 7   | 8   | 9   | 8   | 8   | 9   | 68  | **8.0** |
+| fixing-code                   | 9   | 8   | 9   | 9   | 8   | 9   | 8   | 7   | 165 | **8.1** |
+| using-git-worktrees           | 8   | 8   | 7   | 9   | 8   | 8   | 8   | 8   | 104 | **8.1** |
+| reviewing-code                | 9   | 8   | 9   | 8   | 9   | 9   | 8   | 9   | 124 | **8.2** |
+| sequential-thinking           | 9   | 8   | 9   | 8   | 8   | 9   | 8   | 7   | 131 | **8.3** |
+| context7-cli                  | 9   | 9   | 8   | 9   | 9   | 9   | 7   | 8   | 100 | **8.3** |
+| reviewing-instructions        | 9   | 9   | 9   | 8   | 9   | 8   | 9   | 9   | 95  | **8.5** |
 
 Overalls are agent-computed and run slightly below a strict weight calculation; they
 are consistent with each other, so relative ranking is sound. Use them for ordering,
@@ -196,7 +194,6 @@ for generated code. These are quality gaps, not consolidation targets.
   already routes doc edits back).
 - `spec-plan` description: tighten the "idea text" path against `brainstorming-ideas`
   and `spec-interview`.
-- `mem-history`: add "see also `learning-patterns`" (read/write halves of one system).
 - Add missing output templates: `using-cloud-cli`, `using-git-worktrees`, engineer-mode
   output for `managing-infra`. Add failure handling to `spec-new`, `brainstorming-ideas`.
 
@@ -206,10 +203,9 @@ Split `dev-tools` into coherent installable units so users load only what they w
 
 - thinking-tools: `brainstorming-ideas`, `debating-ideas`, `sequential-thinking`
 - agent-config: `evolving-config`, `reviewing-cc-config`, `reviewing-instructions`,
-  `learning-patterns`, `mem-history`, `analyzing-usage`
+  `learning-patterns`, `analyzing-usage`
 - docs-research: `looking-up-docs`, `researching-web`, `exploring-repos`
-- cli-utils: `using-modern-cli`, `using-git-worktrees`, `parsing-documents`,
-  `smart-explore`
+- cli-utils: `using-modern-cli`, `using-git-worktrees`, `parsing-documents`
 
 This is the highest-leverage move for "reduce filled context" if users install
 selectively, but it is a breaking marketplace change. Recommended as a decision, not
@@ -220,8 +216,6 @@ auto-executed.
 - One `writing-code` skill replacing the four `writing-*`: rejected. Per-file-extension
   auto-activation cannot carry per-language behavior in a single skill body; the
   language references diverge >90%. Only shared-boilerplate extraction is warranted.
-- `searching-code` + `smart-explore` merge: rejected. The semantic (WarpGrep) vs
-  structural (AST) axis is load-bearing and the skills cross-reference correctly.
 - Full `spec-*` collapse: rejected. Per-skill tool allowlists differ materially
   (`spec-work` has ~20 tools incl. Agent/git/make/gh; `spec-status` is read-only);
   collapsing forces union privilege escalation. Deliberate, recently hardened design.

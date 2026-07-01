@@ -269,10 +269,9 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 - Removed the empty `test-e2e` plugin.
 - Removed thin or redundant skills: `analyzing-usage`, `learning-patterns`,
-  `mem-history`, `parsing-documents`, and `smart-explore`.
+  and `parsing-documents`.
 - Removed dead `skill-enforcer` routes for deleted or phantom skills:
-  `learning-patterns`, `mem-history`, `reviewing-cc-config`,
-  `smart-explore`, `using-gemini`, and `coding`.
+  `learning-patterns`, `reviewing-cc-config`, `using-gemini`, and `coding`.
 
 ### Fixed
 
@@ -415,8 +414,7 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 - GitHub release notes now render from the curated `CHANGELOG.md` section for
   the tag, then append the plugin table and install snippet.
 - Made code search skills AST-first by folding ast-grep guidance into
-  `searching-code`, keeping `smart-explore` focused on known-file and
-  known-symbol extraction, and tightening skill-enforcer routing.
+  `searching-code` and tightening skill-enforcer routing.
 
 ## [4.9.0] - 2026-05-19
 
@@ -944,8 +942,7 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
   previously-broken triggers: `researching-web`, `testing-e2e`, `grill-me`,
   `debating-ideas`, `improve-codebase-architecture`, `improving-tests`,
   `searching-code`, `refactoring-code`, `learning-patterns`, `evolving-config`,
-  `mem-history`, `ccgram-messaging`, `smart-explore`, `spec:work`, `spec:help`,
-  `spec:interview`.
+  `ccgram-messaging`, `spec:work`, `spec:help`, `spec:interview`.
 - **Agent skills lists** for `python-engineer`, `go-engineer`,
   `typescript-engineer`, `infra-engineer`, `spec-planner`: dropped
   `mcp__sequential-thinking__sequentialthinking` from `tools`/`allowed-tools`,
@@ -958,14 +955,6 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 - **`MCP_Sequential.md`** (orphaned root doc that described the now-replaced
   MCP). README integrations table updated to point at the skill.
-
-### Fixed
-
-- **`claude-mem` 13.0.0 `PreToolUse:Read` crash**: the upstream `bun.lock`
-  ships without `zod` (which `worker-service.cjs` requires as `zod/v3`). The
-  SessionStart patch script (`~/.claude/scripts/patch-claude-mem-async.sh`,
-  chezmoi-tracked) now runs `bun install --no-save` for any cached version
-  whose `node_modules/zod` is missing — durable across machines, idempotent.
 
 ## [2.1.0] - 2026-05-09
 
@@ -1022,8 +1011,7 @@ and an overhauled skill-enforcer hook.
   `improve-codebase-architecture`; tightened `reviewing-code` and
   `brainstorming-ideas` to exclude overlapping triggers.
 - **MCP migration backlog** (`docs/mcp-migration-backlog.md`) tracks remaining
-  MCP→CLI work: perplexity-ask, morphllm, deepwiki, claude-mem,
-  sequential-thinking.
+  MCP→CLI work: perplexity-ask, morphllm, deepwiki, sequential-thinking.
 - **Pi schedules placeholder** (`.pi/subagent-schedules/README.md`) reserved
   for future cron-style schedules; not deployed by `install-pi-exports.sh`.
 
@@ -1144,10 +1132,6 @@ and an overhauled skill-enforcer hook.
 - **`linting-instructions` skill**: model `opus` → `sonnet` (rule-based regex linting doesn't need Opus reasoning)
 - **`looking-up-docs` skill**: removed dead `WebSearch` and `mcp__perplexity-ask__perplexity_ask` (description explicitly excludes general web search)
 
-### Fixed
-
-- **`mem-history` skill**: added `context: fork` — `get_observations` returns 500–2k tokens per result and was leaking into the main context
-
 ### Notes
 
 - All 9 plugins bumped to 1.7.1 to align with marketplace tag
@@ -1183,7 +1167,6 @@ and an overhauled skill-enforcer hook.
 ### Fixed
 
 - **test-runner.sh**: Exit 0 (informational) instead of exit 2 (blocking) when no test framework found — prevents spurious "Claude must fix" errors for unknown project types, missing pytest, or missing cargo
-- **smart-explore**: Added `context: fork` — file-reading fallback now runs in isolated context
 - **documenting-code**: Phase 5 independently verifies changes via `git diff --stat` instead of trusting agent self-report
 - **reviewing-cc-config**: Slimmed from 447→237 lines (−47%); agents read RUBRIC.md directly instead of inline rules; added cross-check step; RUBRIC.md now required (no silent fallback)
 - **exploring-repos**: Removed unused Read/Grep/Glob from `allowed-tools`
@@ -1246,7 +1229,7 @@ AGENTS.md adoption and CC-first rebrand.
 
 ### Fixed
 
-- GEMINI.md skill drift: added 6 missing skills (`evolving-config`, `learning-patterns`, `linting-instructions`, `mem-history`, `smart-explore`, `using-gemini`) — now lists all 29 skills
+- GEMINI.md skill drift: added 4 missing skills (`evolving-config`, `learning-patterns`, `linting-instructions`, `using-gemini`) — now lists all 29 skills
 
 ## [1.9.1] - 2026-05-03
 
@@ -1326,7 +1309,6 @@ System card-derived instruction hardening for all agents and skills.
 - Writing skills (4): add verify-after-generate with build/lint commands
 - `committing-code`: add secrets detection guard for .env/pem/credentials
 - `documenting-code`, `improving-tests`, `debating-ideas`: add failure handling
-- `mem-history`: add scope description and output format template
 
 ### Changed
 
@@ -1334,27 +1316,6 @@ System card-derived instruction hardening for all agents and skills.
 - All instruction fixes derived from Claude Opus 4.6 and Sonnet 4.6 system cards
 
 ## [1.9.1] - 2026-05-03
-
-## [1.2.0] - 2026-03-31
-
-Optional claude-mem integration for AST-based code navigation and cross-session memory.
-
-### Added
-
-- `smart-explore` skill: AST-based code navigation via smart_outline/smart_search/smart_unfold (10-20x token savings)
-- `mem-history` skill: cross-session memory search with 3-layer workflow and graceful fallback
-- Claude-mem MCP tools added to all 30 agents (25 review + 5 engineer) as optional tools
-- Historical context check in `reviewing-code` (Step 0) and `fixing-code` (Pre-Phase 2)
-- Project history option in `brainstorming-ideas` Phase 3 checkpoint
-- Smart Explore column in `searching-code` decision table
-- `smart-explore` and `mem-history` detection patterns in skill-enforcer hook
-- Claude-Mem Integration section in README with installation guide and resilience docs
-
-### Changed
-
-- Skill count: 27 → 29 (2 new skills in dev-tools plugin)
-- All review agent frontmatter converted to multi-line tools format
-- Engineer agents gain `### Memory (claude-mem)` body section
 
 ## [1.9.1] - 2026-05-03
 

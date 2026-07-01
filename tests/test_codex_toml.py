@@ -239,7 +239,7 @@ def test_full_agent_round_trips_through_tomllib(load_script):
             "search": {"command": "uvx", "args": ["search-mcp"]},
         },
         "skills": {
-            "config": [{"name": "writing-go"}, {"name": "smart-explore"}],
+            "config": [{"name": "writing-go"}, {"name": "looking-up-docs"}],
         },
     }
     body = "# Go Engineer\n\nYou design and review idiomatic Go.\n"
@@ -257,6 +257,6 @@ def test_full_agent_round_trips_through_tomllib(load_script):
     }
     assert data["skills"]["config"] == [
         {"name": "writing-go"},
-        {"name": "smart-explore"},
+        {"name": "looking-up-docs"},
     ]
     assert "Go Engineer" in data["developer_instructions"]

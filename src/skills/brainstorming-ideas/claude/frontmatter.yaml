@@ -12,8 +12,6 @@ allowed-tools:
   - Write
   - Edit
   - mcp__perplexity-ask__perplexity_ask
-  - mcp__plugin_claude-mem_mcp-search__timeline
-  - mcp__plugin_claude-mem_mcp-search__search
   - WebFetch
   - Bash(git status *)
   - Bash(git log *)
