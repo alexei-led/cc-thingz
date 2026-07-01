@@ -193,6 +193,16 @@ Compiled output is `dist/pi/agents/advisor.md`. Behavior: strategic review with
 read-only code exploration (no file edits) and output sections `Verdict`,
 `Top Risks`, and `Next Actions`.
 
+**Runner subagent (`runner`)** — follows the same source layout:
+
+- `src/agents/runner/AGENT.md`
+- `src/agents/runner/pi/frontmatter.yaml`
+
+Compiled output is `dist/pi/agents/runner.md`. Behavior: cheap utility lane for
+simple bounded tasks — file lookup, grep/glob, `git status/log/show/diff`, file
+reads, log summaries, and focused shell inspection. Use proactively; escalate to
+`engineer`, `reviewer`, or `advisor` when the task stops being cheap or obvious.
+
 Background usage (separate context + parent context inherited):
 
 ```ts
@@ -231,13 +241,13 @@ Agent({
 | `structured-output.ts` | `structured_output` tool that terminates the agent loop                                          |
 | `notify.ts`            | macOS notification via `terminal-notifier` on completion (requires Homebrew `terminal-notifier`) |
 
-**Pi gets**: all 3 agents — `engineer`, `reviewer`, `advisor` (requires a Pi
+**Pi gets**: 4 agents — `engineer`, `reviewer`, `runner`, `advisor` (requires a Pi
 subagents package) — all 29 skills, and 7 bundled extensions. Each
-agent has a Pi-specific frontmatter overlay tuned for OpenAI Codex models
-(`openai-codex/gpt-5.5`), thinking levels, tool restrictions, and turn limits.
-`advisor` ships to Codex, Gemini, and Pi; Claude is excluded because it has a
-built-in advisor. The old scout→planner→worker→reviewer pipeline is superseded
-by the 3-role model.
+agent has a Pi-specific frontmatter overlay tuned for OpenAI Codex models,
+thinking levels, tool restrictions, and turn limits. `advisor` ships to Codex,
+Gemini, and Pi; Claude is excluded because it has a built-in advisor. The old
+scout→planner→worker→reviewer pipeline is superseded by the 3-role model plus a
+cheap utility lane.
 
 ### Other AGENTS.md-Compatible Tools
 
@@ -276,17 +286,17 @@ assume MCP tools.
 
 ## Plugins
 
-| Plugin                                                 | Skills | Agents | Description                                                                                      | Depends on  |
-| ------------------------------------------------------ | ------ | ------ | ------------------------------------------------------------------------------------------------ | ----------- |
-| [**dev-flow**](src/plugins/dev-flow/plugin.yaml)       | 6      | 2      | Fix, refactor, review, document, commit; `engineer` and `reviewer` roles; 6 hooks                | —           |
-| [**spec-flow**](src/plugins/spec-flow/plugin.yaml)     | 1      | 2      | Lightweight spec loop: plan one slice, execute one task, checkpoint or close                     | dev-flow    |
-| [**git-flow**](src/plugins/git-flow/plugin.yaml)       | 3      | 0      | Worktrees, cleanup, hooks, Gitleaks, `.gitignore`, git config, and guardrails                    | —           |
-| [**browser**](src/plugins/browser/plugin.yaml)         | 2      | 1      | Browser testing, validation, screenshots, recordings, and quick automation                       | programming |
-| [**infra-ops**](src/plugins/infra-ops/plugin.yaml)     | 2      | 1      | Kubernetes, Terraform, Helm, GitHub Actions, AWS, GCP                                            | —           |
-| [**programming**](src/plugins/programming/plugin.yaml) | 8      | 1      | Idiomatic development across C# /.NET, Go, Java/Kotlin, Python, Rust, TypeScript, shell, and web | dev-flow    |
-| [**discovery**](src/plugins/discovery/plugin.yaml)     | 7      | 2      | Research, docs lookup, skill authoring, instruction review, reasoning, and agent config audits   | —           |
+| Plugin                                                 | Skills | Agents | Description                                                                                                     | Depends on  |
+| ------------------------------------------------------ | ------ | ------ | --------------------------------------------------------------------------------------------------------------- | ----------- |
+| [**dev-flow**](src/plugins/dev-flow/plugin.yaml)       | 6      | 2      | Fix, refactor, review, document, commit; `engineer` and `reviewer` roles; 6 hooks                               | —           |
+| [**spec-flow**](src/plugins/spec-flow/plugin.yaml)     | 1      | 2      | Lightweight spec loop: plan one slice, execute one task, checkpoint or close                                    | dev-flow    |
+| [**git-flow**](src/plugins/git-flow/plugin.yaml)       | 3      | 0      | Worktrees, cleanup, hooks, Gitleaks, `.gitignore`, git config, and guardrails                                   | —           |
+| [**browser**](src/plugins/browser/plugin.yaml)         | 2      | 1      | Browser testing, validation, screenshots, recordings, and quick automation                                      | programming |
+| [**infra-ops**](src/plugins/infra-ops/plugin.yaml)     | 2      | 1      | Kubernetes, Terraform, Helm, GitHub Actions, AWS, GCP                                                           | —           |
+| [**programming**](src/plugins/programming/plugin.yaml) | 8      | 1      | Idiomatic development across C# /.NET, Go, Java/Kotlin, Python, Rust, TypeScript, shell, and web                | dev-flow    |
+| [**discovery**](src/plugins/discovery/plugin.yaml)     | 7      | 3      | Research, docs lookup, utility routing, skill authoring, instruction review, reasoning, and agent config audits | —           |
 
-**Totals**: 29 skills, 2 plugin-owned role agents (`engineer`, `reviewer`), 10 hooks
+**Totals**: 29 skills, 3 plugin-owned agents (`engineer`, `reviewer`, `runner`), 10 hooks
 
 ## Skills
 
@@ -341,17 +351,18 @@ These activate silently when relevant patterns are detected — no `/skill-name`
 
 ## Agents
 
-Three role agents: a capability envelope plus a reasoning stance no skill can supply. Consolidated from 39 → 3 — see `docs/agent-audit-2026-05-16.md` and the executed plan in `docs/plans/completed/`. Domain procedure and output format live in skills; language specifics live in each skill's `references/<lang>.md`. Role × skill × references compose — language is not a routing key. Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allowlist (Gemini via its subagent frontmatter `tools:` field); Codex blocks writes via `sandbox_mode: read-only`; Pi has no tool-allowlist primitive, so the envelope there is a system-prompt directive. Gemini frontmatter has no read-only sandbox primitive, so `advisor` is granted `run_shell_command` and held read-only by its body directive, the same tradeoff as Pi.
+Three role agents plus one utility agent: a capability envelope plus a reasoning stance no skill can supply. Consolidated from 39 → 3 roles — see `docs/agent-audit-2026-05-16.md` and the executed plan in `docs/plans/completed/`. Domain procedure and output format live in skills; language specifics live in each skill's `references/<lang>.md`. Role × skill × references compose — language is not a routing key. `runner` is not a fourth role; it is the cheap utility lane for simple bounded tasks. Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allowlist (Gemini via its subagent frontmatter `tools:` field); Codex blocks writes via `sandbox_mode: read-only`; Pi has no tool-allowlist primitive, so the envelope there is a system-prompt directive. Gemini frontmatter has no read-only sandbox primitive, so `advisor` and `runner` are granted `run_shell_command` and held read-only by their body directives, the same tradeoff as Pi.
 
-| Role       | Envelope                         | Stance                                                           | Claude model        | Pi model                |
-| ---------- | -------------------------------- | ---------------------------------------------------------------- | ------------------- | ----------------------- |
-| `engineer` | Read + write + execute           | Sole mutator: applies changes, runs the build/test/lint gate     | sonnet              | gpt-5.4 thinking:high   |
-| `reviewer` | Read, Grep, Glob, LS — no writes | Adversarial evaluator: emits findings/proposals, applies nothing | sonnet              | gpt-5.4 thinking:medium |
-| `advisor`  | Read + read-only Bash            | Strategic escalation: verdict, ranked risks, next actions        | built-in (Opus 4.7) | gpt-5.5 thinking:xhigh  |
+| Agent      | Envelope                         | Stance                                                               | Claude model        | Pi model                  |
+| ---------- | -------------------------------- | -------------------------------------------------------------------- | ------------------- | ------------------------- |
+| `engineer` | Read + write + execute           | Sole mutator: applies changes, runs the build/test/lint gate         | sonnet              | gpt-5.4 thinking:high     |
+| `reviewer` | Read, Grep, Glob, LS — no writes | Adversarial evaluator: emits findings/proposals, applies nothing     | sonnet              | gpt-5.4 thinking:medium   |
+| `runner`   | Read + read-only Bash            | Cheap utility lane for simple bounded file/search/git/log/shell work | haiku               | gpt-5.4-mini thinking:low |
+| `advisor`  | Read + read-only Bash            | Strategic escalation: verdict, ranked risks, next actions            | built-in (Opus 4.7) | gpt-5.5 thinking:xhigh    |
 
-`engineer` is the fork target for `writing-{csharp,go,java-kotlin,python,rust,shell,typescript,web}` and `operating-infra`. `reviewer` absorbs the review family, code search, and planning (via `spec`). `advisor` ships to Codex, Gemini, and Pi; Claude is excluded because it has a built-in advisor. On Pi, `advisor` is invoked via transcript forwarding; on Gemini and Codex it is spawned as a normal custom subagent under its tool/sandbox envelope.
+`engineer` is the fork target for `writing-{csharp,go,java-kotlin,python,rust,shell,typescript,web}` and `operating-infra`. `reviewer` absorbs the review family, code search, and planning (via `spec`). `runner` is the automatic cheap-task path: use it proactively for file lookup, grep/glob, `git status/log/show/diff`, file reads, log summaries, and focused shell inspection; escalate to `engineer`, `reviewer`, or `advisor` when the task stops being cheap or obvious. `advisor` ships to Codex, Gemini, and Pi; Claude is excluded because it has a built-in advisor. On Pi, `advisor` is invoked via transcript forwarding; on Gemini and Codex it is spawned as a normal custom subagent under its tool/sandbox envelope.
 
-Model tiers are matched per role across vendors. `engineer`/`reviewer` use Claude `sonnet`; their Pi counterparts pin `gpt-5.4` (not `gpt-5.5`) because GPT-5.5 is a frontier tier above Sonnet 4.6 — using it for the same role would make the Pi agent materially stronger and ~2× costlier for no parity reason. `advisor` is an escalation role: Claude's built-in advisor runs Opus 4.7 (frontier), so the Pi advisor stays at `gpt-5.5 thinking:xhigh` to match that tier. On Codex, the agent inherits the model chosen at `codex` launch, so there is no model to pin without brittleness.
+Model tiers are matched per job shape across vendors. `engineer`/`reviewer` use Claude `sonnet`; their Pi counterparts pin `gpt-5.4` (not `gpt-5.5`) because GPT-5.5 is a frontier tier above Sonnet 4.6 — using it for the same role would make the Pi agent materially stronger and ~2× costlier for no parity reason. `runner` is intentionally cheaper: Claude `haiku`, Pi `gpt-5.4-mini`, and a pinned `gpt-5.4-mini` Codex agent where the target supports per-agent model config. `advisor` is an escalation role: Claude's built-in advisor runs Opus 4.7 (frontier), so the Pi advisor stays at `gpt-5.5 thinking:xhigh` to match that tier. Other Codex role agents continue to inherit the model chosen at `codex` launch.
 
 Pi model names use the `openai-codex/` provider prefix (e.g. `openai-codex/gpt-5.4`) to avoid ambiguous fuzzy matching when multiple providers expose the same model ID.
 

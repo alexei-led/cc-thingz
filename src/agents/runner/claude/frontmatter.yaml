@@ -1,0 +1,8 @@
+tools:
+  - Read
+  - Grep
+  - Glob
+  - LS
+  - Bash
+model: haiku
+color: yellow

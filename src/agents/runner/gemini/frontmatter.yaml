@@ -1,0 +1,9 @@
+# Read-only-plus-shell utility envelope. Gemini has no per-agent model key in
+# this compiler target, so routing picks the agent and the host session/provider
+# picks the cheap model tier.
+tools:
+  - read_file
+  - grep_search
+  - glob
+  - run_shell_command
+max_turns: 12

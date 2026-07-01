@@ -32,13 +32,25 @@ Run format lint: `make lint-instructions` or use the `/reviewing-instructions` s
 
 ## Agents
 
-Three role agents. A role is a capability envelope plus a reasoning stance no skill can supply. Domain procedure and output format live in skills; language specifics live in each skill's `references/<lang>.md`. Role × skill × references compose — language is not a routing key. Consolidated 39 → 3 (see `docs/agent-audit-2026-05-16.md` and the executed plan in `docs/plans/completed/`).
+Three role agents plus one utility agent. A role is a capability envelope plus a reasoning stance no skill can supply. Domain procedure and output format live in skills; language specifics live in each skill's `references/<lang>.md`. Role × skill × references compose — language is not a routing key. Consolidated 39 → 3 roles (see `docs/agent-audit-2026-05-16.md` and the executed plan in `docs/plans/completed/`). `runner` is the cheap utility lane for simple bounded tasks, not a fourth role.
 
-Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allowlist (Gemini via the subagent frontmatter `tools:` field); Codex blocks writes via `sandbox_mode: read-only`; Pi has no tool-allowlist primitive, so the envelope there is a system-prompt directive. Gemini frontmatter has no read-only sandbox primitive, so `advisor` is granted `run_shell_command` and constrained to read-only by its body directive — the same tradeoff as Pi. Descriptions state each role behaviorally so the claim stays true on every target, and omit "use proactively" deliberately — roles are picked by the orchestrator to compose with a skill, not auto-delegated.
+Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allowlist (Gemini via the subagent frontmatter `tools:` field); Codex blocks writes via `sandbox_mode: read-only`; Pi has no tool-allowlist primitive, so the envelope there is a system-prompt directive. Gemini frontmatter has no read-only sandbox primitive, so `advisor` and `runner` are granted `run_shell_command` and constrained to read-only by the body directive — the same tradeoff as Pi. The role descriptions omit "use proactively" deliberately — roles are picked by the orchestrator to compose with a skill, not auto-delegated. `runner` is the exception: it is a utility lane and can opt into proactive routing.
 
 - **engineer** — read + write + execute. The only mutator: applies changes and runs the build/test/lint verification on what it changed. Fork target for `writing-{csharp,go,java-kotlin,python,rust,shell,typescript,web}` and `operating-infra`. Claude preloads `looking-up-docs`; `sequential-thinking` stays Skill-discoverable to keep spawn context lean.
 - **reviewer** — Read + Grep + Glob + LS. Adversarial evaluator (assume bugs exist); emits structured findings/proposals, applies nothing. Non-mutating: tool-enforced on Claude and Gemini, write-blocked on Codex, directive on Pi. Absorbs the review family, code search, and planning (via `spec` / `planning:make`).
+- **runner** — fast utility lane: file lookup, grep/glob, `git status/log/show/diff`, file reads, log summaries, and focused shell inspection. Read-only across targets. Use proactively for simple bounded tasks; escalate to `engineer`, `reviewer`, or `advisor` when the task stops being cheap or obvious.
 - **advisor** — strategic escalation: verdict, ranked risks, next actions. Ships to Codex, Gemini, and Pi; excluded from Claude, which has a built-in advisor. Codex enforces read-only via sandbox; Pi uses xhigh thinking with read-only Bash and transcript-forwarding invocation; Gemini grants a read-only `tools:` allowlist plus `run_shell_command` held read-only by the body directive.
+
+### Routing and model tiers
+
+Routing lives in the orchestrator instructions (`CLAUDE.md`, `AGENTS.md`, parent prompt), not in the role file alone. Agent frontmatter picks the model after the orchestrator chooses the role.
+
+- For automatic cheap-task routing, add a dedicated utility/read-only agent such as `runner` and tell the orchestrator to use it proactively for simple bounded tasks: file listing, grep/glob, `git status/log/show/diff`, file reads, log summaries, and focused shell inspection.
+- Keep `engineer` as the sole normal mutator. Do not create weaker duplicates such as `junior-engineer` just to swap model tiers.
+- If a small explicit write task should use a cheaper model, override the model for that one call instead of adding a second general-purpose engineer role.
+- Do not auto-route architecture, ambiguous debugging, broad refactors, deep review, security-sensitive reasoning, or product decisions to a light model.
+- Put cross-tool shared routing policy in the chezmoi-managed top-level `CLAUDE.md`. Keep repo-local role boundaries and package rules here in `AGENTS.md`.
+- On Claude Code, a dedicated utility agent can opt into automatic delegation via its `description` with `Use proactively ...`. The role agents intentionally omit that phrase because they are orchestrator-selected, not auto-delegated.
 
 ## Development Workflow
 

@@ -1,6 +1,6 @@
 name: discovery
 version: 6.3.0
-description: Research, docs lookup, skill authoring, instruction review, reasoning, and agent configuration audits
+description: Research, docs lookup, utility routing, skill authoring, instruction review, reasoning, and agent configuration audits
 skills:
   - brainstorming-ideas
   - evolving-config
@@ -12,4 +12,5 @@ skills:
 agents:
   - engineer
   - reviewer
+  - runner
 hooks: []
