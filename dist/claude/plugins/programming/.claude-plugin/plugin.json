@@ -1,6 +1,6 @@
 {
   "name": "programming",
-  "version": "6.3.0",
+  "version": "6.4.0",
   "description": "Idiomatic development across C# /.NET, Go, Java/Kotlin, Python, Rust, TypeScript, shell, and web",
   "author": {
     "name": "Alexei Ledenev",

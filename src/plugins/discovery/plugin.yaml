@@ -1,5 +1,5 @@
 name: discovery
-version: 6.3.0
+version: 6.4.0
 description: Research, docs lookup, utility routing, skill authoring, instruction review, reasoning, and agent configuration audits
 skills:
   - brainstorming-ideas

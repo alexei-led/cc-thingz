@@ -8,6 +8,9 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.4.0] - 2026-07-01
+
+
 ## [6.3.0] - 2026-07-01
 
 
