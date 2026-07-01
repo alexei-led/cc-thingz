@@ -10,9 +10,16 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [6.4.0] - 2026-07-01
 
+### Added
+
+- Added a new `runner` utility agent for cheap read-only bounded tasks across Claude Code, Codex, Gemini, and Pi. `runner` handles file lookup, grep/glob, `git status/log/show/diff`, file reads, log summaries, and focused shell inspection, then escalates back to `engineer`, `reviewer`, or `advisor` when the task stops being cheap or obvious.
+
+### Changed
+
+- Expanded the `discovery` plugin to ship `runner` and refreshed the generated marketplace/plugin manifests and per-target exports.
+- Documented the `runner` pattern and light-model routing guidance in `AGENTS.md` and `README.md`.
 
 ## [6.3.0] - 2026-07-01
-
 
 ## [6.2.2] - 2026-06-30
 
