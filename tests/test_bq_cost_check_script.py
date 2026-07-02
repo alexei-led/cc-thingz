@@ -114,7 +114,7 @@ def test_bq_timeout_fails_loudly(monkeypatch: pytest.MonkeyPatch) -> None:
     Popen itself would raise, rather than sleeping for real in a test."""
     module = _load_module()
 
-    def fake_run(*args: object, timeout: float, **kwargs: object) -> None:
+    def fake_run(*_args: object, timeout: float, **_kwargs: object) -> None:
         raise subprocess.TimeoutExpired(cmd="bq", timeout=timeout)
 
     monkeypatch.setattr(module.subprocess, "run", fake_run)
