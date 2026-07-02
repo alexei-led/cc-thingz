@@ -1,5 +1,5 @@
 name: programming
-version: 6.4.0
+version: 6.5.0
 description: Idiomatic development across C# /.NET, Go, Java/Kotlin, Python, Rust, TypeScript, shell, and web
 depends_on:
   - dev-flow
