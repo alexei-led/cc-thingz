@@ -387,8 +387,6 @@ def _is_likely_instruction_markdown(path: Path) -> bool:
 
     if path.name.startswith("README"):
         score -= 4
-    if "docs" in lower_parts and score < 6:
-        score -= 2
 
     return score >= 6
 
@@ -671,21 +669,45 @@ def check_progressive_disclosure(f: InstructionFile) -> Finding | None:
     )
 
 
+_FENCE_MARKERS = ("```", "~~~")
+_INLINE_CODE_RE = re.compile(r"``.+?``|`[^`]+`")
+
+
+def _iter_unfenced_lines(body: str):
+    """Yield body lines outside fenced code blocks (``` or ~~~, 3+ chars).
+
+    Fence-delimiter lines themselves are not yielded.
+    """
+    in_fence = False
+    for line in body.splitlines():
+        if line.startswith(_FENCE_MARKERS):
+            in_fence = not in_fence
+            continue
+        if not in_fence:
+            yield line
+
+
+def _mask_inline_code(line: str) -> str:
+    """Blank inline code spans so backticked `_names_` aren't read as italics."""
+    return _INLINE_CODE_RE.sub(" ", line)
+
+
 def check_f_no_table(f: InstructionFile) -> Finding | None:
     """Tables waste tokens; bullet lists carry same info."""
-    table_pat = _P(r"^\|.+\|.+\|", re.MULTILINE)
-    if not table_pat.search(f.body):
-        return None
-    return Finding(
-        f.rel,
-        "F-NO-TABLE",
-        "warning",
-        (
-            "Contains markdown tables — replace with bullet lists "
-            "(`- **Label**: desc`). Tables are 3-5x token-heavier "
-            "with no comprehension gain for LLMs."
-        ),
-    )
+    table_pat = _P(r"^\|.+\|.+\|")
+    for line in _iter_unfenced_lines(f.body):
+        if table_pat.match(line):
+            return Finding(
+                f.rel,
+                "F-NO-TABLE",
+                "warning",
+                (
+                    "Contains markdown tables — replace with bullet lists "
+                    "(`- **Label**: desc`). Tables are 3-5x token-heavier "
+                    "with no comprehension gain for LLMs."
+                ),
+            )
+    return None
 
 
 def check_f_no_diagram(f: InstructionFile) -> Finding | None:
@@ -704,12 +726,8 @@ def check_f_no_diagram(f: InstructionFile) -> Finding | None:
 
 def check_f_no_hr(f: InstructionFile) -> Finding | None:
     """Horizontal rules are low-signal; use ## headers instead."""
-    lines = f.body.splitlines()
-    in_fence = False
-    for line in lines:
-        if line.startswith("```") or line.startswith("~~~~"):
-            in_fence = not in_fence
-        if not in_fence and line.strip() == "---":
+    for line in _iter_unfenced_lines(f.body):
+        if line.strip() == "---":
             return Finding(
                 f.rel,
                 "F-NO-HR",
@@ -721,14 +739,9 @@ def check_f_no_hr(f: InstructionFile) -> Finding | None:
 
 def check_f_no_italic(f: InstructionFile) -> Finding | None:
     """Italic is the lowest-signal markdown element; LLMs ignore it."""
-    lines = f.body.splitlines()
-    in_fence = False
     italic_pat = _P(r"(?<!\*)\*(?!\*)[\w].*?[\w]\*(?!\*)|(?<!_)_(?!_)[\w].*?[\w]_(?!_)")
-    for line in lines:
-        if line.startswith("```") or line.startswith("~~~~"):
-            in_fence = not in_fence
-            continue
-        if not in_fence and italic_pat.search(line):
+    for line in _iter_unfenced_lines(f.body):
+        if italic_pat.search(_mask_inline_code(line)):
             return Finding(
                 f.rel,
                 "F-NO-ITALIC",
@@ -740,17 +753,12 @@ def check_f_no_italic(f: InstructionFile) -> Finding | None:
 
 def check_f_bold_sparse(f: InstructionFile) -> Finding | None:
     """Bold overuse trains models to ignore it."""
-    lines = f.body.splitlines()
-    in_fence = False
     prose_lines = 0
     bold_lines = 0
     bold_pat = _P(r"\*\*[^*]+\*\*")
-    for line in lines:
+    for line in _iter_unfenced_lines(f.body):
         s = line.strip()
-        if s.startswith("```") or s.startswith("~~~~"):
-            in_fence = not in_fence
-            continue
-        if in_fence or not s:
+        if not s:
             continue
         prose_lines += 1
         if bold_pat.search(line):
