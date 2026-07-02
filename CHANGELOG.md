@@ -8,6 +8,8 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.5.0] - 2026-07-02
+
 ### Fixed
 
 - Fixed `apply_mirror`'s overlay H1 merge treating a matched anchor with both intro content and nested children as a full-subtree swap, which silently dropped every unmentioned base subsection (`fixing-code`, `brainstorming-ideas`, `documenting-code`, and others); merges are now recursive by default and only replace anchor content the overlay actually provides.
