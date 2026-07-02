@@ -315,6 +315,50 @@ def test_custom_protected_patterns_override_defaults(tmp_path: Path) -> None:
     assert err == ""
 
 
+def test_bad_regex_pattern_skipped_but_valid_patterns_still_enforced(
+    tmp_path: Path,
+) -> None:
+    """An invalid regex must not crash the hook; remaining patterns still work."""
+    config = tmp_path / ".claude" / "hook-config.json"
+    config.parent.mkdir()
+    config.write_text(
+        json.dumps(
+            {
+                "fileProtector": {
+                    "protectedPatterns": [r"[invalid(", r"\.env$"],
+                    "lockFilePatterns": [],
+                }
+            }
+        )
+    )
+
+    rc, err = _run({"tool_input": {"file_path": ".env"}}, tmp_path)
+    assert rc == 2, f"valid pattern should still block: {err}"
+    assert "BLOCKED" in err
+    assert "Traceback" not in err
+    assert "WARNING: Invalid regex pattern skipped" in err
+
+
+def test_bad_regex_pattern_allows_non_matching_safe_path(tmp_path: Path) -> None:
+    """A bad regex fails open for itself; safe paths stay unblocked."""
+    config = tmp_path / ".claude" / "hook-config.json"
+    config.parent.mkdir()
+    config.write_text(
+        json.dumps(
+            {
+                "fileProtector": {
+                    "protectedPatterns": [r"[invalid("],
+                    "lockFilePatterns": [r"[also-bad("],
+                }
+            }
+        )
+    )
+
+    rc, err = _run({"tool_input": {"file_path": "src/main.py"}}, tmp_path)
+    assert rc == 0
+    assert "Traceback" not in err
+
+
 def test_custom_lock_patterns_override_defaults(tmp_path: Path) -> None:
     """Custom lock patterns replace defaults — go.sum is no longer a lock file."""
     config = tmp_path / ".claude" / "hook-config.json"

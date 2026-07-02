@@ -13,6 +13,13 @@ from conftest import REPO_ROOT
 HOOK = REPO_ROOT / "src" / "hooks" / "notify" / "hook.sh"
 
 
+def _path_without_jq() -> str:
+    """Real PATH with every directory containing a jq binary removed."""
+    parts = os.environ["PATH"].split(os.pathsep)
+    kept = [p for p in parts if not (Path(p) / "jq").exists()]
+    return os.pathsep.join(kept)
+
+
 def _write_executable(path: Path, content: str) -> None:
     path.write_text(content)
     path.chmod(path.stat().st_mode | stat.S_IXUSR)
@@ -225,6 +232,41 @@ def test_permission_prompt_not_suppressed_when_pane_focused(tmp_path: Path) -> N
     args = notifier_args.read_text().splitlines()
     assert _arg_after(args, "-subtitle") == "Action required"
     assert _arg_after(args, "-activate") == "net.kovidgoyal.kitty"
+
+
+def test_missing_jq_falls_back_without_crash(tmp_path: Path) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    notifier_args = tmp_path / "terminal-notifier.args"
+    _write_terminal_notifier(bin_dir, notifier_args)
+
+    env = os.environ.copy()
+    env["PATH"] = f"{bin_dir}:{_path_without_jq()}"
+    for var in (
+        "TMUX",
+        "TMUX_PANE",
+        "TERM_PROGRAM",
+        "KITTY_LISTEN_ON",
+        "KITTY_PID",
+        "KITTY_WINDOW_ID",
+        "CLAUDE_TERMINAL_BUNDLE_ID",
+    ):
+        env.pop(var, None)
+
+    proc = _run(
+        {
+            "title": "Pi",
+            "message": "Ready for input",
+            "notification_type": "idle_prompt",
+        },
+        cwd=tmp_path,
+        env=env,
+    )
+
+    assert proc.returncode == 0, proc.stderr
+    assert "command not found" not in proc.stderr
+    assert "📢 Agent: Done" in proc.stderr
+    assert not notifier_args.exists(), "should exit before invoking terminal-notifier"
 
 
 def test_iterm_under_tmux_recovers_bundle_id(tmp_path: Path) -> None:

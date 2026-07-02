@@ -20,6 +20,14 @@ shell_quote() {
 # --- Parse input ---
 json_input="${1:-$(cat)}"
 
+# Without jq we cannot safely parse the JSON payload — skip the jq calls
+# below (each would otherwise print "command not found") and fall back to
+# a generic notification instead.
+if ! command -v jq >/dev/null 2>&1; then
+	echo "📢 Agent: Done" >&2
+	exit 0
+fi
+
 title=$(echo "$json_input" | jq -r '.title // ""')
 message=$(echo "$json_input" | jq -r '.message // "Done"')
 cwd=$(echo "$json_input" | jq -r '.cwd // ""')
