@@ -26,7 +26,7 @@ name: documenting-code
 user-invocable: true
 ---
 
-# Documentation Update
+# Documenting Code
 
 Scope: documentation files, agent instruction files, and useful code comments
 only. Not for code-quality review; use `reviewing-code` for that.
@@ -35,13 +35,12 @@ Update docs from implementation facts. Identify the reader first. Apply edits
 only when write tools are available. If evidence or validation is missing, report
 the gap instead of claiming docs are current.
 
-## Tool use
+## Role-gated action
 
-- Use Read for implementation, tests, and existing docs.
-- Use Edit for targeted doc changes. Use Write only for new docs or full rewrites.
-- Use Bash only for status, diffs, markdown lint, docs checks, and narrow repo validation.
-- Use TaskCreate only for a large documentation audit that needs a bounded read-only mapping pass. Verify the returned claims before editing.
-- Use AskUserQuestion only when scope or reader is ambiguous.
+Detect capability from tools, not prose:
+
+- Write-capable role: edit docs and run validation.
+- Read-only role: apply nothing; emit proposed edits in the output contract.
 
 ## Reader model
 
@@ -68,6 +67,21 @@ Code reader:
 - Delete comments that restate code.
 - Avoid comments in tests unless they explain an essential external behavior or edge case.
 
+## Language references
+
+Load only references matching changed implementation files:
+
+- C# /.NET: `references/csharp.md`
+- Go: `references/go.md`
+- Java/Kotlin: `references/java-kotlin.md`
+- Python: `references/python.md`
+- Rust: `references/rust.md`
+- TypeScript: `references/typescript.md`
+- Web: `references/web.md`
+
+Mixed languages: load each matching reference. Unknown language: use this file
+only.
+
 ## Workflow
 
 1. Determine scope from the user request or changed files. Do not ask if clear.
@@ -90,6 +104,17 @@ file paths and line evidence. Do not let the subagent edit.
 - Agent docs for skills, agents, hooks, commands, tools, routing, and operating rules.
 - Generated catalogs only through source files and generator scripts.
 - Code comments only when they add useful contract or reasoning value.
+
+## Rules
+
+- No promotional filler.
+- No dead, future, or speculative behavior.
+- No ADRs or `docs/adr/` changes unless explicitly requested.
+- Keep private paths, secrets, tokens, and internal credentials out of docs.
+- Prefer runnable examples. If an example cannot be run, state why.
+- For human docs, favor a compact diagram over paragraphs only when the diagram
+  improves understanding.
+- For agent docs, optimize for token efficiency over visual appeal.
 
 ## Verification
 
@@ -120,6 +145,22 @@ Verified:
 Issues: none | <remaining issue>
 ```
 
+## Failure handling
+
+- Ambiguous scope: ask one scoped question.
+- No recent changes: ask what to document instead of inventing docs.
+- Generated doc target: edit source and rebuild, not generated output.
+- Docs/code conflict: report it; update docs to code unless user says docs are intended contract.
+- Verification failure: quote the exact failure and do not claim success.
+
+## Tool use
+
+- Use Read for implementation, tests, and existing docs.
+- Use Edit for targeted doc changes. Use Write only for new docs or full rewrites.
+- Use Bash only for status, diffs, markdown lint, docs checks, and narrow repo validation.
+- Use TaskCreate only for a large documentation audit that needs a bounded read-only mapping pass. Verify the returned claims before editing.
+- Use AskUserQuestion only when scope or reader is ambiguous.
+
 ## Reviewer output
 
 Read-only role only. Apply nothing and run nothing.
@@ -138,11 +179,3 @@ Code:
 
 Rationale: <code fact that makes this stale or missing>
 ```
-
-## Failure handling
-
-- Ambiguous scope: ask one scoped question.
-- No recent changes: ask what to document instead of inventing docs.
-- Generated doc target: edit source and rebuild, not generated output.
-- Docs/code conflict: report it; update docs to code unless user says docs are intended contract.
-- Verification failure: quote the exact failure and do not claim success.

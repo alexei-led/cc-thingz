@@ -320,6 +320,55 @@ def test_apply_mirror_full_replace_drops_base_children(ov) -> None:
     assert "A2" not in out
 
 
+def test_apply_mirror_replace_with_content_and_children_merges(ov) -> None:
+    """A matched anchor with both content and children merges, not swaps.
+
+    Regression for the H1-collision bug: a Claude overlay pairs an intro
+    paragraph under the top header with its own new subsections (the common
+    shape). The matched header used to be treated as a leaf and its entire
+    base subtree replaced wholesale, silently dropping every base subsection
+    the overlay didn't repeat by name.
+    """
+    base = dedent_md(
+        """
+        # Top
+
+        base intro
+
+        ## Alpha
+
+        alpha-body
+
+        ## Beta
+
+        beta-body
+        """
+    )
+    overlay = dedent_md(
+        """
+        # Top
+
+        overlay intro
+
+        ## Beta
+
+        new beta-body
+
+        ## Gamma
+
+        gamma-body
+        """
+    )
+    out = ov.apply_mirror(base, overlay)
+    assert "overlay intro" in out
+    assert "base intro" not in out
+    assert "Alpha" in out
+    assert "alpha-body" in out  # untouched base sibling survives
+    assert "new beta-body" in out
+    assert "Gamma" in out
+    assert "gamma-body" in out  # new overlay-only section added
+
+
 def test_apply_mirror_append_carries_overlay_children(ov) -> None:
     base = dedent_md(
         """

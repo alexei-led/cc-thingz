@@ -26,14 +26,6 @@ user-invocable: true
 Audit AI coding-agent configuration with local evidence first. Default to
 review-only. Apply fixes only when the user explicitly asks or passes `--fix`.
 
-## Claude tool use
-
-- Use Read, Glob, and Grep for local inventory.
-- Use WebFetch for official docs, changelogs, and exact source URLs.
-- Use Perplexity only when official docs do not answer a current best-practice or ecosystem question.
-- Use AskUserQuestion before ambiguous scope or risky fixes.
-- Do not fetch broad web advice before reading local config.
-
 ## Read first
 
 - `references/RUBRIC.md` for shared review dimensions and severity.
@@ -55,18 +47,6 @@ Even then, ask before changing permissions, sandbox policy, hooks, MCP servers,
 model routing, package installs, deletes, moves, broad rewrites, private config,
 or managed settings.
 
-## Workflow
-
-1. Identify platform, config root, and mode.
-2. If scope is ambiguous, list detected surfaces and ask which to audit.
-3. Inventory relevant files with paths, sizes, and source/generated status.
-4. Read current files before recommending changes.
-5. Check the matching platform reference.
-6. Fetch official docs only when syntax, feature availability, or deprecation status is uncertain.
-7. Use broader web research only for source gaps or ecosystem comparisons.
-8. Classify findings by impact and disruption.
-9. In fix mode, apply only approved changes and verify.
-
 ## Scope
 
 Review AI-agent config only:
@@ -78,6 +58,18 @@ Review AI-agent config only:
 
 Do not review app runtime config, git hook hygiene, product docs, source-code
 quality, or generated output as the source of truth.
+
+## Workflow
+
+1. Identify platform, config root, and mode.
+2. If scope is ambiguous, list detected surfaces and ask which to audit.
+3. Inventory relevant files with paths, sizes, and source/generated status.
+4. Read current files before recommending changes.
+5. Check the matching platform reference.
+6. Fetch official docs only when syntax, feature availability, or deprecation status is uncertain.
+7. Use broader web research only for source gaps or ecosystem comparisons.
+8. Classify findings by impact and disruption.
+9. In fix mode, apply only approved changes and verify.
 
 ## Priorities
 
@@ -138,3 +130,11 @@ findings.`
 - Generated file target: report the source path and regeneration command instead of editing it.
 - Secrets or private data: do not quote secret values; identify only the path and key name when needed.
 - Validation failure after a fix: revert the change unless the user asks to keep it, then report the exact error.
+
+## Claude tool use
+
+- Use Read, Glob, and Grep for local inventory.
+- Use WebFetch for official docs, changelogs, and exact source URLs.
+- Use Perplexity only when official docs do not answer a current best-practice or ecosystem question.
+- Use AskUserQuestion before ambiguous scope or risky fixes.
+- Do not fetch broad web advice before reading local config.

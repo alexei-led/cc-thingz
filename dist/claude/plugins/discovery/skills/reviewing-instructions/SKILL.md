@@ -186,7 +186,9 @@ Scores with evidence remain required.
 - Unknown model alias: use generic, report the alias gap, and lower confidence.
 - Vendor docs unavailable: use local model reference or generic; do not block review.
 - Conflicting local and vendor guidance: local project rules win; report the conflict.
-- Parallel or delegated reviews disagree: apply the same gates and caps, then keep the lower-confidence result out of confirmed findings.## Claude platform additions
+- Parallel or delegated reviews disagree: apply the same gates and caps, then keep the lower-confidence result out of confirmed findings.
+
+## Claude platform additions
 
 The host SKILL.md is canonical. This overlay only adds Claude-specific argument,
 task, and aggregation behavior.

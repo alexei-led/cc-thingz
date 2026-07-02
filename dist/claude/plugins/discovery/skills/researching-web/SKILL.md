@@ -21,6 +21,91 @@ user-invocable: true
 
 Follow the base skill. This Claude overlay only defines tool use and execution details.
 
+## Scope
+
+Use this for:
+
+- comparisons and trade-offs
+- recent facts, current-state questions, and release behavior
+- standards and external best practices
+- ecosystem, licensing, or market facts
+- vendor docs as evidence for non-syntax claims
+
+Do not use this for:
+
+- exact API syntax, config keys, or code examples → `looking-up-docs`
+- repo-specific questions that local files can answer
+- private code, secrets, credentials, or proprietary data
+
+## Tool selection
+
+Choose tools by question type:
+
+- Simple factual question: use the platform's focused answer or search tool.
+- Source selection: search first, then fetch or read the best official or primary sources.
+- Broad investigation: use deep or asynchronous research when available.
+- Follow-up detail on a cited source: fetch the relevant source directly.
+
+Do not hardcode one provider as the answer for every question. Use the tool that
+best matches the question and the available runtime.
+
+## Workflow
+
+1. Restate the research question and the decision it should inform.
+2. Decide whether the question is simple, source-selection, or broad investigation.
+3. Gather sources with the matching tool.
+4. Prefer primary or official sources when they can answer the question.
+5. Compare sourced facts against local project constraints before recommending changes.
+6. Separate sourced facts from recommendation or judgment.
+7. Report unknowns, stale-source risk, and gaps directly.
+
+If the user asks for the workflow itself, describe the source-gathering plan and
+output structure; do not present an uncited recommendation as fact.
+
+## Failure handling
+
+- No useful results: report the gap directly; do not fabricate sources.
+- Live web unavailable: say so explicitly and report that the answer is limited.
+- Question requires private code or credentials: refuse the web query and answer only from local context.
+- Deep research unavailable: fall back to search plus focused answer queries and note the fallback.
+- Sources conflict: describe the conflict, cite both sides, and avoid a confident recommendation unless one source is more authoritative or current.
+- Only secondary sources found: say that primary-source confidence is limited.
+- Source looks stale and recency matters: flag stale-source risk explicitly.
+
+## Output contract
+
+```markdown
+## Research Result
+
+### Research Question
+
+<question and decision it informs>
+
+### Answer
+
+<concise answer>
+
+### Evidence
+
+- <source title/url> — <what it supports>
+
+### Recommendation
+
+<recommendation separated from sourced facts, or none>
+
+### Fit For This Repo
+
+<what changes because of local constraints>
+
+### Unknowns and Stale-Source Risk
+
+<unknowns, conflicting sources, or recency risk>
+
+### Gaps
+
+<any missing evidence or blocked retrieval>
+```
+
 ## Claude tool rules
 
 - Use Perplexity for broad research questions, comparisons, or source discovery when it is available.

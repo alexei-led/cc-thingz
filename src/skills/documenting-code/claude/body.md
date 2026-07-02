@@ -1,4 +1,4 @@
-# Documentation Update
+# Documenting Code
 
 Scope: documentation files, agent instruction files, and useful code comments
 only. Not for code-quality review; use `reviewing-code` for that.

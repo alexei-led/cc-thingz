@@ -219,7 +219,9 @@ Omit empty severity sections except Needs review when it explains partial covera
 - Tool unavailable: report the gap and continue with source review.
 - Tests missing for changed behavior: report under tests with the missing behavior named.
 - Large scope: review requested scope first; recommend deep/team mode for more coverage.
-- Generated or vendored files: review only if the change is direct and source generation is in scope.## Platform workflow additions
+- Generated or vendored files: review only if the change is direct and source generation is in scope.
+
+## Platform workflow additions
 
 Track phases with `TaskCreate` and `TaskUpdate` when available:
 
