@@ -118,13 +118,16 @@ def strip_comment(value: str) -> str:
 
 # Scalar values wrap in double quotes only when unquoted round-tripping would
 # lose data: a " #" sequence looks like a comment to strip_comment, and a
-# leading quote character is ambiguous with our own quoting. Everything else
-# stays unquoted for backward compatibility with existing frontmatter.
+# leading or trailing quote character is ambiguous with our own quoting (an
+# unquoted value ending in `"`, e.g. `Fixed the "bug"`, would otherwise be
+# corrupted by the plain-scalar parse path stripping the stray quote on the
+# next load). Everything else stays unquoted for backward compatibility with
+# existing frontmatter.
 _QUOTED_VALUE_RE = re.compile(r'^"((?:[^"\\]|\\.)*)"$')
 
 
 def needs_quoting(value: str) -> bool:
-    return " #" in value or value.startswith(('"', "'"))
+    return " #" in value or value.startswith(('"', "'")) or value.endswith(('"', "'"))
 
 
 def quote_scalar(value: str) -> str:
@@ -139,6 +142,20 @@ def parse_quoted_scalar(value: str) -> str | None:
     if not match:
         return None
     return re.sub(r"\\(.)", r"\1", match.group(1))
+
+
+def strip_matched_quotes(value: str) -> str:
+    """Strip a leading/trailing quote pair only when both ends match.
+
+    A blind `.strip("\"'")` corrupts a value that merely starts or ends with
+    an unmatched quote character that is part of the real content (e.g.
+    `Fixed the "bug"`, which ends in `"` but was never wrapped by
+    quote_scalar). Only unwrap when the value is actually bracketed by one
+    quote type on both ends, which covers legacy single-quoted frontmatter.
+    """
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+        return value[1:-1]
+    return value
 
 
 def parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
@@ -159,7 +176,11 @@ def parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
             continue
         if line.startswith("  - "):
             if current_key:
-                current_list.append(strip_comment(line[4:].strip()))
+                raw_item = line[4:].strip()
+                quoted_item = parse_quoted_scalar(raw_item)
+                current_list.append(
+                    quoted_item if quoted_item is not None else strip_comment(raw_item)
+                )
             continue
         if current_key is not None:
             meta[current_key] = current_list
@@ -183,7 +204,7 @@ def parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
                 if item.strip()
             ]
         else:
-            meta[key.strip()] = value.strip("\"'")
+            meta[key.strip()] = strip_matched_quotes(value)
 
     if current_key is not None:
         meta[current_key] = current_list
@@ -197,7 +218,7 @@ def dump_frontmatter(meta: dict[str, Any], body: str) -> str:
         if isinstance(value, list):
             if value:
                 lines.append(f"{key}:")
-                lines.extend(f"  - {item}" for item in value)
+                lines.extend(f"  - {quote_scalar(str(item))}" for item in value)
             else:
                 lines.append(f"{key}: []")
         else:

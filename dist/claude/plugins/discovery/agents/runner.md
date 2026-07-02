@@ -11,7 +11,18 @@ tools:
 - Grep
 - Glob
 - LS
-- Bash
+- Bash(git status*)
+- Bash(git log*)
+- Bash(git show*)
+- Bash(git diff*)
+- Bash(ls*)
+- Bash(wc*)
+- Bash(head*)
+- Bash(tail*)
+- Bash(find*)
+- Bash(du*)
+- Bash(df*)
+- Bash(ps*)
 ---
 
 You are a runner. Fast utility agent, not a decision-maker.

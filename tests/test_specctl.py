@@ -337,6 +337,82 @@ def test_done_tests_with_leading_quote_survives_reload_and_resave(empty_spec: Pa
     assert parsed_meta(task)["done-tests"] == tests_note
 
 
+def test_done_summary_ending_in_quote_survives_reload_and_resave(empty_spec: Path):
+    """A value ending in an unmatched quote character must not be corrupted
+    across repeated load-then-save cycles.
+
+    Pre-fix, needs_quoting() only checked for a *leading* quote, so a value
+    like 'Fixed the "bug"' was written unquoted; the unquoted parse path then
+    blindly stripped the trailing quote with `.strip("\"'")`, corrupting the
+    stored value to 'Fixed the "bug' on the very next load-then-save cycle.
+    """
+    task = write_task(empty_spec, "TASK-trailing-quote")
+    write_task(empty_spec, "TASK-other")
+    assert run_specctl("start", "TASK-trailing-quote", cwd=empty_spec).returncode == 0
+
+    summary = 'Fixed the "bug"'
+    done = run_specctl(
+        "done",
+        "TASK-trailing-quote",
+        "--summary",
+        summary,
+        "--tests",
+        "pytest passed",
+        cwd=empty_spec,
+    )
+    assert done.returncode == 0
+    assert parsed_meta(task)["done-summary"] == summary
+
+    # A second load-then-save cycle must not corrupt the value further.
+    dep = run_specctl("dep", "add", "TASK-trailing-quote", "TASK-other", cwd=empty_spec)
+    assert dep.returncode == 0
+    assert parsed_meta(task)["done-summary"] == summary
+
+
+def test_done_summary_with_internal_quotes_survives_reload_and_resave(empty_spec: Path):
+    """A value with internal quote characters that neither starts nor ends
+    with a quote must round-trip unchanged."""
+    task = write_task(empty_spec, "TASK-internal-quote")
+    write_task(empty_spec, "TASK-other")
+    assert run_specctl("start", "TASK-internal-quote", cwd=empty_spec).returncode == 0
+
+    summary = 'He said "hello" to the reviewer'
+    done = run_specctl(
+        "done",
+        "TASK-internal-quote",
+        "--summary",
+        summary,
+        "--tests",
+        "pytest passed",
+        cwd=empty_spec,
+    )
+    assert done.returncode == 0
+    assert parsed_meta(task)["done-summary"] == summary
+
+    dep = run_specctl("dep", "add", "TASK-internal-quote", "TASK-other", cwd=empty_spec)
+    assert dep.returncode == 0
+    assert parsed_meta(task)["done-summary"] == summary
+
+
+def test_list_item_with_hash_round_trips_through_dump_and_parse():
+    """List items must be quoted the same way scalars are: a " #" inside a
+    list item must not be truncated by comment-stripping on load.
+
+    Pre-fix, dump_frontmatter()'s list branch never called quote_scalar(), so
+    an item like "urgent #p1" was written unquoted and then truncated to
+    "urgent" (comment-stripped) on the next parse.
+    """
+    meta = {"id": "TASK-x", "tags": ["urgent #p1", "other"]}
+    text = specctl.dump_frontmatter(meta, "")
+    reparsed, _ = specctl.parse_frontmatter(text)
+    assert reparsed["tags"] == ["urgent #p1", "other"]
+
+    # A second load-then-save cycle must not truncate the value further.
+    text2 = specctl.dump_frontmatter(reparsed, "")
+    reparsed2, _ = specctl.parse_frontmatter(text2)
+    assert reparsed2["tags"] == ["urgent #p1", "other"]
+
+
 # ---------------------------------------------------------------------------
 # Dependencies
 # ---------------------------------------------------------------------------
