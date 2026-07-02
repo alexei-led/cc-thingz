@@ -2,7 +2,8 @@
 description: Use when planning, executing, checkpointing, finishing, or inspecting
   lightweight spec-driven work. Runs one task at a time using `.spec/` markdown files
   and the bundled `specctl` helper. NOT for broad product discovery beyond a short
-  requirement interview.
+  requirement interview. NOT for generic implementation planning that does not read
+  or write `.spec/` files.
 name: spec-flow
 ---
 

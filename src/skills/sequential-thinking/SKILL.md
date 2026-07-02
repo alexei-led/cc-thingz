@@ -5,7 +5,9 @@ description:
   "reason through this", "branch this idea", or when tackling a hard multi-step problem
   (architecture decisions, ambiguous bugs, multi-constraint tradeoffs, plans that
   may need revision). NOT for trivial lookups, single-tool fetches, or tasks the model
-  can answer directly without planning.
+  can answer directly without planning. NOT for open-ended option exploration or
+  idea generation; use brainstorming-ideas. NOT for arguing a claim from both sides
+  to prove or disprove it.
 name: sequential-thinking
 ---
 
@@ -64,11 +66,11 @@ Open with a one-line plan, then emit numbered Thought blocks. Use these exact ma
 
 ### Block rules
 
-- **Numbering is monotonic.** A revision gets a new number; it does not overwrite an old one. `(revises N)` declares which thought it supersedes.
+- **Numbering**: monotonic. A revision gets a new number; it does not overwrite an old one. `(revises N)` declares which thought it supersedes.
 - **Branches** are labelled `Branch <letter> from <N>`. Subsequent thoughts on that branch tag themselves `(Branch <letter>)`. The default trunk needs no tag.
-- **Estimate, then adjust.** The opening `Plan:` is an estimate, not a contract. If you need more thoughts, write `### Thought N (extending plan to M)` and continue. Don't pretend you knew all along.
-- **One thought, one move.** A thought makes one observation, one deduction, or asks one question. Walls of text under a single number defeat the point.
-- **Final is mandatory.** Stop with `### Final`. Without it, callers can't tell whether you finished or got cut off.
+- **Estimate**: the opening `Plan:` is an estimate, not a contract. If more thoughts are needed, write `### Thought N (extending plan to M)` and continue. Don't pretend you knew all along.
+- **One thought, one move**: a thought makes one observation, one deduction, or asks one question. Walls of text under a single number defeat the point.
+- **Final**: mandatory. Stop with `### Final`. Without it, callers can't tell whether you finished or got cut off.
 
 ### Grounding
 

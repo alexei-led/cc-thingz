@@ -11,7 +11,9 @@ name: writing-rust
 # Rust Development
 
 Use only for Rust crates and Cargo workspaces. Follow the crate's edition, MSRV,
-toolchain file, CI, and local style.
+toolchain file, CI, and local style. Rust CLI development (clap, argument
+parsing, subcommands) is in scope; apply `patterns.md` and `testing.md` — there
+is no dedicated CLI reference.
 
 ## Read First
 
