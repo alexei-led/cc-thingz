@@ -369,6 +369,34 @@ def test_apply_mirror_replace_with_content_and_children_merges(ov) -> None:
     assert "gamma-body" in out  # new overlay-only section added
 
 
+def test_apply_mirror_merge_without_content_keeps_base_intro(ov) -> None:
+    """A matched anchor with children but no own content keeps the base intro."""
+    base = dedent_md(
+        """
+        # Top
+
+        base intro
+
+        ## Alpha
+
+        alpha-body
+        """
+    )
+    overlay = dedent_md(
+        """
+        # Top
+
+        ## Beta
+
+        beta-body
+        """
+    )
+    out = ov.apply_mirror(base, overlay)
+    assert "base intro" in out  # no overlay content -> anchor intro survives
+    assert "alpha-body" in out
+    assert "beta-body" in out
+
+
 def test_apply_mirror_append_carries_overlay_children(ov) -> None:
     base = dedent_md(
         """
