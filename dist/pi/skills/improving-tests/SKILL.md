@@ -26,8 +26,7 @@ Detect capability from tools:
 - Read-only role: inspect supplied files/output and emit changes in the Proposed Changes contract. Apply nothing; run nothing.
 - Missing key tool or permission: stop with Blocked and ask for the exact artifact, access, or approval needed.
 
-Use an interactive question tool when available for mode selection, missing scope,
-missing framework approval, or unsafe test-stack choices.
+Use an interactive question tool when available for mode selection, missing scope, missing framework approval, or unsafe test-stack choices.
 
 ## Route elsewhere
 
@@ -134,37 +133,13 @@ Look for:
 - order dependencies, leaked globals, or shared mutable resources that block safe parallelism
 - dead tests that cover deleted behavior or generated glue
 
-Preferred consolidation:
-
-- Go: table-driven tests with subtests.
-- Java/Kotlin: parameterized JUnit/Kotest cases when they stay readable.
-- Rust: small case tables or focused `#[test]` functions.
-- Python: parametrized pytest cases.
-- TypeScript: `it.each` or equivalent project pattern.
-
-Do not force consolidation when separate tests make distinct behavior clearer.
+Prefer each language's table-driven or parameterized pattern from `references/<lang>.md` when cases share setup and assertions. Do not force consolidation when separate tests make distinct behavior clearer.
 
 ## Verification
 
-Run the relevant project command after changes. Examples:
+Run the relevant project command after changes, for example `pytest -q --maxfail=1 --tb=short`. Exact commands per language live in `references/<lang>.md`.
 
-```bash
-dotnet test path/to/Tests.csproj
-dotnet test path/to/App.sln
-go test ./pkg/name -run TestName
-go test ./...
-./gradlew :module:test --tests '*FooTest'
-./mvnw -q -Dtest=FooTest test
-cargo test -p crate_name test_name
-cargo test --all-targets
-pytest -q --maxfail=1 --tb=short
-pytest -q --durations=10 --durations-min=0.5
-vitest run path/to/file.test.ts
-bun test
-```
-
-Use coverage commands only when coverage mode or review needs them. Report skipped
-checks with exact reasons.
+Use coverage commands only when coverage mode or review needs them. Report skipped checks with exact reasons.
 
 ## Output
 

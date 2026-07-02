@@ -117,37 +117,9 @@ codegraph is useful for dependency/call blast radius and high fan-in surfaces:
 
 ## Review dimensions
 
-Security:
-
-- Auth, authorization, injection, unsafe deserialization, secrets, crypto, SSRF, XSS, CSRF, path traversal, data exposure.
-
-Correctness:
-
-- Logic errors, edge cases, null or empty handling, contract mismatches, broken callers, unchecked errors, migrations, API compatibility.
-
-Tests:
-
-- Missing regression tests, uncovered changed behavior, weak assertions, over-mocking, missing error or boundary cases.
-
-Reliability:
-
-- Resource leaks, retries, timeouts, cancellation, concurrency, races, idempotency, cleanup, observability for failures.
-
-Performance:
-
-- Realistic hot paths, unbounded work, N+1 queries, blocking I/O, memory growth, avoidable cost.
-
-Maintainability:
-
-- Dead code, confusing indirection, shallow wrappers, mixed responsibilities, brittle coupling, unclear invariants.
-
-Simplicity (over-engineering):
-
-- Reinvented stdlib or native behavior, single-implementation abstractions, factories with one product, speculative flexibility, dependencies a few lines would replace, dead flags or config.
-
-Docs:
-
-- Public API docs, migration notes, user-facing behavior, accessibility text, and operator docs affected by the change.
+Security, correctness, tests, reliability, performance, maintainability,
+simplicity (over-engineering), and docs. Scope and coverage checklist per
+dimension: `references/severity-rubric.md`.
 
 Simplify focus:
 
