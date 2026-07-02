@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+# shellcheck disable=SC2030,SC2031  # each @test runs in its own subshell; per-test HOME exports are intentionally local
 
 HOOK="$BATS_TEST_DIRNAME/../../src/hooks/smart-lint/hook.sh"
 

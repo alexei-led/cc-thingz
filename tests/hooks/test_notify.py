@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import shlex
+import shutil
 import stat
 import subprocess
 import textwrap
@@ -116,8 +117,10 @@ def _tmux_env(env: dict[str, str], bin_dir: Path) -> dict[str, str]:
 def _run(
     payload: dict[str, str], cwd: Path, env: dict[str, str]
 ) -> subprocess.CompletedProcess[str]:
+    # Absolute path: the missing-jq test strips PATH dirs containing jq, which
+    # on Linux CI also removes the dir holding bash.
     return subprocess.run(
-        ["bash", str(HOOK)],
+        [shutil.which("bash") or "/bin/bash", str(HOOK)],
         input=json.dumps(payload),
         capture_output=True,
         text=True,
