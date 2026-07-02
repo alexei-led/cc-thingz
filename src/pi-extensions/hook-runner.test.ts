@@ -570,6 +570,46 @@ describe("synthetic invoke bridge", () => {
 			errorSpy.mockRestore();
 		}
 	});
+
+	it("still calls onResult exactly once with the non-blocking default when a blocking PreToolUse invoke throws before responding", async () => {
+		// The test above only proves fail-open for ConfigChange, a non-blocking
+		// event where {blocked: false} is also the pre-existing default. PreToolUse
+		// is a blocking event type: if the bridge ever failed closed here, or
+		// called onResult more than once, a real tool-call caller would hang or
+		// double-resolve. This locks the documented fail-open decision for the
+		// case that actually matters.
+		const circularStdin: Record<string, unknown> = {
+			session_id: "sess",
+			cwd: "/workspace",
+			hook_event_name: "PreToolUse",
+			tool_name: "Bash",
+			tool_use_id: "x1",
+			tool_input: { command: "ls" },
+		};
+		circularStdin.self = circularStdin;
+
+		const calls: unknown[] = [];
+		const errorSpy = spyOn(console, "error").mockImplementation(() => {});
+		try {
+			const response = await new Promise<any>((resolve) => {
+				const bus = busHandlers.get(HOOK_RUNNER_INVOKE_CHANNEL)!;
+				bus({
+					hookEventName: "PreToolUse",
+					ccToolName: "Bash",
+					stdin: circularStdin,
+					onResult: (result: unknown) => {
+						calls.push(result);
+						resolve(result);
+					},
+				});
+			});
+			expect(response).toEqual({ blocked: false });
+			expect(calls).toHaveLength(1);
+			expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("[hook-runner] synthetic hook bridge threw"));
+		} finally {
+			errorSpy.mockRestore();
+		}
+	});
 });
 
 describe("agent_end → StopFailure", () => {
