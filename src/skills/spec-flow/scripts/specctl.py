@@ -116,6 +116,31 @@ def strip_comment(value: str) -> str:
     return value.split(" #", 1)[0].strip()
 
 
+# Scalar values wrap in double quotes only when unquoted round-tripping would
+# lose data: a " #" sequence looks like a comment to strip_comment, and a
+# leading quote character is ambiguous with our own quoting. Everything else
+# stays unquoted for backward compatibility with existing frontmatter.
+_QUOTED_VALUE_RE = re.compile(r'^"((?:[^"\\]|\\.)*)"$')
+
+
+def needs_quoting(value: str) -> bool:
+    return " #" in value or value.startswith(('"', "'"))
+
+
+def quote_scalar(value: str) -> str:
+    if not needs_quoting(value):
+        return value
+    escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
+
+
+def parse_quoted_scalar(value: str) -> str | None:
+    match = _QUOTED_VALUE_RE.match(value)
+    if not match:
+        return None
+    return re.sub(r"\\(.)", r"\1", match.group(1))
+
+
 def parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
     if not text.startswith("---"):
         return {}, text.strip()
@@ -142,8 +167,13 @@ def parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
             current_list = []
         if ":" not in line:
             continue
-        key, _, value = line.partition(":")
-        value = strip_comment(value.strip())
+        key, _, raw_value = line.partition(":")
+        raw_value = raw_value.strip()
+        quoted = parse_quoted_scalar(raw_value)
+        if quoted is not None:
+            meta[key.strip()] = quoted
+            continue
+        value = strip_comment(raw_value)
         if not value:
             current_key = key.strip()
         elif value.startswith("[") and value.endswith("]"):
@@ -171,7 +201,7 @@ def dump_frontmatter(meta: dict[str, Any], body: str) -> str:
             else:
                 lines.append(f"{key}: []")
         else:
-            lines.append(f"{key}: {value}")
+            lines.append(f"{key}: {quote_scalar(str(value))}")
     lines.extend(["---", "", body.strip()])
     return "\n".join(lines) + "\n"
 

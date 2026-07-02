@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import subprocess
 from pathlib import Path
@@ -12,6 +13,11 @@ from conftest import REPO_ROOT
 SPECCTL = REPO_ROOT / "src" / "skills" / "spec-flow" / "scripts" / "specctl.py"
 WRAPPER = REPO_ROOT / "src" / "skills" / "spec-flow" / "scripts" / "specctl"
 
+_spec = importlib.util.spec_from_file_location("specctl_module", SPECCTL)
+assert _spec is not None and _spec.loader is not None
+specctl = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(specctl)
+
 
 def run_specctl(*args: str, cwd: Path | None = None) -> subprocess.CompletedProcess:
     return subprocess.run(
@@ -21,6 +27,11 @@ def run_specctl(*args: str, cwd: Path | None = None) -> subprocess.CompletedProc
         cwd=cwd,
         timeout=10,
     )
+
+
+def parsed_meta(path: Path) -> dict:
+    meta, _ = specctl.parse_frontmatter(path.read_text(encoding="utf-8"))
+    return meta
 
 
 @pytest.fixture()
@@ -262,6 +273,68 @@ def test_handoff_reports_uncommitted_changes(tmp_path: Path):
     assert result.returncode == 0
     assert "app.txt" in result.stdout
     assert "Changes: none" not in result.stdout
+
+
+# ---------------------------------------------------------------------------
+# Frontmatter round-trip safety
+# ---------------------------------------------------------------------------
+
+
+def test_done_summary_with_hash_survives_reload_and_resave(empty_spec: Path):
+    """A value containing " #" (e.g. an issue reference) must not be
+    truncated by comment-stripping across repeated load-then-save cycles.
+
+    Pre-fix, strip_comment() cut everything from " #" onward, so this
+    assertion failed with the file containing only "Fixed auth bug"
+    (parsed meta: {'done-summary': 'Fixed auth bug', ...}).
+    """
+    task = write_task(empty_spec, "TASK-hash")
+    write_task(empty_spec, "TASK-other")
+    assert run_specctl("start", "TASK-hash", cwd=empty_spec).returncode == 0
+
+    summary = "Fixed auth bug #42: added regression test"
+    done = run_specctl(
+        "done",
+        "TASK-hash",
+        "--summary",
+        summary,
+        "--tests",
+        "pytest passed",
+        cwd=empty_spec,
+    )
+    assert done.returncode == 0
+    assert summary in task.read_text(encoding="utf-8")
+    assert parsed_meta(task)["done-summary"] == summary
+
+    # A second load-then-save cycle (any of start/done/dep/reset) must not
+    # truncate the value further.
+    dep = run_specctl("dep", "add", "TASK-hash", "TASK-other", cwd=empty_spec)
+    assert dep.returncode == 0
+    assert summary in task.read_text(encoding="utf-8")
+    assert parsed_meta(task)["done-summary"] == summary
+
+
+def test_done_tests_with_leading_quote_survives_reload_and_resave(empty_spec: Path):
+    task = write_task(empty_spec, "TASK-quote")
+    write_task(empty_spec, "TASK-other")
+    assert run_specctl("start", "TASK-quote", cwd=empty_spec).returncode == 0
+
+    tests_note = '"already reviewed" via pytest'
+    done = run_specctl(
+        "done",
+        "TASK-quote",
+        "--summary",
+        "Reviewed output",
+        "--tests",
+        tests_note,
+        cwd=empty_spec,
+    )
+    assert done.returncode == 0
+    assert parsed_meta(task)["done-tests"] == tests_note
+
+    dep = run_specctl("dep", "add", "TASK-quote", "TASK-other", cwd=empty_spec)
+    assert dep.returncode == 0
+    assert parsed_meta(task)["done-tests"] == tests_note
 
 
 # ---------------------------------------------------------------------------
