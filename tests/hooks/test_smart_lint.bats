@@ -353,6 +353,76 @@ SH
 	[ "$(cat yarn.args)" = "run lint" ]
 }
 
+@test "smart-lint: untrusted project .claude-hooks-config.sh is not sourced" {
+	cd "$WORK_DIR" || exit
+	export HOME="$WORK_DIR/home"
+	mkdir -p "$HOME/.claude"
+	cat >.claude-hooks-config.sh <<'SH'
+touch marker
+SH
+
+	run env SKIP_LINT=1 bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ ! -f marker ]
+	[[ "$output" == *"ignoring untrusted"* ]]
+}
+
+@test "smart-lint: hash-trusted project .claude-hooks-config.sh is sourced" {
+	cd "$WORK_DIR" || exit
+	export HOME="$WORK_DIR/home"
+	mkdir -p "$HOME/.claude"
+	cat >.claude-hooks-config.sh <<'SH'
+touch marker
+SH
+	shasum -a 256 .claude-hooks-config.sh | awk '{print $1}' >>"$HOME/.claude/trusted-hooks-config-hashes"
+
+	run env SKIP_LINT=1 bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ -f marker ]
+}
+
+@test "smart-lint: CLAUDE_HOOKS_TRUST_PROJECT_CONFIG=1 sources untrusted project config" {
+	cd "$WORK_DIR" || exit
+	export HOME="$WORK_DIR/home"
+	mkdir -p "$HOME/.claude"
+	cat >.claude-hooks-config.sh <<'SH'
+touch marker
+SH
+
+	run env SKIP_LINT=1 CLAUDE_HOOKS_TRUST_PROJECT_CONFIG=1 bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ -f marker ]
+}
+
+@test "smart-lint: stale hash after config edit is no longer trusted" {
+	cd "$WORK_DIR" || exit
+	export HOME="$WORK_DIR/home"
+	mkdir -p "$HOME/.claude"
+	cat >.claude-hooks-config.sh <<'SH'
+touch marker
+SH
+	shasum -a 256 .claude-hooks-config.sh | awk '{print $1}' >>"$HOME/.claude/trusted-hooks-config-hashes"
+	echo '# modified' >>.claude-hooks-config.sh
+
+	run env SKIP_LINT=1 bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ ! -f marker ]
+}
+
+@test "smart-lint: user-level .claude-hooks-config.sh still sources unconditionally" {
+	cd "$WORK_DIR" || exit
+	export HOME="$WORK_DIR/home"
+	mkdir -p "$HOME/.claude"
+	cat >"$HOME/.claude/.claude-hooks-config.sh" <<'SH'
+touch marker
+SH
+
+	run env SKIP_LINT=1 bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ -f marker ]
+	[[ "$output" != *"ignoring untrusted"* ]]
+}
+
 @test "smart-lint: package lint script is last fallback when focused JS tools are absent" {
 	cd "$WORK_DIR" || exit
 	git init -q

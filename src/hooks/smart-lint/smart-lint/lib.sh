@@ -578,3 +578,17 @@ run_lint_fallbacks() {
 	run_package_lint_fallback
 	run_make_lint_fallback
 }
+
+project_hooks_config_trusted() {
+	local file="$1" store="$HOME/.claude/trusted-hooks-config-hashes" hash
+	[[ -f "$store" ]] || return 1
+	if command_exists shasum; then
+		hash=$(shasum -a 256 "$file" 2>/dev/null | awk '{print $1}')
+	elif command_exists sha256sum; then
+		hash=$(sha256sum "$file" 2>/dev/null | awk '{print $1}')
+	else
+		return 1
+	fi
+	[[ -n "$hash" ]] || return 1
+	grep -qxF "$hash" "$store" 2>/dev/null
+}
