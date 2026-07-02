@@ -5,10 +5,26 @@ const os = require("os");
 const path = require("path");
 const { loadPlaywright } = require("./runtime");
 
-const { chromium, firefox, webkit } = loadPlaywright({ quiet: isQuiet() });
-
 function isQuiet() {
   return process.env.PLAYWRIGHT_SKILL_QUIET === "1";
+}
+
+let playwrightBrowsers = null;
+
+/**
+ * Ensure Playwright is installed and its browser launchers (chromium,
+ * firefox, webkit) are loaded, memoizing the result. Loading Playwright can
+ * trigger a blocking install, so callers must invoke this explicitly (e.g.
+ * at the top of an entry point) instead of relying on import-time side
+ * effects. Safe to call more than once; only loads once per process.
+ * @param {Object} options - forwarded to loadPlaywright (e.g. { quiet })
+ * @returns {Object} { chromium, firefox, webkit }
+ */
+function ensurePlaywrightReady(options = {}) {
+  if (!playwrightBrowsers) {
+    playwrightBrowsers = loadPlaywright({ quiet: isQuiet(), ...options });
+  }
+  return playwrightBrowsers;
 }
 
 function log(...parts) {
@@ -90,7 +106,7 @@ async function launchBrowser(browserType = "chromium", options = {}) {
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
   };
 
-  const browsers = { chromium, firefox, webkit };
+  const browsers = ensurePlaywrightReady();
   const browser = browsers[browserType];
 
   if (!browser) {
@@ -154,6 +170,26 @@ async function waitForFonts(page) {
   });
 }
 
+// Playwright's internal TargetClosedError isn't exported from the public
+// "playwright" package (only errors.TimeoutError is), so a closed
+// page/context/browser surfaces as a plain Error whose message matches one
+// of these shapes. See lib/client/errors.js in playwright-core.
+const CLOSED_TARGET_MESSAGE_PATTERN =
+  /Target (?:page, context or browser )?(?:has been |is )?closed|Browser has been closed/i;
+
+function isClosedTargetError(error) {
+  if (!error) {
+    return false;
+  }
+  if (error.name === "TargetClosedError") {
+    return true;
+  }
+  return (
+    typeof error.message === "string" &&
+    CLOSED_TARGET_MESSAGE_PATTERN.test(error.message)
+  );
+}
+
 async function waitForStableBoundingBox(page, selector, options = {}) {
   const timeout = options.timeout || 10000;
   const requiredStableFrames = options.frames || 2;
@@ -166,7 +202,10 @@ async function waitForStableBoundingBox(page, selector, options = {}) {
     let box = null;
     try {
       box = await locator.boundingBox({ timeout: Math.min(1000, timeout) });
-    } catch (_error) {
+    } catch (error) {
+      if (isClosedTargetError(error)) {
+        throw error;
+      }
       // Dynamic pages can briefly detach/recreate nodes during animation.
     }
 
@@ -603,6 +642,7 @@ async function detectDevServers(customPorts = []) {
 }
 
 module.exports = {
+  ensurePlaywrightReady,
   launchBrowser,
   createPage,
   waitForPageReady,
