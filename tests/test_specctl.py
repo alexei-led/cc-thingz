@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
+import stat
 import subprocess
 from pathlib import Path
 
@@ -443,6 +445,31 @@ def test_atomic_write_leaves_original_untouched_when_replace_fails(
 
     assert target.read_text(encoding="utf-8") == "original\n"
     assert list(tmp_path.iterdir()) == [target]
+
+
+def test_atomic_write_preserves_existing_file_mode(tmp_path: Path):
+    """Regression: mkstemp() creates temp files mode 0600, and os.replace()
+    carries that mode into the target. Without preserving the original mode,
+    every saved TASK/REQ/SESSION file gets silently tightened to owner-only.
+    """
+    target = tmp_path / "TASK-x.md"
+    target.write_text("original\n", encoding="utf-8")
+    target.chmod(0o644)
+
+    specctl.atomic_write(target, "updated\n")
+
+    assert stat.S_IMODE(target.stat().st_mode) == 0o644
+
+
+def test_atomic_write_applies_umask_default_mode_for_new_file(tmp_path: Path):
+    target = tmp_path / "NEW-TASK.md"
+    old_umask = os.umask(0o022)
+    try:
+        specctl.atomic_write(target, "content\n")
+    finally:
+        os.umask(old_umask)
+
+    assert stat.S_IMODE(target.stat().st_mode) == 0o644
 
 
 def test_log_appends_without_rewriting_existing_lines(empty_spec: Path):

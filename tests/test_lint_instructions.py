@@ -64,6 +64,26 @@ def test_real_italic_outside_code_still_flagged(lint: ModuleType) -> None:
     assert finding.rule_id == "F-NO-ITALIC"
 
 
+@pytest.mark.parametrize("body", ["_Note:_ this matters.\n", "*Note:* this matters.\n"])
+def test_label_style_italic_ending_in_punctuation_flagged(
+    lint: ModuleType, body: str
+) -> None:
+    """Regression: the closing boundary required a word char adjacent to the
+    delimiter, so label-style italics ending in punctuation (`_Note:_`,
+    `*e.g.:*`) were silently missed.
+    """
+    finding = lint.check_f_no_italic(_file(lint, body))
+    assert finding is not None
+    assert finding.rule_id == "F-NO-ITALIC"
+
+
+def test_snake_case_identifier_in_code_span_not_flagged_as_italic(
+    lint: ModuleType,
+) -> None:
+    body = "Rename `snake_case_name` to camelCase.\n"
+    assert lint.check_f_no_italic(_file(lint, body)) is None
+
+
 def test_three_tilde_fence_recognized_hr_inside_not_flagged(lint: ModuleType) -> None:
     body = "~~~\n---\n~~~\n"
     assert lint.check_f_no_hr(_file(lint, body)) is None
