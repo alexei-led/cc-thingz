@@ -366,6 +366,31 @@ def test_ancestor_merged_branch_autoescalates_to_D_when_d_refuses(
     assert "cleanup-me" not in branches
 
 
+def test_locked_worktree_removal_failure_still_processes_branches(
+    tmp_path: Path,
+) -> None:
+    """Pin: a single failing `git worktree remove` (e.g. a locked worktree)
+    must not abort the script under `set -euo pipefail`. Pre-fix, the failure
+    kills the `list_worktrees | while ...` subshell and the pipeline's
+    non-zero status aborts the script before the `== branches ==` section
+    runs, even though `branch-only` is independently eligible for deletion."""
+    repo = init_repo(tmp_path, "main")
+    add_merged_branch(repo, "main", "wt-branch")
+    worktree = create_worktree(repo, tmp_path, "wt-branch")
+    git(repo, "worktree", "lock", str(worktree))
+    add_merged_branch(repo, "main", "branch-only")
+
+    result = run([str(SCRIPT), "--apply"], repo)
+
+    assert result.returncode == 0, result.stdout
+    assert "warning: failed to remove worktree" in result.stdout
+    assert "== branches ==" in result.stdout
+    assert "Deleted branch branch-only" in result.stdout
+    branches = git(repo, "branch", "--format=%(refname:short)").splitlines()
+    assert "branch-only" not in branches
+    assert "wt-branch" in branches
+
+
 def test_unknown_ahead_with_force_goes_straight_to_D(tmp_path: Path) -> None:
     """unknown + --force must skip the -d attempt entirely and go straight
     to -D — limping through -d-then-escalate would print a misleading

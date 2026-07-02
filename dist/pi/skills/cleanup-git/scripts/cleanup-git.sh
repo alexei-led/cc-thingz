@@ -255,7 +255,7 @@ branch_in_worktree() {
 delete_branch() {
 	local branch=$1 ahead=$2
 	if is_ahead_or_unknown "$ahead"; then
-		run git branch -D "$branch"
+		run git branch -D "$branch" || echo "  warning: failed to delete branch $branch" >&2
 		return
 	fi
 	if ! $APPLY; then
@@ -265,7 +265,7 @@ delete_branch() {
 	printf '+ git branch -d %q\n' "$branch"
 	git branch -d "$branch" 2>/dev/null || {
 		echo "  -d refused after cleanup proof ($CLEANUP_REASON, $ahead ahead); deleting with -D."
-		run git branch -D "$branch"
+		run git branch -D "$branch" || echo "  warning: failed to delete branch $branch" >&2
 	}
 }
 
@@ -315,7 +315,10 @@ list_worktrees | while IFS=$'\t' read -r path branch; do
 		ahead_suffix=", $CLEANUP_AHEAD ahead"
 	fi
 	echo "  remove $path ($branch, $CLEANUP_REASON$ahead_suffix)"
-	run git worktree remove "$path"
+	run git worktree remove "$path" || {
+		echo "  warning: failed to remove worktree $path ($branch); leaving in place" >&2
+		continue
+	}
 done
 
 echo "== branches =="
