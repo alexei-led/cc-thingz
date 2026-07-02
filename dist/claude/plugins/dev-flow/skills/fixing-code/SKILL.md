@@ -154,7 +154,7 @@ Before done:
 
 ## Output
 
-Use `FIX COMPLETE` for applied fixes:
+Engineer:
 
 ```text
 FIX COMPLETE
@@ -169,16 +169,32 @@ Root cause:
 - <verified cause and evidence>
 
 Changes:
-- file:line — fix
+- path:line — fix
 
 Verification:
 - <command> — pass/fail/skipped with reason
 ```
 
-Use `BLOCKED` or `Proposed Changes` when tools, access, permission, or user input
-prevents applying the fix. Include the exact missing artifact or permission needed.
+Reviewer or blocked:
 
-Do not claim clean without a passing check or explicit skipped-check reason.
+```text
+## Proposed Changes | BLOCKED
+
+Root cause:
+- <verified cause and evidence, or unknown because blocked>
+
+Blocker:
+- <missing artifact, access, tool, or permission>
+
+### Change 1: <brief description>
+
+File: `path/to/file`
+Action: CREATE | MODIFY | DELETE
+Code: <complete code block or changed region with enough context>
+Rationale: <why this fixes the root cause>
+```
+
+Do not claim clean without a clean check or an explicit skipped-check reason.
 
 ## Arguments
 

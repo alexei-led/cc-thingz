@@ -11,6 +11,7 @@ import argparse
 import json
 import os
 import re
+import stat
 import subprocess
 import sys
 import tempfile
@@ -330,10 +331,23 @@ def status_of(item: Artifact) -> str:
     return IN_PROGRESS if status == LEGACY_IN_PROGRESS else str(status)
 
 
+def _default_create_mode() -> int:
+    """Return the umask-respecting default mode for a newly created file."""
+    umask = os.umask(0)
+    os.umask(umask)
+    return 0o666 & ~umask
+
+
 def atomic_write(path: Path, content: str, *, encoding: str = "utf-8") -> None:
     """Write content to path via temp-file + os.replace so a process killed
     mid-write leaves the original file intact instead of truncated/corrupt.
     os.replace() is atomic within a filesystem on POSIX and Windows.
+
+    mkstemp() creates the temp file mode 0600 regardless of the target's
+    mode, and os.replace() carries that mode into the target — so a plain
+    temp-file swap silently tightens every saved file to owner-only. Preserve
+    the target's existing mode when it already exists; fall back to the
+    umask-respecting default for brand-new files.
 
     Ceiling: this only closes the interrupt-corruption window for a single
     write. It adds no file locking, so two concurrent specctl invocations can
@@ -341,10 +355,14 @@ def atomic_write(path: Path, content: str, *, encoding: str = "utf-8") -> None:
     change. specctl assumes a single agent process; upgrade to locking if
     concurrent invocations against the same .spec/ become a real scenario.
     """
+    mode = (
+        stat.S_IMODE(path.stat().st_mode) if path.exists() else _default_create_mode()
+    )
     fd, tmp_name = tempfile.mkstemp(
         dir=path.parent, prefix=f".{path.name}.", suffix=".tmp"
     )
     try:
+        os.fchmod(fd, mode)
         with os.fdopen(fd, "w", encoding=encoding) as handle:
             handle.write(content)
         os.replace(tmp_name, path)

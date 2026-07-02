@@ -1142,6 +1142,7 @@ run_javascript_tests() {
 	local tests=()
 	local mapped_tests=()
 	local sources=()
+	local deduped=()
 	local file tmp runner kind bin candidate status
 	for file in "${focus_files[@]}"; do
 		case "$file" in
@@ -1200,7 +1201,9 @@ run_javascript_tests() {
 	bun)
 		tests+=("${mapped_tests[@]}")
 		[[ "${#tests[@]}" -gt 0 ]] || return 0
-		run_and_capture "JS tests (bun)" bun test "${tests[@]}" || status=2
+		while IFS= read -r file; do deduped+=("$file"); done < <(printf '%s\n' "${tests[@]}" | unique_lines)
+		tests=("${deduped[@]}")
+		run_and_capture "JS tests (bun)" bun test --isolate "${tests[@]}" || status=2
 		;;
 	esac
 	return "$status"
@@ -1225,7 +1228,7 @@ run_full_javascript_tests() {
 	case "$kind" in
 	vitest) run_and_capture "vitest" "$bin" run --passWithNoTests ;;
 	jest) run_and_capture "jest" "$bin" --passWithNoTests ;;
-	bun) run_and_capture "bun test" bun test ;;
+	bun) run_and_capture "bun test" bun test --isolate ;;
 	*) return 1 ;;
 	esac
 }

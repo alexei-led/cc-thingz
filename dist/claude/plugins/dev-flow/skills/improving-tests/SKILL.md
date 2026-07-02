@@ -174,7 +174,7 @@ Use coverage commands only when coverage mode or review needs them. Report skipp
 
 ## Output
 
-Use `TEST IMPROVEMENT COMPLETE` for applied changes:
+Engineer:
 
 ```text
 TEST IMPROVEMENT COMPLETE
@@ -187,17 +187,31 @@ Performance: baseline → after | not measured
 Status: CLEAN | NEEDS ATTENTION
 
 Key improvements:
-- file:line — change
+- path:line — change
 
 Verification:
 - <command> — pass/fail/skipped with reason
 ```
 
-Use `BLOCKED` or `Proposed Changes` when tools, framework, scope, permission, or a
-safe seam is missing. Include the exact missing input and the command the applier
-should run.
+Reviewer or blocked:
 
-Do not claim clean without a passing check or explicit skipped-check reason.
+```text
+## Proposed Changes | BLOCKED
+
+Blocker:
+- <missing artifact, framework, tool, permission, or safe seam>
+
+### Change 1: <brief description>
+
+File: `path/to/test_file`
+Action: CREATE | MODIFY | DELETE
+Code: <complete test code or changed region with enough context>
+Rationale: <weak, missing, brittle, slow, or duplicate test this fixes>
+Verification: <command the applier should run>
+```
+
+If no test framework exists, ask before adding one. Do not claim clean without a
+passing check or an explicit skipped-check reason.
 
 ## Arguments
 

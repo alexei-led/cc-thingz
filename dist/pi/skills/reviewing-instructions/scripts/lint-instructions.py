@@ -739,7 +739,10 @@ def check_f_no_hr(f: InstructionFile) -> Finding | None:
 
 def check_f_no_italic(f: InstructionFile) -> Finding | None:
     """Italic is the lowest-signal markdown element; LLMs ignore it."""
-    italic_pat = _P(r"(?<!\*)\*(?!\*)[\w].*?[\w]\*(?!\*)|(?<!_)_(?!_)[\w].*?[\w]_(?!_)")
+    # Closing boundary is non-whitespace (not [\w]) so label-style italics
+    # like _Note:_ or *e.g.:* — which end on punctuation, not a word char —
+    # still match.
+    italic_pat = _P(r"(?<!\*)\*(?!\*)[\w].*?\S\*(?!\*)|(?<!_)_(?!_)[\w].*?\S_(?!_)")
     for line in _iter_unfenced_lines(f.body):
         if italic_pat.search(_mask_inline_code(line)):
             return Finding(
