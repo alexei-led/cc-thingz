@@ -310,23 +310,24 @@ makefile_target_for_path() {
 }
 
 run_nearest_makefile_tests() {
+	MAKEFILE_COVERED_FILES=()
 	project_fallback_enabled || return 0
 	local focus_files=("$@")
-	local tmp dir makefile target status=0
-	tmp=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-local-make-tests.%s' "$$")
+	local dir makefile target status=0 file pairs=""
 	for file in "${focus_files[@]}"; do
 		makefile=$(nearest_non_root_makefile_for_file "$file" || true)
 		[[ -n "$makefile" ]] || continue
 		target=$(makefile_target_for_path "$makefile" || true)
 		[[ -n "$target" ]] || continue
+		MAKEFILE_COVERED_FILES+=("$file")
 		dir=$(dirname "$makefile")
-		printf '%s|%s\n' "$dir" "$target"
-	done | sort -u >"$tmp"
+		pairs+="$dir|$target"$'\n'
+	done
+	[[ -n "$pairs" ]] || return 0
 	while IFS='|' read -r dir target; do
 		[[ -n "$dir" && -n "$target" ]] || continue
 		run_and_capture "make $target" make -C "$dir" "$target" || status=2
-	done <"$tmp"
-	rm -f "$tmp"
+	done < <(printf '%s' "$pairs" | sort -u)
 	return "$status"
 }
 
@@ -1382,14 +1383,27 @@ main() {
 	log_debug "Focus files: ${focus_files[*]}"
 	local status=0
 	run_nearest_makefile_tests "${focus_files[@]}" || status=2
-	if [[ "$status" -eq 0 && "$TESTS_RAN" -eq 0 ]]; then
-		run_python_tests "${focus_files[@]}" || status=2
-		run_go_tests "${focus_files[@]}" || status=2
-		run_rust_tests "${focus_files[@]}" || status=2
-		run_jvm_tests "${focus_files[@]}" || status=2
-		run_csharp_tests "${focus_files[@]}" || status=2
-		run_javascript_tests "${focus_files[@]}" || status=2
-		run_shell_tests "${focus_files[@]}" || status=2
+
+	local uncovered_files=() is_covered cf
+	for file in "${focus_files[@]}"; do
+		is_covered=0
+		for cf in "${MAKEFILE_COVERED_FILES[@]}"; do
+			[[ "$cf" == "$file" ]] && {
+				is_covered=1
+				break
+			}
+		done
+		[[ "$is_covered" -eq 1 ]] || uncovered_files+=("$file")
+	done
+
+	if [[ "$status" -eq 0 && "${#uncovered_files[@]}" -gt 0 ]]; then
+		run_python_tests "${uncovered_files[@]}" || status=2
+		run_go_tests "${uncovered_files[@]}" || status=2
+		run_rust_tests "${uncovered_files[@]}" || status=2
+		run_jvm_tests "${uncovered_files[@]}" || status=2
+		run_csharp_tests "${uncovered_files[@]}" || status=2
+		run_javascript_tests "${uncovered_files[@]}" || status=2
+		run_shell_tests "${uncovered_files[@]}" || status=2
 	fi
 	if [[ "$status" -eq 0 && "$TESTS_RAN" -eq 0 ]]; then
 		run_package_test_fallback || status=2

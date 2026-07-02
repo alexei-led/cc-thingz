@@ -186,6 +186,34 @@ SH
 	[ ! -f go.args ]
 }
 
+@test "test-runner: uncovered focus files still run language tests when a sibling file is covered by a nearby Makefile" {
+	mkdir -p bin setup/files pkg tests
+	touch setup/files/foo.go pkg/foo.py tests/test_foo.py
+	cat >setup/Makefile <<'MAKE'
+test:
+	@echo setup-test > ../make.marker
+MAKE
+	cat >pyproject.toml <<'TOML'
+[project]
+name = "demo"
+version = "0.0.0"
+
+[project.optional-dependencies]
+test = ["pytest"]
+TOML
+	cat >bin/uv <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/uv.args"
+SH
+	chmod +x bin/uv
+	write_state s_mixed setup/files/foo.go pkg/foo.py
+
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_mixed\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat make.marker)" = "setup-test" ]
+	[[ "$(cat uv.args)" == *"tests/test_foo.py"* ]]
+}
+
 @test "test-runner: skips root Makefile fallback" {
 	mkdir -p pkg
 	touch pkg/foo.py
