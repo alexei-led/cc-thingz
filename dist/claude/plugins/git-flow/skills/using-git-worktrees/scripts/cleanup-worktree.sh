@@ -72,13 +72,24 @@ fi
 
 GH=0
 STATE=""
+PR_HEAD=""
 if command -v gh >/dev/null 2>&1; then
 	GH=1
-	STATE=$(gh pr view "$BRANCH" --json state --jq .state 2>/dev/null || echo "")
+	pr_info=$(gh pr view "$BRANCH" --json state,headRefOid --template '{{printf "%s\t%s" .state .headRefOid}}' 2>/dev/null || echo "")
+	if [ -n "$pr_info" ]; then
+		IFS=$'\t' read -r STATE PR_HEAD <<<"$pr_info"
+	fi
 fi
 [ "$GH" = 1 ] && pr_desc="PR for '$BRANCH' is ${STATE:-not found}" || pr_desc="gh not installed, PR state for '$BRANCH' unknown"
 
 if [ "$STATE" = MERGED ]; then
+	if [ "$FORCE" != 1 ]; then
+		if ! git cat-file -e "${PR_HEAD}^{commit}" 2>/dev/null || ! git merge-base --is-ancestor "$BRANCH" "$PR_HEAD" 2>/dev/null; then
+			echo "Refusing: '$BRANCH' has commits beyond the merged PR, or the PR head is not local (try git fetch)."
+			echo "Nothing was changed. Re-run with --force once confirmed, or to abandon the branch."
+			exit 1
+		fi
+	fi
 	echo "PR for '$BRANCH' is MERGED — cleaning up."
 elif [ "$FORCE" = 1 ]; then
 	echo "$pr_desc — proceeding due to --force. This may force-remove dirty files and force-delete the branch."
