@@ -414,6 +414,51 @@ def test_list_item_with_hash_round_trips_through_dump_and_parse():
 
 
 # ---------------------------------------------------------------------------
+# Atomic writes
+# ---------------------------------------------------------------------------
+
+
+def test_atomic_write_writes_target_with_no_temp_droppings(tmp_path: Path):
+    target = tmp_path / "PROGRESS.md"
+
+    specctl.atomic_write(target, "hello\n")
+
+    assert target.read_text(encoding="utf-8") == "hello\n"
+    assert list(tmp_path.iterdir()) == [target]
+
+
+def test_atomic_write_leaves_original_untouched_when_replace_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    target = tmp_path / "PROGRESS.md"
+    target.write_text("original\n", encoding="utf-8")
+
+    def boom(*_args: object, **_kwargs: object) -> None:
+        raise OSError("simulated replace failure")
+
+    monkeypatch.setattr(specctl.os, "replace", boom)
+
+    with pytest.raises(OSError):
+        specctl.atomic_write(target, "new\n")
+
+    assert target.read_text(encoding="utf-8") == "original\n"
+    assert list(tmp_path.iterdir()) == [target]
+
+
+def test_log_appends_without_rewriting_existing_lines(empty_spec: Path):
+    progress = empty_spec / ".spec" / "PROGRESS.md"
+    progress.write_text("09:00 INIT .spec/\n", encoding="utf-8")
+    write_task(empty_spec, "TASK-a")
+
+    result = run_specctl("start", "TASK-a", cwd=empty_spec)
+
+    assert result.returncode == 0
+    lines = progress.read_text(encoding="utf-8").splitlines()
+    assert lines[0] == "09:00 INIT .spec/"
+    assert lines[-1].endswith("START TASK-a")
+
+
+# ---------------------------------------------------------------------------
 # Dependencies
 # ---------------------------------------------------------------------------
 

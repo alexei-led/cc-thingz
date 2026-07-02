@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
+import tempfile
 from datetime import datetime, timedelta
 from datetime import timezone as _timezone
 from pathlib import Path
@@ -328,11 +330,31 @@ def status_of(item: Artifact) -> str:
     return IN_PROGRESS if status == LEGACY_IN_PROGRESS else str(status)
 
 
-def save(item: Artifact) -> None:
-    item["path"].write_text(
-        dump_frontmatter(item["meta"], item["body"]),
-        encoding="utf-8",
+def atomic_write(path: Path, content: str, *, encoding: str = "utf-8") -> None:
+    """Write content to path via temp-file + os.replace so a process killed
+    mid-write leaves the original file intact instead of truncated/corrupt.
+    os.replace() is atomic within a filesystem on POSIX and Windows.
+
+    Ceiling: this only closes the interrupt-corruption window for a single
+    write. It adds no file locking, so two concurrent specctl invocations can
+    still race read-modify-write and one can silently drop the other's
+    change. specctl assumes a single agent process; upgrade to locking if
+    concurrent invocations against the same .spec/ become a real scenario.
+    """
+    fd, tmp_name = tempfile.mkstemp(
+        dir=path.parent, prefix=f".{path.name}.", suffix=".tmp"
     )
+    try:
+        with os.fdopen(fd, "w", encoding=encoding) as handle:
+            handle.write(content)
+        os.replace(tmp_name, path)
+    except BaseException:
+        Path(tmp_name).unlink(missing_ok=True)
+        raise
+
+
+def save(item: Artifact) -> None:
+    atomic_write(item["path"], dump_frontmatter(item["meta"], item["body"]))
 
 
 # --- state helpers ---
@@ -349,11 +371,17 @@ def init_dirs() -> Path:
 
 
 def log(action: str, target: str) -> None:
+    # True append instead of read-modify-write-whole-file: a kill mid-write
+    # can now only truncate the newest line, not destroy prior history.
+    # Ceiling: relies on the OS applying one short O_APPEND write atomically
+    # (true for single log lines on POSIX); upgrade to locking if concurrent
+    # specctl processes append to the same PROGRESS.md often enough for
+    # interleaved lines to matter.
     base = spec_dir()
     base.mkdir(parents=True, exist_ok=True)
     progress = base / PROGRESS_FILE
-    old = progress.read_text(encoding="utf-8").splitlines() if progress.exists() else []
-    progress.write_text("\n".join([*old, f"{now_log()} {action} {target}"]) + "\n")
+    with progress.open("a", encoding="utf-8") as handle:
+        handle.write(f"{now_log()} {action} {target}\n")
 
 
 def session_path() -> Path:
@@ -376,7 +404,7 @@ def read_session() -> dict[str, str]:
 def write_session(session: dict[str, str]) -> None:
     lines = ["# Session state - auto-managed by specctl"]
     lines.extend(f"{key}: {value}" for key, value in session.items())
-    session_path().write_text("\n".join(lines) + "\n", encoding="utf-8")
+    atomic_write(session_path(), "\n".join(lines) + "\n")
 
 
 def clear_session() -> None:
