@@ -216,26 +216,29 @@ def _show_project_hints(cwd: Path) -> None:
 
 
 def main() -> int:
+    if "--cleanup" in sys.argv[1:]:
+        _cleanup_old_files()
+        return 0
+
     cwd = _read_cwd()
     if not cwd.is_dir():
         return 0
 
-    if hasattr(os, "fork"):
-        try:
-            pid = os.fork()
-        except OSError:
-            # Process/memory pressure — skip background cleanup, stay in parent
-            pid = 1
-        if pid == 0:
-            # Child: run cleanup silently and exit
-            try:
-                os.setsid()
-            except OSError:
-                pass
-            try:
-                _cleanup_old_files()
-            finally:
-                os._exit(0)
+    # Cleanup runs in a detached subprocess instead of via os.fork(): the
+    # forked child inherited this process's stdout pipe, so hook runners
+    # waiting for EOF (not just process exit) were unbounded by their
+    # timeout — the pipe stayed open until the child's sweep finished.
+    try:
+        subprocess.Popen(
+            [sys.executable or "python3", os.path.abspath(__file__), "--cleanup"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+            close_fds=True,
+        )
+    except OSError:
+        pass  # Skip background cleanup; session start still succeeds.
 
     _show_git(cwd)
     if not _show_feature_list(cwd):
