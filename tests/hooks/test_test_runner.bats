@@ -615,6 +615,41 @@ SH
 	[ ! -f bun.args ]
 }
 
+@test "test-runner: Bun focused run passes --isolate and dedupes mapped test files" {
+	mkdir -p bin src tests
+	touch bun.lock src/foo.ts
+	cat >tests/foo.test.ts <<'TS'
+test("works", () => {})
+TS
+	cat >bin/bun <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/bun.args"
+SH
+	chmod +x bin/bun
+	# src/foo.ts (a source) maps to tests/foo.test.ts, which is also passed
+	# directly as a focus file — the merged tests+mapped_tests array must not
+	# invoke bun with the same test file twice.
+	write_state s_bun_isolate src/foo.ts tests/foo.test.ts
+
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_bun_isolate\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat bun.args)" = "test --isolate tests/foo.test.ts" ]
+}
+
+@test "test-runner: TEST_RUNNER_FULL runs Bun with --isolate" {
+	mkdir -p bin
+	touch bun.lock
+	cat >bin/bun <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/bun.args"
+SH
+	chmod +x bin/bun
+
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" TEST_RUNNER_FULL=1 HOOK_INPUT_JSON="{\"session_id\":\"s_full_bun\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat bun.args)" = "test --isolate" ]
+}
+
 @test "test-runner: HOOK_PROJECT_FALLBACK=0 disables package and Makefile fallback" {
 	mkdir -p bin src
 	cat >package.json <<'JSON'
