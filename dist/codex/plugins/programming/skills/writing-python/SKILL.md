@@ -35,6 +35,7 @@ Read [principles.md](references/principles.md) before generating or changing Pyt
 - [patterns.md](references/patterns.md) — read for module design, typing, async, config, file I/O, and error patterns.
 - [cli.md](references/cli.md) — read before writing or changing Python CLIs.
 - [testing.md](references/testing.md) — read before adding or reshaping Python tests; treat slow tests as feedback-loop defects.
+- [linting.md](references/linting.md) — read before changing ruff or pyright config, or the lint/format/type-check flow.
 
 ## Verification
 

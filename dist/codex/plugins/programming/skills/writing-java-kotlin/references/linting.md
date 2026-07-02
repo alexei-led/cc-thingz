@@ -2,28 +2,6 @@
 
 Use when changing JVM formatter, linter, static-analysis, toolchain, or fast-feedback commands.
 
-## macOS tool stack
-
-Recommended local baseline for this laptop:
-
-```bash
-brew install --cask temurin@25
-brew install gradle maven kotlin google-java-format ktlint detekt
-```
-
-Optional editor/LSP tools:
-
-```bash
-brew install jdtls kotlin-language-server
-```
-
-Use JDK 25 LTS as the stable default for modern Java/Kotlin work. A newer non-LTS JDK can stay installed for experiments, but projects should pin compile/test targets with Gradle or Maven toolchains.
-
-```bash
-/usr/libexec/java_home -V
-export JAVA_HOME=$(/usr/libexec/java_home -v 25)
-```
-
 ## Preferred project setup
 
 - Prefer Gradle wrapper and Maven wrapper over globally installed Gradle/Maven.

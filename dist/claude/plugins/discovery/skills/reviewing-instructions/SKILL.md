@@ -1,4 +1,11 @@
 ---
+allowed-tools:
+- Read
+- Grep
+- Glob
+- Bash(uv run python src/skills/reviewing-instructions/scripts/lint-instructions.py
+  *)
+context: fork
 description: 'Use when asked to lint, audit, review, or score AI-facing instruction
   files such as SKILL.md, AGENT.md, AGENTS.md, CLAUDE.md, platform body.md files,
   prompt files, rules, policies, and agent-facing references. NOT for plugin manifests,
@@ -7,6 +14,7 @@ description: 'Use when asked to lint, audit, review, or score AI-facing instruct
 
   '
 name: reviewing-instructions
+user-invocable: true
 ---
 
 # Instruction Review
