@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 
 import { HOOK_RUNNER_INVOKE_CHANNEL } from "./shared/hook-bridge.js";
 
@@ -543,6 +543,32 @@ describe("synthetic invoke bridge", () => {
 		});
 		expect(response.blocked).toBe(true);
 		expect(response.reason).toContain("unsupported synthetic hook event");
+	});
+
+	it("still calls onResult with the non-blocking default when the bridge throws before responding", async () => {
+		// A circular-reference stdin payload blows up JSON.stringify deep inside
+		// the async IIFE, after the isRecord/isHookEventName guards have already
+		// passed. Without a try/catch around the IIFE body this throw leaves the
+		// caller's onResult uncalled, hanging the synthetic-hook caller until its
+		// own outer timeout (up to 30 minutes on the plan-mode path).
+		const circularStdin: Record<string, unknown> = {
+			session_id: "sess",
+			cwd: "/workspace",
+			hook_event_name: "ConfigChange",
+		};
+		circularStdin.self = circularStdin;
+
+		const errorSpy = spyOn(console, "error").mockImplementation(() => {});
+		try {
+			const response = await new Promise<any>((resolve) => {
+				const bus = busHandlers.get(HOOK_RUNNER_INVOKE_CHANNEL)!;
+				bus({ hookEventName: "ConfigChange", stdin: circularStdin, onResult: resolve });
+			});
+			expect(response).toEqual({ blocked: false });
+			expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("[hook-runner] synthetic hook bridge threw"));
+		} finally {
+			errorSpy.mockRestore();
+		}
 	});
 });
 
