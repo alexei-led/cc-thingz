@@ -14,11 +14,19 @@ from conftest import REPO_ROOT
 HOOK = REPO_ROOT / "src" / "hooks" / "notify" / "hook.sh"
 
 
-def _path_without_jq() -> str:
-    """Real PATH with every directory containing a jq binary removed."""
-    parts = os.environ["PATH"].split(os.pathsep)
-    kept = [p for p in parts if not (Path(p) / "jq").exists()]
-    return os.pathsep.join(kept)
+def _bin_without_jq(tmp: Path) -> Path:
+    """Minimal PATH dir with the real core tools hook.sh needs, but no jq.
+
+    Stripping jq-containing dirs from the real PATH is wrong on Linux, where
+    /usr/bin holds jq AND coreutils — a jq-less machine still has cat/sed.
+    """
+    bin_dir = tmp / "no-jq-bin"
+    bin_dir.mkdir()
+    for tool in ("cat", "sed"):
+        real = shutil.which(tool)
+        assert real, f"{tool} must exist on the host"
+        (bin_dir / tool).symlink_to(real)
+    return bin_dir
 
 
 def _write_executable(path: Path, content: str) -> None:
@@ -244,7 +252,7 @@ def test_missing_jq_falls_back_without_crash(tmp_path: Path) -> None:
     _write_terminal_notifier(bin_dir, notifier_args)
 
     env = os.environ.copy()
-    env["PATH"] = f"{bin_dir}:{_path_without_jq()}"
+    env["PATH"] = f"{bin_dir}:{_bin_without_jq(tmp_path)}"
     for var in (
         "TMUX",
         "TMUX_PANE",
