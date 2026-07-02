@@ -27,7 +27,7 @@ Read [principles.md](references/principles.md) before writing, changing, or revi
 
 - [patterns.md](references/patterns.md) — package/module layout, Spring/Ktor/service boundaries, nullability, concurrency, persistence, and build seams.
 - [testing.md](references/testing.md) — adding or reshaping JUnit, Kotest, Mockito/MockK, Spring, or Gradle/Maven tests; keep the local loop fast.
-- [linting.md](references/linting.md) — JDK/tool installation, Gradle/Maven toolchains, formatters, ktlint, detekt, Spotless, and slow-check policy.
+- [linting.md](references/linting.md) — Gradle/Maven toolchains, formatters, ktlint, detekt, Spotless, and slow-check policy.
 - [cli.md](references/cli.md) — writing or changing JVM CLIs.
 
 ## Project Baseline

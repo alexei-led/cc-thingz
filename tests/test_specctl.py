@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
+import os
+import stat
 import subprocess
 from pathlib import Path
 
@@ -11,6 +14,11 @@ from conftest import REPO_ROOT
 
 SPECCTL = REPO_ROOT / "src" / "skills" / "spec-flow" / "scripts" / "specctl.py"
 WRAPPER = REPO_ROOT / "src" / "skills" / "spec-flow" / "scripts" / "specctl"
+
+_spec = importlib.util.spec_from_file_location("specctl_module", SPECCTL)
+assert _spec is not None and _spec.loader is not None
+specctl = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(specctl)
 
 
 def run_specctl(*args: str, cwd: Path | None = None) -> subprocess.CompletedProcess:
@@ -21,6 +29,11 @@ def run_specctl(*args: str, cwd: Path | None = None) -> subprocess.CompletedProc
         cwd=cwd,
         timeout=10,
     )
+
+
+def parsed_meta(path: Path) -> dict:
+    meta, _ = specctl.parse_frontmatter(path.read_text(encoding="utf-8"))
+    return meta
 
 
 @pytest.fixture()
@@ -262,6 +275,214 @@ def test_handoff_reports_uncommitted_changes(tmp_path: Path):
     assert result.returncode == 0
     assert "app.txt" in result.stdout
     assert "Changes: none" not in result.stdout
+
+
+# ---------------------------------------------------------------------------
+# Frontmatter round-trip safety
+# ---------------------------------------------------------------------------
+
+
+def test_done_summary_with_hash_survives_reload_and_resave(empty_spec: Path):
+    """A value containing " #" (e.g. an issue reference) must not be
+    truncated by comment-stripping across repeated load-then-save cycles.
+
+    Pre-fix, strip_comment() cut everything from " #" onward, so this
+    assertion failed with the file containing only "Fixed auth bug"
+    (parsed meta: {'done-summary': 'Fixed auth bug', ...}).
+    """
+    task = write_task(empty_spec, "TASK-hash")
+    write_task(empty_spec, "TASK-other")
+    assert run_specctl("start", "TASK-hash", cwd=empty_spec).returncode == 0
+
+    summary = "Fixed auth bug #42: added regression test"
+    done = run_specctl(
+        "done",
+        "TASK-hash",
+        "--summary",
+        summary,
+        "--tests",
+        "pytest passed",
+        cwd=empty_spec,
+    )
+    assert done.returncode == 0
+    assert summary in task.read_text(encoding="utf-8")
+    assert parsed_meta(task)["done-summary"] == summary
+
+    # A second load-then-save cycle (any of start/done/dep/reset) must not
+    # truncate the value further.
+    dep = run_specctl("dep", "add", "TASK-hash", "TASK-other", cwd=empty_spec)
+    assert dep.returncode == 0
+    assert summary in task.read_text(encoding="utf-8")
+    assert parsed_meta(task)["done-summary"] == summary
+
+
+def test_done_tests_with_leading_quote_survives_reload_and_resave(empty_spec: Path):
+    task = write_task(empty_spec, "TASK-quote")
+    write_task(empty_spec, "TASK-other")
+    assert run_specctl("start", "TASK-quote", cwd=empty_spec).returncode == 0
+
+    tests_note = '"already reviewed" via pytest'
+    done = run_specctl(
+        "done",
+        "TASK-quote",
+        "--summary",
+        "Reviewed output",
+        "--tests",
+        tests_note,
+        cwd=empty_spec,
+    )
+    assert done.returncode == 0
+    assert parsed_meta(task)["done-tests"] == tests_note
+
+    dep = run_specctl("dep", "add", "TASK-quote", "TASK-other", cwd=empty_spec)
+    assert dep.returncode == 0
+    assert parsed_meta(task)["done-tests"] == tests_note
+
+
+def test_done_summary_ending_in_quote_survives_reload_and_resave(empty_spec: Path):
+    """A value ending in an unmatched quote character must not be corrupted
+    across repeated load-then-save cycles.
+
+    Pre-fix, needs_quoting() only checked for a *leading* quote, so a value
+    like 'Fixed the "bug"' was written unquoted; the unquoted parse path then
+    blindly stripped the trailing quote with `.strip("\"'")`, corrupting the
+    stored value to 'Fixed the "bug' on the very next load-then-save cycle.
+    """
+    task = write_task(empty_spec, "TASK-trailing-quote")
+    write_task(empty_spec, "TASK-other")
+    assert run_specctl("start", "TASK-trailing-quote", cwd=empty_spec).returncode == 0
+
+    summary = 'Fixed the "bug"'
+    done = run_specctl(
+        "done",
+        "TASK-trailing-quote",
+        "--summary",
+        summary,
+        "--tests",
+        "pytest passed",
+        cwd=empty_spec,
+    )
+    assert done.returncode == 0
+    assert parsed_meta(task)["done-summary"] == summary
+
+    # A second load-then-save cycle must not corrupt the value further.
+    dep = run_specctl("dep", "add", "TASK-trailing-quote", "TASK-other", cwd=empty_spec)
+    assert dep.returncode == 0
+    assert parsed_meta(task)["done-summary"] == summary
+
+
+def test_done_summary_with_internal_quotes_survives_reload_and_resave(empty_spec: Path):
+    """A value with internal quote characters that neither starts nor ends
+    with a quote must round-trip unchanged."""
+    task = write_task(empty_spec, "TASK-internal-quote")
+    write_task(empty_spec, "TASK-other")
+    assert run_specctl("start", "TASK-internal-quote", cwd=empty_spec).returncode == 0
+
+    summary = 'He said "hello" to the reviewer'
+    done = run_specctl(
+        "done",
+        "TASK-internal-quote",
+        "--summary",
+        summary,
+        "--tests",
+        "pytest passed",
+        cwd=empty_spec,
+    )
+    assert done.returncode == 0
+    assert parsed_meta(task)["done-summary"] == summary
+
+    dep = run_specctl("dep", "add", "TASK-internal-quote", "TASK-other", cwd=empty_spec)
+    assert dep.returncode == 0
+    assert parsed_meta(task)["done-summary"] == summary
+
+
+def test_list_item_with_hash_round_trips_through_dump_and_parse():
+    """List items must be quoted the same way scalars are: a " #" inside a
+    list item must not be truncated by comment-stripping on load.
+
+    Pre-fix, dump_frontmatter()'s list branch never called quote_scalar(), so
+    an item like "urgent #p1" was written unquoted and then truncated to
+    "urgent" (comment-stripped) on the next parse.
+    """
+    meta = {"id": "TASK-x", "tags": ["urgent #p1", "other"]}
+    text = specctl.dump_frontmatter(meta, "")
+    reparsed, _ = specctl.parse_frontmatter(text)
+    assert reparsed["tags"] == ["urgent #p1", "other"]
+
+    # A second load-then-save cycle must not truncate the value further.
+    text2 = specctl.dump_frontmatter(reparsed, "")
+    reparsed2, _ = specctl.parse_frontmatter(text2)
+    assert reparsed2["tags"] == ["urgent #p1", "other"]
+
+
+# ---------------------------------------------------------------------------
+# Atomic writes
+# ---------------------------------------------------------------------------
+
+
+def test_atomic_write_writes_target_with_no_temp_droppings(tmp_path: Path):
+    target = tmp_path / "PROGRESS.md"
+
+    specctl.atomic_write(target, "hello\n")
+
+    assert target.read_text(encoding="utf-8") == "hello\n"
+    assert list(tmp_path.iterdir()) == [target]
+
+
+def test_atomic_write_leaves_original_untouched_when_replace_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    target = tmp_path / "PROGRESS.md"
+    target.write_text("original\n", encoding="utf-8")
+
+    def boom(*_args: object, **_kwargs: object) -> None:
+        raise OSError("simulated replace failure")
+
+    monkeypatch.setattr(specctl.os, "replace", boom)
+
+    with pytest.raises(OSError):
+        specctl.atomic_write(target, "new\n")
+
+    assert target.read_text(encoding="utf-8") == "original\n"
+    assert list(tmp_path.iterdir()) == [target]
+
+
+def test_atomic_write_preserves_existing_file_mode(tmp_path: Path):
+    """Regression: mkstemp() creates temp files mode 0600, and os.replace()
+    carries that mode into the target. Without preserving the original mode,
+    every saved TASK/REQ/SESSION file gets silently tightened to owner-only.
+    """
+    target = tmp_path / "TASK-x.md"
+    target.write_text("original\n", encoding="utf-8")
+    target.chmod(0o644)
+
+    specctl.atomic_write(target, "updated\n")
+
+    assert stat.S_IMODE(target.stat().st_mode) == 0o644
+
+
+def test_atomic_write_applies_umask_default_mode_for_new_file(tmp_path: Path):
+    target = tmp_path / "NEW-TASK.md"
+    old_umask = os.umask(0o022)
+    try:
+        specctl.atomic_write(target, "content\n")
+    finally:
+        os.umask(old_umask)
+
+    assert stat.S_IMODE(target.stat().st_mode) == 0o644
+
+
+def test_log_appends_without_rewriting_existing_lines(empty_spec: Path):
+    progress = empty_spec / ".spec" / "PROGRESS.md"
+    progress.write_text("09:00 INIT .spec/\n", encoding="utf-8")
+    write_task(empty_spec, "TASK-a")
+
+    result = run_specctl("start", "TASK-a", cwd=empty_spec)
+
+    assert result.returncode == 0
+    lines = progress.read_text(encoding="utf-8").splitlines()
+    assert lines[0] == "09:00 INIT .spec/"
+    assert lines[-1].endswith("START TASK-a")
 
 
 # ---------------------------------------------------------------------------

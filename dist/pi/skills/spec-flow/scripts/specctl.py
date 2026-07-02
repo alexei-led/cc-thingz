@@ -9,9 +9,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
+import stat
 import subprocess
 import sys
+import tempfile
 from datetime import datetime, timedelta
 from datetime import timezone as _timezone
 from pathlib import Path
@@ -116,6 +119,48 @@ def strip_comment(value: str) -> str:
     return value.split(" #", 1)[0].strip()
 
 
+# Scalar values wrap in double quotes only when unquoted round-tripping would
+# lose data: a " #" sequence looks like a comment to strip_comment, and a
+# leading or trailing quote character is ambiguous with our own quoting (an
+# unquoted value ending in `"`, e.g. `Fixed the "bug"`, would otherwise be
+# corrupted by the plain-scalar parse path stripping the stray quote on the
+# next load). Everything else stays unquoted for backward compatibility with
+# existing frontmatter.
+_QUOTED_VALUE_RE = re.compile(r'^"((?:[^"\\]|\\.)*)"$')
+
+
+def needs_quoting(value: str) -> bool:
+    return " #" in value or value.startswith(('"', "'")) or value.endswith(('"', "'"))
+
+
+def quote_scalar(value: str) -> str:
+    if not needs_quoting(value):
+        return value
+    escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
+
+
+def parse_quoted_scalar(value: str) -> str | None:
+    match = _QUOTED_VALUE_RE.match(value)
+    if not match:
+        return None
+    return re.sub(r"\\(.)", r"\1", match.group(1))
+
+
+def strip_matched_quotes(value: str) -> str:
+    """Strip a leading/trailing quote pair only when both ends match.
+
+    A blind `.strip("\"'")` corrupts a value that merely starts or ends with
+    an unmatched quote character that is part of the real content (e.g.
+    `Fixed the "bug"`, which ends in `"` but was never wrapped by
+    quote_scalar). Only unwrap when the value is actually bracketed by one
+    quote type on both ends, which covers legacy single-quoted frontmatter.
+    """
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+        return value[1:-1]
+    return value
+
+
 def parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
     if not text.startswith("---"):
         return {}, text.strip()
@@ -134,7 +179,11 @@ def parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
             continue
         if line.startswith("  - "):
             if current_key:
-                current_list.append(strip_comment(line[4:].strip()))
+                raw_item = line[4:].strip()
+                quoted_item = parse_quoted_scalar(raw_item)
+                current_list.append(
+                    quoted_item if quoted_item is not None else strip_comment(raw_item)
+                )
             continue
         if current_key is not None:
             meta[current_key] = current_list
@@ -142,8 +191,13 @@ def parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
             current_list = []
         if ":" not in line:
             continue
-        key, _, value = line.partition(":")
-        value = strip_comment(value.strip())
+        key, _, raw_value = line.partition(":")
+        raw_value = raw_value.strip()
+        quoted = parse_quoted_scalar(raw_value)
+        if quoted is not None:
+            meta[key.strip()] = quoted
+            continue
+        value = strip_comment(raw_value)
         if not value:
             current_key = key.strip()
         elif value.startswith("[") and value.endswith("]"):
@@ -153,7 +207,7 @@ def parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
                 if item.strip()
             ]
         else:
-            meta[key.strip()] = value.strip("\"'")
+            meta[key.strip()] = strip_matched_quotes(value)
 
     if current_key is not None:
         meta[current_key] = current_list
@@ -167,11 +221,11 @@ def dump_frontmatter(meta: dict[str, Any], body: str) -> str:
         if isinstance(value, list):
             if value:
                 lines.append(f"{key}:")
-                lines.extend(f"  - {item}" for item in value)
+                lines.extend(f"  - {quote_scalar(str(item))}" for item in value)
             else:
                 lines.append(f"{key}: []")
         else:
-            lines.append(f"{key}: {value}")
+            lines.append(f"{key}: {quote_scalar(str(value))}")
     lines.extend(["---", "", body.strip()])
     return "\n".join(lines) + "\n"
 
@@ -277,11 +331,48 @@ def status_of(item: Artifact) -> str:
     return IN_PROGRESS if status == LEGACY_IN_PROGRESS else str(status)
 
 
-def save(item: Artifact) -> None:
-    item["path"].write_text(
-        dump_frontmatter(item["meta"], item["body"]),
-        encoding="utf-8",
+def _default_create_mode() -> int:
+    """Return the umask-respecting default mode for a newly created file."""
+    umask = os.umask(0)
+    os.umask(umask)
+    return 0o666 & ~umask
+
+
+def atomic_write(path: Path, content: str, *, encoding: str = "utf-8") -> None:
+    """Write content to path via temp-file + os.replace so a process killed
+    mid-write leaves the original file intact instead of truncated/corrupt.
+    os.replace() is atomic within a filesystem on POSIX and Windows.
+
+    mkstemp() creates the temp file mode 0600 regardless of the target's
+    mode, and os.replace() carries that mode into the target — so a plain
+    temp-file swap silently tightens every saved file to owner-only. Preserve
+    the target's existing mode when it already exists; fall back to the
+    umask-respecting default for brand-new files.
+
+    Ceiling: this only closes the interrupt-corruption window for a single
+    write. It adds no file locking, so two concurrent specctl invocations can
+    still race read-modify-write and one can silently drop the other's
+    change. specctl assumes a single agent process; upgrade to locking if
+    concurrent invocations against the same .spec/ become a real scenario.
+    """
+    mode = (
+        stat.S_IMODE(path.stat().st_mode) if path.exists() else _default_create_mode()
     )
+    fd, tmp_name = tempfile.mkstemp(
+        dir=path.parent, prefix=f".{path.name}.", suffix=".tmp"
+    )
+    try:
+        os.fchmod(fd, mode)
+        with os.fdopen(fd, "w", encoding=encoding) as handle:
+            handle.write(content)
+        os.replace(tmp_name, path)
+    except BaseException:
+        Path(tmp_name).unlink(missing_ok=True)
+        raise
+
+
+def save(item: Artifact) -> None:
+    atomic_write(item["path"], dump_frontmatter(item["meta"], item["body"]))
 
 
 # --- state helpers ---
@@ -298,11 +389,17 @@ def init_dirs() -> Path:
 
 
 def log(action: str, target: str) -> None:
+    # True append instead of read-modify-write-whole-file: a kill mid-write
+    # can now only truncate the newest line, not destroy prior history.
+    # Ceiling: relies on the OS applying one short O_APPEND write atomically
+    # (true for single log lines on POSIX); upgrade to locking if concurrent
+    # specctl processes append to the same PROGRESS.md often enough for
+    # interleaved lines to matter.
     base = spec_dir()
     base.mkdir(parents=True, exist_ok=True)
     progress = base / PROGRESS_FILE
-    old = progress.read_text(encoding="utf-8").splitlines() if progress.exists() else []
-    progress.write_text("\n".join([*old, f"{now_log()} {action} {target}"]) + "\n")
+    with progress.open("a", encoding="utf-8") as handle:
+        handle.write(f"{now_log()} {action} {target}\n")
 
 
 def session_path() -> Path:
@@ -325,7 +422,7 @@ def read_session() -> dict[str, str]:
 def write_session(session: dict[str, str]) -> None:
     lines = ["# Session state - auto-managed by specctl"]
     lines.extend(f"{key}: {value}" for key, value in session.items())
-    session_path().write_text("\n".join(lines) + "\n", encoding="utf-8")
+    atomic_write(session_path(), "\n".join(lines) + "\n")
 
 
 def clear_session() -> None:

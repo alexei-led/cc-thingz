@@ -210,14 +210,18 @@ run_tests() {
 	fi
 }
 
+SETUP_FAILED=false
 if $RUN_SETUP; then
 	echo "Running dependency setup..." >&2
-	run_setup
+	run_setup || {
+		SETUP_FAILED=true
+		echo "warning: dependency setup failed" >&2
+	}
 fi
 
 if $RUN_TESTS; then
 	echo "Running baseline tests..." >&2
-	run_tests
+	run_tests || echo "warning: baseline tests failed" >&2
 fi
 
 cat <<EOF
@@ -231,3 +235,13 @@ Next:
 - cd "$WORKTREE_PATH"
 - clean up after PR merge with: scripts/cleanup-worktree.sh "$BRANCH_NAME"
 EOF
+
+# Dependency setup failure leaves the worktree unusable for further work
+# (missing deps break everything run in it), so the script still reports
+# READY with the path an agent needs to fix it manually, but exits non-zero
+# to signal the operation needs attention. A failing baseline test suite is
+# just information (pre-existing/flaky failures are common) and does not
+# block using the worktree, so it only warns and exits 0.
+if $SETUP_FAILED; then
+	exit 1
+fi

@@ -7,26 +7,39 @@ Usage: bq-cost-check.py "SELECT * FROM table"
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 
 PRICE_PER_TB = 5.00
 WARN_USD = 1.00
+BQ_TIMEOUT_SECS = 120
+
+# Matches bq's dry-run prose: "...will process 1,234 bytes of data." Anchored
+# on "process ... bytes" so a version banner or job id elsewhere in the output
+# can't be mistaken for the byte count.
+BYTES_PROSE_RE = re.compile(r"process\s+([\d,]+)\s+bytes", re.IGNORECASE)
 
 
 def estimate_bytes(query: str) -> int:
-    result = subprocess.run(
-        [
-            "bq",
-            "query",
-            "--dry_run",
-            "--use_legacy_sql=false",
-            "--format=json",
-            query,
-        ],
-        capture_output=True,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            [
+                "bq",
+                "query",
+                "--dry_run",
+                "--use_legacy_sql=false",
+                "--format=json",
+                query,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=BQ_TIMEOUT_SECS,
+        )
+    except subprocess.TimeoutExpired:
+        raise SystemExit(
+            f"Error: bq dry-run timed out after {BQ_TIMEOUT_SECS}s"
+        ) from None
     if result.returncode != 0:
         sys.stderr.write(result.stdout + result.stderr)
         raise SystemExit("Error: bq dry-run failed")
@@ -41,10 +54,9 @@ def estimate_bytes(query: str) -> int:
     try:
         data = json.loads(blob)
     except json.JSONDecodeError:
-        # Fall back to "process <N> bytes" prose
-        for token in blob.split():
-            if token.isdigit():
-                return int(token)
+        match = BYTES_PROSE_RE.search(blob)
+        if match:
+            return int(match.group(1).replace(",", ""))
         raise SystemExit("Error: could not parse bq output:\n" + blob) from None
 
     # Walk JSON for totalBytesProcessed

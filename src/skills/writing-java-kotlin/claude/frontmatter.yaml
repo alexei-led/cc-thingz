@@ -1,0 +1,8 @@
+user-invocable: false
+context: fork
+agent: engineer
+allowed-tools:
+  - Read
+  - Bash
+  - Grep
+  - Glob

@@ -9,7 +9,7 @@ context: fork
 description: Idiomatic TypeScript development. Use when writing TypeScript code, Node.js
   services, React apps, or TypeScript design advice. Emphasizes strict typing, boundary
   validation, composition, fast feedback, behavior tests, and project-configured tooling.
-  NOT for Go, Python, Rust, plain HTML/CSS/JS, or server-rendered templates.
+  NOT for Go, Python, Rust, plain HTML/CSS/JS, or server-rendered templates (use writing-web).
 name: writing-typescript
 user-invocable: false
 ---
@@ -67,3 +67,10 @@ user-invocable: false
 - If validation needs a schema/form library not already used, ask before adding it; otherwise use a narrow type guard.
 - If typecheck or tests fail, quote the exact diagnostic or failing assertion, state the cause, and fix the type/model boundary before widening types.
 - Do not run destructive shell commands. For broad or risky changes, state the risk and ask before acting.
+
+## Final Response
+
+- Files changed:
+- Checks:
+- Skipped checks:
+- Risks/follow-ups:

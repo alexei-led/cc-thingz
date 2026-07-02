@@ -132,58 +132,69 @@ export default function (pi: ExtensionAPI): void {
 			if (!isRecord(raw)) return;
 			const req = raw as Partial<SyntheticHookInvocationRequest>;
 			if (typeof req.onResult !== "function") return;
-			if (!isRecord(req.stdin)) {
-				req.onResult({ blocked: true, reason: "invalid synthetic hook payload" });
-				return;
-			}
-			if (!isHookEventName(req.hookEventName)) {
-				req.onResult({ blocked: true, reason: `unsupported synthetic hook event: ${String(req.hookEventName)}` });
-				return;
-			}
 
-			const hookEventName = req.hookEventName;
-			const cwd = typeof req.stdin.cwd === "string" ? req.stdin.cwd : process.cwd();
-			let force = false;
-			if (hookEventName === "ConfigChange") {
-				force = shouldForceReloadForConfigChange();
+			try {
+				if (!isRecord(req.stdin)) {
+					req.onResult({ blocked: true, reason: "invalid synthetic hook payload" });
+					return;
+				}
+				if (!isHookEventName(req.hookEventName)) {
+					req.onResult({ blocked: true, reason: `unsupported synthetic hook event: ${String(req.hookEventName)}` });
+					return;
+				}
+
+				const hookEventName = req.hookEventName;
+				const cwd = typeof req.stdin.cwd === "string" ? req.stdin.cwd : process.cwd();
+				let force = false;
+				if (hookEventName === "ConfigChange") {
+					force = shouldForceReloadForConfigChange();
+				}
+				loadConfig(cwd, force);
+
+				const withBase = {
+					...baseStdinFromRecord(hookEventName, req.stdin),
+					...req.stdin,
+					hook_event_name: hookEventName,
+				};
+
+				if (hookEventName === "PreToolUse") {
+					const ccToolName = typeof req.ccToolName === "string" ? req.ccToolName : typeof req.stdin.tool_name === "string" ? req.stdin.tool_name : "";
+					const stdin = JSON.stringify({ ...withBase, tool_name: ccToolName });
+					const result = await runPreToolUseGroups(resolvedConfig().PreToolUse ?? [], ccToolName, stdin, undefined, req.timeoutSec ?? 10);
+					req.onResult(result);
+					return;
+				}
+
+				if (hookEventName === "PermissionRequest") {
+					const ccToolName = typeof req.ccToolName === "string" ? req.ccToolName : typeof req.stdin.tool_name === "string" ? req.stdin.tool_name : "";
+					const stdin = JSON.stringify({ ...withBase, tool_name: ccToolName });
+					const result = await runPermissionRequestGroups(resolvedConfig().PermissionRequest ?? [], ccToolName, stdin, undefined, req.timeoutSec ?? 10);
+					req.onResult(result);
+					return;
+				}
+
+				if (hookEventName === "PermissionDenied") {
+					const ccToolName = typeof req.ccToolName === "string" ? req.ccToolName : typeof req.stdin.tool_name === "string" ? req.stdin.tool_name : "";
+					const stdin = JSON.stringify({ ...withBase, tool_name: ccToolName });
+					const result = await runPermissionDeniedGroups(resolvedConfig().PermissionDenied ?? [], ccToolName, stdin);
+					req.onResult(result);
+					return;
+				}
+
+				const stdin = JSON.stringify(withBase);
+				const groups = resolvedConfig()[hookEventName] ?? [];
+				const parsed = await runDecisionHooks(hookEventName, groups, stdin);
+				const blocked = NON_BLOCKING_HOOK_EVENTS.has(hookEventName) ? false : parsed.blocked;
+				req.onResult({ blocked, reason: parsed.reason, additionalContext: parsed.additionalContext });
+			} catch (err) {
+				// A throw here (e.g. a circular-reference stdin payload blowing up
+				// JSON.stringify) must never leave the caller hanging on its outer
+				// wait — up to 30 minutes on the plan-mode ExitPlanMode path. Fail
+				// open with the non-blocking default rather than fail-closed: an
+				// internal bug in the bridge is not a hook-authored deny decision.
+				console.error(`[hook-runner] synthetic hook bridge threw: ${err instanceof Error ? err.stack || err.message : String(err)}`);
+				req.onResult({ blocked: false });
 			}
-			loadConfig(cwd, force);
-
-			const withBase = {
-				...baseStdinFromRecord(hookEventName, req.stdin),
-				...req.stdin,
-				hook_event_name: hookEventName,
-			};
-
-			if (hookEventName === "PreToolUse") {
-				const ccToolName = typeof req.ccToolName === "string" ? req.ccToolName : typeof req.stdin.tool_name === "string" ? req.stdin.tool_name : "";
-				const stdin = JSON.stringify({ ...withBase, tool_name: ccToolName });
-				const result = await runPreToolUseGroups(resolvedConfig().PreToolUse ?? [], ccToolName, stdin, undefined, req.timeoutSec ?? 10);
-				req.onResult(result);
-				return;
-			}
-
-			if (hookEventName === "PermissionRequest") {
-				const ccToolName = typeof req.ccToolName === "string" ? req.ccToolName : typeof req.stdin.tool_name === "string" ? req.stdin.tool_name : "";
-				const stdin = JSON.stringify({ ...withBase, tool_name: ccToolName });
-				const result = await runPermissionRequestGroups(resolvedConfig().PermissionRequest ?? [], ccToolName, stdin, undefined, req.timeoutSec ?? 10);
-				req.onResult(result);
-				return;
-			}
-
-			if (hookEventName === "PermissionDenied") {
-				const ccToolName = typeof req.ccToolName === "string" ? req.ccToolName : typeof req.stdin.tool_name === "string" ? req.stdin.tool_name : "";
-				const stdin = JSON.stringify({ ...withBase, tool_name: ccToolName });
-				const result = await runPermissionDeniedGroups(resolvedConfig().PermissionDenied ?? [], ccToolName, stdin);
-				req.onResult(result);
-				return;
-			}
-
-			const stdin = JSON.stringify(withBase);
-			const groups = resolvedConfig()[hookEventName] ?? [];
-			const parsed = await runDecisionHooks(hookEventName, groups, stdin);
-			const blocked = NON_BLOCKING_HOOK_EVENTS.has(hookEventName) ? false : parsed.blocked;
-			req.onResult({ blocked, reason: parsed.reason, additionalContext: parsed.additionalContext });
 		})();
 	});
 
@@ -260,8 +271,7 @@ export default function (pi: ExtensionAPI): void {
 	// --- agent_end → Stop / StopFailure + Notification ---
 	pi.on("agent_end", async (event: AgentEndEvent, ctx: ExtensionContext) => {
 		const lastAssistant = [...event.messages].reverse().find((m) => m.role === "assistant") as
-			| { role: "assistant"; stopReason?: string; errorMessage?: string; content?: Array<{ type: string; text?: string }> }
-			| undefined;
+			{ role: "assistant"; stopReason?: string; errorMessage?: string; content?: Array<{ type: string; text?: string }> } | undefined;
 		const isFailure = lastAssistant?.stopReason === "error";
 
 		if (isFailure) {

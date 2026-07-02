@@ -373,6 +373,12 @@ def apply_mirror(
     title with no suffix that does not exist in base is added as a new
     subsection. Duplicate anchors and append/prepend onto a missing base
     anchor raise `OverlayError`.
+
+    A matched `replace` anchor with nested overlay children merges: the
+    anchor's own content is replaced if the overlay provides any, and nested
+    children are merged recursively by the same rules, so base subsections the
+    overlay never mentions survive. A matched anchor with no overlay children
+    is a leaf swap — the whole base subtree is replaced.
     """
     base = parse_sections(base_body)
     overlay = parse_sections(overlay_body)
@@ -418,14 +424,24 @@ def _merge(
                 base.children.append(new_section)
                 base_by_key[key] = new_section
                 continue
-            if has_content or not has_children:
+            if has_children:
+                # Overlay carries its own nested sections: this is a merge, not
+                # a full swap. Replace the anchor's own content (the intro text
+                # above the first subheader) if the overlay provides any, then
+                # recurse so unmentioned base subsections survive. Without this
+                # branch, a matched top-level H1 that pairs an intro paragraph
+                # with new subsections (the common Claude-overlay shape) wiped
+                # every base subsection the overlay didn't repeat — the
+                # "H1 collision" bug.
+                if has_content:
+                    target.content = overlay_child.content
+                _merge(target, overlay_child, path + [key], overlay_filename)
+            else:
                 replacement = _clone_for_emit(overlay_child)
                 replacement.raw_header = target.raw_header
                 idx = base.children.index(target)
                 base.children[idx] = replacement
                 base_by_key[key] = replacement
-            else:
-                _merge(target, overlay_child, path + [key], overlay_filename)
         elif op == "append":
             if target is None:
                 raise OverlayError(
@@ -475,8 +491,24 @@ def _render(section: Section) -> str:
             parts.append("\n")
     parts.append(section.content)
     for child in section.children:
+        _pad_blank_line(parts)
         parts.append(_render(child))
     return "".join(parts)
+
+
+def _pad_blank_line(parts: list[str]) -> None:
+    """Ensure the text accumulated in `parts` ends with a blank line.
+
+    A merge can append a new anchor after a section, or recurse into a
+    matched one, whose original source content ended right at EOF or the
+    next same-level header with no spare blank line. Without this, the next
+    child's header renders glued directly onto the prior paragraph.
+    """
+    if not parts:
+        return
+    tail = parts[-1]
+    if tail.strip() and not tail.endswith("\n\n"):
+        parts[-1] = tail.rstrip("\n") + "\n\n"
 
 
 # --- Body overlay mode detection ---------------------------------------------

@@ -186,6 +186,34 @@ SH
 	[ ! -f go.args ]
 }
 
+@test "test-runner: uncovered focus files still run language tests when a sibling file is covered by a nearby Makefile" {
+	mkdir -p bin setup/files pkg tests
+	touch setup/files/foo.go pkg/foo.py tests/test_foo.py
+	cat >setup/Makefile <<'MAKE'
+test:
+	@echo setup-test > ../make.marker
+MAKE
+	cat >pyproject.toml <<'TOML'
+[project]
+name = "demo"
+version = "0.0.0"
+
+[project.optional-dependencies]
+test = ["pytest"]
+TOML
+	cat >bin/uv <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/uv.args"
+SH
+	chmod +x bin/uv
+	write_state s_mixed setup/files/foo.go pkg/foo.py
+
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_mixed\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat make.marker)" = "setup-test" ]
+	[[ "$(cat uv.args)" == *"tests/test_foo.py"* ]]
+}
+
 @test "test-runner: skips root Makefile fallback" {
 	mkdir -p pkg
 	touch pkg/foo.py
@@ -585,6 +613,41 @@ SH
 	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_no_vitest\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
 	[ ! -f bun.args ]
+}
+
+@test "test-runner: Bun focused run passes --isolate and dedupes mapped test files" {
+	mkdir -p bin src tests
+	touch bun.lock src/foo.ts
+	cat >tests/foo.test.ts <<'TS'
+test("works", () => {})
+TS
+	cat >bin/bun <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/bun.args"
+SH
+	chmod +x bin/bun
+	# src/foo.ts (a source) maps to tests/foo.test.ts, which is also passed
+	# directly as a focus file — the merged tests+mapped_tests array must not
+	# invoke bun with the same test file twice.
+	write_state s_bun_isolate src/foo.ts tests/foo.test.ts
+
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_bun_isolate\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat bun.args)" = "test --isolate tests/foo.test.ts" ]
+}
+
+@test "test-runner: TEST_RUNNER_FULL runs Bun with --isolate" {
+	mkdir -p bin
+	touch bun.lock
+	cat >bin/bun <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/bun.args"
+SH
+	chmod +x bin/bun
+
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" TEST_RUNNER_FULL=1 HOOK_INPUT_JSON="{\"session_id\":\"s_full_bun\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat bun.args)" = "test --isolate" ]
 }
 
 @test "test-runner: HOOK_PROJECT_FALLBACK=0 disables package and Makefile fallback" {

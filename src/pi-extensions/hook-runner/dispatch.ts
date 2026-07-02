@@ -132,6 +132,10 @@ export interface RunHookOptions {
 
 export const HOOK_OUTPUT_MAX_BYTES = 10 * 1024 * 1024;
 const FALLBACK_PATH = "/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin";
+// execFile's own `timeout` sends SIGTERM at the deadline, not SIGKILL. A child
+// that traps SIGTERM never exits and execFile's callback never fires. This is
+// how long runHook waits after that SIGTERM before force-killing directly.
+const KILL_GRACE_MS = 1500;
 
 /**
  * Translate an execFile callback (`error`, `stdout`, `stderr`) into the canonical
@@ -169,7 +173,9 @@ function hookChildEnv(timeoutSec: number): NodeJS.ProcessEnv {
 		env.PATH = FALLBACK_PATH;
 	}
 	// Surface the effective timeout to the hook so it can self-bound and emit a
-	// proper blocking exit (2) before the parent SIGKILLs it.
+	// proper blocking exit (2) before the deadline: execFile sends SIGTERM at
+	// `timeoutSec`, and runHook force-SIGKILLs at `timeoutSec + KILL_GRACE_MS`
+	// if the child is still alive by then.
 	env.PI_HOOK_TIMEOUT_SEC = String(timeoutSec);
 	return env;
 }
@@ -181,17 +187,46 @@ export function runHook(entry: HookEntryRuntime, stdinJson: string, optionsOrDef
 	return new Promise((resolve) => {
 		const timeoutSec = entry.config.timeout ?? defaultTimeoutSec;
 		const timeoutMs = timeoutSec * 1000;
+		let settled = false;
 		const child = execFile(
 			"bash",
 			["-c", entry.config.command],
 			{ timeout: timeoutMs, env: hookChildEnv(timeoutSec), maxBuffer: HOOK_OUTPUT_MAX_BYTES },
 			(error, stdout, stderr) => {
+				if (settled) return;
+				settled = true;
+				clearTimeout(killTimer);
 				const { stderr: cleanedStderr } = extractProgress(stderr ?? "");
 				const result = classifyExecResult(error, stdout, cleanedStderr);
 				logHookTelemetry(entry, result, Date.now() - started);
 				resolve(result);
 			},
 		);
+		// Fallback kill timer, independent of execFile's own `timeout`. execFile
+		// sends SIGTERM at the deadline; a child that traps SIGTERM (or has a
+		// descendant holding its stdio pipes open) never causes the callback
+		// above to fire. This fires KILL_GRACE_MS later and force-kills directly.
+		//
+		// Accepted tradeoff: this only signals `child` itself — orphaned
+		// descendants are not reaped. On Node 24 and Bun 1.3.14, execFile ignores
+		// `detached: true` and a negative-pid `process.kill(-pid)` ESRCHes every
+		// time, so a positive-pid SIGKILL via `child.kill` is the lever that
+		// actually works. The descendant-held-pipe case is already force-resolved
+		// by execFile's own timeout close to the deadline; this timer's job is
+		// the SIGTERM-trapping-child case, where execFile's SIGTERM never causes
+		// an exit and its callback never fires.
+		const killTimer = setTimeout(() => {
+			if (settled) return;
+			try {
+				child.kill("SIGKILL");
+			} catch {
+				// Process already gone — nothing to do.
+			}
+			settled = true;
+			const result: HookRunResult = { exitCode: 1, stdout: "", stderr: "hook timed out (killed)", timedOut: true };
+			logHookTelemetry(entry, result, Date.now() - started);
+			resolve(result);
+		}, timeoutMs + KILL_GRACE_MS);
 		child.stdin?.write(stdinJson);
 		child.stdin?.end();
 	});

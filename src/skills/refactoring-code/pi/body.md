@@ -1,60 +1,18 @@
-# Refactoring Code
+# Batch Refactoring
 
-Refactor in small, verified batches. If behavior changes, it is not a refactor;
-it is a feature wearing a fake mustache.
+Follow the base skill. This Pi overlay only defines tool use and execution details.
 
-## Preconditions
+## Pi tool rules
 
-- Understand the current behavior and test coverage.
-- Identify the smallest safe batch.
-- Run or add tests before broad edits when risk is non-trivial.
-- Confirm before large mechanical changes across many files.
+- Pi has no tool-level read-only enforcement; follow the active agent's role
+  directive (`engineer` applies one batch, `reviewer` proposes only) rather
+  than inferring the role from tool availability.
+- Use `bash` (`rg`, `fd`, `git grep`) to map affected sites; Pi has no
+  dedicated grep/glob tool.
+- Use `edit` for existing files and `write` only for new files.
+- Use `todo` to track multi-batch refactors across steps.
+- Use `ask_user_question` when scope, preservation target, or safety gate is unclear.
 
-## Workflow
+## Output on Pi
 
-1. Define the refactor goal and non-goals.
-2. Map all affected sites before editing with available file/text search tools.
-3. Read representative files and tests.
-4. Add characterization tests when behavior is under-specified.
-5. Apply one coherent batch with `edit` or `write`.
-6. Run narrow tests.
-7. Run broader lint/type/test checks before the next batch.
-8. Delete dead code introduced or exposed by the refactor.
-
-## Safe Batches
-
-Good batches:
-
-- rename one public symbol and all callers
-- move one function/module with tests unchanged
-- remove one duplicate implementation after tests prove equivalence
-- update one repeated pattern across files
-
-Bad batches:
-
-- rename everything while changing logic
-- reorganize modules and change APIs in one pass
-- add abstractions for imagined future callers
-- edit generated files by hand
-
-## Output Contract
-
-```markdown
-## Refactor Result
-
-### Changed
-
-- `path` — what changed
-
-### Behavior
-
-- preserved by <tests/checks>
-
-### Verification
-
-- `<command>` — pass/fail
-
-### Follow-up
-
-- remaining safe batches, if any
-```
+Use the base skill's Engineer and Reviewer output contracts exactly, unmodified.

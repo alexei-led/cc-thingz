@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import shlex
+import shutil
 import stat
 import subprocess
 import textwrap
@@ -11,6 +12,21 @@ from pathlib import Path
 from conftest import REPO_ROOT
 
 HOOK = REPO_ROOT / "src" / "hooks" / "notify" / "hook.sh"
+
+
+def _bin_without_jq(tmp: Path) -> Path:
+    """Minimal PATH dir with the real core tools hook.sh needs, but no jq.
+
+    Stripping jq-containing dirs from the real PATH is wrong on Linux, where
+    /usr/bin holds jq AND coreutils — a jq-less machine still has cat/sed.
+    """
+    bin_dir = tmp / "no-jq-bin"
+    bin_dir.mkdir()
+    for tool in ("cat", "sed"):
+        real = shutil.which(tool)
+        assert real, f"{tool} must exist on the host"
+        (bin_dir / tool).symlink_to(real)
+    return bin_dir
 
 
 def _write_executable(path: Path, content: str) -> None:
@@ -109,8 +125,10 @@ def _tmux_env(env: dict[str, str], bin_dir: Path) -> dict[str, str]:
 def _run(
     payload: dict[str, str], cwd: Path, env: dict[str, str]
 ) -> subprocess.CompletedProcess[str]:
+    # Absolute path: the missing-jq test strips PATH dirs containing jq, which
+    # on Linux CI also removes the dir holding bash.
     return subprocess.run(
-        ["bash", str(HOOK)],
+        [shutil.which("bash") or "/bin/bash", str(HOOK)],
         input=json.dumps(payload),
         capture_output=True,
         text=True,
@@ -225,6 +243,41 @@ def test_permission_prompt_not_suppressed_when_pane_focused(tmp_path: Path) -> N
     args = notifier_args.read_text().splitlines()
     assert _arg_after(args, "-subtitle") == "Action required"
     assert _arg_after(args, "-activate") == "net.kovidgoyal.kitty"
+
+
+def test_missing_jq_falls_back_without_crash(tmp_path: Path) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    notifier_args = tmp_path / "terminal-notifier.args"
+    _write_terminal_notifier(bin_dir, notifier_args)
+
+    env = os.environ.copy()
+    env["PATH"] = f"{bin_dir}:{_bin_without_jq(tmp_path)}"
+    for var in (
+        "TMUX",
+        "TMUX_PANE",
+        "TERM_PROGRAM",
+        "KITTY_LISTEN_ON",
+        "KITTY_PID",
+        "KITTY_WINDOW_ID",
+        "CLAUDE_TERMINAL_BUNDLE_ID",
+    ):
+        env.pop(var, None)
+
+    proc = _run(
+        {
+            "title": "Pi",
+            "message": "Ready for input",
+            "notification_type": "idle_prompt",
+        },
+        cwd=tmp_path,
+        env=env,
+    )
+
+    assert proc.returncode == 0, proc.stderr
+    assert "command not found" not in proc.stderr
+    assert "📢 Agent: Done" in proc.stderr
+    assert not notifier_args.exists(), "should exit before invoking terminal-notifier"
 
 
 def test_iterm_under_tmux_recovers_bundle_id(tmp_path: Path) -> None:

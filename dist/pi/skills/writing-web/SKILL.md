@@ -46,6 +46,7 @@ name: writing-web
 - For UI changes, check mobile and desktop widths plus keyboard navigation.
 - For changed interactive behavior, run a browser test or state why it was skipped.
 - If a check is unavailable, state the gap and run the closest configured gate.
+- For rendered-browser verification (screenshots, live interaction, cross-viewport checks), use `browser-automation`.
 
 ## Failure Handling
 

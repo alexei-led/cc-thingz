@@ -115,8 +115,14 @@ For raw `browser.newContext(...)`, wrap options with
 
 ## Output
 
-Report the target URL, actions run, artifact paths, and failures. Base success
-claims on script output or artifacts, not on command completion alone.
+```text
+URL: <target URL>
+Actions: <actions run>
+Artifacts: <paths or none>
+Failures: <failures or none>
+```
+
+Base success claims on script output or artifacts, not on command completion alone.
 
 ## Failure handling
 
@@ -134,4 +140,5 @@ claims on script output or artifacts, not on command completion alone.
 - [`references/setup.md`](references/setup.md) — first-time install (bun
   preferred, npm fallback).
 - [`references/api.md`](references/api.md) — runtime-only patterns and links to
-  official Playwright API docs.
+  official Playwright API docs. Open it when a helper doesn't cover the needed
+  action (custom locators, waits, network interception, or auth patterns).

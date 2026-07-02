@@ -1,4 +1,11 @@
 ---
+allowed-tools:
+- Read
+- Grep
+- Glob
+- Bash(uv run python src/skills/reviewing-instructions/scripts/lint-instructions.py
+  *)
+context: fork
 description: 'Use when asked to lint, audit, review, or score AI-facing instruction
   files such as SKILL.md, AGENT.md, AGENTS.md, CLAUDE.md, platform body.md files,
   prompt files, rules, policies, and agent-facing references. NOT for plugin manifests,
@@ -7,6 +14,7 @@ description: 'Use when asked to lint, audit, review, or score AI-facing instruct
 
   '
 name: reviewing-instructions
+user-invocable: true
 ---
 
 # Instruction Review
@@ -70,15 +78,8 @@ If scope is omitted and discovery would likely expand past one skill, one agent,
 
 ## Model resolution
 
-Use `references/model-resolution.md`.
-
-Resolution order:
-
-1. `--model <name>` from the user.
-2. File frontmatter model or platform metadata.
-3. Parent entrypoint model for support files.
-4. Tool or target folder family when obvious.
-5. generic.
+Use `references/model-resolution.md` for resolution order, alias mapping, and
+fallback rules.
 
 Report one line per review set: `Model context: <family>/<variant or generic> — source <arg|frontmatter|parent|folder|generic>`.
 
@@ -92,11 +93,9 @@ Run the lint script scoped to the review target when Bash is available:
 uv run python src/skills/reviewing-instructions/scripts/lint-instructions.py <scope>
 ```
 
-If scope is omitted and broad review was not explicitly confirmed, ask one
-clarifying question before any whole-repo pre-pass.
-If scope is omitted and broad review is confirmed, run the whole-repo pre-pass.
-If the script ignores scope, filter reported findings to reviewed files before
-scoring.
+If scope is omitted, ask one clarifying question before a whole-repo pre-pass
+unless broad review is already confirmed, in which case run it. If the script
+ignores scope, filter reported findings to reviewed files before scoring.
 
 If the script fails or is unavailable, record `Structural pre-pass: skipped` with
 the exact reason and continue semantic review.
@@ -186,7 +185,9 @@ Scores with evidence remain required.
 - Unknown model alias: use generic, report the alias gap, and lower confidence.
 - Vendor docs unavailable: use local model reference or generic; do not block review.
 - Conflicting local and vendor guidance: local project rules win; report the conflict.
-- Parallel or delegated reviews disagree: apply the same gates and caps, then keep the lower-confidence result out of confirmed findings.## Claude platform additions
+- Parallel or delegated reviews disagree: apply the same gates and caps, then keep the lower-confidence result out of confirmed findings.
+
+## Claude platform additions
 
 The host SKILL.md is canonical. This overlay only adds Claude-specific argument,
 task, and aggregation behavior.

@@ -46,13 +46,16 @@ After creation, ask before running dependency setup or baseline tests. Do not in
 
 Confirm what will be removed before running destructive commands. Do not remove the current shell's working directory.
 
+The merge check needs `gh`, which this skill does not grant directly — use
+`scripts/cleanup-worktree.sh` (it wraps the `gh pr view` check) or ask the user
+to confirm the PR merged before running the manual steps below.
+
 ```bash
 branch=feature/auth
 main_wt=$(git worktree list --porcelain | awk '/^worktree /{print $2; exit}')
 wt=$(git worktree list --porcelain | awk -v b="refs/heads/$branch" '
   /^worktree /{p=$2} $0=="branch "b{print p; exit}')
 
-gh pr view "$branch" --json state,mergedAt
 cd "$main_wt"
 git worktree remove "$wt"
 git branch -d "$branch" 2>/dev/null || git branch -D "$branch"

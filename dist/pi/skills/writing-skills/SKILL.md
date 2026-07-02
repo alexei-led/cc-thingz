@@ -64,21 +64,21 @@ matches this repo's source and build rules.
    - User-invoked: use when it is mostly a manual expert tool or reference.
    - Keep one trigger per branch. Name real neighboring skills when overlap is
      possible. Put the NOT-clause in the description, not as an afterthought.
-4. Keep the main body for the common path only: scope, steps, output contract,
-   failure handling, and the few rules every run needs.
-5. Move conditional detail down:
-   - `references/` for extra rules, examples, or domain detail
-   - `<target>/frontmatter.yaml` for target-specific frontmatter
-   - `<target>/body.md` for target-specific body changes
-   - `<target>/references/`, `scripts/`, or `assets/` for target-specific support
-6. Tighten wording until each line changes behavior. Delete generic agent advice,
+4. Split content per the information hierarchy in
+   `references/skill-principles.md`. Keep only common-path rules in the main
+   body. Move conditional detail to `references/`. Use target overlays only
+   when the base cannot stay vendor-neutral: `<target>/frontmatter.yaml` for
+   target-specific frontmatter, `<target>/body.md` for target-specific body
+   changes, `<target>/references/`, `scripts/`, or `assets/` for target-specific
+   support.
+5. Tighten wording until each line changes behavior. Delete generic agent advice,
    duplicated rules, and pretty prose.
-7. When adding or removing a public skill, update the owning
+6. When adding or removing a public skill, update the owning
    `src/plugins/<plugin>/plugin.yaml`. Update `AGENTS.md` and `README.md` when
    they expose the public skill surface or counts.
-8. Before claiming done, run the narrowest verification that proves the new skill
+7. Before claiming done, run the narrowest verification that proves the new skill
    compiles and reads well.
-9. If quality is still uncertain, run `reviewing-instructions` on the new or
+8. If quality is still uncertain, run `reviewing-instructions` on the new or
    changed skill and apply the highest-value fixes.
 
 ## Writing rules

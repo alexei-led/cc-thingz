@@ -17,8 +17,18 @@ record_hook_edited_files
 # Layered config: global defaults, then project overrides.
 # shellcheck source=/dev/null
 [[ -f "$HOME/.claude/.claude-hooks-config.sh" ]] && source "$HOME/.claude/.claude-hooks-config.sh"
-# shellcheck source=/dev/null
-[[ -f ".claude-hooks-config.sh" ]] && source ".claude-hooks-config.sh"
+
+PROJECT_HOOKS_CONFIG=".claude-hooks-config.sh"
+if [[ -f "$PROJECT_HOOKS_CONFIG" ]]; then
+	if [[ "${CLAUDE_HOOKS_TRUST_PROJECT_CONFIG:-0}" == "1" ]] || project_hooks_config_trusted "$PROJECT_HOOKS_CONFIG"; then
+		# shellcheck source=/dev/null
+		source "$PROJECT_HOOKS_CONFIG"
+	else
+		echo "smart-lint: ignoring untrusted $PROJECT_HOOKS_CONFIG (not in ~/.claude/trusted-hooks-config-hashes)." >&2
+		echo "  Trust it: shasum -a 256 $PROJECT_HOOKS_CONFIG | awk '{print \$1}' >> ~/.claude/trusted-hooks-config-hashes" >&2
+		echo "  Or set CLAUDE_HOOKS_TRUST_PROJECT_CONFIG=1 to trust project configs for this session." >&2
+	fi
+fi
 
 # --- SKIP CHECK ---
 # Skip linting via env var (transient: SKIP_LINT=1 <command>)

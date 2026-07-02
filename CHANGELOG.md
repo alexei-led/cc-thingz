@@ -8,6 +8,20 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed `apply_mirror`'s overlay H1 merge treating a matched anchor with both intro content and nested children as a full-subtree swap, which silently dropped every unmentioned base subsection (`fixing-code`, `brainstorming-ideas`, `documenting-code`, and others); merges are now recursive by default and only replace anchor content the overlay actually provides.
+- Fixed `session-start`'s cleanup fork inheriting the parent's stdout pipe and the pi hook-runner's `execFile` timeout sending a `SIGTERM` a trapping child could ignore forever, either of which could hang a hook caller past its timeout.
+- Fixed `cleanup-git`/`cleanup-worktree` force-deleting a branch or worktree on an unverified `gh pr view --json state` MERGED report; both scripts now confirm the PR's head commit is a reachable ancestor before auto-cleaning.
+- Fixed spec-flow's `specctl` frontmatter round-trip: scalar values containing a lone leading or trailing quote, or a space-hash (`#`) sequence, were either comment-truncated or corrupted by an asymmetric quote/strip pair across repeated load-then-save cycles; quoting and unquoting are now symmetric, list items are quoted the same as scalars, and unquoted parsing only strips matched quote pairs instead of blind-stripping.
+- Fixed `bq-cost-check`'s dry-run fallback parser matching the first purely-numeric token anywhere in `bq` output (risking a falsely low cost estimate that skips the confirmation gate); it now anchors on the literal `process N bytes` sentence and fails loudly on a parse mismatch.
+- Fixed a `/todos` slash-command collision between plan-mode and the todo extension (plan-mode now registers `/plan-todos`) and hardened the pi hook-runner's synthetic-invoke bridge to fail open with the non-blocking default, rather than hang, when its dispatch throws before responding.
+- Fixed `smart-lint` auto-sourcing a project-root `.claude-hooks-config.sh` with no trust check; it now requires the file's content hash to be present in a local allowlist.
+- Fixed `git-guardrails` failing to detect dangerous git commands wrapped as `bash -c '...'`; it now unwraps one level of `bash|sh|zsh|dash -c` and re-checks the inner command against the same patterns.
+- Fixed the test-runner's `TESTS_RAN` flag suppressing every language runner for unrelated focus files outside any Makefile-covered directory; Makefile coverage is now tracked per file.
+- Fixed `notify/hook.sh` erroring on every call when `jq` is missing (now falls back to a generic notification) and `file-protector/hook.py` crashing on one bad user-supplied regex in `~/.claude/hook-config.json` (now skips just that pattern and keeps enforcing the rest).
+- Fixed eight instruction/config gaps flagged in review: missing `claude/frontmatter.yaml` for `writing-java-kotlin` and `reviewing-instructions`, dead `spec`/`planning:make` routing in `reviewer/AGENT.md` and `AGENTS.md`, an unpinned reviewer codex effort, a machine-specific brew/JDK block in `writing-java-kotlin`'s linting reference, a missing `writing-python` linting reference, missing failure-handling guidance in `runner/AGENT.md`, and `refactoring-code`'s pi `body.md` replacing instead of mirror-merging onto the base skill.
+
 ## [6.4.0] - 2026-07-01
 
 ### Added

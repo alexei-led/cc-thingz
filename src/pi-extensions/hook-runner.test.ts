@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 
 import { HOOK_RUNNER_INVOKE_CHANNEL } from "./shared/hook-bridge.js";
 
@@ -543,6 +543,72 @@ describe("synthetic invoke bridge", () => {
 		});
 		expect(response.blocked).toBe(true);
 		expect(response.reason).toContain("unsupported synthetic hook event");
+	});
+
+	it("still calls onResult with the non-blocking default when the bridge throws before responding", async () => {
+		// A circular-reference stdin payload blows up JSON.stringify deep inside
+		// the async IIFE, after the isRecord/isHookEventName guards have already
+		// passed. Without a try/catch around the IIFE body this throw leaves the
+		// caller's onResult uncalled, hanging the synthetic-hook caller until its
+		// own outer timeout (up to 30 minutes on the plan-mode path).
+		const circularStdin: Record<string, unknown> = {
+			session_id: "sess",
+			cwd: "/workspace",
+			hook_event_name: "ConfigChange",
+		};
+		circularStdin.self = circularStdin;
+
+		const errorSpy = spyOn(console, "error").mockImplementation(() => {});
+		try {
+			const response = await new Promise<any>((resolve) => {
+				const bus = busHandlers.get(HOOK_RUNNER_INVOKE_CHANNEL)!;
+				bus({ hookEventName: "ConfigChange", stdin: circularStdin, onResult: resolve });
+			});
+			expect(response).toEqual({ blocked: false });
+			expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("[hook-runner] synthetic hook bridge threw"));
+		} finally {
+			errorSpy.mockRestore();
+		}
+	});
+
+	it("still calls onResult exactly once with the non-blocking default when a blocking PreToolUse invoke throws before responding", async () => {
+		// The test above only proves fail-open for ConfigChange, a non-blocking
+		// event where {blocked: false} is also the pre-existing default. PreToolUse
+		// is a blocking event type: if the bridge ever failed closed here, or
+		// called onResult more than once, a real tool-call caller would hang or
+		// double-resolve. This locks the documented fail-open decision for the
+		// case that actually matters.
+		const circularStdin: Record<string, unknown> = {
+			session_id: "sess",
+			cwd: "/workspace",
+			hook_event_name: "PreToolUse",
+			tool_name: "Bash",
+			tool_use_id: "x1",
+			tool_input: { command: "ls" },
+		};
+		circularStdin.self = circularStdin;
+
+		const calls: unknown[] = [];
+		const errorSpy = spyOn(console, "error").mockImplementation(() => {});
+		try {
+			const response = await new Promise<any>((resolve) => {
+				const bus = busHandlers.get(HOOK_RUNNER_INVOKE_CHANNEL)!;
+				bus({
+					hookEventName: "PreToolUse",
+					ccToolName: "Bash",
+					stdin: circularStdin,
+					onResult: (result: unknown) => {
+						calls.push(result);
+						resolve(result);
+					},
+				});
+			});
+			expect(response).toEqual({ blocked: false });
+			expect(calls).toHaveLength(1);
+			expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("[hook-runner] synthetic hook bridge threw"));
+		} finally {
+			errorSpy.mockRestore();
+		}
 	});
 });
 

@@ -18,6 +18,26 @@ fi
 
 [[ -z "$COMMAND" ]] && exit 0
 
+# Unwraps a single level of `bash|sh|zsh|dash -c '...'` (or `-lc`, `-ec`, etc.)
+# so patterns anchored on start-of-command via `^` also match the inner
+# command. Ceiling: one level only — does not recurse into nested `-c`
+# invocations, `env bash -c ...`, or `eval`/encoded obfuscation. Upgrade
+# trigger: a reported bypass through one of those forms.
+unwrap_shell_dash_c() {
+	local cmd="$1"
+	if [[ "$cmd" =~ ^[[:space:]]*([A-Za-z0-9_./]*/)?(bash|sh|zsh|dash)[[:space:]]+-[A-Za-z]*c[A-Za-z]*[[:space:]]+\'(.*)\'[[:space:]]*$ ]]; then
+		printf '%s' "${BASH_REMATCH[3]}"
+		return 0
+	fi
+	if [[ "$cmd" =~ ^[[:space:]]*([A-Za-z0-9_./]*/)?(bash|sh|zsh|dash)[[:space:]]+-[A-Za-z]*c[A-Za-z]*[[:space:]]+\"(.*)\"[[:space:]]*$ ]]; then
+		printf '%s' "${BASH_REMATCH[3]}"
+		return 0
+	fi
+	return 1
+}
+
+UNWRAPPED_COMMAND=$(unwrap_shell_dash_c "$COMMAND" || true)
+
 DEFAULT_BLOCK_PATTERNS=$(
 	cat <<'PATTERNS'
 (^|[;&|[:space:]])git[[:space:]]+reset[[:space:]]+--hard([[:space:]]|$)
@@ -55,7 +75,7 @@ while IFS= read -r pattern; do
 	if [[ "$ALLOW_FORCE_PUSH" == "1" && "$pattern" == *"push"* ]]; then
 		continue
 	fi
-	if [[ "$COMMAND" =~ $pattern ]]; then
+	if [[ "$COMMAND" =~ $pattern ]] || { [[ -n "$UNWRAPPED_COMMAND" ]] && [[ "$UNWRAPPED_COMMAND" =~ $pattern ]]; }; then
 		echo "BLOCKED: dangerous git command" >&2
 		echo "Command: $COMMAND" >&2
 		echo "Pattern: $pattern" >&2

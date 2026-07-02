@@ -2,12 +2,6 @@
 
 Read before writing, changing, or reviewing Go code.
 
-## Scope
-
-- Use these rules for Go source, tests, APIs, and CLI code.
-- Do not apply them to Python, TypeScript, shell-only, or infrastructure-only tasks.
-- Project conventions win when they are safe and consistent.
-
 ## Defaults
 
 - Start from `go.mod`, the module Go version, existing dependencies, CI, and nearby code.
@@ -45,8 +39,3 @@ Read before writing, changing, or reviewing Go code.
 - Mock only system boundaries. Prefer small fakes when they keep tests clearer than generated mocks.
 - Run the project-configured verification gates before claiming success.
 - If a gate fails, diagnose from the actual output before changing code again.
-
-## Safety
-
-- Do not run destructive commands without explicit approval.
-- For broad rewrites, data loss risk, generated-file churn, or dependency changes, state the risk first and ask.

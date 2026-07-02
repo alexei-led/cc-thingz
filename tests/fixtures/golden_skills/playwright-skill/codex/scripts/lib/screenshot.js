@@ -157,6 +157,7 @@ async function captureUrl(options) {
   const quiet = Boolean(options.quiet);
   const playwright = runtime.loadPlaywright({ quiet });
   const helpers = require("./helpers");
+  helpers.ensurePlaywrightReady({ quiet });
   const launch = normalizeLaunchOptions(options);
   const browserType = playwright[launch.browserName];
 

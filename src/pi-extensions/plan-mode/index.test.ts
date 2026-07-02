@@ -149,6 +149,17 @@ describe("plan-mode / ExitPlanMode hardening", () => {
 		const result = await handlers.get("tool_call")!({ toolName: "bash", input: { command: 123 } }, ctx);
 		expect(result).toEqual({ block: true, reason: "Plan mode: invalid bash command input." });
 	});
+
+	it("registers its todo list command as /plan-todos, not /todos (todo.ts owns /todos)", async () => {
+		const { commands } = makePi();
+		const ctx = makeCtx();
+
+		expect(commands.has("plan-todos")).toBe(true);
+		expect(commands.has("todos")).toBe(false);
+
+		await commands.get("plan-todos")!.handler([], ctx);
+		expect(ctx.ui.notify).toHaveBeenCalledWith("No todos. Create a plan first with /plan", "info");
+	});
 });
 
 describe("plan-mode / ExitPlanMode hook integration", () => {

@@ -209,6 +209,7 @@ async function main() {
   }
 
   const helpers = require("./lib/helpers");
+  helpers.ensurePlaywrightReady({ quiet: options.quiet });
   installRuntimeGlobals(playwright, helpers);
 
   const source = getCodeToExecute(input, options);

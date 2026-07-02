@@ -126,6 +126,31 @@ def test_swap_skill_routes_claude_body(
     )
 
 
+@pytest.mark.parametrize("skill", ("fixing-code", "improving-tests"))
+def test_claude_output_keeps_reviewer_blocked_contract(
+    cs, tmp_path: Path, skill: str
+) -> None:
+    """Regression: base `## Output` holds both the Engineer template and the
+    Reviewer/BLOCKED template as one H2 section (no nested subheaders). A
+    Claude overlay `## Output` with no children hits the documented
+    leaf-swap path in `apply_mirror` and replaces the whole section — silently
+    dropping the read-only role's Proposed Changes | BLOCKED contract from the
+    compiled Claude skill. See SKILL.md's `## Role-gated action` section,
+    which promises that contract to the read-only role.
+    """
+    root = make_batch_skill_staging_root(tmp_path)
+    skill_dir = root / "src" / "skills" / skill
+    plugin_index = {skill: ["plugin"]}
+
+    written = cs.compile_skill(skill_dir, "claude", plugin_index, root)
+    body = frontmatter.loads(written[0].read_text()).content
+
+    assert "Proposed Changes | BLOCKED" in body, (
+        f"claude/{skill} SKILL.md lost the Reviewer/BLOCKED output contract "
+        "to an overlay leaf-swap of the base `## Output` section"
+    )
+
+
 def test_operating_infra_links_are_lowercase_and_exist() -> None:
     """Skill-relative markdown links must work on case-sensitive filesystems."""
     skill_dir = _SRC_SKILLS / "operating-infra"

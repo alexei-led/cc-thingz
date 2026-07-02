@@ -294,3 +294,123 @@ def test_pr_not_found_falls_back_to_active_when_not_merged(tmp_path: Path) -> No
 
     assert result.returncode == 0, result.stdout
     assert "skip feature (active)" in result.stdout
+
+
+def test_unreachable_pr_head_survives_apply_without_force(tmp_path: Path) -> None:
+    """Pin: an unreachable/bogus PR head must resolve to 'unknown' ahead, not
+    0. Pre-fix, this branch is force-deleted; post-fix it must survive."""
+    repo = init_repo(tmp_path, "main")
+    branch = "cleanup-me"
+    git(repo, "checkout", "-b", branch)
+    write_commit(repo, f"{branch}.txt", "work\n", branch)
+    git(repo, "checkout", "main")
+    git(repo, "merge", "--squash", branch)
+    git(repo, "commit", "-m", f"squash {branch}")
+    git(repo, "checkout", branch)
+    write_commit(repo, "after.txt", "after\n", "after merge")
+    git(repo, "checkout", "main")
+    bogus_head = "f" * 40
+    env = make_gh_stub(tmp_path, {branch: ("MERGED", bogus_head)})
+
+    result = run([str(SCRIPT), "--apply"], repo, env=env)
+
+    assert result.returncode == 0, result.stdout
+    assert "ahead unknown" in result.stdout
+    assert "git fetch" in result.stdout
+    assert "--force" in result.stdout
+    branches = git(repo, "branch", "--format=%(refname:short)").splitlines()
+    assert branch in branches
+
+
+def test_reachable_pr_head_at_branch_tip_autocleans_without_force(
+    tmp_path: Path,
+) -> None:
+    """Ergonomics guard: a reachable PR head equal to the branch tip (ahead=0)
+    must still auto-clean without --force — the squash-merge fast path."""
+    repo = init_repo(tmp_path, "main")
+    branch = "cleanup-me"
+    git(repo, "checkout", "-b", branch)
+    write_commit(repo, f"{branch}.txt", "work\n", branch)
+    pr_head = git(repo, "rev-parse", branch).strip()
+    git(repo, "checkout", "main")
+    git(repo, "merge", "--squash", branch)
+    git(repo, "commit", "-m", f"squash {branch}")
+    env = make_gh_stub(tmp_path, {branch: ("MERGED", pr_head)})
+
+    result = run([str(SCRIPT), "--apply"], repo, env=env)
+
+    assert result.returncode == 0, result.stdout
+    assert "Deleted branch cleanup-me" in result.stdout
+    branches = git(repo, "branch", "--format=%(refname:short)").splitlines()
+    assert branch not in branches
+
+
+def test_ancestor_merged_branch_autoescalates_to_D_when_d_refuses(
+    tmp_path: Path,
+) -> None:
+    """Proven-safe path (ahead==0 via verified ref) keeps the -d-then-D
+    escalation: git branch -d checks HEAD, not the base branch, so -d can
+    still refuse and -D must fire automatically."""
+    repo = init_repo(tmp_path, "main")
+    git(repo, "checkout", "-b", "other")
+    git(repo, "checkout", "main")
+    add_merged_branch(repo, "main")
+    git(repo, "checkout", "other")
+
+    result = run([str(SCRIPT), "--apply"], repo)
+
+    assert result.returncode == 0, result.stdout
+    assert "-d refused after cleanup proof" in result.stdout
+    assert "deleting with -D" in result.stdout
+    branches = git(repo, "branch", "--format=%(refname:short)").splitlines()
+    assert "cleanup-me" not in branches
+
+
+def test_locked_worktree_removal_failure_still_processes_branches(
+    tmp_path: Path,
+) -> None:
+    """Pin: a single failing `git worktree remove` (e.g. a locked worktree)
+    must not abort the script under `set -euo pipefail`. Pre-fix, the failure
+    kills the `list_worktrees | while ...` subshell and the pipeline's
+    non-zero status aborts the script before the `== branches ==` section
+    runs, even though `branch-only` is independently eligible for deletion."""
+    repo = init_repo(tmp_path, "main")
+    add_merged_branch(repo, "main", "wt-branch")
+    worktree = create_worktree(repo, tmp_path, "wt-branch")
+    git(repo, "worktree", "lock", str(worktree))
+    add_merged_branch(repo, "main", "branch-only")
+
+    result = run([str(SCRIPT), "--apply"], repo)
+
+    assert result.returncode == 0, result.stdout
+    assert "warning: failed to remove worktree" in result.stdout
+    assert "== branches ==" in result.stdout
+    assert "Deleted branch branch-only" in result.stdout
+    branches = git(repo, "branch", "--format=%(refname:short)").splitlines()
+    assert "branch-only" not in branches
+    assert "wt-branch" in branches
+
+
+def test_unknown_ahead_with_force_goes_straight_to_D(tmp_path: Path) -> None:
+    """unknown + --force must skip the -d attempt entirely and go straight
+    to -D — limping through -d-then-escalate would print a misleading
+    'cleanup proof' message for a branch that was never proven safe."""
+    repo = init_repo(tmp_path, "main")
+    branch = "cleanup-me"
+    git(repo, "checkout", "-b", branch)
+    write_commit(repo, f"{branch}.txt", "work\n", branch)
+    git(repo, "checkout", "main")
+    git(repo, "merge", "--squash", branch)
+    git(repo, "commit", "-m", f"squash {branch}")
+    git(repo, "checkout", branch)
+    write_commit(repo, "after.txt", "after\n", "after merge")
+    git(repo, "checkout", "main")
+    bogus_head = "e" * 40
+    env = make_gh_stub(tmp_path, {branch: ("MERGED", bogus_head)})
+
+    result = run([str(SCRIPT), "--apply", "--force"], repo, env=env)
+
+    assert result.returncode == 0, result.stdout
+    assert "-d refused" not in result.stdout
+    branches = git(repo, "branch", "--format=%(refname:short)").splitlines()
+    assert branch not in branches

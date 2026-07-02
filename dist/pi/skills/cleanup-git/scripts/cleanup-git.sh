@@ -192,14 +192,21 @@ pr_lookup() {
 merged_pr_ahead_count() {
 	local branch=$1 pr_head=$2
 	if [ -n "$pr_head" ] && has_ref "$pr_head^{commit}"; then
-		git rev-list --count "$pr_head..$branch" 2>/dev/null || echo 0
+		git rev-list --count "$pr_head..$branch" 2>/dev/null || echo unknown
 		return 0
 	fi
-	echo 0
+	echo unknown
 }
 
 ahead_count() {
-	git rev-list --count "$BASE_REF..$1" 2>/dev/null || echo 0
+	git rev-list --count "$BASE_REF..$1" 2>/dev/null || echo unknown
+}
+
+# Fails closed: bash's `[ "unknown" -gt 0 ]` is false with only a stderr
+# warning, so every ahead-count consumer must route through this helper
+# instead of a bare numeric test.
+is_ahead_or_unknown() {
+	[ "$1" = unknown ] || [ "$1" -gt 0 ]
 }
 
 cleanup_reason_for() {
@@ -247,8 +254,8 @@ branch_in_worktree() {
 
 delete_branch() {
 	local branch=$1 ahead=$2
-	if [ "$ahead" -gt 0 ]; then
-		run git branch -D "$branch"
+	if is_ahead_or_unknown "$ahead"; then
+		run git branch -D "$branch" || echo "  warning: failed to delete branch $branch" >&2
 		return
 	fi
 	if ! $APPLY; then
@@ -258,7 +265,7 @@ delete_branch() {
 	printf '+ git branch -d %q\n' "$branch"
 	git branch -d "$branch" 2>/dev/null || {
 		echo "  -d refused after cleanup proof ($CLEANUP_REASON, $ahead ahead); deleting with -D."
-		run git branch -D "$branch"
+		run git branch -D "$branch" || echo "  warning: failed to delete branch $branch" >&2
 	}
 }
 
@@ -293,14 +300,25 @@ list_worktrees | while IFS=$'\t' read -r path branch; do
 		echo "  skip $path ($branch, active)"
 		continue
 	fi
-	if [ "$CLEANUP_AHEAD" -gt 0 ] && ! $FORCE; then
-		echo "  KEEP $path ($branch, $CLEANUP_REASON, $CLEANUP_AHEAD ahead — use --force)"
+	if is_ahead_or_unknown "$CLEANUP_AHEAD" && ! $FORCE; then
+		if [ "$CLEANUP_AHEAD" = unknown ]; then
+			echo "  KEEP $path ($branch, $CLEANUP_REASON, ahead unknown — run git fetch to make the PR head reachable, or use --force)"
+		else
+			echo "  KEEP $path ($branch, $CLEANUP_REASON, $CLEANUP_AHEAD ahead — use --force)"
+		fi
 		continue
 	fi
 	ahead_suffix=""
-	[ "$CLEANUP_AHEAD" -gt 0 ] && ahead_suffix=", $CLEANUP_AHEAD ahead"
+	if [ "$CLEANUP_AHEAD" = unknown ]; then
+		ahead_suffix=", unknown ahead"
+	elif [ "$CLEANUP_AHEAD" -gt 0 ]; then
+		ahead_suffix=", $CLEANUP_AHEAD ahead"
+	fi
 	echo "  remove $path ($branch, $CLEANUP_REASON$ahead_suffix)"
-	run git worktree remove "$path"
+	run git worktree remove "$path" || {
+		echo "  warning: failed to remove worktree $path ($branch); leaving in place" >&2
+		continue
+	}
 done
 
 echo "== branches =="
@@ -323,12 +341,20 @@ git for-each-ref --format='%(refname:short)' refs/heads/ | while read -r branch;
 		echo "  skip $branch (active)"
 		continue
 	fi
-	if [ "$CLEANUP_AHEAD" -gt 0 ] && ! $FORCE; then
-		echo "  KEEP $branch ($CLEANUP_REASON, $CLEANUP_AHEAD ahead — use --force)"
+	if is_ahead_or_unknown "$CLEANUP_AHEAD" && ! $FORCE; then
+		if [ "$CLEANUP_AHEAD" = unknown ]; then
+			echo "  KEEP $branch ($CLEANUP_REASON, ahead unknown — run git fetch to make the PR head reachable, or use --force)"
+		else
+			echo "  KEEP $branch ($CLEANUP_REASON, $CLEANUP_AHEAD ahead — use --force)"
+		fi
 		continue
 	fi
 	ahead_suffix=""
-	[ "$CLEANUP_AHEAD" -gt 0 ] && ahead_suffix=", $CLEANUP_AHEAD ahead"
+	if [ "$CLEANUP_AHEAD" = unknown ]; then
+		ahead_suffix=", unknown ahead"
+	elif [ "$CLEANUP_AHEAD" -gt 0 ]; then
+		ahead_suffix=", $CLEANUP_AHEAD ahead"
+	fi
 	echo "  delete $branch ($CLEANUP_REASON$ahead_suffix)"
 	delete_branch "$branch" "$CLEANUP_AHEAD"
 done

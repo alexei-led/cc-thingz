@@ -1,4 +1,11 @@
 ---
+agent: engineer
+allowed-tools:
+- Read
+- Bash
+- Grep
+- Glob
+context: fork
 description: Idiomatic modern Java and Kotlin JVM development. Use when writing `.java`,
   `.kt`, or `.kts` code; changing Gradle or Maven builds; or working on Spring, Micronaut,
   Quarkus, Ktor, Android JVM modules, JUnit, Mockito, Kotest, ktlint, detekt, or JVM
@@ -6,6 +13,7 @@ description: Idiomatic modern Java and Kotlin JVM development. Use when writing 
   feedback, deterministic formatting, and minimal dependencies. NOT for JavaScript/TypeScript,
   C#/.NET, Python, shell scripts, or infra-only work.
 name: writing-java-kotlin
+user-invocable: false
 ---
 
 # Java and Kotlin Development
@@ -22,7 +30,7 @@ Read [principles.md](references/principles.md) before writing, changing, or revi
 
 - [patterns.md](references/patterns.md) — package/module layout, Spring/Ktor/service boundaries, nullability, concurrency, persistence, and build seams.
 - [testing.md](references/testing.md) — adding or reshaping JUnit, Kotest, Mockito/MockK, Spring, or Gradle/Maven tests; keep the local loop fast.
-- [linting.md](references/linting.md) — JDK/tool installation, Gradle/Maven toolchains, formatters, ktlint, detekt, Spotless, and slow-check policy.
+- [linting.md](references/linting.md) — Gradle/Maven toolchains, formatters, ktlint, detekt, Spotless, and slow-check policy.
 - [cli.md](references/cli.md) — writing or changing JVM CLIs.
 
 ## Project Baseline
