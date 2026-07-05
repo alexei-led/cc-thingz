@@ -36,6 +36,9 @@ __pycache__/
 *.pyc
 .coverage
 
+# Root-only local workspace junk. Remove /pkg/ if this repo ever grows real Go source.
+/pkg/
+
 # === Logs & Debug ===
 debug/
 telemetry/
@@ -46,6 +49,7 @@ file-history/
 plans/
 powerline/usage/
 posts/
+docs/posts/
 
 # === Project-specific state (per-repo, not portable) ===
 .pi/
