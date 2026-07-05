@@ -1,6 +1,6 @@
 [project]
 name = "claude-code-config"
-version = "6.6.0"
+version = "6.6.1"
 requires-python = ">=3.12"
 dependencies = [
     "mergedeep",

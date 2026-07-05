@@ -1,5 +1,5 @@
 name: browser
-version: 6.6.0
+version: 6.6.1
 description: Browser-based testing, validation, screenshots, recordings, and quick automation
 depends_on:
   - programming

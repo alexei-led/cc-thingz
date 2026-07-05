@@ -1,5 +1,5 @@
 name: dev-flow
-version: 6.6.0
+version: 6.6.1
 description: Code review, fixes, commits, and linting for development workflows
 skills:
   - committing-code
