@@ -170,6 +170,10 @@ hook_state_path() {
 	git rev-parse --git-path "cc-thingz/hook-files-${safe_session_id:-default}" 2>/dev/null
 }
 
+is_subagent_child() {
+	[[ "${PI_SUBAGENT_CHILD:-}" == "1" ]]
+}
+
 clear_hook_state() {
 	local state_path
 	state_path=$(hook_state_path 2>/dev/null || true)
@@ -232,6 +236,9 @@ collect_focus_files() {
 	tmp_filtered=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-focus-filtered.%s' "$$")
 	if [[ -n "$state_path" && -s "$state_path" ]]; then
 		cat "$state_path" >"$tmp_raw"
+	elif is_subagent_child; then
+		source="subagent child without hook state"
+		: >"$tmp_raw"
 	else
 		source="git diff fallback"
 		diff_fallback_files >"$tmp_raw"

@@ -1,3 +1,4 @@
+package: cc-thingz
 tools: read, edit, write, bash, grep, find, ls
 thinking: high
 model: openai-codex/gpt-5.4

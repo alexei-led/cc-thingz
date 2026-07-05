@@ -112,6 +112,7 @@ ALLOWED_KEYS: dict[str, frozenset[str]] = {
             "license",
             "metadata",
             "disable-model-invocation",
+            "package",
             "model",
             "thinking",
             "tools",

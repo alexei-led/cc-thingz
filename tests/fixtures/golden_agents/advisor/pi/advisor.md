@@ -4,6 +4,7 @@ description: Strategic risk reviewer — delivers a verdict, ranked risks, and o
   when stuck. Not for applying changes (engineer) or line-level code review (reviewer).
 model: openai-codex/gpt-5.5
 name: advisor
+package: cc-thingz
 thinking: xhigh
 tools: read, grep, find, ls, bash
 ---

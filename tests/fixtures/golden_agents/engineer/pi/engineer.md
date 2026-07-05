@@ -5,6 +5,7 @@ description: Sole mutator role — applies and verifies code, test, doc, and inf
   or risk advice (advisor).
 model: openai-codex/gpt-5.4
 name: engineer
+package: cc-thingz
 thinking: high
 tools: read, edit, write, bash, grep, find, ls
 ---

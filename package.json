@@ -34,6 +34,11 @@
     ],
     "skills": [
       "./dist/pi/skills"
-    ]
+    ],
+    "subagents": {
+      "agents": [
+        "./dist/pi/agents"
+      ]
+    }
   }
 }

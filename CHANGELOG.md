@@ -8,6 +8,22 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.6.0] - 2026-07-05
+
+### Added
+
+- Exposed Pi agents through `package.json` `pi.subagents.agents` so `pi-subagents` can discover cc-thingz agents from the installed package without a manual `~/.pi/agent/agents` symlink.
+
+### Changed
+
+- Package-qualified Pi agent runtime names to avoid collisions with `pi-subagents` builtins: `cc-thingz.advisor`, `cc-thingz.engineer`, `cc-thingz.reviewer`, and `cc-thingz.runner`.
+- Updated Pi install/docs guidance to use the current `pi-subagents` package, tool names, and config path.
+
+### Fixed
+
+- Fixed generated Pi skills still telling models to use stale delegation tools; the Pi preamble now points to `subagent` and `wait`.
+- Fixed `test-runner` running a git-diff fallback inside read-only subagent children with no hook state; subagent children now skip that fallback instead of running unrelated focused tests.
+
 ## [6.5.0] - 2026-07-02
 
 ### Fixed

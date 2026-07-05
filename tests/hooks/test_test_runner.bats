@@ -151,6 +151,16 @@ SH
 	[[ "$output" == *"focused-failure"* ]]
 }
 
+@test "test-runner: subagent child without hook state skips git diff fallback" {
+	mkdir -p pkg
+	touch pkg/foo.py
+	echo '# changed' >>pkg/foo.py
+
+	run env PI_SUBAGENT_CHILD=1 HOOK_INPUT_JSON="{\"session_id\":\"s_child\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"No changed code files with focused test support"* ]]
+}
+
 @test "test-runner: uses nearest non-root Makefile target as fallback" {
 	mkdir -p setup/files
 	touch setup/files/foo.py

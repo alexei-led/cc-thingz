@@ -167,24 +167,27 @@ cd ~/src/cc-thingz && make build
 pi install "$(pwd)"
 ```
 
-**Install agents** — Pi's subagent runtime loads agents from
-`~/.pi/agent/agents/`. After `pi install`, the repo is already at
-`~/.pi/agent/git/github.com/alexei-led/cc-thingz` — symlink the agent tree
-from there:
+**Install agents** — `pi-subagents` discovers them directly from the installed
+cc-thingz package via `package.json` `pi.subagents.agents`. No symlink is
+needed on new installs. Restart Pi or run `/reload` after installing.
+
+If you created the old global symlink, remove it so builtin `pi-subagents`
+agents stop being shadowed by user-scoped cc-thingz copies:
 
 ```bash
-ln -snf \
-  ~/.pi/agent/git/github.com/alexei-led/cc-thingz/dist/pi/agents \
-  ~/.pi/agent/agents
+[ -L ~/.pi/agent/agents ] && rm ~/.pi/agent/agents
 ```
 
-`ln -snf` replaces an existing symlink but will not overwrite a real directory
-— move it aside first (`mv ~/.pi/agent/agents ~/.pi/agent/agents.bak`).
-Override the agent dir with `PI_CODING_AGENT_DIR=<DIR>` if you run Pi from a
-non-default location. Restart Pi or run `/reload` after installing.
+Pi agent runtime names are package-qualified to avoid collisions with
+`pi-subagents` builtins:
 
-**Advisor subagent (`advisor`)** — follows the standard source layout used by
-other Pi agents:
+- `cc-thingz.advisor`
+- `cc-thingz.engineer`
+- `cc-thingz.reviewer`
+- `cc-thingz.runner`
+
+**Advisor subagent (`cc-thingz.advisor`)** — follows the standard source layout
+used by other Pi agents:
 
 - `src/agents/advisor/AGENT.md`
 - `src/agents/advisor/pi/frontmatter.yaml`
@@ -193,7 +196,7 @@ Compiled output is `dist/pi/agents/advisor.md`. Behavior: strategic review with
 read-only code exploration (no file edits) and output sections `Verdict`,
 `Top Risks`, and `Next Actions`.
 
-**Runner subagent (`runner`)** — follows the same source layout:
+**Runner subagent (`cc-thingz.runner`)** — follows the same source layout:
 
 - `src/agents/runner/AGENT.md`
 - `src/agents/runner/pi/frontmatter.yaml`
@@ -201,31 +204,27 @@ read-only code exploration (no file edits) and output sections `Verdict`,
 Compiled output is `dist/pi/agents/runner.md`. Behavior: cheap utility lane for
 simple bounded tasks — file lookup, grep/glob, `git status/log/show/diff`, file
 reads, log summaries, and focused shell inspection. Use proactively; escalate to
-`engineer`, `reviewer`, or `advisor` when the task stops being cheap or obvious.
+`cc-thingz.engineer`, `cc-thingz.reviewer`, or `cc-thingz.advisor` when the task
+stops being cheap or obvious.
 
-Background usage (separate context + parent context inherited):
+Async usage:
 
 ```ts
-const run = Agent({
-  subagent_type: "advisor",
-  description: "Architecture risk review",
-  prompt: "Review my plan and propose the safest next steps.",
-  inherit_context: true,
-  run_in_background: true,
+subagent({
+  agent: "cc-thingz.advisor",
+  task: "Review my plan and propose the safest next steps.",
+  async: true,
+  context: "fork",
 });
-
-get_subagent_result({ agent_id: run.agent_id, wait: true });
 ```
 
 Foreground usage:
 
 ```ts
-Agent({
-  subagent_type: "advisor",
-  description: "Blocking strategy check",
-  prompt: "Challenge this implementation plan and suggest corrections.",
-  inherit_context: true,
-  run_in_background: false,
+subagent({
+  agent: "cc-thingz.advisor",
+  task: "Challenge this implementation plan and suggest corrections.",
+  context: "fork",
 });
 ```
 

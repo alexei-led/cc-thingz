@@ -5,6 +5,7 @@ description: Read-only adversarial evaluator — reviews, audits, locates, or pl
   changes (engineer) or strategic risk verdicts (advisor).
 model: openai-codex/gpt-5.4
 name: reviewer
+package: cc-thingz
 thinking: medium
 tools: read, grep, find, ls
 ---

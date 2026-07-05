@@ -355,10 +355,10 @@ No configuration.
 
 ### subagent
 
-Provides `spawn_subagent`, `steer_subagent`, and `get_subagent_result` tools,
-enabling multi-agent orchestration inside a single Pi session.
+Provides `subagent`, `wait`, and `subagent_supervisor` tools, enabling
+multi-agent orchestration inside a single Pi session.
 
-No configuration.
+Runtime config lives at `~/.pi/agent/extensions/subagent/config.json`.
 
 ### todo
 
@@ -384,20 +384,33 @@ pi install npm:pi-powerline-footer
 
 No skills depend on this directly, but it improves session readability.
 
-### @tintinweb/pi-subagents
+### pi-subagents
 
-Provides the agent loader that reads agents from `~/.pi/agent/agents/`. Required
-for cc-thingz Pi agents to work:
+Provides the agent loader that reads agents from user/project directories and
+from installed package manifests. Required for cc-thingz Pi agents to work:
 
 ```bash
-pi install npm:@tintinweb/pi-subagents
-ln -snf \
-  ~/.pi/agent/git/github.com/alexei-led/cc-thingz/dist/pi/agents \
-  ~/.pi/agent/agents
+pi install npm:pi-subagents
+```
+
+cc-thingz now exposes Pi agents through `package.json` `pi.subagents.agents`, so
+new installs do not need a `~/.pi/agent/agents` symlink. If an old symlink is
+still present, remove it so builtin `pi-subagents` agents are not shadowed by
+user-scoped cc-thingz copies:
+
+```bash
+[ -L ~/.pi/agent/agents ] && rm ~/.pi/agent/agents
 ```
 
 Project-local custom agents are read from `.pi/agents/*.md`. This repo adds
-an `advisor` agent in source layout:
+package-qualified Pi agents to avoid collisions with `pi-subagents` builtins:
+
+- `cc-thingz.advisor`
+- `cc-thingz.engineer`
+- `cc-thingz.reviewer`
+- `cc-thingz.runner`
+
+Advisor source layout:
 
 - `src/agents/advisor/AGENT.md`
 - `src/agents/advisor/pi/frontmatter.yaml`
@@ -413,7 +426,7 @@ Expected advisor output:
 - `Top Risks` (ranked)
 - `Next Actions` (ordered, concrete)
 
-Invoke with `Agent({ subagent_type: "advisor", ... })`.
+Invoke with `subagent({ agent: "cc-thingz.advisor", ... })`.
 
 ### revdiff
 

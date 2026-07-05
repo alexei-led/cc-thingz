@@ -5,6 +5,7 @@ description: Fast utility lane for simple bounded tasks on a cheaper model when 
   adversarial review (reviewer), or strategic judgment (advisor).
 model: openai-codex/gpt-5.4-mini
 name: runner
+package: cc-thingz
 thinking: low
 tools: read, grep, find, ls, bash
 ---
