@@ -69,7 +69,7 @@ only.
 3. Decide reader type: human, agent, code reader, or mixed.
 4. Check docs against current behavior. Code wins unless the user says docs define the intended contract.
 5. Use `looking-up-docs` only when external API syntax or behavior is uncertain.
-6. Use one bounded read-only Agent only for large doc audits; verify its claims before editing.
+6. Use one bounded read-only subagent only for large doc audits; verify its claims before editing.
 7. Update the smallest useful docs. Do not create speculative docs.
 8. Verify with the narrowest docs or repo checks available.
 

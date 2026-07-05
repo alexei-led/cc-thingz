@@ -173,6 +173,18 @@ describe("matchingGroups", () => {
 	});
 });
 
+describe("subagent lifecycle compatibility", () => {
+	it("does not register a fake agent_start → SubagentStart bridge", () => {
+		expect(handlers.has("agent_start")).toBe(false);
+	});
+
+	it("does not bundle dead SubagentStart/SubagentStop defaults", () => {
+		const hooks = JSON.parse(bundledHooksConfig).hooks;
+		expect(hooks.SubagentStart).toBeUndefined();
+		expect(hooks.SubagentStop).toBeUndefined();
+	});
+});
+
 // ---------------------------------------------------------------------------
 // tool_call → PreToolUse
 // ---------------------------------------------------------------------------

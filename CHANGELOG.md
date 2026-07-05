@@ -8,6 +8,14 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.6.1] - 2026-07-05
+
+### Fixed
+
+- Fixed Pi hook-runner advertising a fake `SubagentStart` event from top-level `agent_start`; Pi now treats `SubagentStart`/`SubagentStop` as compatibility-only keys until the runtime exposes real subagent lifecycle events.
+- Fixed bundled Pi external hook defaults registering dead `SubagentStart`/`SubagentStop` handlers for `ccgram hook`.
+- Fixed the `documenting-code` Pi skill still telling models to use a generic `Agent`; it now says `read-only subagent`.
+
 ## [6.6.0] - 2026-07-05
 
 ### Added

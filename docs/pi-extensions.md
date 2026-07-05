@@ -287,19 +287,19 @@ execute.
 
 Supported CC hook events in this Pi bridge:
 
-- Native mappings: `SessionStart`, `SessionEnd`, `SubagentStart`, `Stop`,
-  `StopFailure`, `Notification`, `PreToolUse`, `PostToolUse`,
-  `PostToolUseFailure`, `PostToolBatch`, `UserPromptSubmit`,
-  `UserPromptExpansion`, `PreCompact`, `PostCompact`, `InstructionsLoaded`,
-  `CwdChanged`
+- Native mappings: `SessionStart`, `SessionEnd`, `Stop`, `StopFailure`,
+  `Notification`, `PreToolUse`, `PostToolUse`, `PostToolUseFailure`,
+  `PostToolBatch`, `UserPromptSubmit`, `UserPromptExpansion`, `PreCompact`,
+  `PostCompact`, `InstructionsLoaded`, `CwdChanged`
 - Synthetic via `cc-hooks:invoke`: `Setup`, `PermissionRequest`,
   `PermissionDenied`, `TaskCreated`, `TaskCompleted`, `TeammateIdle`,
   `ConfigChange`, `FileChanged`, `WorktreeCreate`, `WorktreeRemove`,
   `Elicitation`, `ElicitationResult`
 - Reserved for CC schema compatibility but **not currently emitted by Pi**:
-  `SubagentStop`. Hooks configured under this key load but never fire — Pi
-  has no subagent-stop runtime event yet. Use `Stop` / `StopFailure` for the
-  outer agent turn instead.
+  `SubagentStart`, `SubagentStop`. Hooks configured under these keys load but
+  never fire — Pi has no reliable subagent lifecycle runtime events yet. Use
+  `SessionStart` / `SessionEnd` for the whole session and `Stop` /
+  `StopFailure` for the outer agent turn instead.
 
 `FileChanged`, `WorktreeCreate/Remove`, and MCP elicitation events are extension-driven in Pi (no built-in runtime event), so emit them through the synthetic bridge when your integration owns those flows.
 

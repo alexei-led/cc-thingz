@@ -1,9 +1,9 @@
 import { SYNTHETIC_HOOK_EVENT_NAMES } from "../shared/hook-bridge.js";
 
-// `SubagentStop` is included for CC schema compatibility (Claude Code emits it
-// natively). Pi has no `agent_stop`-for-subagent runtime event yet, so user
-// hooks registered under this key never fire — see docs/pi-extensions.md for
-// the supported-events table.
+// `SubagentStart` / `SubagentStop` are included for CC schema compatibility
+// (Claude Code emits them natively). Pi has no reliable subagent lifecycle
+// runtime events yet, so hooks registered under these keys never fire — see
+// docs/pi-extensions.md for the supported-events table.
 export const CORE_HOOK_EVENT_NAMES = [
 	"PostToolUse",
 	"PostToolUseFailure",
@@ -74,6 +74,7 @@ export interface HooksConfig {
 	SessionStart?: HookGroup[];
 	Setup?: HookGroup[];
 	SessionEnd?: HookGroup[];
+	/** @deprecated Accepted for Claude Code schema compatibility; Pi has no native subagent-start event so registered hooks never fire. */
 	SubagentStart?: HookGroup[];
 	/** @deprecated Accepted for Claude Code schema compatibility; Pi has no native subagent-stop event so registered hooks never fire. */
 	SubagentStop?: HookGroup[];

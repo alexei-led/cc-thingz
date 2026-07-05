@@ -17,7 +17,6 @@
 
 import type {
 	AgentEndEvent,
-	AgentStartEvent,
 	BeforeAgentStartEvent,
 	BeforeAgentStartEventResult,
 	ExtensionAPI,
@@ -240,16 +239,6 @@ export default function (pi: ExtensionAPI): void {
 				for (const entry of group.hooks) {
 					runHookAsync(entry, fileStdin, (msg, lvl) => ctx.ui.notify(msg, lvl));
 				}
-			}
-		}
-	});
-
-	// --- agent_start → SubagentStart ---
-	pi.on("agent_start", async (_event: AgentStartEvent, ctx: ExtensionContext) => {
-		const stdin = JSON.stringify(baseStdin("SubagentStart", ctx));
-		for (const group of resolvedConfig().SubagentStart ?? []) {
-			for (const entry of group.hooks) {
-				runHookAsync(entry, stdin, (msg, lvl) => ctx.ui.notify(msg, lvl));
 			}
 		}
 	});
