@@ -236,9 +236,26 @@ subagent({
 | `permission-gate.ts`   | Confirms dangerous bash commands (rm -rf, sudo, chmod 777)                                       |
 | `protected-paths.ts`   | Blocks writes to `.env`, `.git/`, `node_modules/`                                                |
 | `plan-mode/`           | `/plan` toggle for read-only exploration and step tracking                                       |
-| `todo.ts`              | `todo` tool + `/todos` command, branch-aware state                                               |
+| `todo.ts`              | Fallback `todo` tool + `/todos` command, branch-aware state                                      |
 | `structured-output.ts` | `structured_output` tool that terminates the agent loop                                          |
 | `notify.ts`            | macOS notification via `terminal-notifier` on completion (requires Homebrew `terminal-notifier`) |
+
+For richer Claude-style task tracking on Pi, install `@tintinweb/pi-tasks`:
+
+```bash
+pi install npm:@tintinweb/pi-tasks
+```
+
+For scheduled follow-up and background monitoring, install `@trevonistrevon/pi-loop`:
+
+```bash
+pi install npm:@trevonistrevon/pi-loop
+```
+
+`pi-loop` auto-detects `pi-tasks`; no extra wiring is needed. cc-thingz Pi
+skills prefer the Task* toolset when it is available, fall back to the bundled
+`todo` extension otherwise, and use `MonitorCreate` / `LoopCreate` when those
+loop tools are installed.
 
 **Pi gets**: 4 agents — `engineer`, `reviewer`, `runner`, `advisor` (requires a Pi
 subagents package) — all 29 skills, and 7 bundled extensions. Each

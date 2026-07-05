@@ -8,6 +8,13 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.6.2] - 2026-07-05
+
+### Fixed
+
+- Fixed Pi skill guidance treating the visible tool set as static; the Pi preamble now tells models to use installed extension tools by their exact names and to prefer Task* over the bundled `todo` fallback.
+- Fixed Pi task/automation guidance lagging behind common third-party extensions: docs and generated Pi skills now point models toward `@tintinweb/pi-tasks` for Task* tracking and `@trevonistrevon/pi-loop` for `MonitorCreate` and `LoopCreate` background or scheduled work when those tools are installed.
+
 ## [6.6.1] - 2026-07-05
 
 ### Fixed

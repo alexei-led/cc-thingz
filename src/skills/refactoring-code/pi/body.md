@@ -10,7 +10,7 @@ Follow the base skill. This Pi overlay only defines tool use and execution detai
 - Use `bash` (`rg`, `fd`, `git grep`) to map affected sites; Pi has no
   dedicated grep/glob tool.
 - Use `edit` for existing files and `write` only for new files.
-- Use `todo` to track multi-batch refactors across steps.
+- Prefer installed Task* tools to track multi-batch refactors across steps; fall back to `todo` when that task toolset is unavailable.
 - Use `ask_user_question` when scope, preservation target, or safety gate is unclear.
 
 ## Output on Pi

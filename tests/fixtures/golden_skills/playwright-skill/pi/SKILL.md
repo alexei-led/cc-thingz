@@ -1,5 +1,6 @@
 ---
-description: Support-only Playwright runtime/reference for browser-automation — dev-server
+description:
+  Support-only Playwright runtime/reference for browser-automation — dev-server
   detection, a Node.js script runner, quiet screenshot helpers, SPA readiness helpers,
   and custom HTTP headers. Use when browser-automation selects the bundled Playwright
   fallback; do not route user intent here directly.
@@ -9,7 +10,8 @@ name: playwright-skill
 ---
 
 <!-- Pi platform guidance -->
-<!-- Use Pi tool names exactly: read, bash, edit, write, ask_user_question, structured_output, todo, subagent, wait, web_search, web_answer, web_research. -->
+<!-- Use installed Pi tool names exactly. Installed extensions may add toolsets such as Task*, Monitor*, and Loop*; use the visible tool names exactly and do not translate them to Claude syntax. -->
+<!-- Prefer Task* over `todo` when task-tracking tools are available; `todo` is the cc-thingz fallback. Prefer MonitorCreate for long-running background commands and LoopCreate for scheduled or event-driven follow-up instead of Bash sleep/poll loops. -->
 <!-- Use subagent for delegated work. Use wait to block on async subagent runs only when no independent work remains. -->
 <!-- Use ctx7 or npx ctx7@latest through bash when Context7 documentation lookup is required. -->
 

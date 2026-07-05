@@ -362,8 +362,11 @@ Runtime config lives at `~/.pi/agent/extensions/subagent/config.json`.
 
 ### todo
 
-Registers a `todo` tool for the LLM to maintain a persistent todo list across
-an agent session. Displayed in the Pi TUI sidebar.
+Registers a fallback `todo` tool for the LLM to maintain a persistent todo
+list across an agent session. Displayed in the Pi TUI sidebar.
+
+Use this when richer Task* tooling is not installed, or when you want the
+bundled branch-aware session-history behavior.
 
 No configuration.
 
@@ -427,6 +430,36 @@ Expected advisor output:
 - `Next Actions` (ordered, concrete)
 
 Invoke with `subagent({ agent: "cc-thingz.advisor", ... })`.
+
+### @tintinweb/pi-tasks
+
+Adds a richer task widget plus Claude-style Task* tools for structured task
+tracking on Pi.
+
+```bash
+pi install npm:@tintinweb/pi-tasks
+```
+
+cc-thingz Pi skills prefer that Task* toolset when it is available and fall
+back to the bundled `todo` extension otherwise.
+
+### @trevonistrevon/pi-loop
+
+Adds `Loop*` scheduling tools plus `Monitor*` background-command tools.
+Useful for periodic checks, event-driven follow-up, and long-running commands
+that should finish in the background.
+
+```bash
+pi install npm:@trevonistrevon/pi-loop
+```
+
+`pi-loop` auto-detects `@tintinweb/pi-tasks`; no extra wiring is needed.
+When both are installed, Pi gets the richer Task* tools from `pi-tasks` and the
+loop/monitor tools from `pi-loop`.
+
+cc-thingz Pi skills prefer `MonitorCreate` over Bash sleep/poll loops for
+long-running background work, and prefer `LoopCreate` for scheduled or
+event-driven follow-up when those tools are available.
 
 ### revdiff
 
