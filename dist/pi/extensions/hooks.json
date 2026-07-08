@@ -71,7 +71,7 @@
           {
             "type": "command",
             "command": "${PI_HOOKS_DIR}/smart-lint.sh",
-            "timeout": 60
+            "timeout": 120
           }
         ]
       }
@@ -82,7 +82,7 @@
           {
             "type": "command",
             "command": "${PI_HOOKS_DIR}/test-runner.sh",
-            "timeout": 60
+            "timeout": 120
           }
         ]
       },

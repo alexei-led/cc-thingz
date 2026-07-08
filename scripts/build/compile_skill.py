@@ -62,7 +62,9 @@ def load_preamble(target: str, root: Path) -> str:
         return ""
     path = root / "scripts" / "build" / "preambles" / name
     if not path.is_file():
-        return ""
+        raise FileNotFoundError(
+            f"preamble {name!r} configured for target {target!r} is missing: {path}"
+        )
     return path.read_text().strip()
 
 
@@ -107,6 +109,10 @@ def compile_skill(
     skipped due to a `targets:` restriction).
     """
     base_path = skill_dir / "SKILL.md"
+    if not base_path.is_file():
+        raise FileNotFoundError(
+            f"skill {skill_dir.name!r}: missing base file {base_path}"
+        )
     base_meta, base_body = load_base(base_path)
 
     if not target_listed(base_meta, target):

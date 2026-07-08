@@ -41,13 +41,27 @@ Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allo
 - **runner** — fast utility lane: file lookup, grep/glob, `git status/log/show/diff`, file reads, log summaries, and focused shell inspection. Read-only across targets. Use proactively for simple bounded tasks; escalate to `engineer`, `reviewer`, or `advisor` when the task stops being cheap or obvious.
 - **advisor** — strategic escalation: verdict, ranked risks, next actions. Ships to Codex, Gemini, and Pi; excluded from Claude, which has a built-in advisor. Codex enforces read-only via sandbox; Pi uses xhigh thinking with read-only Bash and transcript-forwarding invocation; Gemini grants a read-only `tools:` allowlist plus `run_shell_command` held read-only by the body directive.
 
+### Platform Coverage
+
+Agent × target coverage. Every gap is intentional and documented below.
+
+- **engineer**: claude (full Edit/Write/Bash), gemini (full tools via subagent `tools:` frontmatter), pi (full Bash/Edit/Write). Excluded from codex — Codex enforces `sandbox_mode: read-only`; a mutator role is inoperable under that constraint.
+- **reviewer**: all four targets (claude, codex, gemini, pi). Read-only enforcement is native on claude (hard tool allowlist) and codex (`sandbox_mode: read-only`), and a system-prompt directive on gemini and pi.
+- **runner**: all four targets. Always read-only by directive.
+- **advisor**: codex, gemini, and pi. Excluded from claude — Claude Code has a built-in advisor; adding a custom one would duplicate or conflict with the native capability.
+
+Skills compile to all four targets by default. A `targets:` key in the skill's frontmatter restricts compilation to listed targets only. Skills without any platform subdirs (`claude/`, `codex/`, `gemini/`, `pi/`) compile identically across all targets — only the per-target preamble differs. `sequential-thinking` is the canonical example: no platform subdirs, four identical-body outputs in `dist/`.
+
+For the compiled output paths and overlay mechanics, see [Compiler Pipeline](CONTRIBUTING.md#compiler-pipeline).
+
 ### Routing and model tiers
 
-Routing lives in the orchestrator instructions (`CLAUDE.md`, `AGENTS.md`, parent prompt), not in the role file alone. Agent frontmatter picks the model after the orchestrator chooses the role.
+Routing lives in the orchestrator instructions (`CLAUDE.md`, `AGENTS.md`, parent prompt), not in the role file alone.
 
 - For automatic cheap-task routing, add a dedicated utility/read-only agent such as `runner` and tell the orchestrator to use it proactively for simple bounded tasks: file listing, grep/glob, `git status/log/show/diff`, file reads, log summaries, and focused shell inspection.
 - Keep `engineer` as the sole normal mutator. Do not create weaker duplicates such as `junior-engineer` just to swap model tiers.
 - If a small explicit write task should use a cheaper model, override the model for that one call instead of adding a second general-purpose engineer role.
+- For Pi package agents, keep repo frontmatter model-agnostic. Do not pin `model` or `thinking` in cc-thingz; put user/project model policy in `~/.pi/agent/settings.json` or `.pi/settings.json` with `subagents.agentOverrides` or router profiles.
 - Do not auto-route architecture, ambiguous debugging, broad refactors, deep review, security-sensitive reasoning, or product decisions to a light model.
 - Put cross-tool shared routing policy in the chezmoi-managed top-level `CLAUDE.md`. Keep repo-local role boundaries and package rules here in `AGENTS.md`.
 - On Claude Code, a dedicated utility agent can opt into automatic delegation via its `description` with `Use proactively ...`. The role agents intentionally omit that phrase because they are orchestrator-selected, not auto-delegated.

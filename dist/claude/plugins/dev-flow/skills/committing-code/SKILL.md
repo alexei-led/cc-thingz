@@ -71,6 +71,10 @@ Pause for user approval before any `git add` or `git commit`. For one focused co
 
 If a pre-commit hook rejects, report the hook error verbatim. Do not retry with `--no-verify`.
 
+## Conditional References
+
+- [conventions.md](references/conventions.md) — read when the repo has no commit history to match, or when the user requests Conventional Commits format: type prefixes, scope rules, breaking-change notation, subject-line style.
+
 ## Step 5: Summary
 
 Show final status, created commits, and remaining uncommitted files.

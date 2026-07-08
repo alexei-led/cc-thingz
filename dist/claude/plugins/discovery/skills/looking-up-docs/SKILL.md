@@ -9,6 +9,7 @@ allowed-tools:
 - mcp__perplexity-ask__perplexity_ask
 - WebSearch
 - WebFetch
+context: fork
 description: Find exact, version-correct library/API/framework docs through one lookup
   workflow. Use when the user says "look up docs", "how to use", "API for", "syntax
   for", "examples of", "show me the docs", mentions "ctx7"/"Context7", passes a `/org/project`
@@ -16,6 +17,7 @@ description: Find exact, version-correct library/API/framework docs through one 
   docs. NOT for comparisons, current-state or release-behavior questions, best-practice
   surveys, or recent ecosystem news — use researching-web.
 name: looking-up-docs
+user-invocable: true
 ---
 
 # Documentation Lookup

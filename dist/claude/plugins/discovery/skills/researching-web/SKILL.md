@@ -62,6 +62,10 @@ best matches the question and the available runtime.
 If the user asks for the workflow itself, describe the source-gathering plan and
 output structure; do not present an uncited recommendation as fact.
 
+## Conditional References
+
+- [sources.md](references/sources.md) — read when choosing between web tools or evaluating source quality: tier ranking, stale-source detection, platform-specific tool guidance (Pi `web_search`/`web_answer`/`web_research`), source caching.
+
 ## Failure handling
 
 - No useful results: report the gap directly; do not fabricate sources.

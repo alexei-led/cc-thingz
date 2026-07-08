@@ -70,8 +70,19 @@ if [[ -f "$CONFIG_FILE" ]] && command -v jq >/dev/null 2>&1; then
 	ALLOW_FORCE_PUSH=$(jq -r 'if ."git-guardrails".allow_force_push == true or .gitGuardrails.allowForcePush == true then 1 else 0 end' "$CONFIG_FILE" 2>/dev/null || echo 0)
 fi
 
+regex_valid() {
+	local rc
+	[[ "" =~ $1 ]] 2>/dev/null
+	rc=$?
+	[[ "$rc" -ne 2 ]]
+}
+
 while IFS= read -r pattern; do
 	[[ -z "$pattern" ]] && continue
+	if ! regex_valid "$pattern"; then
+		echo "git-guardrails: skipping invalid block pattern: $pattern" >&2
+		continue
+	fi
 	if [[ "$ALLOW_FORCE_PUSH" == "1" && "$pattern" == *"push"* ]]; then
 		continue
 	fi

@@ -946,7 +946,7 @@ jvm_find_tests_for_source() {
 	stem=$(basename "$file")
 	stem="${stem%.*}"
 	[[ -d "$base_dir" ]] || base_dir="."
-	find "$base_dir" -type f \( \
+	find "$base_dir" -maxdepth 8 -type f \( \
 		-name "${stem}Test.java" -o -name "${stem}Tests.java" -o -name "${stem}Spec.java" -o -name "${stem}IT.java" -o \
 		-name "${stem}Test.kt" -o -name "${stem}Tests.kt" -o -name "${stem}Spec.kt" -o -name "${stem}IT.kt" \
 		\) 2>/dev/null | while IFS= read -r candidate; do

@@ -1,5 +1,6 @@
 ---
 allowed-tools:
+- Edit
 - mcp__morphllm__edit_file
 - Read
 - Grep

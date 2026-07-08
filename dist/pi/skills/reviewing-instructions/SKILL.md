@@ -85,7 +85,7 @@ If resolution is ambiguous, use generic and set review confidence to medium or l
 
 ## Structural pre-pass
 
-Run the lint script scoped to the review target when Bash is available:
+Run the lint script scoped to the review target when shell execution is available:
 
 ```bash
 uv run python src/skills/reviewing-instructions/scripts/lint-instructions.py <scope>

@@ -10,9 +10,14 @@ description: Structured stepwise reasoning with explicit revisions and branches.
 name: sequential-thinking
 ---
 
+<!-- Platform guidance for Codex and Gemini -->
+<!-- Use this platform's installed tool names exactly; do not translate capability references into Claude Code tool syntax. -->
+<!-- When this skill references shell execution, file reads, or search, use the platform's native shell, read, and search tools. -->
+<!-- If a referenced helper command or optional tool is unavailable, report the gap and continue with the platform's built-in tools. -->
+
 # Sequential Thinking
 
-Replaces the `sequential_thinking` MCP server. Same intent — externalize a numbered chain of thoughts with revision and branch semantics — implemented as visible Markdown so any reasoning-capable model (Claude 4.x extended thinking, Gemini 3.x thinking, GPT-5.x reasoning) can follow it without an extra tool round-trip.
+Same intent as MCP-based sequential-thinking tools — externalize a numbered chain of thoughts with revision and branch semantics — implemented as visible Markdown so any reasoning-capable model (Claude 4.x extended thinking, Gemini 3.x thinking, GPT-5.x reasoning) can follow it without an extra tool round-trip.
 
 ## When to use
 
@@ -123,6 +128,10 @@ Six blocks beats six paragraphs because every step has a number a reviewer can p
 ## When to stop early
 
 If a thought reveals the question was wrong (wrong scope, missing requirement, blocked by an unknown), write one more Thought summarising the blocker, then `### Final` stating "blocked: <reason>, need <thing>". Don't keep generating thoughts to look thorough — half-finished structured reasoning is fine; pretending to finish is not.
+
+## Conditional References
+
+- [patterns.md](references/patterns.md) — read for calibrated thought-count estimates by problem type, and copy-paste templates for bug diagnosis, architecture decisions, and multi-constraint tradeoffs.
 
 ## Anti-patterns
 

@@ -5,6 +5,9 @@ allowed-tools:
 - Bash
 - Grep
 - Glob
+- Edit
+- Write
+- LS
 context: fork
 description: Idiomatic Python 3.12+ development. Use when writing Python code, CLI
   tools, scripts, or services. Emphasizes stdlib, type hints, fast pytest feedback,

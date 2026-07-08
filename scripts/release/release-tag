@@ -41,8 +41,15 @@ fi
 
 echo "Bumping versions to $VERSION..."
 
+# Portable in-place sed: BSD sed needs -i '', GNU sed needs -i without ''.
+sed_inplace() {
+	local expr="$1" file="$2"
+	sed -i.release-tag.bak "$expr" "$file"
+	rm -f "$file.release-tag.bak"
+}
+
 # Bump src/plugins/marketplace.yaml (top-level version)
-sed -i '' "s/^version:.*/version: $VERSION/" src/plugins/marketplace.yaml
+sed_inplace "s/^version:.*/version: $VERSION/" src/plugins/marketplace.yaml
 
 # Bump per-plugin src/plugins/*/plugin.yaml versions
 shopt -s nullglob
@@ -60,13 +67,17 @@ if [ ${#plugin_yamls[@]} -eq 0 ]; then
 	exit 1
 fi
 for f in "${plugin_yamls[@]}"; do
-	sed -i '' "s/^version:.*/version: $VERSION/" "$f"
+	sed_inplace "s/^version:.*/version: $VERSION/" "$f"
 done
 for f in "${project_version_files[@]}"; do
+	if [ ! -f "$f" ]; then
+		echo "ERROR: expected version file missing: $f"
+		exit 1
+	fi
 	if [[ "$f" == *.toml ]]; then
-		sed -i '' "s/^version = .*/version = \"$VERSION\"/" "$f"
+		sed_inplace "s/^version = .*/version = \"$VERSION\"/" "$f"
 	else
-		sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" "$f"
+		sed_inplace "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" "$f"
 	fi
 done
 

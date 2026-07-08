@@ -5,6 +5,9 @@ allowed-tools:
 - Bash
 - Grep
 - Glob
+- Edit
+- Write
+- LS
 context: fork
 description: Idiomatic C# /.NET development. Use when writing C# code, changing `.csproj`
   or `.sln`, or working on ASP.NET Core apps, libraries, CLIs, workers, and xUnit/NUnit/MSTest

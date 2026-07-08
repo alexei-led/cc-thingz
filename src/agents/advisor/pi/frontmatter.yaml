@@ -1,4 +1,3 @@
 package: cc-thingz
 tools: read, grep, find, ls, bash
-model: openai-codex/gpt-5.5
-thinking: xhigh
+completionGuard: false

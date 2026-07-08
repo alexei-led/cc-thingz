@@ -5,6 +5,9 @@ allowed-tools:
 - Bash
 - Grep
 - Glob
+- Edit
+- Write
+- LS
 context: fork
 description: Idiomatic Rust development. Use when writing Rust code, Cargo crates/workspaces,
   Rust tests, or rustfmt/clippy/cargo workflows. Emphasizes ownership, Result errors,

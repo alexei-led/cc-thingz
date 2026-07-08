@@ -86,6 +86,10 @@ Verification:
 - <command> — pass/fail/not run
 ```
 
+## Conditional References
+
+- [gh-cli.md](references/gh-cli.md) — read when `gh` is available and PR-state detection is needed: squash/rebase merge detection, rate-limit batching, offline fallback.
+
 ## Failure Handling
 
 - Not a git repo: say so and stop.

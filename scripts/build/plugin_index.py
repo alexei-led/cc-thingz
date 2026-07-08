@@ -17,6 +17,7 @@ Pi even when they have no plugin assignment.
 from __future__ import annotations
 
 import logging
+import re
 import sys
 from collections.abc import Mapping
 from pathlib import Path
@@ -34,6 +35,9 @@ log = logging.getLogger("compile.plugin_index")
 
 
 KINDS: tuple[str, ...] = ("skills", "agents", "hooks")
+
+# Plugin names become dist/ path components; reject traversal or separators.
+_SAFE_PLUGIN_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 
 PluginIndex = dict[str, dict[str, list[str]]]
@@ -67,6 +71,10 @@ def build_plugin_index(root: Path) -> PluginIndex:
         if not isinstance(data, Mapping):
             raise ValueError(f"{manifest}: top-level must be a mapping")
         plugin_name = data.get("name") or plugin_dir.name
+        if not _SAFE_PLUGIN_NAME_RE.match(str(plugin_name)):
+            raise ValueError(
+                f"{manifest}: plugin name {plugin_name!r} contains unsafe characters"
+            )
         for kind in KINDS:
             names = data.get(kind) or []
             if not isinstance(names, list):

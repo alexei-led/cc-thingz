@@ -20,9 +20,12 @@ record_hook_edited_files
 
 PROJECT_HOOKS_CONFIG=".claude-hooks-config.sh"
 if [[ -f "$PROJECT_HOOKS_CONFIG" ]]; then
-	if [[ "${CLAUDE_HOOKS_TRUST_PROJECT_CONFIG:-0}" == "1" ]] || project_hooks_config_trusted "$PROJECT_HOOKS_CONFIG"; then
-		# shellcheck source=/dev/null
-		source "$PROJECT_HOOKS_CONFIG"
+	# Read once, verify the hash of that content, then execute the same bytes
+	# (no re-read between check and use). Trailing-x trick preserves newlines.
+	project_config_raw=$(cat "$PROJECT_HOOKS_CONFIG" 2>/dev/null && printf x) || project_config_raw="x"
+	project_config_raw=${project_config_raw%x}
+	if [[ "${CLAUDE_HOOKS_TRUST_PROJECT_CONFIG:-0}" == "1" ]] || project_hooks_config_content_trusted "$project_config_raw"; then
+		eval "$project_config_raw"
 	else
 		echo "smart-lint: ignoring untrusted $PROJECT_HOOKS_CONFIG (not in ~/.claude/trusted-hooks-config-hashes)." >&2
 		echo "  Trust it: shasum -a 256 $PROJECT_HOOKS_CONFIG | awk '{print \$1}' >> ~/.claude/trusted-hooks-config-hashes" >&2

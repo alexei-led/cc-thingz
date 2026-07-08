@@ -5,6 +5,9 @@ allowed-tools:
 - Bash
 - Grep
 - Glob
+- Edit
+- Write
+- LS
 context: fork
 description: Idiomatic TypeScript development. Use when writing TypeScript code, Node.js
   services, React apps, or TypeScript design advice. Emphasizes strict typing, boundary

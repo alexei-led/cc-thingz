@@ -228,6 +228,29 @@ subagent({
 });
 ```
 
+### Pi model policy
+
+cc-thingz Pi agents intentionally leave `model` and `thinking` unset in package frontmatter. By default, `pi-subagents` uses the current Pi session model when `subagents.defaultModel` or `subagents.agentOverrides.*.model` is not set; if you want fixed local behavior, set it outside cc-thingz in `~/.pi/agent/settings.json` or `.pi/settings.json`.
+
+```json
+{
+  "subagents": {
+    "agentOverrides": {
+      "cc-thingz.runner": {
+        "model": "openai-codex-personal/gpt-5.4-mini",
+        "fallbackModels": [
+          "openai-codex-work/gpt-5.4-mini",
+          "anthropic-personal/claude-haiku-4-5"
+        ],
+        "thinking": "low"
+      }
+    }
+  }
+}
+```
+
+Use package runtime names in overrides: `cc-thingz.engineer`, `cc-thingz.reviewer`, `cc-thingz.runner`, and `cc-thingz.advisor`.
+
 **Bundled Pi extensions** (`dist/pi/extensions/`):
 
 | Extension              | Role                                                                                             |
@@ -259,9 +282,10 @@ loop tools are installed.
 
 **Pi gets**: 4 agents — `engineer`, `reviewer`, `runner`, `advisor` (requires a Pi
 subagents package) — all 29 skills, and 7 bundled extensions. Each
-agent has a Pi-specific frontmatter overlay tuned for OpenAI Codex models,
-thinking levels, tool restrictions, and turn limits. `advisor` ships to Codex,
-Gemini, and Pi; Claude is excluded because it has a built-in advisor. The old
+agent has a Pi-specific frontmatter overlay for its tool envelope and role
+behavior; model policy stays outside cc-thingz in the active Pi session or
+user/project `subagents.agentOverrides`. `advisor` ships to Codex, Gemini, and
+Pi; Claude is excluded because it has a built-in advisor. The old
 scout→planner→worker→reviewer pipeline is superseded by the 3-role model plus a
 cheap utility lane.
 
@@ -369,18 +393,16 @@ These activate silently when relevant patterns are detected — no `/skill-name`
 
 Three role agents plus one utility agent: a capability envelope plus a reasoning stance no skill can supply. Consolidated from 39 → 3 roles — see `docs/agent-audit-2026-05-16.md` and the executed plan in `docs/plans/completed/`. Domain procedure and output format live in skills; language specifics live in each skill's `references/<lang>.md`. Role × skill × references compose — language is not a routing key. `runner` is not a fourth role; it is the cheap utility lane for simple bounded tasks. Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allowlist (Gemini via its subagent frontmatter `tools:` field); Codex blocks writes via `sandbox_mode: read-only`; Pi has no tool-allowlist primitive, so the envelope there is a system-prompt directive. Gemini frontmatter has no read-only sandbox primitive, so `advisor` and `runner` are granted `run_shell_command` and held read-only by their body directives, the same tradeoff as Pi.
 
-| Agent      | Envelope                         | Stance                                                               | Claude model        | Pi model                  |
-| ---------- | -------------------------------- | -------------------------------------------------------------------- | ------------------- | ------------------------- |
-| `engineer` | Read + write + execute           | Sole mutator: applies changes, runs the build/test/lint gate         | sonnet              | gpt-5.4 thinking:high     |
-| `reviewer` | Read, Grep, Glob, LS — no writes | Adversarial evaluator: emits findings/proposals, applies nothing     | sonnet              | gpt-5.4 thinking:medium   |
-| `runner`   | Read + read-only Bash            | Cheap utility lane for simple bounded file/search/git/log/shell work | haiku               | gpt-5.4-mini thinking:low |
-| `advisor`  | Read + read-only Bash            | Strategic escalation: verdict, ranked risks, next actions            | built-in (Opus 4.7) | gpt-5.5 thinking:xhigh    |
+| Agent      | Envelope                         | Stance                                                               | Claude model        | Pi default               |
+| ---------- | -------------------------------- | -------------------------------------------------------------------- | ------------------- | ------------------------ |
+| `engineer` | Read + write + execute           | Sole mutator: applies changes, runs the build/test/lint gate         | sonnet              | inherits current/default |
+| `reviewer` | Read, Grep, Glob, LS — no writes | Adversarial evaluator: emits findings/proposals, applies nothing     | sonnet              | inherits current/default |
+| `runner`   | Read + read-only Bash            | Cheap utility lane for simple bounded file/search/git/log/shell work | haiku               | inherits current/default |
+| `advisor`  | Read + read-only Bash            | Strategic escalation: verdict, ranked risks, next actions            | built-in (Opus 4.7) | inherits current/default |
 
 `engineer` is the fork target for `writing-{csharp,go,java-kotlin,python,rust,shell,typescript,web}` and `operating-infra`. `reviewer` absorbs the review family, code search, and planning (via `spec`). `runner` is the automatic cheap-task path: use it proactively for file lookup, grep/glob, `git status/log/show/diff`, file reads, log summaries, and focused shell inspection; escalate to `engineer`, `reviewer`, or `advisor` when the task stops being cheap or obvious. `advisor` ships to Codex, Gemini, and Pi; Claude is excluded because it has a built-in advisor. On Pi, `advisor` is invoked via transcript forwarding; on Gemini and Codex it is spawned as a normal custom subagent under its tool/sandbox envelope.
 
-Model tiers are matched per job shape across vendors. `engineer`/`reviewer` use Claude `sonnet`; their Pi counterparts pin `gpt-5.4` (not `gpt-5.5`) because GPT-5.5 is a frontier tier above Sonnet 4.6 — using it for the same role would make the Pi agent materially stronger and ~2× costlier for no parity reason. `runner` is intentionally cheaper: Claude `haiku`, Pi `gpt-5.4-mini`, and a pinned `gpt-5.4-mini` Codex agent where the target supports per-agent model config. `advisor` is an escalation role: Claude's built-in advisor runs Opus 4.7 (frontier), so the Pi advisor stays at `gpt-5.5 thinking:xhigh` to match that tier. Other Codex role agents continue to inherit the model chosen at `codex` launch.
-
-Pi model names use the `openai-codex/` provider prefix (e.g. `openai-codex/gpt-5.4`) to avoid ambiguous fuzzy matching when multiple providers expose the same model ID.
+Model tiers are matched per job shape across vendors. Claude and Codex can pin per-agent models where that target benefits from it. Pi package agents intentionally do not pin `model` or `thinking`; they inherit the active Pi session model by default, and user/project `subagents.agentOverrides` or router profiles should carry any local tiering policy.
 
 ## Hooks
 

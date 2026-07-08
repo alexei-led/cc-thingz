@@ -66,6 +66,7 @@ MCP_Sequential.md
 
 # === Local working state (ralphex sessions, progress logs) ===
 .ralphex/
+.pi-subagents/
 
 # === OS artifacts ===
 .DS_Store

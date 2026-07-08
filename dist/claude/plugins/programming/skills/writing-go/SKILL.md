@@ -5,6 +5,9 @@ allowed-tools:
 - Bash
 - Grep
 - Glob
+- Edit
+- Write
+- LS
 context: fork
 description: Idiomatic Go development. Use when writing Go code, designing APIs, reviewing
   Go implementations, or changing Go tests. Follow the module's target Go version.

@@ -40,6 +40,27 @@ def test_parse_sections_splits_by_header(ov) -> None:
     assert "c-body" in a.children[1].content
 
 
+def test_parse_sections_longer_closing_fence_closes_block(ov) -> None:
+    """GFM: a closing fence may be longer than the opener."""
+    tree = ov.parse_sections(
+        dedent_md(
+            """
+            # Real
+
+            ```
+            code
+            ````
+
+            ## After
+
+            tail
+            """
+        )
+    )
+    assert [c.title for c in tree.children] == ["Real"]
+    assert [c.title for c in tree.children[0].children] == ["After"]
+
+
 def test_parse_sections_ignores_headers_in_code_fence(ov) -> None:
     tree = ov.parse_sections(
         dedent_md(

@@ -6,6 +6,11 @@ description: Creates isolated git worktrees for parallel development. Use when s
 name: using-git-worktrees
 ---
 
+<!-- Platform guidance for Codex and Gemini -->
+<!-- Use this platform's installed tool names exactly; do not translate capability references into Claude Code tool syntax. -->
+<!-- When this skill references shell execution, file reads, or search, use the platform's native shell, read, and search tools. -->
+<!-- If a referenced helper command or optional tool is unavailable, report the gap and continue with the platform's built-in tools. -->
+
 # Git Worktrees
 
 Use one sibling worktree root per project: `<project>.worktrees/<branch-slug>`. Keep the main worktree clean on the integration branch by default. Trivial solo one-liners may stay in the main worktree when a worktree would add pointless ceremony.

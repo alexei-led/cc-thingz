@@ -48,8 +48,13 @@ def _git(args: list[str], cwd: Path) -> str | None:
             capture_output=True,
             text=True,
             check=True,
+            timeout=4,
         )
-    except (FileNotFoundError, subprocess.CalledProcessError):
+    except (
+        FileNotFoundError,
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+    ):
         return None
     return out.stdout.strip()
 

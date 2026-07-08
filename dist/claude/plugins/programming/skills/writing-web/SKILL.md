@@ -5,6 +5,9 @@ allowed-tools:
 - Bash
 - Grep
 - Glob
+- Edit
+- Write
+- LS
 context: fork
 description: Simple web development with HTML, CSS, JS, and HTMX. Use when working
   with .html, .css, or .htmx files, web templates, stylesheets, or vanilla JS scripts.

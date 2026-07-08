@@ -39,10 +39,11 @@ or managed settings.
 3. Inventory relevant files with paths, sizes, and source/generated status.
 4. Read current files before recommending changes.
 5. Check the matching platform reference.
-6. Fetch official docs only when syntax, feature availability, or deprecation status is uncertain.
-7. Use broader web research only for source gaps or ecosystem comparisons.
-8. Classify findings by impact and disruption.
-9. In fix mode, apply only approved changes and verify.
+6. When the audit touches skills, agents, prompts, or package manifests, inspect thin-router risk, weak pointers to must-read support files, and whether plugin grouping forces unrelated instructions into startup context.
+7. Fetch official docs only when syntax, feature availability, or deprecation status is uncertain.
+8. Use broader web research only for source gaps or ecosystem comparisons.
+9. Classify findings by impact and disruption.
+10. In fix mode, apply only approved changes and verify.
 
 ## Scope
 

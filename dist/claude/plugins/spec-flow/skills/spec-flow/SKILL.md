@@ -20,7 +20,6 @@ description: Use when planning, executing, checkpointing, finishing, or inspecti
   and the bundled `specctl` helper. NOT for broad product discovery beyond a short
   requirement interview. NOT for generic implementation planning that does not read
   or write `.spec/` files.
-model: sonnet
 name: spec-flow
 user-invocable: true
 ---

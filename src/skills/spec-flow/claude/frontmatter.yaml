@@ -1,6 +1,5 @@
 user-invocable: true
 context: fork
-model: sonnet
 argument-hint: '[status | plan <idea> | work [TASK-id] | checkpoint | done TASK-id]'
 allowed-tools:
   - AskUserQuestion

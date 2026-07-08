@@ -7,6 +7,11 @@ description: Web research via platform web tools. Use for technical comparisons,
 name: researching-web
 ---
 
+<!-- Platform guidance for Codex and Gemini -->
+<!-- Use this platform's installed tool names exactly; do not translate capability references into Claude Code tool syntax. -->
+<!-- When this skill references shell execution, file reads, or search, use the platform's native shell, read, and search tools. -->
+<!-- If a referenced helper command or optional tool is unavailable, report the gap and continue with the platform's built-in tools. -->
+
 # Web Research
 
 Use web tools for grounded external research. Prefer primary sources, official docs,
@@ -52,6 +57,10 @@ best matches the question and the available runtime.
 
 If the user asks for the workflow itself, describe the source-gathering plan and
 output structure; do not present an uncited recommendation as fact.
+
+## Conditional References
+
+- [sources.md](references/sources.md) — read when choosing between web tools or evaluating source quality: tier ranking, stale-source detection, platform-specific tool guidance (Pi `web_search`/`web_answer`/`web_research`), source caching.
 
 ## Failure handling
 

@@ -6,7 +6,8 @@ set -euo pipefail
 
 # Read prompt from stdin (JSON input from Claude Code)
 INPUT=$(cat)
-PROMPT=$(echo "$INPUT" | jq -r '.prompt // .' 2>/dev/null || echo "$INPUT")
+PROMPT=$(echo "$INPUT" | jq -r '.prompt // empty' 2>/dev/null || true)
+[[ -n "$PROMPT" ]] || exit 0
 PROMPT_LOWER=$(echo "$PROMPT" | tr '[:upper:]' '[:lower:]')
 
 # Skip if prompt too short (likely greeting/command)
