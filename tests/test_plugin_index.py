@@ -125,6 +125,14 @@ def test_build_plugin_index_rejects_non_string_entry(pi_mod, tmp_path):
         pi_mod.build_plugin_index(tmp_path)
 
 
+def test_build_plugin_index_rejects_unsafe_name(pi_mod, tmp_path):
+    bad = tmp_path / "src" / "plugins" / "bad"
+    bad.mkdir(parents=True)
+    (bad / "plugin.yaml").write_text("name: ../evil\nskills:\n  - s\n")
+    with pytest.raises(ValueError, match="unsafe characters"):
+        pi_mod.build_plugin_index(tmp_path)
+
+
 def test_owners_returns_empty_for_unknown(pi_mod, fake_plugins_root):
     index = pi_mod.build_plugin_index(fake_plugins_root)
     assert pi_mod.owners("nope", "skills", index) == []

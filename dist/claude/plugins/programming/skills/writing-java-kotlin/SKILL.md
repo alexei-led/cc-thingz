@@ -5,6 +5,9 @@ allowed-tools:
 - Bash
 - Grep
 - Glob
+- Edit
+- Write
+- LS
 context: fork
 description: Idiomatic modern Java and Kotlin JVM development. Use when writing `.java`,
   `.kt`, or `.kts` code; changing Gradle or Maven builds; or working on Spring, Micronaut,

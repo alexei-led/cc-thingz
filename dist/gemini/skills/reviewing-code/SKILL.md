@@ -8,6 +8,11 @@ description: Use when reviewing changed code, PRs, diffs, or specific files. Fin
 name: reviewing-code
 ---
 
+<!-- Platform guidance for Codex and Gemini -->
+<!-- Use this platform's installed tool names exactly; do not translate capability references into Claude Code tool syntax. -->
+<!-- When this skill references shell execution, file reads, or search, use the platform's native shell, read, and search tools. -->
+<!-- If a referenced helper command or optional tool is unavailable, report the gap and continue with the platform's built-in tools. -->
+
 # Code Review
 
 Produce findings, not edits. Review only the requested diff, PR, changed files,
@@ -86,13 +91,13 @@ For each scoped language:
 3. Use supplied or runnable tooling output when available.
 4. Use graph evidence only when it answers a review question, not as a default fishing pass.
 
-GitNexus is useful for PRs, broad diffs, public API changes, and missed caller/test coverage:
+A change-history graph tool (such as GitNexus), when installed, is useful for PRs, broad diffs, public API changes, and missed caller/test coverage:
 
 - Detect changes to map changed symbols to affected flows.
 - Impact analysis for non-trivial changed symbols.
 - Context for changed boundary symbols, callers, callees, and tests.
 
-codegraph is useful for dependency/call blast radius and high fan-in surfaces:
+A code dependency graph tool (such as codegraph), when installed, is useful for dependency/call blast radius and high fan-in surfaces:
 
 - Check status first.
 - If fresh, use context or affected queries for changed symbols or files.
@@ -141,7 +146,7 @@ Scope: <description>
 Depth: quick | standard | deep | team | external
 Languages: <list>
 Coverage: complete | partial — <reason>
-Graph evidence: none | GitNexus | codegraph | both — <freshness/gaps>
+Graph evidence: none | <graph tool(s) used> — <freshness/gaps>
 External review: not requested | completed | unavailable | skipped — <reason>
 Score: <N/10 if requested> — confidence <high|medium|low>
 

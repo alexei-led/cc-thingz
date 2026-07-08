@@ -318,7 +318,11 @@ def parse_sections(md: str) -> Section:
         body = line.rstrip("\n")
         if in_fence:
             pending.append(line)
-            if body.strip() == fence_chars:
+            stripped_body = body.strip()
+            # GFM: closing fence may be longer than the opener, same char.
+            if stripped_body.startswith(fence_chars) and stripped_body == stripped_body[
+                0
+            ] * len(stripped_body):
                 in_fence = False
                 fence_chars = ""
             continue

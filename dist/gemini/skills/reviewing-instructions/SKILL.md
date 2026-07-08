@@ -9,6 +9,11 @@ description: 'Use when asked to lint, audit, review, or score AI-facing instruct
 name: reviewing-instructions
 ---
 
+<!-- Platform guidance for Codex and Gemini -->
+<!-- Use this platform's installed tool names exactly; do not translate capability references into Claude Code tool syntax. -->
+<!-- When this skill references shell execution, file reads, or search, use the platform's native shell, read, and search tools. -->
+<!-- If a referenced helper command or optional tool is unavailable, report the gap and continue with the platform's built-in tools. -->
+
 # Instruction Review
 
 Review AI-facing instruction files for routing precision, behavioral signal,
@@ -79,7 +84,7 @@ If resolution is ambiguous, use generic and set review confidence to medium or l
 
 ## Structural pre-pass
 
-Run the lint script scoped to the review target when Bash is available:
+Run the lint script scoped to the review target when shell execution is available:
 
 ```bash
 uv run python src/skills/reviewing-instructions/scripts/lint-instructions.py <scope>

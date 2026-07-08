@@ -176,6 +176,10 @@ Needed next: <question, artifact, or target skill>
 
 ## Failure handling
 
+- Idea conflicts with domain docs: quote the conflicting terms and resolve with the user before designing.
+- A constraint blocks every approach: state the blocker, what would unblock it, and ask what to relax.
+- Idea is too vague: stay in understanding mode; ask one narrowing question at a time.
+- No bounded plan exists for grill/debate: ask for one; do not invent opposing positions.
 - If the user asks for task sequencing, state that it is outside this skill's scope.
 - If the user asks for generic technology research, route to `researching-web`.
 - If the user asks for docs-only work, route to `documenting-code`.

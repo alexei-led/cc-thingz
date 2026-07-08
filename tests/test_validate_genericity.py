@@ -59,6 +59,7 @@ def test_claude_restricted_scalar_form_opts_out(vg, tmp_path: Path) -> None:
 
 _FORBIDDEN: list[tuple[str, str, str]] = [
     ("dollar_arguments", "Run with $ARGUMENTS to do things.\n", "$ARGUMENTS"),
+    ("positional_arg", "Pass $1 as the scope argument.\n", "$1"),
     ("task_call", 'Delegate using Task(prompt="foo").\n', "Task("),
     (
         "mcp_prefix",

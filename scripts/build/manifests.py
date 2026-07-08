@@ -131,6 +131,13 @@ def write_claude_marketplace(plugins: Sequence[Mapping[str, Any]], root: Path) -
     owner = global_meta.get("owner")
     if isinstance(owner, Mapping):
         payload["owner"] = dict(owner)
+    else:
+        # validate-config.py treats owner as mandatory; surface the gap at
+        # generation time instead of failing later in validation.
+        log.warning(
+            "marketplace.yaml has no 'owner' mapping; "
+            "generated marketplace.json will fail validate-config.py"
+        )
 
     metadata: dict[str, Any] = {}
     _copy_optional(

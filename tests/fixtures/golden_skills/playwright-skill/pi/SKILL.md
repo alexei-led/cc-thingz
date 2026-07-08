@@ -1,6 +1,5 @@
 ---
-description:
-  Support-only Playwright runtime/reference for browser-automation — dev-server
+description: Support-only Playwright runtime/reference for browser-automation — dev-server
   detection, a Node.js script runner, quiet screenshot helpers, SPA readiness helpers,
   and custom HTTP headers. Use when browser-automation selects the bundled Playwright
   fallback; do not route user intent here directly.

@@ -81,13 +81,13 @@ For each scoped language:
 3. Use supplied or runnable tooling output when available.
 4. Use graph evidence only when it answers a review question, not as a default fishing pass.
 
-GitNexus is useful for PRs, broad diffs, public API changes, and missed caller/test coverage:
+A change-history graph tool (such as GitNexus), when installed, is useful for PRs, broad diffs, public API changes, and missed caller/test coverage:
 
 - Detect changes to map changed symbols to affected flows.
 - Impact analysis for non-trivial changed symbols.
 - Context for changed boundary symbols, callers, callees, and tests.
 
-codegraph is useful for dependency/call blast radius and high fan-in surfaces:
+A code dependency graph tool (such as codegraph), when installed, is useful for dependency/call blast radius and high fan-in surfaces:
 
 - Check status first.
 - If fresh, use context or affected queries for changed symbols or files.
@@ -136,7 +136,7 @@ Scope: <description>
 Depth: quick | standard | deep | team | external
 Languages: <list>
 Coverage: complete | partial — <reason>
-Graph evidence: none | GitNexus | codegraph | both — <freshness/gaps>
+Graph evidence: none | <graph tool(s) used> — <freshness/gaps>
 External review: not requested | completed | unavailable | skipped — <reason>
 Score: <N/10 if requested> — confidence <high|medium|low>
 

@@ -6,6 +6,11 @@ description: Idiomatic Python 3.12+ development. Use when writing Python code, C
 name: writing-python
 ---
 
+<!-- Platform guidance for Codex and Gemini -->
+<!-- Use this platform's installed tool names exactly; do not translate capability references into Claude Code tool syntax. -->
+<!-- When this skill references shell execution, file reads, or search, use the platform's native shell, read, and search tools. -->
+<!-- If a referenced helper command or optional tool is unavailable, report the gap and continue with the platform's built-in tools. -->
+
 # Python Development
 
 Use this only for Python 3.12+ code. Keep language-agnostic rules out of this skill.

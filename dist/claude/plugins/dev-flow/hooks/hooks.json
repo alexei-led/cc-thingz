@@ -41,7 +41,7 @@
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/smart-lint.sh",
-            "timeout": 60
+            "timeout": 120
           }
         ]
       }
@@ -63,7 +63,7 @@
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/test-runner.sh",
-            "timeout": 60
+            "timeout": 120
           }
         ]
       }

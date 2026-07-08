@@ -8,6 +8,11 @@ description: 'Configure safe git workflow hygiene: pre-commit/pre-push hooks, Gi
 name: configuring-git-hygiene
 ---
 
+<!-- Platform guidance for Codex and Gemini -->
+<!-- Use this platform's installed tool names exactly; do not translate capability references into Claude Code tool syntax. -->
+<!-- When this skill references shell execution, file reads, or search, use the platform's native shell, read, and search tools. -->
+<!-- If a referenced helper command or optional tool is unavailable, report the gap and continue with the platform's built-in tools. -->
+
 # Configure Git Hygiene
 
 Set up project-local git hygiene. Keep hooks fast enough to stay enabled. Do not overwrite hooks, change global config, remove tracked files, or install tools without user approval.

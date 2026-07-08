@@ -202,14 +202,16 @@ print_summary_and_exit() {
 			}
 		done
 		# Commands, skills, agents
-		shopt -s globstar 2>/dev/null
-		for f in ~/.claude/commands/**/*.md \
-			~/.claude/skills/*/SKILL.md ~/.claude/agents/**/*.md; do
+		# globstar needs bash >= 4; macOS bash 3.2 silently ignores it, so use find.
+		while IFS= read -r f; do
 			[[ -f "$f" ]] && {
 				w=$(wc -w <"$f" 2>/dev/null | tr -d ' ')
 				total_words=$((total_words + w))
 			}
-		done
+		done < <(
+			find ~/.claude/commands ~/.claude/agents -name '*.md' -type f 2>/dev/null
+			find ~/.claude/skills -mindepth 2 -maxdepth 2 -name 'SKILL.md' -type f 2>/dev/null
+		)
 		local approx_tokens=$((total_words * 4 / 3))
 		echo -e "${PROJECT_TYPE} project ${GREEN}✅ Style OK${NC} ${CYAN}📊 ~${approx_tokens} tokens${NC}" >&2
 		exit 0
@@ -579,13 +581,15 @@ run_lint_fallbacks() {
 	run_make_lint_fallback
 }
 
-project_hooks_config_trusted() {
-	local file="$1" store="$HOME/.claude/trusted-hooks-config-hashes" hash
+# Hash the exact content string (not the file) so the caller can verify and
+# execute the same bytes, avoiding a check-then-read TOCTOU window.
+project_hooks_config_content_trusted() {
+	local content="$1" store="$HOME/.claude/trusted-hooks-config-hashes" hash
 	[[ -f "$store" ]] || return 1
 	if command_exists shasum; then
-		hash=$(shasum -a 256 "$file" 2>/dev/null | awk '{print $1}')
+		hash=$(printf '%s' "$content" | shasum -a 256 2>/dev/null | awk '{print $1}')
 	elif command_exists sha256sum; then
-		hash=$(sha256sum "$file" 2>/dev/null | awk '{print $1}')
+		hash=$(printf '%s' "$content" | sha256sum 2>/dev/null | awk '{print $1}')
 	else
 		return 1
 	fi

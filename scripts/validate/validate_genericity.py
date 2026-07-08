@@ -39,6 +39,7 @@ ROOT = next(
 
 FORBIDDEN_PATTERN = re.compile(
     r"\$ARGUMENTS"
+    r"|\$[1-9][0-9]*\b"
     r"|Task\("
     r"|\bAskUserQuestion\b"
     r"|\bTaskCreate\b"

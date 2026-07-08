@@ -121,8 +121,8 @@ cc-thingz/
 │   ├── release/                       # Mirroring + tagging
 │   └── git-hooks/                     # Activated by `make setup`
 ├── tests/                             # pytest + bats
-├── docs/
-│   └── instruction-lint-rules.md      # Format rules for skill/agent instruction files
+├── docs/                              # Plans and audits; instruction format rules live in
+│                                      # src/skills/reviewing-instructions/references/scoring-rubric.md
 ├── .claude-plugin/marketplace.json    # Generated — sources at ./dist/claude/plugins/*
 ├── .agents/plugins/marketplace.json   # Generated — sources at ./dist/codex/plugins/*
 ├── gemini-extension.json              # Generated — references ${extensionPath}/dist/gemini/

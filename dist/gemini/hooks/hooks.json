@@ -35,7 +35,7 @@
             "type": "command",
             "name": "smart-lint",
             "command": "${extensionPath}/hooks/smart-lint.sh",
-            "timeout": 60000
+            "timeout": 120000
           }
         ]
       }
@@ -71,7 +71,7 @@
             "type": "command",
             "name": "test-runner",
             "command": "${extensionPath}/hooks/test-runner.sh",
-            "timeout": 60000
+            "timeout": 120000
           }
         ]
       }

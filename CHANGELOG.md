@@ -8,6 +8,19 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+### Fixed
+
+- Excluded the `engineer` agent from Codex via `targets:` — a mutator role is inoperable under Codex's read-only sandbox; `dist/codex/agents/engineer.toml` is no longer emitted.
+- Created the missing `scripts/build/preambles/platform.md` so Codex and Gemini skills receive their documented platform preamble; a configured-but-missing preamble now fails the build loudly instead of being silently skipped.
+- Restored base-content sections that Claude overlays were silently replacing: brainstorming-ideas failure-handling cases and the evolving-config thin-router audit step.
+- Added `Task` to the reviewing-instructions Claude tool allowlist so its documented parallel-review workflow is reachable.
+- Genericized vendor-specific tool names (`GitNexus`, `codegraph`, capital-B `Bash`, MCP server name-drop) in shared skill bases that compile to all targets.
+- Made `scripts/release/release-tag` portable across BSD/GNU sed and added missing-version-file validation.
+- Hardened hooks: git-guardrails skips invalid custom block patterns with a warning; skill-enforcer no longer feeds raw JSON into prompt matching; smart-lint verifies and executes the same project-config bytes (TOCTOU) and replaces bash-4-only globstar with `find`; worktree-remove passes paths to awk via `ENVIRON`; session-start git calls get a timeout; test-runner JVM test discovery is depth-bounded; smart-lint and test-runner hook timeouts raised to 120s.
+- Build/validate hardening: `validate_genericity.py` now catches `$1`–`$9` positional substitutions; plugin names are validated against path-unsafe characters; overlay parsing accepts GFM longer closing fences; missing `SKILL.md` fails with a named error; missing marketplace `owner` warns at generation time; markdownlint no longer scans `.pi-subagents/` artifacts.
+- Frontmatter consistency: writing-* Claude skills gained `Edit`/`Write`/`LS`; refactoring-code gained `Edit` as a fallback to the MCP editor; looking-up-docs is now user-invocable; spec-flow no longer pins `model: sonnet`; the Gemini reviewer allowlist gained `list_directory`.
+- Removed the stale `docs/instruction-lint-rules.md` entry from the CONTRIBUTING repository layout.
+
 ## [6.6.2] - 2026-07-05
 
 ### Fixed

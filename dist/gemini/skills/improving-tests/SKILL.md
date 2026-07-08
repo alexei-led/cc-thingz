@@ -8,6 +8,11 @@ description: Improve test design, speed, and coverage with behavior-focused test
 name: improving-tests
 ---
 
+<!-- Platform guidance for Codex and Gemini -->
+<!-- Use this platform's installed tool names exactly; do not translate capability references into Claude Code tool syntax. -->
+<!-- When this skill references shell execution, file reads, or search, use the platform's native shell, read, and search tools. -->
+<!-- If a referenced helper command or optional tool is unavailable, report the gap and continue with the platform's built-in tools. -->
+
 # Test Improvement
 
 Improve tests so they catch real behavior regressions without blocking safe code

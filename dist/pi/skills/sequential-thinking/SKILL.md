@@ -18,7 +18,7 @@ name: sequential-thinking
 
 # Sequential Thinking
 
-Replaces the `sequential_thinking` MCP server. Same intent — externalize a numbered chain of thoughts with revision and branch semantics — implemented as visible Markdown so any reasoning-capable model (Claude 4.x extended thinking, Gemini 3.x thinking, GPT-5.x reasoning) can follow it without an extra tool round-trip.
+Same intent as MCP-based sequential-thinking tools — externalize a numbered chain of thoughts with revision and branch semantics — implemented as visible Markdown so any reasoning-capable model (Claude 4.x extended thinking, Gemini 3.x thinking, GPT-5.x reasoning) can follow it without an extra tool round-trip.
 
 ## When to use
 

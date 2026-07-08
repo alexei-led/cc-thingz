@@ -5,6 +5,9 @@ allowed-tools:
 - Bash
 - Grep
 - Glob
+- Edit
+- Write
+- LS
 context: fork
 description: Idiomatic shell development for POSIX sh, Bash, Zsh, Fish, hooks, CI
   shell steps, and scriptable CLI glue. Use when writing or changing `.sh`, `.bash`,

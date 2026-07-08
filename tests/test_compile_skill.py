@@ -99,6 +99,13 @@ def _diff_file(golden: Path, actual: Path, rel: Path) -> str | None:
     )
 
 
+def _stub_preambles(root: Path) -> None:
+    preambles = root / "scripts" / "build" / "preambles"
+    preambles.mkdir(parents=True, exist_ok=True)
+    (preambles / "pi.md").write_text("<!-- pi preamble -->\n")
+    (preambles / "platform.md").write_text("<!-- platform preamble -->\n")
+
+
 @pytest.mark.parametrize("skill", GOLDEN_SKILLS)
 @pytest.mark.parametrize("target", TARGETS)
 def test_compile_skill_matches_golden(
@@ -141,6 +148,12 @@ def test_targets_restriction_skips_skill(cs, tmp_path: Path) -> None:
     assert cs.compile_skill(skill, "pi", plugin_index, root) == []
 
 
+def test_missing_configured_preamble_raises(cs, tmp_path: Path) -> None:
+    """A configured preamble file that is absent must fail the build loudly."""
+    with pytest.raises(FileNotFoundError, match="preamble"):
+        cs.load_preamble("pi", tmp_path)
+
+
 def test_targets_string_form_accepted(cs, tmp_path: Path) -> None:
     skill = tmp_path / "skill"
     skill.mkdir()
@@ -149,6 +162,7 @@ def test_targets_string_form_accepted(cs, tmp_path: Path) -> None:
     )
     root = tmp_path / "repo"
     root.mkdir()
+    _stub_preambles(root)
 
     assert cs.compile_skill(skill, "pi", None, root) != []
     assert cs.compile_skill(skill, "claude", None, root) == []
@@ -236,6 +250,7 @@ def test_flat_layout_ignores_plugin_index(cs, tmp_path: Path) -> None:
     )
     root = tmp_path / "repo"
     root.mkdir()
+    _stub_preambles(root)
     plugin_index = {"my-skill": ["alpha"]}
 
     written = cs.compile_skill(skill, "pi", plugin_index, root)
@@ -252,6 +267,7 @@ def test_plugin_grouped_target_skips_unowned_skill(cs, tmp_path: Path) -> None:
     )
     root = tmp_path / "repo"
     root.mkdir()
+    _stub_preambles(root)
 
     assert cs.compile_skill(skill, "claude", None, root) == []
     assert cs.compile_skill(skill, "codex", None, root) == []

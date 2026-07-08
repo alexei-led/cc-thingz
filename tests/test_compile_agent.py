@@ -115,13 +115,12 @@ def _compiled_meta(path: Path) -> dict:
 
 
 def test_compile_agent_engineer_all_platforms(ca, tmp_path: Path) -> None:
-    """engineer has no targets restriction — every platform receives output.
+    """engineer targets claude/gemini/pi — codex is excluded.
 
-    Claude and Pi carry distinct per-target frontmatter overlays
-    (`claude/frontmatter.yaml`, `pi/frontmatter.yaml`) and are golden-locked.
-    Codex has no overlay (base AGENT.md only); Gemini carries a
-    `gemini/frontmatter.yaml` tool-allowlist overlay. Both are asserted to
-    emit exactly one file so a regression that drops them is still caught.
+    Codex enforces `sandbox_mode: read-only`; a mutator role is inoperable
+    there, so `targets:` excludes it. Claude and Pi carry distinct per-target
+    frontmatter overlays and are golden-locked. Gemini carries a
+    `gemini/frontmatter.yaml` tool-allowlist overlay.
     """
     root = make_agent_staging_root(tmp_path)
     agent_dir = root / "src" / "agents" / "engineer"
@@ -139,7 +138,7 @@ def test_compile_agent_engineer_all_platforms(ca, tmp_path: Path) -> None:
     assert pi_golden.is_file(), f"missing golden snapshot: {pi_golden}"
     assert _diff_files(pi_golden, pi_written[0]) is None
 
-    assert len(ca.compile_agent(agent_dir, "codex", plugin_index, root)) == 1
+    assert ca.compile_agent(agent_dir, "codex", plugin_index, root) == []
     assert len(ca.compile_agent(agent_dir, "gemini", None, root)) == 1
 
 

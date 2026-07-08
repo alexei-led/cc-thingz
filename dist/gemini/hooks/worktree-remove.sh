@@ -21,7 +21,8 @@ MAIN_WT=$(awk '/^worktree /{sub(/^worktree /, ""); print; exit}' <<<"$PORCELAIN"
 PROJECT=$(basename "$MAIN_WT")
 MANAGED_ROOT="$(dirname "$MAIN_WT")/$PROJECT.worktrees"
 
-if ! awk -v wt="$WT" '/^worktree /{path=substr($0, 10); if (path == wt) found=1} END{exit found ? 0 : 1}' <<<"$PORCELAIN"; then
+# ENVIRON avoids awk -v backslash interpretation mangling the path.
+if ! WT="$WT" awk 'BEGIN{wt=ENVIRON["WT"]} /^worktree /{path=substr($0, 10); if (path == wt) found=1} END{exit found ? 0 : 1}' <<<"$PORCELAIN"; then
 	echo "Refusing to remove path that is not a registered git worktree: $WT" >&2
 	exit 1
 fi
