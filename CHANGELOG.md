@@ -8,6 +8,9 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.7.0] - 2026-07-08
+
+
 ### Fixed
 
 - Excluded the `engineer` agent from Codex via `targets:` — a mutator role is inoperable under Codex's read-only sandbox; `dist/codex/agents/engineer.toml` is no longer emitted.
