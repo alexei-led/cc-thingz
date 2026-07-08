@@ -1,6 +1,5 @@
 ---
-description:
-  Create normal git commits with logical grouping. Use when committing,
+description: Create normal git commits with logical grouping. Use when committing,
   saving changes, creating commits, or grouping work into commits. NOT for amending,
   rebasing, force-pushing, or rewriting history.
 name: committing-code
@@ -66,6 +65,10 @@ Never stage likely secrets: `.env`, keys, certificates, credentials, passwords, 
 Pause for user approval before any `git add` or `git commit`. For one focused commit, one approval gate is enough. For multiple commits, pause before each commit.
 
 If a pre-commit hook rejects, report the hook error verbatim. Do not retry with `--no-verify`.
+
+## Conditional References
+
+- [conventions.md](references/conventions.md) — read when the repo has no commit history to match, or when the user requests Conventional Commits format: type prefixes, scope rules, breaking-change notation, subject-line style.
 
 ## Step 5: Summary
 
