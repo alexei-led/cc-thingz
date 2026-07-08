@@ -163,6 +163,10 @@ def test_filter_allowed_keys_for_pi(ov) -> None:
         "argument-hint": "[x]",
         "metadata": {"k": "v"},
         "tools": "a,b",
+        "fallbackModels": "m1, m2",
+        "systemPromptMode": "replace",
+        "defaultReads": "context.md",
+        "completionGuard": False,
     }
     out = ov.filter_allowed_keys(meta, "pi")
     assert out == {
@@ -170,6 +174,10 @@ def test_filter_allowed_keys_for_pi(ov) -> None:
         "description": "d",
         "metadata": {"k": "v"},
         "tools": "a,b",
+        "fallbackModels": "m1, m2",
+        "systemPromptMode": "replace",
+        "defaultReads": "context.md",
+        "completionGuard": False,
     }
 
 

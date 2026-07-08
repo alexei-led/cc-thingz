@@ -413,6 +413,24 @@ package-qualified Pi agents to avoid collisions with `pi-subagents` builtins:
 - `cc-thingz.reviewer`
 - `cc-thingz.runner`
 
+cc-thingz Pi agents intentionally leave `model` and `thinking` unset in package
+frontmatter. By default they inherit the active Pi session model. Set local
+policy outside cc-thingz in `~/.pi/agent/settings.json` or `.pi/settings.json`:
+
+```json
+{
+  "subagents": {
+    "agentOverrides": {
+      "cc-thingz.engineer": {
+        "model": "openai-codex-personal/gpt-5.4",
+        "fallbackModels": ["openai-codex-work/gpt-5.4"],
+        "thinking": "high"
+      }
+    }
+  }
+}
+```
+
 Advisor source layout:
 
 - `src/agents/advisor/AGENT.md`

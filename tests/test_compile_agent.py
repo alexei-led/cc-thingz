@@ -110,6 +110,10 @@ def _compiled_tools(path: Path) -> object:
     return frontmatter.loads(path.read_text()).metadata.get("tools")
 
 
+def _compiled_meta(path: Path) -> dict:
+    return dict(frontmatter.loads(path.read_text()).metadata)
+
+
 def test_compile_agent_engineer_all_platforms(ca, tmp_path: Path) -> None:
     """engineer has no targets restriction — every platform receives output.
 
@@ -137,6 +141,24 @@ def test_compile_agent_engineer_all_platforms(ca, tmp_path: Path) -> None:
 
     assert len(ca.compile_agent(agent_dir, "codex", plugin_index, root)) == 1
     assert len(ca.compile_agent(agent_dir, "gemini", None, root)) == 1
+
+
+def test_compile_agent_pi_omits_model_and_thinking(ca, tmp_path: Path) -> None:
+    """Pi package agents should leave model policy to user/project settings.
+
+    The compiled Pi agents must not emit `model` or `thinking`; otherwise
+    package frontmatter would block alias-driven runtime selection and prevent
+    user/project `subagents.agentOverrides` from filling those fields.
+    """
+    root = make_agent_staging_root(tmp_path)
+
+    for agent_name in ("engineer", "reviewer", "runner", "advisor"):
+        agent_dir = root / "src" / "agents" / agent_name
+        written = ca.compile_agent(agent_dir, "pi", None, root)
+        assert len(written) == 1, agent_name
+        meta = _compiled_meta(written[0])
+        assert "model" not in meta, (agent_name, meta)
+        assert "thinking" not in meta, (agent_name, meta)
 
 
 def test_compile_agent_reviewer_envelope_is_read_only(ca, tmp_path: Path) -> None:
