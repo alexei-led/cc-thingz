@@ -130,6 +130,10 @@ Six blocks beats six paragraphs because every step has a number a reviewer can p
 
 If a thought reveals the question was wrong (wrong scope, missing requirement, blocked by an unknown), write one more Thought summarising the blocker, then `### Final` stating "blocked: <reason>, need <thing>". Don't keep generating thoughts to look thorough — half-finished structured reasoning is fine; pretending to finish is not.
 
+## Conditional References
+
+- [patterns.md](references/patterns.md) — read for calibrated thought-count estimates by problem type, and copy-paste templates for bug diagnosis, architecture decisions, and multi-constraint tradeoffs.
+
 ## Anti-patterns
 
 - Numbering stream-of-consciousness sentences as "thoughts" to hit a count.
