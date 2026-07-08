@@ -41,6 +41,19 @@ Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allo
 - **runner** — fast utility lane: file lookup, grep/glob, `git status/log/show/diff`, file reads, log summaries, and focused shell inspection. Read-only across targets. Use proactively for simple bounded tasks; escalate to `engineer`, `reviewer`, or `advisor` when the task stops being cheap or obvious.
 - **advisor** — strategic escalation: verdict, ranked risks, next actions. Ships to Codex, Gemini, and Pi; excluded from Claude, which has a built-in advisor. Codex enforces read-only via sandbox; Pi uses xhigh thinking with read-only Bash and transcript-forwarding invocation; Gemini grants a read-only `tools:` allowlist plus `run_shell_command` held read-only by the body directive.
 
+### Platform Coverage
+
+Agent × target coverage. Every gap is intentional and documented below.
+
+- **engineer**: claude (full Edit/Write/Bash), gemini (full tools via subagent `tools:` frontmatter), pi (full Bash/Edit/Write). Excluded from codex — Codex enforces `sandbox_mode: read-only`; a mutator role is inoperable under that constraint.
+- **reviewer**: all four targets (claude, codex, gemini, pi). Read-only enforcement is native on claude (hard tool allowlist) and codex (`sandbox_mode: read-only`), and a system-prompt directive on gemini and pi.
+- **runner**: all four targets. Always read-only by directive.
+- **advisor**: codex, gemini, and pi. Excluded from claude — Claude Code has a built-in advisor; adding a custom one would duplicate or conflict with the native capability.
+
+Skills compile to all four targets by default. A `targets:` key in the skill's frontmatter restricts compilation to listed targets only. Skills without any platform subdirs (`claude/`, `codex/`, `gemini/`, `pi/`) compile identically across all targets — only the per-target preamble differs. `sequential-thinking` is the canonical example: no platform subdirs, four identical-body outputs in `dist/`.
+
+For the compiled output paths and overlay mechanics, see [Compiler Pipeline](CONTRIBUTING.md#compiler-pipeline).
+
 ### Routing and model tiers
 
 Routing lives in the orchestrator instructions (`CLAUDE.md`, `AGENTS.md`, parent prompt), not in the role file alone.
