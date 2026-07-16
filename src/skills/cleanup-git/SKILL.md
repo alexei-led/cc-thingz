@@ -1,6 +1,9 @@
 ---
+description: Remove merged local branches and stale git worktrees. Use when the user
+  says "cleanup branches", "prune worktrees", "tidy git", "remove merged branches",
+  "delete merged branches", "gone branches", or wants to clean local git state. NOT
+  for creating commits, creating worktrees, or configuring git hooks.
 name: cleanup-git
-description: Remove merged local branches and stale git worktrees. Use when the user says "cleanup branches", "prune worktrees", "tidy git", "remove merged branches", "delete merged branches", "gone branches", or wants to clean local git state. NOT for creating commits, creating worktrees, or configuring git hooks.
 ---
 
 # Cleanup Git

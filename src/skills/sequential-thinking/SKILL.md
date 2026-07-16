@@ -5,15 +5,15 @@ description:
   "reason through this", "branch this idea", or when tackling a hard multi-step problem
   (architecture decisions, ambiguous bugs, multi-constraint tradeoffs, plans that
   may need revision). NOT for trivial lookups, single-tool fetches, or tasks the model
-  can answer directly without planning. NOT for open-ended option exploration or
-  idea generation; use brainstorming-ideas. NOT for arguing a claim from both sides
-  to prove or disprove it.
+  can answer directly without planning. NOT for open-ended option exploration or idea
+  generation; use brainstorming-ideas. NOT for arguing a claim from both sides to
+  prove or disprove it.
 name: sequential-thinking
 ---
 
 # Sequential Thinking
 
-Same intent as MCP-based sequential-thinking tools — externalize a numbered chain of thoughts with revision and branch semantics — implemented as visible Markdown so any reasoning-capable model (Claude 4.x extended thinking, Gemini 3.x thinking, GPT-5.x reasoning) can follow it without an extra tool round-trip.
+Same intent as MCP-based sequential-thinking tools — externalize a numbered chain of thoughts with revision and branch semantics — implemented as visible Markdown so reasoning-capable models can follow it without an extra tool round-trip.
 
 ## When to use
 

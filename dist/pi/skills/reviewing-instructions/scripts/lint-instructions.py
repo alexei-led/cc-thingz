@@ -53,7 +53,16 @@ PATH_SIGNAL_DIRS = {
     "references",
     "rules",
 }
-PLATFORM_DIRS = {"claude", "codex", "gemini", "pi", "openai", "openclaw", "hermes"}
+PLATFORM_DIRS = {
+    "claude",
+    "codex",
+    "pi",
+    "copilot",
+    "cursor",
+    "openai",
+    "openclaw",
+    "hermes",
+}
 LIKELY_FILE_RE = re.compile(
     r"(?i)^(body|prompt(?:s)?|instruction(?:s)?|rules?|context|policy|system)\.md$"
 )

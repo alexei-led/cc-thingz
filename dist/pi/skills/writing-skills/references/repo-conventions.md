@@ -12,30 +12,26 @@ Main paths:
 - `src/skills/<name>/references/` — support markdown loaded on demand
 - `src/skills/<name>/scripts/` — helper scripts copied with the skill
 - `src/skills/<name>/assets/` — static support files
-- `src/skills/<name>/<target>/frontmatter.yaml` — target-only frontmatter
-- `src/skills/<name>/<target>/body.md` — target-only body overlay or full replacement
-- `src/plugins/<plugin>/plugin.yaml` — plugin ownership and shipping surface
+- `src/skills/<name>/.agentbundler/targets/<target>.json` — target overlay
+- `src/.agentbundler/packages/<package>.json` — package ownership and shipping surface
 
 Do not hand-edit `dist/`. Regenerate it from source.
 
 ## Compiler shape
 
-The skill compiler does this:
+Agent Bundler does this:
 
 1. Load base `SKILL.md`.
-2. Honor optional `targets:` restriction.
-3. Merge target frontmatter overlay.
-4. Apply target body overlay.
-5. Inject target preamble where applicable.
-6. Copy `references/`, `scripts/`, and `assets/`, then layer target overrides.
+2. Apply optional target sidecar overlay.
+3. Apply target-wide composition preamble.
+4. Copy regular support files and sidecar replacements.
 
 Practical rules:
 
 - Keep the base vendor-neutral unless a target truly needs different behavior.
 - Use overlays for target differences, not for ordinary content growth.
 - `targets:` is source metadata. It does not leak to emitted frontmatter.
-- Claude and Codex skills ship under plugin-owned paths. Gemini and Pi ship to
-  flat target paths.
+- All enabled targets ship under package-owned paths. Gemini is retired.
 
 ## Plugin ownership
 
@@ -43,16 +39,15 @@ Every public skill belongs in a plugin.
 
 When adding a skill:
 
-1. Pick the plugin whose public surface best matches the new capability.
-2. Add the skill name to `src/plugins/<plugin>/plugin.yaml`.
-3. Check whether the plugin description, README plugin table, and totals still
-   read correctly.
+1. Pick the package whose public surface best matches the new capability.
+2. Add the skill asset path to `src/.agentbundler/packages/<package>.json`.
+3. Check whether package metadata, README tables, and totals still read correctly.
 
 When removing or folding a skill:
 
-1. Remove it from the plugin manifest.
+1. Remove it from the package JSON.
 2. Update docs that list the public skill surface.
-3. Regenerate outputs so removed dist artifacts disappear.
+3. Run `agbun build --root .` so removed output disappears.
 
 ## Public docs to keep aligned
 
@@ -73,16 +68,15 @@ Useful checks:
 
 ```bash
 uv run python src/skills/reviewing-instructions/scripts/lint-instructions.py src/skills/<name>
-uv run pytest tests/test_compile_*.py -q
 make build
 make check
+agbun check --root .
 ```
 
 Guidance:
 
 - Run instruction lint for any new or heavily rewritten skill.
-- Add or update a focused compile test when the new skill changes the exported
-  skill surface.
+- Add or update a focused Agent Bundler fixture when the new skill changes the exported skill surface.
 - Run `make build` when generated outputs must stay committed.
 - Run `make check` when you need drift detection for generated artifacts.
 

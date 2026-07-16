@@ -1,0 +1,111 @@
+{
+  "assets": [
+    {
+      "path": "skills/committing-code"
+    },
+    {
+      "path": "skills/documenting-code"
+    },
+    {
+      "path": "skills/fixing-code"
+    },
+    {
+      "path": "skills/improving-tests"
+    },
+    {
+      "path": "skills/refactoring-code"
+    },
+    {
+      "path": "skills/reviewing-code"
+    },
+    {
+      "path": "agents/engineer.md",
+      "targets": [
+        "claude"
+      ]
+    },
+    {
+      "path": "agents/reviewer.md",
+      "targets": [
+        "claude",
+        "pi",
+        "copilot",
+        "cursor"
+      ]
+    },
+    {
+      "path": "hooks/session-start",
+      "targets": [
+        "claude",
+        "codex",
+        "pi",
+        "copilot",
+        "cursor",
+        "grok"
+      ]
+    },
+    {
+      "path": "hooks/skill-enforcer",
+      "targets": [
+        "claude",
+        "codex",
+        "pi",
+        "copilot",
+        "cursor",
+        "grok"
+      ]
+    },
+    {
+      "path": "hooks/file-protector",
+      "targets": [
+        "pi"
+      ]
+    },
+    {
+      "path": "hooks/smart-lint",
+      "targets": [
+        "claude",
+        "copilot",
+        "grok",
+        "pi"
+      ]
+    },
+    {
+      "path": "hooks/test-runner",
+      "targets": [
+        "claude",
+        "codex",
+        "pi",
+        "copilot",
+        "cursor",
+        "grok"
+      ]
+    },
+    {
+      "path": "hooks/notify",
+      "targets": [
+        "claude",
+        "copilot"
+      ]
+    }
+  ],
+  "id": "dev-flow",
+  "metadata": {
+    "author": {
+      "name": "Alexei Led"
+    },
+    "dependencies": {
+      "pi-subagents": "*"
+    },
+    "description": "Code review, fixes, commits, and linting for development workflows",
+    "homepage": "https://github.com/alexei-led/cc-thingz",
+    "keywords": [
+      "development",
+      "review",
+      "testing"
+    ],
+    "license": "MIT",
+    "repository": "https://github.com/alexei-led/cc-thingz",
+    "version": "6.7.0"
+  }
+}

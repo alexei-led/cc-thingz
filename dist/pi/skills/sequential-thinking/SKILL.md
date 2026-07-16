@@ -1,24 +1,16 @@
 ---
-description: Structured stepwise reasoning with explicit revisions and branches. Use
-  when the user says "think step by step", "sequential thinking", "plan this out",
-  "reason through this", "branch this idea", or when tackling a hard multi-step problem
-  (architecture decisions, ambiguous bugs, multi-constraint tradeoffs, plans that
-  may need revision). NOT for trivial lookups, single-tool fetches, or tasks the model
-  can answer directly without planning. NOT for open-ended option exploration or idea
-  generation; use brainstorming-ideas. NOT for arguing a claim from both sides to
-  prove or disprove it.
-name: sequential-thinking
+{"description":"Structured stepwise reasoning with explicit revisions and branches. Use when the user says \"think step by step\", \"sequential thinking\", \"plan this out\", \"reason through this\", \"branch this idea\", or when tackling a hard multi-step problem (architecture decisions, ambiguous bugs, multi-constraint tradeoffs, plans that may need revision). NOT for trivial lookups, single-tool fetches, or tasks the model can answer directly without planning. NOT for open-ended option exploration or idea generation; use brainstorming-ideas. NOT for arguing a claim from both sides to prove or disprove it.","name":"sequential-thinking"}
 ---
-
 <!-- Pi platform guidance -->
 <!-- Use installed Pi tool names exactly. Installed extensions may add toolsets such as Task*, Monitor*, and Loop*; use the visible tool names exactly and do not translate them to Claude syntax. -->
-<!-- Prefer Task* over `todo` when task-tracking tools are available; `todo` is the cc-thingz fallback. Prefer MonitorCreate for long-running background commands and LoopCreate for scheduled or event-driven follow-up instead of Bash sleep/poll loops. -->
+<!-- Prefer Task* over `todo` when task-tracking tools are available; `todo` is the cc-thingz fallback. Prefer MonitorCreate for long-running or background commands and LoopCreate for scheduled or event-driven follow-up instead of Bash sleep/poll loops. -->
 <!-- Use subagent for delegated work. Use wait to block on async subagent runs only when no independent work remains. -->
 <!-- Use ctx7 or npx ctx7@latest through bash when Context7 documentation lookup is required. -->
 
+
 # Sequential Thinking
 
-Same intent as MCP-based sequential-thinking tools — externalize a numbered chain of thoughts with revision and branch semantics — implemented as visible Markdown so any reasoning-capable model (Claude 4.x extended thinking, Gemini 3.x thinking, GPT-5.x reasoning) can follow it without an extra tool round-trip.
+Same intent as MCP-based sequential-thinking tools — externalize a numbered chain of thoughts with revision and branch semantics — implemented as visible Markdown so reasoning-capable models can follow it without an extra tool round-trip.
 
 ## When to use
 

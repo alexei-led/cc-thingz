@@ -1,9 +1,0 @@
-name: infra-ops
-version: 6.7.0
-description: Kubernetes, Terraform, Helm, GitHub Actions, AWS, GCP, and Linux infrastructure operations
-skills:
-  - deploying-infra
-  - operating-infra
-agents:
-  - engineer
-hooks: []

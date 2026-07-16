@@ -8,8 +8,8 @@ extensions install automatically when you `pi install` this package.
 ### hook-runner
 
 Bridges Pi's lifecycle events to the same CC-compatible hook scripts used by
-Claude Code, Codex, and Gemini. This is the primary integration point between
-Pi and the rest of cc-thingz.
+Claude Code and Codex. This is the primary integration point between Pi and
+the rest of cc-thingz.
 
 **What it wires:**
 

@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "kind": "bundle",
+  "root": "src",
+  "targets": [
+    "claude",
+    "codex",
+    "pi",
+    "copilot",
+    "cursor",
+    "grok"
+  ],
+  "output": "dist",
+  "distribution": {
+    "name": "cc-thingz",
+    "owner": {
+      "name": "Alexei Led"
+    },
+    "description": "Portable coding companion packages",
+    "version": "6.7.0"
+  },
+  "composition": [
+    {
+      "target": "claude",
+      "profile": "package",
+      "packageMode": "separate"
+    },
+    {
+      "target": "codex",
+      "profile": "package",
+      "packageMode": "separate",
+      "skillPreamble": "<!-- Platform guidance for Codex -->\n<!-- Use this platform's installed tool names exactly; do not translate capability references into Claude Code tool syntax. -->\n<!-- When this skill references shell execution, file reads, or search, use the platform's native shell, read, and search tools. -->\n<!-- If a referenced helper command or optional tool is unavailable, report the gap and continue with the platform's built-in tools. -->"
+    },
+    {
+      "target": "pi",
+      "profile": "package",
+      "packageMode": "aggregate",
+      "aggregate": {
+        "identity": "cc-thingz",
+        "metadata": {
+          "version": "6.7.0",
+          "description": "Portable coding companion for Pi",
+          "keywords": [
+            "coding-agent",
+            "skills",
+            "hooks"
+          ]
+        }
+      },
+      "skillPreamble": "<!-- Pi platform guidance -->\n<!-- Use installed Pi tool names exactly. Installed extensions may add toolsets such as Task*, Monitor*, and Loop*; use the visible tool names exactly and do not translate them to Claude syntax. -->\n<!-- Prefer Task* over `todo` when task-tracking tools are available; `todo` is the cc-thingz fallback. Prefer MonitorCreate for long-running or background commands and LoopCreate for scheduled or event-driven follow-up instead of Bash sleep/poll loops. -->\n<!-- Use subagent for delegated work. Use wait to block on async subagent runs only when no independent work remains. -->\n<!-- Use ctx7 or npx ctx7@latest through bash when Context7 documentation lookup is required. -->"
+    },
+    {
+      "target": "copilot",
+      "profile": "package",
+      "packageMode": "separate"
+    },
+    {
+      "target": "cursor",
+      "profile": "package",
+      "packageMode": "separate"
+    },
+    {
+      "target": "grok",
+      "profile": "package",
+      "packageMode": "separate"
+    }
+  ],
+  "bundle": {
+    "packages": [
+      ".agentbundler/packages/browser.json",
+      ".agentbundler/packages/dev-flow.json",
+      ".agentbundler/packages/discovery.json",
+      ".agentbundler/packages/git-flow.json",
+      ".agentbundler/packages/infra-ops.json",
+      ".agentbundler/packages/programming.json",
+      ".agentbundler/packages/spec-flow.json"
+    ]
+  }
+}

@@ -1,15 +1,12 @@
 ---
-description:
-  Validate infrastructure changes and, after explicit confirmation, apply Terraform,
-  Helm, Kustomize, or Kubernetes deployments. Use when the user says "deploy",
-  "deploy to staging", "terraform apply", "helm upgrade", "kubectl apply",
-  "rollout", "deploy check", "validate deployment", or "validate infrastructure".
-  Dockerfiles and GitHub Actions are validate-only here. NOT for ongoing service
-  troubleshooting, cloud inspection, rollback investigation, or authoring infra from
-  scratch; use operating-infra for those.
+description: Validate infrastructure changes and, after explicit confirmation, apply
+  Terraform, Helm, Kustomize, or Kubernetes deployments. Use when the user says "deploy",
+  "deploy to staging", "terraform apply", "helm upgrade", "kubectl apply", "rollout",
+  "deploy check", "validate deployment", or "validate infrastructure". Dockerfiles
+  and GitHub Actions are validate-only here. NOT for ongoing service troubleshooting,
+  cloud inspection, rollback investigation, or authoring infra from scratch; use operating-infra
+  for those.
 name: deploying-infra
-targets:
-  - claude
 ---
 
 # Deploy Infrastructure

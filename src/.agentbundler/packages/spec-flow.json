@@ -1,0 +1,40 @@
+{
+  "assets": [
+    {
+      "path": "skills/spec-flow"
+    },
+    {
+      "path": "agents/engineer.md",
+      "targets": [
+        "claude"
+      ]
+    },
+    {
+      "path": "agents/reviewer.md",
+      "targets": [
+        "claude",
+        "copilot",
+        "cursor"
+      ]
+    }
+  ],
+  "id": "spec-flow",
+  "metadata": {
+    "author": {
+      "name": "Alexei Led"
+    },
+    "dependencies": {
+      "pi-subagents": "*"
+    },
+    "description": "Lightweight spec loop: plan one slice, execute one task, checkpoint or close",
+    "homepage": "https://github.com/alexei-led/cc-thingz",
+    "keywords": [
+      "specification",
+      "planning",
+      "workflow"
+    ],
+    "license": "MIT",
+    "repository": "https://github.com/alexei-led/cc-thingz",
+    "version": "6.7.0"
+  }
+}

@@ -17,7 +17,7 @@ def test_no_mcp_sequential_thinking_anywhere_in_sources():
     The sequential-thinking MCP server was replaced by the `sequential-thinking`
     skill (src/skills/sequential-thinking/SKILL.md), which produces the same
     numbered/revisable/branchable reasoning artifact via prompting and is
-    portable across Claude Code, Codex, Gemini, and Pi.
+    portable across the enabled Agent Bundler targets.
     """
     files = _markdown_files()
     assert files, f"no markdown files found under {SRC}"

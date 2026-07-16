@@ -44,6 +44,14 @@ debug/
 telemetry/
 
 # === Large / Generated ===
+# Agent Bundler sidecars are source configuration; generated output is ignored.
+!src/**/.agentbundler/
+!src/**/.agentbundler/**
+.agentbundler/*
+!.agentbundler/packages/
+!.agentbundler/packages/*.json
+!.agentbundler/output/
+dist/.agentbundler/
 backups/
 file-history/
 plans/

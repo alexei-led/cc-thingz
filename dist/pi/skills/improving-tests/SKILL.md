@@ -1,18 +1,12 @@
 ---
-description: Improve test design, speed, and coverage with behavior-focused tests,
-  useful seams, characterization tests, TDD, and test refactoring. Use when improving
-  tests, optimizing slow suites, adding coverage, refactoring brittle tests, removing
-  test waste, or working test-first. NOT for fixing production bugs (use fixing-code),
-  production-code refactors (use refactoring-code), or reviewing non-test code quality
-  (use reviewing-code).
-name: improving-tests
+{"description":"Improve test design, speed, and coverage with behavior-focused tests, useful seams, characterization tests, TDD, and test refactoring. Use when improving tests, optimizing slow suites, adding coverage, refactoring brittle tests, removing test waste, or working test-first. NOT for fixing production bugs (use fixing-code), production-code refactors (use refactoring-code), or reviewing non-test code quality (use reviewing-code).","name":"improving-tests"}
 ---
-
 <!-- Pi platform guidance -->
 <!-- Use installed Pi tool names exactly. Installed extensions may add toolsets such as Task*, Monitor*, and Loop*; use the visible tool names exactly and do not translate them to Claude syntax. -->
-<!-- Prefer Task* over `todo` when task-tracking tools are available; `todo` is the cc-thingz fallback. Prefer MonitorCreate for long-running background commands and LoopCreate for scheduled or event-driven follow-up instead of Bash sleep/poll loops. -->
+<!-- Prefer Task* over `todo` when task-tracking tools are available; `todo` is the cc-thingz fallback. Prefer MonitorCreate for long-running or background commands and LoopCreate for scheduled or event-driven follow-up instead of Bash sleep/poll loops. -->
 <!-- Use subagent for delegated work. Use wait to block on async subagent runs only when no independent work remains. -->
 <!-- Use ctx7 or npx ctx7@latest through bash when Context7 documentation lookup is required. -->
+
 
 # Test Improvement
 

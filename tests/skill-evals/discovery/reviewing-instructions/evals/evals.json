@@ -4,10 +4,10 @@
     {
       "id": "plugin-manifest-routes-config",
       "name": "plugin manifest routes config",
-      "prompt": "A user asks: review src/plugins/discovery/plugin.yaml for plugin composition, role fit, and manifest quality. Describe how the reviewing-instructions skill should respond.",
-      "expected_output": "The response treats plugin.yaml as config/routing evidence, routes manifest and composition review to evolving-config, and only scores agent-facing markdown or prompt files when instruction scoring is explicitly requested.",
+      "prompt": "A user asks: review src/.agentbundler/packages/discovery.json for plugin composition, role fit, and manifest quality. Describe how the reviewing-instructions skill should respond.",
+      "expected_output": "The response treats package JSON as config/routing evidence, routes manifest and composition review to evolving-config, and only scores agent-facing markdown or prompt files when instruction scoring is explicitly requested.",
       "assertions": [
-        "The output says plugin.yaml is a plugin/config manifest, not an instruction file to score.",
+        "The output says package JSON is a plugin/config manifest, not an instruction file to score.",
         "The output routes plugin manifest or plugin composition review to evolving-config.",
         "The output limits reviewing-instructions scope to AI-facing markdown or prompt files.",
         "The output avoids assigning instruction scores to the YAML manifest."

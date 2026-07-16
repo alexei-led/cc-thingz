@@ -1,18 +1,12 @@
 ---
-description: Audit and improve AI coding-agent configuration. Use when reviewing or
-  changing Claude Code, Pi, Codex, skill, agent, hook, MCP, permission, package, or
-  generated-export setup. Default is review-only; fixes require explicit user approval
-  or --fix. NOT for score-only instruction review or prompt lint; use reviewing-instructions.
-  NOT for application config, git hygiene, code bugs, ordinary docs, or generated
-  files without their source.
-name: evolving-config
+{"description":"Audit and improve AI coding-agent configuration. Use when reviewing or changing Claude Code, Pi, Codex, skill, agent, hook, MCP, permission, package, or generated-export setup. Default is review-only; fixes require explicit user approval or --fix. NOT for score-only instruction review or prompt lint; use reviewing-instructions. NOT for application config, git hygiene, code bugs, ordinary docs, or generated files without their source.","name":"evolving-config"}
 ---
-
 <!-- Pi platform guidance -->
 <!-- Use installed Pi tool names exactly. Installed extensions may add toolsets such as Task*, Monitor*, and Loop*; use the visible tool names exactly and do not translate them to Claude syntax. -->
-<!-- Prefer Task* over `todo` when task-tracking tools are available; `todo` is the cc-thingz fallback. Prefer MonitorCreate for long-running background commands and LoopCreate for scheduled or event-driven follow-up instead of Bash sleep/poll loops. -->
+<!-- Prefer Task* over `todo` when task-tracking tools are available; `todo` is the cc-thingz fallback. Prefer MonitorCreate for long-running or background commands and LoopCreate for scheduled or event-driven follow-up instead of Bash sleep/poll loops. -->
 <!-- Use subagent for delegated work. Use wait to block on async subagent runs only when no independent work remains. -->
 <!-- Use ctx7 or npx ctx7@latest through bash when Context7 documentation lookup is required. -->
+
 
 # Evolving Agent Configuration
 
@@ -26,9 +20,6 @@ docs second. Default to review-only. Apply fixes only after explicit approval.
 - `references/platforms/codex.md` for Codex surfaces.
 - `references/platforms/pi.md` for Pi surfaces.
 - `references/apply-fixes.md` only when the user asks to fix or passes `--fix`.
-
-No dedicated Gemini coverage. If the user explicitly asks for Gemini config,
-review local files only and state that current best-practice coverage is skipped.
 
 ## Modes
 

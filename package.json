@@ -2,10 +2,7 @@
   "name": "cc-thingz",
   "version": "6.7.0",
   "private": true,
-  "description": "Portable development skills for Claude Code, Codex CLI, Gemini CLI, and Pi.",
-  "keywords": [
-    "pi-package"
-  ],
+  "description": "Portable development skills for Claude Code, Codex CLI, Pi, Copilot, Grok, and Cursor.",
   "license": "MIT",
   "homepage": "https://github.com/alexei-led/cc-thingz",
   "repository": {
@@ -27,18 +24,5 @@
     "@earendil-works/pi-tui": "*",
     "@types/bun": "latest",
     "typebox": "*"
-  },
-  "pi": {
-    "extensions": [
-      "./dist/pi/extensions"
-    ],
-    "skills": [
-      "./dist/pi/skills"
-    ],
-    "subagents": {
-      "agents": [
-        "./dist/pi/agents"
-      ]
-    }
   }
 }

@@ -1,0 +1,10 @@
+{
+  "acknowledgments": [
+    {
+      "asset": "hook/smart-lint",
+      "target": "copilot",
+      "key": "hook.command.exec",
+      "reason": "Target renders the portable exec command as its documented command string."
+    }
+  ]
+}

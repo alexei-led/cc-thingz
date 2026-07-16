@@ -1,11 +1,10 @@
 ---
-description:
-  Improve test design, speed, and coverage with behavior-focused tests, useful
-  seams, characterization tests, TDD, and test refactoring. Use when improving
-  tests, optimizing slow suites, adding coverage, refactoring brittle tests,
-  removing test waste, or working test-first. NOT for fixing production bugs (use
-  fixing-code), production-code refactors (use refactoring-code), or reviewing
-  non-test code quality (use reviewing-code).
+description: Improve test design, speed, and coverage with behavior-focused tests,
+  useful seams, characterization tests, TDD, and test refactoring. Use when improving
+  tests, optimizing slow suites, adding coverage, refactoring brittle tests, removing
+  test waste, or working test-first. NOT for fixing production bugs (use fixing-code),
+  production-code refactors (use refactoring-code), or reviewing non-test code quality
+  (use reviewing-code).
 name: improving-tests
 ---
 

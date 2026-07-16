@@ -8,7 +8,7 @@ not override universal gates, caps, or evidence requirements.
 1. User argument: `--model <name>`.
 2. File frontmatter: `model`, `thinking`, target metadata, or platform folder.
 3. Parent entrypoint for support files.
-4. Target directory such as claude, codex, gemini, pi, or openai.
+4. Target directory such as claude, codex, pi, or openai.
 5. generic.
 
 Report the source in the review header.
@@ -26,11 +26,6 @@ OpenAI family:
 - openai, gpt, gpt-4, gpt-4o, gpt-5, o1, o3, o4.
 - openai model IDs that start with gpt or o.
 - codex agents backed by OpenAI models.
-
-Gemini family:
-
-- gemini, google, gemini-pro, gemini-flash.
-- google model IDs that contain gemini.
 
 Generic:
 
@@ -51,11 +46,6 @@ OpenAI:
 
 - Apply OpenAI family guidance for gpt, o-series, and codex-backed OpenAI models.
 - Do not assume exact version behavior unless the file states a version or the model ID is explicit.
-
-Gemini:
-
-- Apply Gemini family guidance for Gemini CLI or model IDs containing gemini.
-- Do not assume Pro versus Flash behavior unless the variant is explicit.
 
 Generic:
 

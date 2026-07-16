@@ -1,563 +1,120 @@
 # cc-thingz — Coding Companion
 
 [![CI](https://github.com/alexei-led/cc-thingz/actions/workflows/ci.yml/badge.svg)](https://github.com/alexei-led/cc-thingz/actions/workflows/ci.yml)
-[![GitHub tag](https://img.shields.io/github/v/tag/alexei-led/cc-thingz?label=version&sort=semver)](https://github.com/alexei-led/cc-thingz/tags)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Claude Code](https://img.shields.io/badge/Claude_Code-plugin_marketplace-blueviolet)](https://docs.anthropic.com/en/docs/claude-code)
-[![AGENTS.md](https://img.shields.io/badge/AGENTS.md-standard-000000)](https://agents.md)
-[![Codex CLI](https://img.shields.io/badge/Codex_CLI-skill_export-10A37F)](https://developers.openai.com/codex/plugins)
-[![Gemini CLI](https://img.shields.io/badge/Gemini_CLI-skill_export-4285F4)](https://geminicli.com/docs/extensions)
-[![Plugins](https://img.shields.io/badge/plugins-7-green)](src/plugins/)
-[![Skills](https://img.shields.io/badge/skills-29-green)](src/plugins/)
+[![Agent Bundler](https://img.shields.io/badge/Agent_Bundler-v0.4.2+-00897B)](https://github.com/alexei-led/agentbundler)
+[![Skills](https://img.shields.io/badge/skills-29-green)](src/skills/)
 
-A portable skill suite for **Pi**, **Claude Code**, **Codex CLI**, and **Gemini CLI** — 29 skills, 3 agents, and 10 hooks. One source of truth in `src/`, compiled to platform-optimized output for each tool. Supports [AGENTS.md](https://agents.md)-compatible tools too. Built over 6+ months of daily use and continuous refinement.
+Portable skills and agents for Claude Code, Codex CLI, Pi, GitHub Copilot, and
+Cursor, and Grok. Gemini is retired.
 
-## Why This Exists
+## Build
 
-AI coding tools are powerful out of the box, but specialized workflows need specialized prompts. After months of iterating on skills, agents, and hooks across C# /.NET, Go, Java/Kotlin, Python, Rust, TypeScript, infrastructure, and planning workflows, these plugins encode hard-won patterns:
-
-- **Code review** with evidence-backed severity scoring, depth modes, optional team/external review, and stable review-score rubrics
-- **Smart hooks** that auto-suggest skills, lint after edits, protect secrets, and run tests
-- **Spec-driven development** with a lightweight one-task-at-a-time loop, markdown task state, checkpoints, and validation
-- **Infrastructure ops** with validated K8s, Terraform, and Helm deployments
-- **Developer utilities** including git-flow hygiene, docs lookup, web research, and brainstorming
-
-Every skill has been manually crafted and refined through real-world use — not generated boilerplate.
-
-## Installation
-
-> Each section below assumes the corresponding CLI is already installed and on
-> `PATH`. If you don't have the CLI yet, install it first
-> ([Claude Code](https://docs.anthropic.com/en/docs/claude-code/quickstart),
-> [Codex CLI](https://github.com/openai/codex),
-> [Gemini CLI](https://github.com/google-gemini/gemini-cli),
-> [Pi](https://pi.dev/docs/latest/quickstart)).
-> All targets consume artifacts from `dist/<target>/`, which is regenerated
-> from `src/` by `make build`.
-
-### Claude Code
+Install Agent Bundler v0.4.2 or newer:
 
 ```bash
-/plugin marketplace add alexei-led/cc-thingz
-# then install any plugin(s) you want:
-/plugin install dev-flow@cc-thingz
-/plugin install discovery@cc-thingz
-/plugin install git-flow@cc-thingz
-/plugin install programming@cc-thingz
-/plugin install browser@cc-thingz
-# ... repeat for infra-ops and spec-flow
+brew install alexei-led/tap/agentbundler
+agbun --version
 ```
 
-Use `--scope project` to install into `.claude/settings.json` for team sharing.
-
-`dev-flow` wires development hooks automatically on install. Install `git-flow` for git guardrails and worktree hooks.
-
-| Event              | Matcher       | Hook                | Effect                                   |
-| ------------------ | ------------- | ------------------- | ---------------------------------------- |
-| `SessionStart`     | —             | `session-start.py`  | Prints branch, last commit, project type |
-| `UserPromptSubmit` | —             | `skill-enforcer.sh` | Suggests relevant skills from prompt     |
-| `PreToolUse`       | `Write\|Edit` | `file-protector.py` | Blocks writes to `.env`, keys, secrets   |
-| `PostToolUse`      | `Write\|Edit` | `smart-lint.sh`     | Runs formatter/linter on changed files   |
-| `Stop`             | —             | `test-runner.sh`    | Runs focused tests for edited files      |
-| `Notification`     | —             | `notify.sh`         | macOS notification (Kitty + tmux focus)  |
-
-### OpenAI Codex CLI
-
-```bash
-git clone https://github.com/alexei-led/cc-thingz.git ~/src/cc-thingz
-cd ~/src/cc-thingz
-make build   # generates dist/codex/plugins/ from src/
-codex
-# inside Codex: /plugins  → install plugins from this local marketplace
-```
-
-The marketplace manifest lives at `.agents/plugins/marketplace.json` and
-points each plugin source at `./dist/codex/plugins/<plugin>/`, generated by
-`make build`. To use skills without the plugin marketplace, point Codex at a
-per-plugin skill directory directly:
-
-```jsonc
-// ~/.codex/config.json (excerpt)
-{
-  "skills": ["~/src/cc-thingz/dist/codex/plugins/dev-flow/skills"],
-}
-```
-
-`dev-flow` wires focused development hooks via `dist/codex/plugins/dev-flow/hooks/hooks.json`. Install `git-flow` for destructive-git guardrails.
-
-| Event          | Matcher         | Hook                | Effect                                   |
-| -------------- | --------------- | ------------------- | ---------------------------------------- |
-| `SessionStart` | —               | `session-start.py`  | Prints branch, last commit, project type |
-| `PreToolUse`   | `^apply_patch$` | `file-protector.py` | Blocks writes to `.env`, keys, secrets   |
-| `PostToolUse`  | `^apply_patch$` | `smart-lint.sh`     | Auto-format and lint edited files        |
-| `Stop`         | —               | `test-runner.sh`    | Runs focused tests for edited files      |
-
-Plugin hooks require two feature flags in `~/.codex/config.toml`:
-
-```toml
-[features]
-hooks = true          # enable user-defined hooks
-plugin_hooks = true   # enable plugin-bundled hooks (under development)
-```
-
-After enabling and restarting Codex, run `/hooks` to review and approve
-the hooks before they execute. Codex fingerprints each hook command;
-any change to name or command triggers a re-approval prompt.
-
-### Google Gemini CLI
-
-```bash
-gemini extensions install https://github.com/alexei-led/cc-thingz
-```
-
-For local development, link the checkout instead of copying it:
-
-```bash
-gemini extensions link /path/to/cc-thingz
-```
-
-Gemini reads `gemini-extension.json` at the repo root, loads context from
-`AGENTS.md` (auto-generated; shared with Codex and other AGENTS.md-aware
-tools), and discovers skills, agents, and hooks by scanning extension-root
-subdirectories by hard-coded name. Root-level `skills/`, `agents/`, and
-`hooks/` symlinks point into `dist/gemini/` so Gemini finds them; the
-compiler regenerates these symlinks on every `make build`.
-
-`dist/gemini/hooks/hooks.json` registers:
-
-| Event          | Matcher               | Hook                | Effect                                   |
-| -------------- | --------------------- | ------------------- | ---------------------------------------- |
-| `SessionStart` | —                     | `session-start.py`  | Prints branch, last commit, project type |
-| `BeforeAgent`  | —                     | `skill-enforcer.sh` | Suggests relevant skills from prompt     |
-| `BeforeTool`   | `write_file\|replace` | `file-protector.py` | Blocks writes to `.env`, keys, secrets   |
-| `BeforeTool`   | `run_shell_command`   | `git-guardrails.sh` | Blocks destructive git commands          |
-| `AfterTool`    | `write_file\|replace` | `smart-lint.sh`     | Auto-format and lint edited files        |
-| `AfterAgent`   | —                     | `test-runner.sh`    | Runs focused tests for edited files      |
-| `Notification` | —                     | `notify.sh`         | macOS notification on agent completion   |
-
-All paths resolve via `${extensionPath}`, Gemini's substitution variable for
-the extension root.
-
-### Pi
-
-Pi uses generated skills, agents, **and TypeScript extensions** that mirror
-Claude-Code-native features (plan mode, todos, AskUserQuestion, subagents,
-file/path protection, post-edit lint, completion notifications).
-
-**Required prerequisite** — install a Pi subagents package (any compatible one
-works; [`nicobailon/pi-subagents`](https://github.com/nicobailon/pi-subagents)
-is the recommended choice):
-
-```bash
-pi install npm:pi-subagents
-```
-
-**Install extensions and skills** — one command installs skills and extensions
-and clones the repo under `~/.pi/agent/git/`:
-
-```bash
-pi install git:github.com/alexei-led/cc-thingz
-```
-
-For local development (build first, then install from the checkout):
-
-```bash
-git clone https://github.com/alexei-led/cc-thingz.git ~/src/cc-thingz
-cd ~/src/cc-thingz && make build
-pi install "$(pwd)"
-```
-
-**Install agents** — `pi-subagents` discovers them directly from the installed
-cc-thingz package via `package.json` `pi.subagents.agents`. No symlink is
-needed on new installs. Restart Pi or run `/reload` after installing.
-
-If you created the old global symlink, remove it so builtin `pi-subagents`
-agents stop being shadowed by user-scoped cc-thingz copies:
-
-```bash
-[ -L ~/.pi/agent/agents ] && rm ~/.pi/agent/agents
-```
-
-Pi agent runtime names are package-qualified to avoid collisions with
-`pi-subagents` builtins:
-
-- `cc-thingz.advisor`
-- `cc-thingz.engineer`
-- `cc-thingz.reviewer`
-- `cc-thingz.runner`
-
-**Advisor subagent (`cc-thingz.advisor`)** — follows the standard source layout
-used by other Pi agents:
-
-- `src/agents/advisor/AGENT.md`
-- `src/agents/advisor/pi/frontmatter.yaml`
-
-Compiled output is `dist/pi/agents/advisor.md`. Behavior: strategic review with
-read-only code exploration (no file edits) and output sections `Verdict`,
-`Top Risks`, and `Next Actions`.
-
-**Runner subagent (`cc-thingz.runner`)** — follows the same source layout:
-
-- `src/agents/runner/AGENT.md`
-- `src/agents/runner/pi/frontmatter.yaml`
-
-Compiled output is `dist/pi/agents/runner.md`. Behavior: cheap utility lane for
-simple bounded tasks — file lookup, grep/glob, `git status/log/show/diff`, file
-reads, log summaries, and focused shell inspection. Use proactively; escalate to
-`cc-thingz.engineer`, `cc-thingz.reviewer`, or `cc-thingz.advisor` when the task
-stops being cheap or obvious.
-
-Async usage:
-
-```ts
-subagent({
-  agent: "cc-thingz.advisor",
-  task: "Review my plan and propose the safest next steps.",
-  async: true,
-  context: "fork",
-});
-```
-
-Foreground usage:
-
-```ts
-subagent({
-  agent: "cc-thingz.advisor",
-  task: "Challenge this implementation plan and suggest corrections.",
-  context: "fork",
-});
-```
-
-### Pi model policy
-
-cc-thingz Pi agents intentionally leave `model` and `thinking` unset in package frontmatter. By default, `pi-subagents` uses the current Pi session model when `subagents.defaultModel` or `subagents.agentOverrides.*.model` is not set; if you want fixed local behavior, set it outside cc-thingz in `~/.pi/agent/settings.json` or `.pi/settings.json`.
-
-```json
-{
-  "subagents": {
-    "agentOverrides": {
-      "cc-thingz.runner": {
-        "model": "openai-codex-personal/gpt-5.4-mini",
-        "fallbackModels": [
-          "openai-codex-work/gpt-5.4-mini",
-          "anthropic-personal/claude-haiku-4-5"
-        ],
-        "thinking": "low"
-      }
-    }
-  }
-}
-```
-
-Use package runtime names in overrides: `cc-thingz.engineer`, `cc-thingz.reviewer`, `cc-thingz.runner`, and `cc-thingz.advisor`.
-
-**Bundled Pi extensions** (`dist/pi/extensions/`):
-
-| Extension              | Role                                                                                             |
-| ---------------------- | ------------------------------------------------------------------------------------------------ |
-| `ask-user-question.ts` | `ask_user_question` tool with structured options UI                                              |
-| `permission-gate.ts`   | Confirms dangerous bash commands (rm -rf, sudo, chmod 777)                                       |
-| `protected-paths.ts`   | Blocks writes to `.env`, `.git/`, `node_modules/`                                                |
-| `plan-mode/`           | `/plan` toggle for read-only exploration and step tracking                                       |
-| `todo.ts`              | Fallback `todo` tool + `/todos` command, branch-aware state                                      |
-| `structured-output.ts` | `structured_output` tool that terminates the agent loop                                          |
-| `notify.ts`            | macOS notification via `terminal-notifier` on completion (requires Homebrew `terminal-notifier`) |
-
-For richer Claude-style task tracking on Pi, install `@tintinweb/pi-tasks`:
-
-```bash
-pi install npm:@tintinweb/pi-tasks
-```
-
-For scheduled follow-up and background monitoring, install `@trevonistrevon/pi-loop`:
-
-```bash
-pi install npm:@trevonistrevon/pi-loop
-```
-
-`pi-loop` auto-detects `pi-tasks`; no extra wiring is needed. cc-thingz Pi
-skills prefer the Task* toolset when it is available, fall back to the bundled
-`todo` extension otherwise, and use `MonitorCreate` / `LoopCreate` when those
-loop tools are installed.
-
-**Pi gets**: 4 agents — `engineer`, `reviewer`, `runner`, `advisor` (requires a Pi
-subagents package) — all 29 skills, and 7 bundled extensions. Each
-agent has a Pi-specific frontmatter overlay for its tool envelope and role
-behavior; model policy stays outside cc-thingz in the active Pi session or
-user/project `subagents.agentOverrides`. `advisor` ships to Codex, Gemini, and
-Pi; Claude is excluded because it has a built-in advisor. The old
-scout→planner→worker→reviewer pipeline is superseded by the 3-role model plus a
-cheap utility lane.
-
-### Other AGENTS.md-Compatible Tools
-
-The `AGENTS.md` at the repo root provides a skill catalog readable by any tool supporting the [AGENTS.md standard](https://agents.md) (GitHub Copilot, Cursor, Windsurf, Devin, and others).
-
-## Prerequisites
-
-Repo-wide code search, AST evidence, codegraph, and GitNexus workflows are intentionally outside cc-thingz. Use a separate codebase-analysis plugin for repo-wide analysis, such as [architect](https://github.com/alexei-led/architect). cc-thingz does not ship a general repo-wide code-search skill; its review, fix, test, and refactor skills may use GitNexus, codegraph, `rg`, `fd`, LSP, or similar local tools when they are already available and help answer a focused change-safety question.
-
-Portable exact API/docs lookup is one public `looking-up-docs` skill. It starts with the [Context7 CLI](https://github.com/upstash/context7), then falls back to official ecosystem docs/registries, Perplexity-backed source discovery, and GitHub releases/source when version-specific docs are missing. Use `researching-web` instead for comparisons, current-state questions, or release-behavior research.
-
-```bash
-npm install -g ctx7@latest
-# or with Bun:
-bun add -g ctx7@latest
-
-# one-shot (no global install):
-npx ctx7@latest library react "React hooks"
-npx ctx7@latest docs /facebook/react "React hooks"
-# or with Bun:
-bunx ctx7@latest docs /facebook/react "React hooks"
-```
-
-Claude Code agents can also use optional MCP servers for enhanced capabilities.
-These are optional — plugins degrade gracefully without them. Pi exports do not
-assume MCP tools.
-
-| MCP Server                                                   | Purpose                                     | Used By                                                                 |
-| ------------------------------------------------------------ | ------------------------------------------- | ----------------------------------------------------------------------- |
-| [Perplexity](https://github.com/ppl-ai/modelcontextprotocol) | Web research and technical comparisons      | Claude Code dev-flow, discovery, infra-ops                              |
-| [MorphLLM](https://github.com/morphllm/morph-claude-code)    | Fast codebase search and batch file editing | Claude Code `engineer` role via dev-flow, programming, infra, spec-flow |
-
-> Stepwise reasoning previously came from the
-> [Sequential Thinking MCP](https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking).
-> It now ships as the [`sequential-thinking` skill](src/skills/sequential-thinking/SKILL.md) — no MCP install required and portable across Claude Code, Codex, Gemini, and Pi.
-
-## Plugins
-
-| Plugin                                                 | Skills | Agents | Description                                                                                                     | Depends on  |
-| ------------------------------------------------------ | ------ | ------ | --------------------------------------------------------------------------------------------------------------- | ----------- |
-| [**dev-flow**](src/plugins/dev-flow/plugin.yaml)       | 6      | 2      | Fix, refactor, review, document, commit; `engineer` and `reviewer` roles; 6 hooks                               | —           |
-| [**spec-flow**](src/plugins/spec-flow/plugin.yaml)     | 1      | 2      | Lightweight spec loop: plan one slice, execute one task, checkpoint or close                                    | dev-flow    |
-| [**git-flow**](src/plugins/git-flow/plugin.yaml)       | 3      | 0      | Worktrees, cleanup, hooks, Gitleaks, `.gitignore`, git config, and guardrails                                   | —           |
-| [**browser**](src/plugins/browser/plugin.yaml)         | 2      | 1      | Browser testing, validation, screenshots, recordings, and quick automation                                      | programming |
-| [**infra-ops**](src/plugins/infra-ops/plugin.yaml)     | 2      | 1      | Kubernetes, Terraform, Helm, GitHub Actions, AWS, GCP                                                           | —           |
-| [**programming**](src/plugins/programming/plugin.yaml) | 8      | 1      | Idiomatic development across C# /.NET, Go, Java/Kotlin, Python, Rust, TypeScript, shell, and web                | dev-flow    |
-| [**discovery**](src/plugins/discovery/plugin.yaml)     | 7      | 3      | Research, docs lookup, utility routing, skill authoring, instruction review, reasoning, and agent config audits | —           |
-
-**Totals**: 29 skills, 3 plugin-owned agents (`engineer`, `reviewer`, `runner`), 10 hooks
-
-## Skills
-
-Skills teach the AI model domain-specific knowledge and workflows. All skills are authored in cc-thingz and exported with platform-optimized instructions for Codex CLI, Gemini CLI, Pi, and [AGENTS.md](https://agents.md)-compatible tools. On Claude Code, the `skill-enforcer` hook auto-suggests relevant skills based on your prompt.
-
-### User-Invocable
-
-Invoke as `/skill-name` or let the skill enforcer suggest them.
-
-| Skill                     | What It Does                                                                                                                  | Example Trigger                       |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
-| `brainstorming-ideas`     | Brainstorm ideas and stress-test draft plans or trade-offs                                                                    | "brainstorm", "debate plan"           |
-| `cleanup-git`             | Remove merged branches and stale worktrees                                                                                    | "cleanup branches", "tidy git"        |
-| `committing-code`         | Smart git commits with logical grouping                                                                                       | "commit", "save changes"              |
-| `configuring-git-hygiene` | Configure git hooks, Gitleaks, `.gitignore`, git config, and guardrails                                                       | "setup pre-commit", "gitleaks"        |
-| `deploying-infra`         | Validate infrastructure changes and, after explicit confirmation, apply Terraform, Helm, Kustomize, or Kubernetes deployments | "deploy to staging", "rollout"        |
-| `documenting-code`        | Update docs based on recent changes                                                                                           | "update docs", "document"             |
-| `evolving-config`         | Audit AI coding-agent configuration and plugin/package manifests; review-only by default, explicit approval for fixes         | "evolve", "audit config"              |
-| `fixing-code`             | Reproduce, diagnose, patch, regression-test, and verify one code defect at a time                                             | "fix errors", "make it pass"          |
-| `improving-tests`         | Improve test design, speed, and coverage with behavior seams, fast feedback, TDD, and test refactoring                        | "improve tests", "slow tests"         |
-| `looking-up-docs`         | Find exact API/config syntax and versioned docs via Context7, official registries/docs, and GitHub fallback                   | "ctx7", "API syntax", "look up"       |
-| `researching-web`         | Web research for comparisons, current-state, and release-behavior questions with grounded source selection                    | "research", "X vs Y"                  |
-| `reviewing-code`          | Evidence-backed code review with severity/confidence rubric, quick/deep/team/external modes, and optional graph evidence      | "review code", "check this"           |
-| `browser-automation`      | Rendered UI exploration, validation, screenshots, recordings, and browser test flows                                          | "use browser", "screenshot", "e2e"    |
-| `reviewing-instructions`  | Review and score AI-facing markdown/prompt instruction files with scoped lint, model resolution, caps, and evidence           | "lint instructions", "audit prompts"  |
-| `writing-skills`          | Create, split, slim, and route repository skills, references, overlays, and plugin placement                                  | "write a skill", "split this skill"   |
-| `sequential-thinking`     | Structured stepwise reasoning with explicit revisions and branches                                                            | "think step by step", "plan this out" |
-| `using-git-worktrees`     | Isolated git worktrees for parallel development                                                                               | "worktree", "isolate"                 |
-
-### Auto-Activated
-
-These activate silently when relevant patterns are detected — no `/skill-name` needed.
-
-| Skill                 | Activates When                                                                                |
-| --------------------- | --------------------------------------------------------------------------------------------- |
-| `operating-infra`     | IaC, Kubernetes, cloud resources, GitHub Actions workflow semantics, Linux                    |
-| `refactoring-code`    | Behavior-preserving batch refactors with mapped sites and optional graph-backed impact checks |
-| `writing-csharp`      | C# files, `.csproj`/`.sln`, `dotnet`, ASP.NET Core, xUnit/NUnit/MSTest                        |
-| `writing-go`          | Go files, tests, lint, Go-specific terms                                                      |
-| `writing-java-kotlin` | Java/Kotlin files, Gradle/Maven, JUnit/Kotest, ktlint, detekt, JVM frameworks                 |
-| `writing-python`      | Python files, pytest, fast test feedback, pip, frameworks                                     |
-| `writing-rust`        | Rust files, Cargo crates/workspaces, tests, rustfmt, Clippy                                   |
-| `writing-shell`       | Shell scripts, pipelines, CI `run:` bodies, shell lint/test                                   |
-| `writing-typescript`  | TS/TSX files, tests, lint, npm/bun, React, Node.js                                            |
-| `writing-web`         | HTML/CSS/JS/HTMX templates                                                                    |
-
-### Support-Only
-
-- `playwright-skill` — bundled Playwright runtime/reference loaded by
-  `browser-automation` when the Playwright fallback is needed. Not routed from
-  user intent directly.
-
-## Agents
-
-Three role agents plus one utility agent: a capability envelope plus a reasoning stance no skill can supply. Consolidated from 39 → 3 roles — see `docs/agent-audit-2026-05-16.md` and the executed plan in `docs/plans/completed/`. Domain procedure and output format live in skills; language specifics live in each skill's `references/<lang>.md`. Role × skill × references compose — language is not a routing key. `runner` is not a fourth role; it is the cheap utility lane for simple bounded tasks. Envelope enforcement is per-target: Claude and Gemini grant a hard `tools:` allowlist (Gemini via its subagent frontmatter `tools:` field); Codex blocks writes via `sandbox_mode: read-only`; Pi has no tool-allowlist primitive, so the envelope there is a system-prompt directive. Gemini frontmatter has no read-only sandbox primitive, so `advisor` and `runner` are granted `run_shell_command` and held read-only by their body directives, the same tradeoff as Pi.
-
-| Agent      | Envelope                         | Stance                                                               | Claude model        | Pi default               |
-| ---------- | -------------------------------- | -------------------------------------------------------------------- | ------------------- | ------------------------ |
-| `engineer` | Read + write + execute           | Sole mutator: applies changes, runs the build/test/lint gate         | sonnet              | inherits current/default |
-| `reviewer` | Read, Grep, Glob, LS — no writes | Adversarial evaluator: emits findings/proposals, applies nothing     | sonnet              | inherits current/default |
-| `runner`   | Read + read-only Bash            | Cheap utility lane for simple bounded file/search/git/log/shell work | haiku               | inherits current/default |
-| `advisor`  | Read + read-only Bash            | Strategic escalation: verdict, ranked risks, next actions            | built-in (Opus 4.7) | inherits current/default |
-
-`engineer` is the fork target for `writing-{csharp,go,java-kotlin,python,rust,shell,typescript,web}` and `operating-infra`. `reviewer` absorbs the review family, code search, and planning (via `spec`). `runner` is the automatic cheap-task path: use it proactively for file lookup, grep/glob, `git status/log/show/diff`, file reads, log summaries, and focused shell inspection; escalate to `engineer`, `reviewer`, or `advisor` when the task stops being cheap or obvious. `advisor` ships to Codex, Gemini, and Pi; Claude is excluded because it has a built-in advisor. On Pi, `advisor` is invoked via transcript forwarding; on Gemini and Codex it is spawned as a normal custom subagent under its tool/sandbox envelope.
-
-Model tiers are matched per job shape across vendors. Claude and Codex can pin per-agent models where that target benefits from it. Pi package agents intentionally do not pin `model` or `thinking`; they inherit the active Pi session model by default, and user/project `subagents.agentOverrides` or router profiles should carry any local tiering policy.
-
-## Hooks
-
-| Hook                 | Event            | What It Does                                |
-| -------------------- | ---------------- | ------------------------------------------- |
-| `session-start.sh`   | SessionStart     | Shows git branch, last commit, file context |
-| `skill-enforcer.sh`  | UserPromptSubmit | Pattern-matches prompt and suggests skills  |
-| `file-protector.py`  | PreToolUse       | Blocks edits to settings.json, secrets      |
-| `git-guardrails.sh`  | PreToolUse       | Blocks destructive git commands             |
-| `smart-lint.sh`      | PostToolUse      | Auto-runs focused lint after file edits     |
-| `test-runner.sh`     | Stop             | Auto-runs focused tests after agent turns   |
-| `notify.sh`          | Notification     | Desktop notifications for long operations   |
-| `worktree-create.sh` | WorktreeCreate   | Sets up isolated git worktree environment   |
-| `worktree-remove.sh` | WorktreeRemove   | Cleans up worktree on exit                  |
-
-### Hook Prerequisites
-
-`smart-lint.sh` and `test-runner.sh` auto-detect project type and prefer focused tools. Missing optional tools warn or fall through; tool failures block.
-
-For Java/Kotlin fast local hooks on macOS, use JDK 25 LTS plus file-scoped tools:
-
-```bash
-brew install --cask temurin@25
-brew install gradle maven kotlin google-java-format ktlint detekt
-```
-
-An existing newer JDK can stay installed, but Gradle/Maven toolchains should pin the project compile/test target.
-
-#### Focused path
-
-`smart-lint.sh` runs after edits. It reads hook stdin first, records the edited file set, then formats and lints only matching files. If hook input lacks paths, it falls back to git diff only when the changed-file count is at or below `SMART_LINT_DIFF_FALLBACK_LIMIT` (default: 5). For C# /.NET, source edits use `dotnet format` on the nearest project or containing solution with `--include`; `.csproj`, `.sln`, `.props`, and `.targets` edits use the nearest safe project or solution target.
-
-`test-runner.sh` runs at agent-finish time (`Stop` for Claude/Codex/Pi, `AfterAgent` for Gemini). It uses the edited-file state recorded by `smart-lint.sh`, then falls back to git diff. For C# /.NET, focused tests choose the nearest obvious test `*.csproj`, else the containing `*.sln`, else the nearest `*.csproj`. For Java/Kotlin, focused tests prefer the nearest Gradle module `test --tests <Class>` or Maven `-Dtest=<Class> test`. Full project tests require `TEST_RUNNER_FULL=1`.
-
-Focused checks matter. Project-wide scripts are slower, burn context, and often produce unrelated failures. Keep package and Makefile fallbacks as safety nets, not the normal path. Smart-lint tracks formatting and linting separately: a focused formatter does not suppress a project-level lint fallback.
-
-#### Tool order
-
-| Ecosystem       | Format / lint path                                                                                                               | Test path                                                                                                            |
-| --------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| C# /.NET        | `dotnet format <target> --include <files>` when possible; project/solution target for `.csproj` / `.sln` / `.props` / `.targets` | `dotnet test` on the nearest obvious test `*.csproj`, else the containing `*.sln`, else the nearest `*.csproj`       |
-| Java / Kotlin   | `google-java-format -i`, `ktlint --format`, `detekt --input`; configured Gradle/Maven Spotless/detekt fallback                   | Gradle `:module:test --tests <Class>` or Maven `-Dtest=<Class> test`; module test fallback when no matching test     |
-| Python          | `ruff` format once, `ruff check --fix`; `black` / `flake8` fallback                                                              | matching `test_*.py` / `*_test.py` via `pytest -q --maxfail=1 --tb=short`                                            |
-| Pyright         | `pyright --outputjson`; `reportMissingImports` filtered structurally                                                             | —                                                                                                                    |
-| JavaScript / TS | local/global `prettier --write`, local/global `eslint --fix`                                                                     | Vitest `related <sources> --run`, Jest `--findRelatedTests`, direct test files                                       |
-| Bun             | package-script fallback via `bun run <script>` when selected by lock                                                             | `bun test <tests>` or package-script fallback                                                                        |
-| Go              | `gofmt -w`, package-scoped `golangci-lint --fix` / `go vet`                                                                      | `go test -failfast ./changed/pkg`                                                                                    |
-| Rust            | `rustfmt`, manifest-scoped `cargo clippy --fix` / `cargo check`                                                                  | `cargo test --manifest-path <Cargo.toml> --all-targets`                                                              |
-| Shell / Bash    | `shfmt -w`, `shellcheck`                                                                                                         | matching `.bats` files                                                                                               |
-| Package scripts | last fallback for missing side: `fmt` / `format`, then `lint`                                                                    | last fallback: `test`, `tests`, `check`, `verify` scripts                                                            |
-| Makefile        | last fallback for missing side: root `fmt`, then `lint`                                                                          | nearest non-root `test`, `tests`, `check`, `verify` target before generic runners; root only in `TEST_RUNNER_FULL=1` |
-
-Package-script selection: `yarn.lock` → `yarn run`, `bun.lock` / `bun.lockb` → `bun run`, otherwise `npm run --silent` when npm is available. npm and Yarn run package scripts and expose local binaries on the script PATH; Bun `run` can run package scripts and local executables.
-
-Fallbacks fill gaps only. If focused formatting ran but no focused linter ran, smart-lint may still run project `lint`. If focused linting ran, it skips project `lint`. For tests, a nearest non-root Makefile target wins for files under that subtree; otherwise focused language runners try first, then package-script fallback. `TEST_RUNNER_FULL=1` is the explicit project-level test path: root Makefile target first, then Go/Rust/Java/Kotlin/C#/.NET/Python project runners, then package scripts by the same yarn/bun/npm selection.
-
-#### Fallback controls
-
-| Control                      | Effect                                                     |
-| ---------------------------- | ---------------------------------------------------------- |
-| `SKIP_LINT=1` or `.nolint`   | skip smart-lint completely                                 |
-| `SKIP_TESTS=1` or `.notests` | skip test-runner completely                                |
-| `HOOK_PROJECT_FALLBACK=0`    | disable package-script and Makefile fallbacks              |
-| `.nohooks-project`           | repo-local file form of `HOOK_PROJECT_FALLBACK=0`          |
-| `TEST_RUNNER_FULL=1`         | run one project-level test target instead of focused tests |
-
-#### Output and exit codes
-
-Hooks write concise diagnostics to stderr for agent consumption.
-
-- Exit `0`: checks passed, skipped, or no relevant focused target found.
-- Exit `2`: blocking lint/test failure. Agents should fix the shown issue before retrying.
-- Compact output keeps the first relevant lines and truncates long logs. This preserves context budget and makes the failing file, line, and command visible.
-- Formatters run once. Post-format “check” passes are avoided in the interactive path to stop formatter/linter ping-pong.
-
-Recommended installs for tools that don't ship with their language runtime:
-
-```bash
-# Python
-brew install uv           # manages interpreter + venv + lockfile
-brew install ruff         # linter + formatter, replaces flake8 + black
-
-# JavaScript / TypeScript
-brew install bun          # runtime + test runner + package manager
-
-# Go
-go install gotest.tools/gotestsum@latest   # cleaner output than go test
-brew install golangci-lint
-
-# Rust
-rustup component add rustfmt clippy rust-analyzer
-cargo install cargo-nextest                # optional faster test runner
-
-# Shell
-brew install bats-core    # Bash Automated Testing System
-brew install shellcheck shfmt
-
-# macOS notifications (used by notify.sh)
-brew install terminal-notifier
-```
-
-## Skill Export Architecture
-
-One source of truth (`src/`) compiles into per-target trees (`dist/<target>/`).
-The compiler is `scripts/build/compile.py`.
-
-| Target      | Output                                               | Notes                                                  |
-| ----------- | ---------------------------------------------------- | ------------------------------------------------------ |
-| Claude Code | `dist/claude/plugins/<plugin>/`                      | Skills + markdown agents + hooks + commands per plugin |
-| Codex CLI   | `dist/codex/plugins/<plugin>/`, `dist/codex/agents/` | Skills + hooks per plugin; standalone TOML agents      |
-| Gemini CLI  | `dist/gemini/{skills,agents,hooks}/`                 | Flat per kind; root symlinks for extension loader      |
-| Pi          | `dist/pi/{skills,agents,extensions}/`                | Flat layout; symlinked into `~/.pi/agent/`             |
-
-### Structure
-
-```text
-src/                                 # ALL hand-edited
-├── skills/<skill>/SKILL.md          # vendor-neutral base + optional <target>/ overlay
-├── agents/<agent>/AGENT.md          # same pattern as skills
-├── hooks/<hook>/HOOK.sh             # + meta.yaml (event, timeout)
-└── plugins/<plugin>/plugin.yaml     # plugin composition (skills/agents/hooks lists)
-
-dist/                                # ALL generated; linguist-generated=true
-├── claude/plugins/<plugin>/
-├── codex/plugins/<plugin>/
-├── gemini/{skills,agents,hooks}/
-└── pi/{skills,agents,extensions}/
-
-# Root-level files generated by the compiler:
-.claude-plugin/marketplace.json      # → ./dist/claude/plugins/*
-.agents/plugins/marketplace.json     # → ./dist/codex/plugins/*
-gemini-extension.json                # → ${extensionPath}/dist/gemini/
-AGENTS.md                            # AGENTS.md catalog
-skills      -> dist/gemini/skills    # symlink — Gemini scans extension root by name
-agents      -> dist/gemini/agents    # symlink — Gemini scans extension root by name
-hooks       -> dist/gemini/hooks     # symlink — Gemini scans extension root by name
-```
-
-Regenerate everything with:
+Build and check the complete generated tree:
 
 ```bash
 make build
+make check
 ```
 
-Validate with:
+`make build` is a direct `agbun build --root .` invocation. `make check` runs
+the build and then `agbun check --root .`. Agent Bundler replaces the configured
+`dist/` output tree, so do not edit generated files.
+
+## Source layout
+
+```text
+agentbundle.json                    # Agent Bundler manifest
+src/
+├── skills/<name>/SKILL.md          # canonical YAML-frontmatter skills
+│   └── .agentbundler/targets/*.json # optional target overlays
+├── agents/<name>.md                # canonical agent assets
+├── .agentbundler/packages/*.json   # package membership and metadata
+├── hooks/<name>/                   # typed Agent Bundler hooks
+└── pi-extensions/                  # source-only Pi-native extension gap
+
+dist/<target>/<package>/             # generated Agent Bundler package roots
+```
+
+Skills use Agent Bundler overlays for target-specific frontmatter, body, and
+support-file changes. Target-wide preambles are composition entries in
+`agentbundle.json`. Canonical source remains readable Markdown with YAML
+frontmatter; Agent Bundler emits normalized JSON frontmatter.
+
+Package membership is defined by `src/.agentbundler/packages/*.json`. Each
+package lists exact skill and agent asset paths. Do not create a second package
+manifest or edit `dist/` by hand.
+
+## Targets and output
+
+| Target         | Output                    | Status                                 |
+| -------------- | ------------------------- | -------------------------------------- |
+| Claude Code    | `dist/claude/<package>/`  | enabled                                |
+| Codex CLI      | `dist/codex/<package>/`   | enabled                                |
+| Pi             | `dist/pi/`                | aggregate package + typed hook runtime |
+| GitHub Copilot | `dist/copilot/<package>/` | enabled                                |
+| Cursor         | `dist/cursor/<package>/`  | enabled                                |
+| Grok Build     | `dist/grok/<package>/`    | enabled                                |
+| Gemini CLI     | none                      | retired                                |
+
+## Installation boundaries
+
+Agent Bundler renders package layouts. It does not publish marketplaces, install
+packages, run vendor smoke tests, or package arbitrary Pi-native extensions.
+
+The generated package roots are intended to be copied or installed according to
+the target vendor's current documentation. No cc-thingz marketplace manifest
+is generated anymore.
+
+Agent Bundler v0.4.2 emits typed hook payloads and manifests, including the Pi
+aggregate hook runtime. The source-only Pi extensions in `src/pi-extensions/`
+remain unbundled because arbitrary Pi native resources are not yet supported.
+
+## Agent Bundler gaps
+
+Current `agbun v0.4.2` still does not provide these cc-thingz behaviors:
+
+- Pi TypeScript extension copying and runtime package registration;
+- typed Claude lifecycle hooks for exit-plan mode and worktree creation/removal;
+- portable blocking/rewrite hooks outside Pi;
+- a lossless Cursor edit matcher or Pi notification event;
+- marketplace publishing, installation workflows, or vendor runtime smoke tests.
+
+See [Agent Bundler gaps](docs/agentbundler-gaps.md) for the exact capability
+requests and source-only compatibility hooks.
+
+These gaps are now explicit. Add a native adapter only when the behavior is
+needed; do not rebuild a second general-purpose skill compiler in Python.
+
+## Development checks
 
 ```bash
-make validate    # frontmatter + vendor-neutrality checks
-make check       # build + git diff --exit-code (drift gate)
-make test        # pytest
+make lint
+make validate
+make build
+make check
+make test
+make test-ts
+make ci
 ```
+
+`make validate` checks Agent Bundler availability, source genericity, and
+executable source scripts. `make test` covers source and release helpers.
+`make test-ts` covers source-only Pi extension behavior. `make test` verifies
+Agent Bundler hook manifests and Pi decision-hook protocol output.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for how to add plugins, run validation, and submit PRs.
+Read [CONTRIBUTING.md](CONTRIBUTING.md). Keep canonical content under `src/`,
+package configuration in `agentbundle.json` and `src/.agentbundler/packages/`,
+and generated output under `dist/`.
 
 ## License
 

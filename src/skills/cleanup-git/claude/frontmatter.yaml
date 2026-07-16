@@ -1,4 +1,0 @@
-user-invocable: true
-context: fork
-allowed-tools:
-  - Bash(scripts/cleanup-git.sh *)

@@ -1,8 +1,7 @@
 ---
-description:
-  Create or update human-facing docs, agent-facing instructions, architecture docs,
-  API docs, README content, and useful code comments from implementation facts. Use
-  when docs are stale, missing, or must reflect code changes. NOT for code-quality
+description: Create or update human-facing docs, agent-facing instructions, architecture
+  docs, API docs, README content, and useful code comments from implementation facts.
+  Use when docs are stale, missing, or must reflect code changes. NOT for code-quality
   review, prompt scoring, speculative docs, or ADRs unless explicitly requested.
 name: documenting-code
 ---

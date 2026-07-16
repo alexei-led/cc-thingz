@@ -1,11 +1,10 @@
 ---
-description:
-  Batch behavior-preserving refactors for multi-file, repeated-pattern, large-file,
-  rename, move, extract, split, or restructure work. Use for "refactor across
-  files", "batch rename", "update pattern everywhere", large files (500+ lines),
-  or 5+ coordinated edits in one file. NOT for single targeted edits, behavior
-  changes or bug fixes (use fixing-code), test-only refactors (use improving-tests),
-  code review (use reviewing-code), or architecture redesign (use architecture-design/review).
+description: Batch behavior-preserving refactors for multi-file, repeated-pattern,
+  large-file, rename, move, extract, split, or restructure work. Use for "refactor
+  across files", "batch rename", "update pattern everywhere", large files (500+ lines),
+  or 5+ coordinated edits in one file. NOT for single targeted edits, behavior changes
+  or bug fixes (use fixing-code), test-only refactors (use improving-tests), code
+  review (use reviewing-code), or architecture redesign (use architecture-design/review).
 name: refactoring-code
 ---
 

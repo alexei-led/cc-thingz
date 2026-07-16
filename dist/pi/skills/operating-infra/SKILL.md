@@ -1,18 +1,12 @@
 ---
-description: Author, inspect, troubleshoot, and review infrastructure across IaC,
-  Kubernetes, cloud resources, containers, CI/CD, and Linux hosts. Use when changing
-  Terraform/OpenTofu, Kubernetes, Helm, Kustomize, Dockerfiles, GitHub Actions workflow/job/permissions
-  semantics, AWS, GCP, Cloud Run, BigQuery, IAM, logs, instances, or service health.
-  NOT for deploy/apply/rollback workflows (see deploying-infra). NOT for shell scripts,
-  generic command pipelines, or only the shell body inside `run:` steps (see writing-shell).
-name: operating-infra
+{"description":"Author, inspect, troubleshoot, and review infrastructure across IaC, Kubernetes, cloud resources, containers, CI/CD, and Linux hosts. Use when changing Terraform/OpenTofu, Kubernetes, Helm, Kustomize, Dockerfiles, GitHub Actions workflow/job/permissions semantics, AWS, GCP, Cloud Run, BigQuery, IAM, logs, instances, or service health. NOT for deploy/apply/rollback workflows (see deploying-infra). NOT for shell scripts, generic command pipelines, or only the shell body inside `run:` steps (see writing-shell).","name":"operating-infra"}
 ---
-
 <!-- Pi platform guidance -->
 <!-- Use installed Pi tool names exactly. Installed extensions may add toolsets such as Task*, Monitor*, and Loop*; use the visible tool names exactly and do not translate them to Claude syntax. -->
-<!-- Prefer Task* over `todo` when task-tracking tools are available; `todo` is the cc-thingz fallback. Prefer MonitorCreate for long-running background commands and LoopCreate for scheduled or event-driven follow-up instead of Bash sleep/poll loops. -->
+<!-- Prefer Task* over `todo` when task-tracking tools are available; `todo` is the cc-thingz fallback. Prefer MonitorCreate for long-running or background commands and LoopCreate for scheduled or event-driven follow-up instead of Bash sleep/poll loops. -->
 <!-- Use subagent for delegated work. Use wait to block on async subagent runs only when no independent work remains. -->
 <!-- Use ctx7 or npx ctx7@latest through bash when Context7 documentation lookup is required. -->
+
 
 # Operate Infrastructure
 

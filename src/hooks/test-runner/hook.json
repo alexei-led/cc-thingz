@@ -1,0 +1,16 @@
+{
+  "event": "stop",
+  "handler": {
+    "mode": "exec",
+    "program": "bash",
+    "arguments": [
+      {
+        "packageFile": "hook.sh"
+      }
+    ]
+  },
+  "timeoutMilliseconds": 120000,
+  "asynchronous": false,
+  "failurePolicy": "open",
+  "order": 60
+}

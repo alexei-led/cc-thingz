@@ -1,6 +1,11 @@
 ---
+description: Use when reviewing changed code, PRs, diffs, or specific files. Finds
+  evidence-backed defects in security, correctness, tests, reliability, performance,
+  maintainability, and docs. Supports quick, standard, deep, team, and external-review
+  modes. NOT for repo-wide architecture review, general codebase exploration, fixing
+  issues (use fixing-code), improving tests without a code review (use improving-tests),
+  or applying refactors (use refactoring-code).
 name: reviewing-code
-description: Use when reviewing changed code, PRs, diffs, or specific files. Finds evidence-backed defects in security, correctness, tests, reliability, performance, maintainability, and docs. Supports quick, standard, deep, team, and external-review modes. NOT for repo-wide architecture review, general codebase exploration, fixing issues (use fixing-code), improving tests without a code review (use improving-tests), or applying refactors (use refactoring-code).
 ---
 
 # Code Review

@@ -1,7 +1,7 @@
 """Shared pytest fixtures.
 
 `load_script` loads a kebab-cased CLI script under scripts/ as an importable
-module, mapping the filename (e.g. `compile.py`) to a snake-case module name.
+module, mapping the filename to a snake-case module name.
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ sys.path.insert(0, str(_SCRIPTS))
 
 def _resolve(rel_or_name: str) -> Path:
     """Locate a script by relative path under scripts/, or by basename
-    (searches scripts/build/, scripts/validate/, scripts/evals/, scripts/release/).
+    (searches scripts/validate/, scripts/evals/, scripts/release/).
     """
     direct = _SCRIPTS / rel_or_name
     if direct.is_file():
@@ -55,7 +55,7 @@ def load_script():
 # Shared constants — importable at collection time for @pytest.mark.parametrize
 # ---------------------------------------------------------------------------
 
-TARGETS: tuple[str, ...] = ("claude", "codex", "gemini", "pi")
+TARGETS: tuple[str, ...] = ("claude", "codex", "pi", "copilot", "cursor")
 REPO_ROOT: Path = _REPO_ROOT
 
 
@@ -73,7 +73,7 @@ def make_skill_staging_root(tmp_path: Path) -> Path:
     """Staging root for single-skill tests.
 
     Symlinks the entire `src/skills/` tree and the preambles directory so
-    that `compile_skill` resolves paths relative to the returned root.
+    that path-sensitive script tests resolve paths relative to the returned root.
     """
     root = tmp_path / "repo"
     (root / "src").mkdir(parents=True)

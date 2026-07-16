@@ -1,10 +1,9 @@
 ---
-description:
-  Idiomatic C# /.NET development. Use when writing C# code, changing `.csproj`
-  or `.sln`, or working on ASP.NET Core apps, libraries, CLIs, workers, and
-  xUnit/NUnit/MSTest suites. Emphasizes nullable references, async/await,
-  LINQ discipline, boundary validation, focused `dotnet` feedback, and minimal
-  dependencies. NOT for Go, Python, TypeScript, shell scripts, or infra-only work.
+description: Idiomatic C# /.NET development. Use when writing C# code, changing `.csproj`
+  or `.sln`, or working on ASP.NET Core apps, libraries, CLIs, workers, and xUnit/NUnit/MSTest
+  suites. Emphasizes nullable references, async/await, LINQ discipline, boundary validation,
+  focused `dotnet` feedback, and minimal dependencies. NOT for Go, Python, TypeScript,
+  shell scripts, or infra-only work.
 name: writing-csharp
 ---
 

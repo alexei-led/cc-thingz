@@ -1,0 +1,9 @@
+{
+  "frontmatterPatch": {
+    "allowed-tools": [
+      "Bash(scripts/cleanup-git.sh *)"
+    ],
+    "context": "fork",
+    "user-invocable": true
+  }
+}

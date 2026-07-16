@@ -19,6 +19,13 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: uv.lock
+      - uses: actions/setup-go@v6
+        with:
+          go-version: 1.26.x
+      - name: Install Agent Bundler
+        run: |
+          go install github.com/alexei-led/agentbundler/cmd/agbun@v0.4.2
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - run: make validate check test
   release:
     name: Create Release
@@ -33,7 +40,7 @@ jobs:
           python3 scripts/release/generate-release-notes.py \
             --tag "$GITHUB_REF_NAME" \
             --changelog CHANGELOG.md \
-            --marketplace .claude-plugin/marketplace.json \
+            --packages-dir src/.agentbundler/packages \
             --output "$RUNNER_TEMP/release-notes.md" \
             --repository "$GITHUB_REPOSITORY"
       - uses: softprops/action-gh-release@v3

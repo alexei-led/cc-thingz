@@ -1,4 +1,0 @@
-name: git-guardrails
-event: prebash
-timeout: 10
-status_message: Checking git command

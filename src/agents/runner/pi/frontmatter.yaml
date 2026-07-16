@@ -1,3 +1,0 @@
-package: cc-thingz
-tools: read, grep, find, ls, bash
-completionGuard: false

@@ -3,4 +3,3 @@
 dist/** linguist-generated=true
 .claude-plugin/marketplace.json linguist-generated=true
 .agents/plugins/marketplace.json linguist-generated=true
-gemini-extension.json linguist-generated=true

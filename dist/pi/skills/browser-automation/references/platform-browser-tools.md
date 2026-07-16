@@ -28,11 +28,6 @@ runner, then `playwright-skill`. In ordinary Pi harnesses, prefer headless
 screenshots and manifests over headed mode because the visible browser is not
 usually exposed to the agent.
 
-## Gemini
-
-Use browser tools if the active session exposes them. Otherwise use the project
-runner, then `playwright-skill`.
-
 ## Playwright Fallback
 
 Use Playwright for repeatable scripts/tests, cross-browser checks, traces,

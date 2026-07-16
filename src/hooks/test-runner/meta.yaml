@@ -1,4 +1,0 @@
-name: test-runner
-event: agentstop
-timeout: 120
-status_message: Running targeted tests

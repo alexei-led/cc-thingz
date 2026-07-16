@@ -1,0 +1,22 @@
+{
+  "event": "post-tool",
+  "matcher": {
+    "tools": [
+      "write",
+      "edit"
+    ]
+  },
+  "handler": {
+    "mode": "exec",
+    "program": "bash",
+    "arguments": [
+      {
+        "packageFile": "hook.sh"
+      }
+    ]
+  },
+  "timeoutMilliseconds": 120000,
+  "asynchronous": false,
+  "failurePolicy": "open",
+  "order": 50
+}

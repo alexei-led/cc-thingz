@@ -1,0 +1,1 @@
+{"dependencies":{"pi-subagents":"*"},"description":"Portable coding companion for Pi","keywords":["coding-agent","skills","hooks"],"name":"cc-thingz","pi":{"extensions":["./extensions/agentbundler-hooks.ts"],"skills":["./skills"],"subagents":{"agents":["./agents"]}},"version":"6.7.0"}

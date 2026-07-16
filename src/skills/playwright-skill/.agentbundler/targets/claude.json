@@ -1,0 +1,6 @@
+{
+  "frontmatterPatch": {
+    "context": "fork",
+    "user-invocable": false
+  }
+}

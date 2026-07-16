@@ -1,0 +1,16 @@
+{
+  "frontmatterPatch": {
+    "allowed-tools": [
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git branch *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(scripts/commit-state.sh *)"
+    ],
+    "context": "fork",
+    "user-invocable": true
+  }
+}

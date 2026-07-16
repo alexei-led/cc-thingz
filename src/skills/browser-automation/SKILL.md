@@ -1,11 +1,10 @@
 ---
+description: 'Browser automation for rendered UI exploration, validation, screenshots,
+  recordings, and end-to-end flows. Use when a task needs an actual browser or rendered
+  DOM: inspect UI state, click/fill forms, debug frontend behavior, capture evidence,
+  verify a feature, or run/generate browser tests. NOT for API checks or pure logic
+  tests where curl, unit tests, or JSDOM is cheaper.'
 name: browser-automation
-description: >-
-  Browser automation for rendered UI exploration, validation, screenshots,
-  recordings, and end-to-end flows. Use when a task needs an actual browser or
-  rendered DOM: inspect UI state, click/fill forms, debug frontend behavior,
-  capture evidence, verify a feature, or run/generate browser tests. NOT for API
-  checks or pure logic tests where curl, unit tests, or JSDOM is cheaper.
 ---
 
 # Browser Automation

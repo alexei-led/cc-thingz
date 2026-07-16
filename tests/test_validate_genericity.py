@@ -126,20 +126,16 @@ def test_line_numbers_account_for_frontmatter(vg, tmp_path: Path) -> None:
 
 def test_discover_base_files(vg, tmp_path: Path) -> None:
     _write(tmp_path / "src" / "skills" / "a" / "SKILL.md", "---\nname: a\n---\n")
-    _write(tmp_path / "src" / "agents" / "b" / "AGENT.md", "---\nname: b\n---\n")
-    _write(tmp_path / "src" / "skills" / "a" / "claude" / "body.md", "junk")
-    _write(tmp_path / "src" / "skills" / "a" / "codex" / "body.md", "codex body")
-    _write(tmp_path / "src" / "skills" / "a" / "pi" / "body.md", "pi body")
-    _write(tmp_path / "src" / "agents" / "b" / "gemini" / "body.md", "gemini body")
+    _write(tmp_path / "src" / "agents" / "b.md", "---\nname: b\n---\n")
+    _write(
+        tmp_path / "src" / "skills" / "a" / ".agentbundler" / "targets" / "pi.json",
+        "{}",
+    )
     found = vg.discover_base_files(tmp_path)
     names = {str(p.relative_to(tmp_path)) for p in found}
     assert "src/skills/a/SKILL.md" in names
-    assert "src/agents/b/AGENT.md" in names
-    assert "src/skills/a/codex/body.md" in names
-    assert "src/skills/a/pi/body.md" in names
-    assert "src/agents/b/gemini/body.md" in names
-    # claude/body.md is excluded — Claude syntax is permitted there.
-    assert not any("claude/body.md" in str(p) for p in found)
+    assert "src/agents/b.md" in names
+    assert len(found) == 2
 
 
 def test_repo_baselines_pass(vg) -> None:

@@ -5,8 +5,8 @@
 #
 # This script:
 # 1. Validates the version format (vX.Y.Z)
-# 2. Bumps versions in source plugin and project metadata
-# 3. Runs `make build` to regenerate root manifests and dist/
+# 2. Bumps versions in Agent Bundler package and project metadata
+# 3. Runs `make build` to regenerate dist/
 # 4. Updates CHANGELOG.md with a placeholder entry
 # 5. Commits the version bump
 # 6. Creates an annotated git tag
@@ -48,26 +48,22 @@ sed_inplace() {
 	rm -f "$file.release-tag.bak"
 }
 
-# Bump src/plugins/marketplace.yaml (top-level version)
-sed_inplace "s/^version:.*/version: $VERSION/" src/plugins/marketplace.yaml
-
-# Bump per-plugin src/plugins/*/plugin.yaml versions
+# Bump Agent Bundler package metadata.
 shopt -s nullglob
-plugin_yamls=(src/plugins/*/plugin.yaml)
+package_jsons=(src/.agentbundler/packages/*.json)
 project_version_files=(
 	pyproject.toml
 	uv.lock
 	package.json
 	src/skills/playwright-skill/scripts/package.json
-	tests/fixtures/golden_skills/playwright-skill/*/scripts/package.json
 )
 shopt -u nullglob
-if [ ${#plugin_yamls[@]} -eq 0 ]; then
-	echo "ERROR: no src/plugins/*/plugin.yaml files found"
+if [ ${#package_jsons[@]} -eq 0 ]; then
+	echo "ERROR: no src/.agentbundler/packages/*.json files found"
 	exit 1
 fi
-for f in "${plugin_yamls[@]}"; do
-	sed_inplace "s/^version:.*/version: $VERSION/" "$f"
+for f in "${package_jsons[@]}"; do
+	sed_inplace 's/"version": "[^"]*"/"version": "'"$VERSION"'"/' "$f"
 done
 for f in "${project_version_files[@]}"; do
 	if [ ! -f "$f" ]; then
@@ -112,12 +108,8 @@ echo ""
 
 # Commit and tag
 git add \
-	src/plugins/marketplace.yaml \
-	"${plugin_yamls[@]}" \
+	"${package_jsons[@]}" \
 	"${project_version_files[@]}" \
-	.claude-plugin/marketplace.json \
-	.agents/plugins/marketplace.json \
-	gemini-extension.json \
 	dist/ \
 	CHANGELOG.md
 git commit -m "chore: bump version to $VERSION"

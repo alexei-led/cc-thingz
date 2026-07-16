@@ -1,0 +1,29 @@
+{
+  "bodyPatch": {
+    "mode": "replace",
+    "text": "# Documenting Code\n\nScope: documentation files, agent instruction files, and useful code comments\nonly. Not for code-quality review; use `reviewing-code` for that.\n\nUpdate docs from implementation facts. Identify the reader first. Apply edits\nonly when write tools are available. If evidence or validation is missing, report\nthe gap instead of claiming docs are current.\n\n## Tool use\n\n- Use Read for implementation, tests, and existing docs.\n- Use Edit for targeted doc changes. Use Write only for new docs or full rewrites.\n- Use Bash only for status, diffs, markdown lint, docs checks, and narrow repo validation.\n- Use TaskCreate only for a large documentation audit that needs a bounded read-only mapping pass. Verify the returned claims before editing.\n- Use AskUserQuestion only when scope or reader is ambiguous.\n\n## Reader model\n\nHuman reader:\n\n- Short, structured, readable, and useful.\n- Start with what the reader can do after reading.\n- Use examples close to the concept.\n- Use Mermaid diagrams only for non-trivial structure, flow, lifecycle,\n  ownership, or trade-offs.\n- Match existing docs style; do not invent custom fonts, colors, or visual design.\n\nAgent reader:\n\n- Concise operational instructions for LLMs.\n- Use headers, bullets, numbered steps, and exact output contracts.\n- Remove fluff, duplicate rules, generic knowledge, tables, diagrams, and visual polish.\n- Route scoring or quality review of instructions to `reviewing-instructions`.\n\nCode reader:\n\n- Comments/docstrings explain contracts, constraints, invariants, side effects,\n  errors, or non-obvious choices.\n- Delete comments that restate code.\n- Avoid comments in tests unless they explain an essential external behavior or edge case.\n\n## Workflow\n\n1. Determine scope from the user request or changed files. Do not ask if clear.\n2. Read relevant code, tests, and existing docs.\n3. Choose reader type: human, agent, code, or mixed.\n4. Compare docs to current behavior. Code wins unless the user says docs are the contract.\n5. Update the smallest useful docs.\n6. Verify docs and runnable examples when practical.\n7. Report changed files, checks, and remaining issues.\n\nFor large audits only, spawn one bounded read-only subagent with a narrow brief:\nmap changed behavior, existing docs, stale sections, and missing docs. Require\nfile paths and line evidence. Do not let the subagent edit.\n\n## What to update\n\n- README usage, setup, quick start, and release notes for user-visible changes.\n- API docs for parameter, output, error, side effect, or example changes.\n- Architecture docs for boundary, data-flow, ownership, deployment, or major trade-off changes.\n- Agent docs for skills, agents, hooks, commands, tools, routing, and operating rules.\n- Generated catalogs only through source files and generator scripts.\n- Code comments only when they add useful contract or reasoning value.\n\n## Verification\n\nPrefer the narrowest relevant checks:\n\n```bash\ngit diff --stat\nmarkdownlint-cli2 '**/*.md'\nmake lint-markdown\nmake validate\n```\n\nRun documented commands or examples when practical. If a check cannot run, state why.\n\n## Output\n\n```markdown\n## Documentation Update\n\nUpdated:\n\n- `path` — <what changed and reader served>\n\nVerified:\n\n- <check>: passed | skipped (<reason>)\n\nIssues: none | <remaining issue>\n```\n\n## Reviewer output\n\nRead-only role only. Apply nothing and run nothing.\n\n```markdown\n## Proposed Changes\n\n### Change 1: <brief description>\n\nFile: `path/to/doc`\nAction: CREATE | MODIFY | DELETE\nReader: human | agent | code\n\nCode:\n<doc content or patch-sized replacement with enough context>\n\nRationale: <code fact that makes this stale or missing>\n```\n\n## Failure handling\n\n- Ambiguous scope: ask one scoped question.\n- No recent changes: ask what to document instead of inventing docs.\n- Generated doc target: edit source and rebuild, not generated output.\n- Docs/code conflict: report it; update docs to code unless user says docs are intended contract.\n- Verification failure: quote the exact failure and do not claim success.\n"
+  },
+  "frontmatterPatch": {
+    "allowed-tools": [
+      "Task",
+      "TaskCreate",
+      "TaskUpdate",
+      "TaskList",
+      "AskUserQuestion",
+      "Read",
+      "Edit",
+      "Write",
+      "Bash(git diff *)",
+      "Bash(git status *)",
+      "Bash(markdownlint-cli2 *)",
+      "Bash(make lint-markdown)",
+      "Bash(make validate)",
+      "Bash(make check)",
+      "Bash(ctx7 *)",
+      "Bash(npx ctx7@latest *)",
+      "Bash(bunx ctx7@latest *)"
+    ],
+    "context": "fork",
+    "user-invocable": true
+  }
+}

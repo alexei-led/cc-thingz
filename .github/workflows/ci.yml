@@ -46,9 +46,10 @@ jobs:
             config:
               - '**/*.json'
               - '**/*.toml'
-              - 'scripts/validate/validate-config.py'
-              - 'scripts/validate/validate_genericity.py'
+              - 'agentbundle.json'
               - 'src/**'
+              - 'src/.agentbundler/**'
+              - 'scripts/validate/validate_genericity.py'
             skill_evals:
               - 'src/skills/**'
               - 'dist/**'
@@ -118,6 +119,13 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: uv.lock
+      - uses: actions/setup-go@v6
+        with:
+          go-version: 1.26.x
+      - name: Install Agent Bundler
+        run: |
+          go install github.com/alexei-led/agentbundler/cmd/agbun@v0.4.2
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - run: make validate check
   test:
     name: Tests
@@ -130,6 +138,13 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: uv.lock
+      - uses: actions/setup-go@v6
+        with:
+          go-version: 1.26.x
+      - name: Install Agent Bundler
+        run: |
+          go install github.com/alexei-led/agentbundler/cmd/agbun@v0.4.2
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - run: make test
   test-typescript:
     name: Test TypeScript

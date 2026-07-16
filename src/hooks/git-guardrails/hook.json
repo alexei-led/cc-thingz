@@ -1,0 +1,21 @@
+{
+  "event": "pre-tool",
+  "matcher": {
+    "tools": [
+      "command"
+    ]
+  },
+  "handler": {
+    "mode": "exec",
+    "program": "bash",
+    "arguments": [
+      {
+        "packageFile": "hook.sh"
+      }
+    ]
+  },
+  "timeoutMilliseconds": 10000,
+  "asynchronous": false,
+  "failurePolicy": "closed",
+  "order": 40
+}

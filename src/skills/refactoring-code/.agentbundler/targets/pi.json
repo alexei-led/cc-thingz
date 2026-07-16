@@ -1,0 +1,6 @@
+{
+  "bodyPatch": {
+    "mode": "replace",
+    "text": "# Batch Refactoring\n\nFollow the base skill. This Pi overlay only defines tool use and execution details.\n\n## Pi tool rules\n\n- Pi has no tool-level read-only enforcement; follow the active agent's role\n  directive (`engineer` applies one batch, `reviewer` proposes only) rather\n  than inferring the role from tool availability.\n- Use `bash` (`rg`, `fd`, `git grep`) to map affected sites; Pi has no\n  dedicated grep/glob tool.\n- Use `edit` for existing files and `write` only for new files.\n- Prefer installed Task* tools to track multi-batch refactors across steps; fall back to `todo` when that task toolset is unavailable.\n- Use `ask_user_question` when scope, preservation target, or safety gate is unclear.\n\n## Output on Pi\n\nUse the base skill's Engineer and Reviewer output contracts exactly, unmodified.\n"
+  }
+}

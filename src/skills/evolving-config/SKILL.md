@@ -1,11 +1,11 @@
 ---
 description:
-  Audit and improve AI coding-agent configuration. Use when reviewing or changing
-  Claude Code, Pi, Codex, skill, agent, hook, MCP, permission, package, or
-  generated-export setup. Default is review-only; fixes require explicit user
-  approval or --fix. NOT for score-only instruction review or prompt lint; use
-  reviewing-instructions. NOT for application config, git hygiene, code bugs,
-  ordinary docs, or generated files without their source.
+  Audit and improve AI coding-agent configuration. Use when reviewing or
+  changing Claude Code, Pi, Codex, skill, agent, hook, MCP, permission, package, or
+  generated-export setup. Default is review-only; fixes require explicit user approval
+  or --fix. NOT for score-only instruction review or prompt lint; use reviewing-instructions.
+  NOT for application config, git hygiene, code bugs, ordinary docs, or generated
+  files without their source.
 name: evolving-config
 ---
 
@@ -21,9 +21,6 @@ docs second. Default to review-only. Apply fixes only after explicit approval.
 - `references/platforms/codex.md` for Codex surfaces.
 - `references/platforms/pi.md` for Pi surfaces.
 - `references/apply-fixes.md` only when the user asks to fix or passes `--fix`.
-
-No dedicated Gemini coverage. If the user explicitly asks for Gemini config,
-review local files only and state that current best-practice coverage is skipped.
 
 ## Modes
 

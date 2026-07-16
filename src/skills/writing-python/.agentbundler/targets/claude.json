@@ -1,0 +1,16 @@
+{
+  "frontmatterPatch": {
+    "agent": "engineer",
+    "allowed-tools": [
+      "Read",
+      "Bash",
+      "Grep",
+      "Glob",
+      "Edit",
+      "Write",
+      "LS"
+    ],
+    "context": "fork",
+    "user-invocable": false
+  }
+}

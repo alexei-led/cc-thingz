@@ -1,19 +1,12 @@
 ---
-description: Idiomatic shell development for POSIX sh, Bash, Zsh, Fish, hooks, CI
-  shell steps, and scriptable CLI glue. Use when writing or changing `.sh`, `.bash`,
-  `.zsh`, `.fish`, `.bats`, shell functions, shell pipelines, CI `run:` shell bodies,
-  or command-runner recipes. Emphasizes portability, quoting, safe filesystem/process
-  handling, non-TUI CLI tools, ShellCheck, shfmt, Bats, and ShellSpec. NOT for Python,
-  Rust, TypeScript, Go, web code, or GitHub Actions workflow/job/permissions semantics;
-  use operating-infra.
-name: writing-shell
+{"description":"Idiomatic shell development for POSIX sh, Bash, Zsh, Fish, hooks, CI shell steps, and scriptable CLI glue. Use when writing or changing `.sh`, `.bash`, `.zsh`, `.fish`, `.bats`, shell functions, shell pipelines, CI `run:` shell bodies, or command-runner recipes. Emphasizes portability, quoting, safe filesystem/process handling, non-TUI CLI tools, ShellCheck, shfmt, Bats, and ShellSpec. NOT for Python, Rust, TypeScript, Go, web code, or GitHub Actions workflow/job/permissions semantics; use operating-infra.","name":"writing-shell"}
 ---
-
 <!-- Pi platform guidance -->
 <!-- Use installed Pi tool names exactly. Installed extensions may add toolsets such as Task*, Monitor*, and Loop*; use the visible tool names exactly and do not translate them to Claude syntax. -->
-<!-- Prefer Task* over `todo` when task-tracking tools are available; `todo` is the cc-thingz fallback. Prefer MonitorCreate for long-running background commands and LoopCreate for scheduled or event-driven follow-up instead of Bash sleep/poll loops. -->
+<!-- Prefer Task* over `todo` when task-tracking tools are available; `todo` is the cc-thingz fallback. Prefer MonitorCreate for long-running or background commands and LoopCreate for scheduled or event-driven follow-up instead of Bash sleep/poll loops. -->
 <!-- Use subagent for delegated work. Use wait to block on async subagent runs only when no independent work remains. -->
 <!-- Use ctx7 or npx ctx7@latest through bash when Context7 documentation lookup is required. -->
+
 
 # Shell Development
 

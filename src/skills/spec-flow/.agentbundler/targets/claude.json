@@ -1,0 +1,22 @@
+{
+  "frontmatterPatch": {
+    "allowed-tools": [
+      "AskUserQuestion",
+      "Agent",
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "mcp__morphllm__edit_file",
+      "Bash(scripts/specctl *)",
+      "Bash(rg *)",
+      "Bash(fd *)",
+      "Bash(git *)",
+      "Bash(make *)"
+    ],
+    "argument-hint": "[status | plan <idea> | work [TASK-id] | checkpoint | done TASK-id]",
+    "context": "fork",
+    "user-invocable": true
+  }
+}

@@ -1,10 +1,10 @@
 .DEFAULT_GOAL := help
 
 NODE_VERSION ?= $(shell cat .node-version 2>/dev/null || echo 24)
+AGBUN_MIN_VERSION ?= 0.4.2
 SKILL_EVAL_ROOT ?= /tmp/cc-thingz-skill-eval-root
 SKILL_EVAL_WORKSPACE ?= /tmp/cc-thingz-skill-eval-workspace
 SKILL_EVAL_INCLUDE ?= **
-SKILL_EVAL_SOURCE ?= skills
 SKILL_EVAL_TARGET ?= gpt-5.4-mini
 SKILL_EVAL_JUDGE ?= gpt-5.4-mini
 SKILL_EVAL_LOG_FORMAT ?= jsonl
@@ -51,7 +51,7 @@ test-ts: ## Run Bun TypeScript tests (Pi extensions)
 	bun test src/pi-extensions --isolate
 
 skill-evals-prepare: ## Build temporary Agent Skills eval tree under /tmp
-	uv run python scripts/evals/prepare-skill-evals.py --out $(SKILL_EVAL_ROOT) --source-dir $(SKILL_EVAL_SOURCE)
+	uv run python scripts/evals/prepare-skill-evals.py --out $(SKILL_EVAL_ROOT)
 
 skill-evals: skill-evals-prepare ## Run paid Agent Skills evals and print fix-focused summary
 	@set -u; \
@@ -84,15 +84,8 @@ skill-evals: skill-evals-prepare ## Run paid Agent Skills evals and print fix-fo
 skill-evals-fast: ## Fast paid skill eval loop: no baseline, no HTML, higher concurrency, advisory
 	$(MAKE) skill-evals SKILL_EVAL_BASELINE=0 SKILL_EVAL_HTML_REPORT=0 SKILL_EVAL_CONCURRENCY=8 SKILL_EVAL_STRICT=0
 
-skill-evals-both: ## Run source and Codex/Gemini overlay evals in parallel with separate workspaces
-	@set +e; \
-	$(MAKE) skill-evals SKILL_EVAL_SOURCE=skills SKILL_EVAL_ROOT=/tmp/cc-thingz-skill-eval-root-source SKILL_EVAL_WORKSPACE=/tmp/cc-thingz-skill-eval-workspace-source SKILL_EVAL_LOG_FILE=/tmp/cc-thingz-skill-eval-workspace-source/events.jsonl SKILL_EVAL_REPORT=/tmp/cc-thingz-skill-eval-workspace-source/summary.md SKILL_EVAL_STRICT=0 & \
-	pid1=$$!; \
-	$(MAKE) skill-evals SKILL_EVAL_SOURCE=skills-codex SKILL_EVAL_ROOT=/tmp/cc-thingz-skill-eval-root-codex SKILL_EVAL_WORKSPACE=/tmp/cc-thingz-skill-eval-workspace-codex SKILL_EVAL_LOG_FILE=/tmp/cc-thingz-skill-eval-workspace-codex/events.jsonl SKILL_EVAL_REPORT=/tmp/cc-thingz-skill-eval-workspace-codex/summary.md SKILL_EVAL_STRICT=0 & \
-	pid2=$$!; \
-	wait $$pid1; status1=$$?; \
-	wait $$pid2; status2=$$?; \
-	[ $$status1 -eq 0 ] && [ $$status2 -eq 0 ]
+skill-evals-both: ## Run the Agent Bundler Claude package evals
+	$(MAKE) skill-evals SKILL_EVAL_ROOT=/tmp/cc-thingz-skill-eval-root SKILL_EVAL_WORKSPACE=/tmp/cc-thingz-skill-eval-workspace
 
 skill-evals-summary: ## Print summary for latest skill eval workspace
 	uv run python scripts/evals/summarize-skill-evals.py $(SKILL_EVAL_WORKSPACE) --markdown $(SKILL_EVAL_REPORT)
@@ -104,11 +97,8 @@ skill-evals-summary: ## Print summary for latest skill eval workspace
 # targets are gone — they duplicated what `make check` already proves
 # end-to-end, and disagreed with each other when generators changed.
 
-.PHONY: validate validate-config validate-executables validate-genericity lint-instructions
-validate: validate-config validate-genericity validate-executables ## Validate canonical sources (frontmatter, executable bits, plugin layout)
-
-validate-config: ## Validate plugin configs and frontmatter
-	uv run python scripts/validate/validate-config.py
+.PHONY: validate validate-executables validate-genericity lint-instructions
+validate: validate-genericity validate-executables check-agbun ## Validate canonical sources and Agent Bundler availability
 
 validate-genericity: ## Reject Claude-only tokens in vendor-neutral base SKILL.md/AGENT.md
 	uv run python scripts/validate/validate_genericity.py
@@ -134,26 +124,20 @@ fmt: ## Auto-format Python and shell files
 	find src scripts -name '*.sh' -exec shfmt -i 0 -w {} +
 	shfmt -i 0 -w scripts/git-hooks/pre-commit scripts/git-hooks/pre-push scripts/release/release-tag
 
-# --- One-shot build: regenerate everything derived from canonical sources ---
+# --- Agent Bundler build and drift checks ---
 
-.PHONY: build check
-build: ## Regenerate dist/ and root manifests from canonical sources under src/
-	uv run python scripts/build/compile.py
+.PHONY: build check check-agbun
+check-agbun: ## Require Agent Bundler v$(AGBUN_MIN_VERSION)+
+	@command -v agbun >/dev/null 2>&1 || { echo "agbun v$(AGBUN_MIN_VERSION)+ is required"; exit 1; }
+	@version=$$(agbun --version | sed -n 's/.*v\([0-9][0-9.]*\).*/\1/p'); \
+	[ -n "$$version" ] || { echo "could not parse agbun version"; exit 1; }; \
+	uv run python -c 'import sys; want=tuple(map(int, sys.argv[1].split("."))); got=tuple(map(int, sys.argv[2].split("."))); sys.exit(0 if got >= want else 1)' "$(AGBUN_MIN_VERSION)" "$$version" || { echo "agbun v$(AGBUN_MIN_VERSION)+ is required; found v$$version"; exit 1; }
 
-check: build ## Build, then fail if any tracked file changed (drift detection)
-	@if ! git diff --quiet --exit-code; then \
-		echo "ERROR: derived artifacts drifted. See diff above for either updated sources or hand-edited generated files."; \
-		echo "  Hand-edits to generated files are overwritten by 'make build' — edit canonical sources under src/ instead."; \
-		git --no-pager diff --stat; \
-		exit 1; \
-	fi
-	@untracked=$$(git ls-files --others --exclude-standard -- dist/ .claude-plugin/ .agents/plugins/ gemini-extension.json); \
-	if [ -n "$$untracked" ]; then \
-		echo "ERROR: build produced untracked derived files — add them or remove a stale src/ entry:"; \
-		echo "$$untracked" | sed 's/^/  /'; \
-		exit 1; \
-	fi
-	@echo "check: clean (all derived artifacts match canonical sources)"
+build: check-agbun ## Regenerate active target layouts with Agent Bundler
+	agbun build --root .
+
+check: build ## Build, then ask Agent Bundler to check generated drift
+	agbun check --root .
 
 # --- CI (runs everything) ---
 
@@ -171,9 +155,8 @@ setup: ## Install repo-tracked git hooks (pre-commit + pre-push) and dev deps
 # --- Push ---
 
 .PHONY: push
-push: ## Push master to origin and all private mirrors (CI rewrites manifests)
+push: ## Push master to origin
 	git push origin master
-	git push cc-forge master:main --force-with-lease
 
 # --- Release ---
 

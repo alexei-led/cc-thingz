@@ -1,12 +1,10 @@
 ---
-description:
-  Find exact, version-correct library/API/framework docs through one lookup
-  workflow. Use when the user says "look up docs", "how to use", "API for",
-  "syntax for", "examples of", "show me the docs", mentions "ctx7"/"Context7",
-  passes a `/org/project` library ID, or needs API signatures, config keys,
-  syntax, examples, or versioned docs. NOT for comparisons, current-state or
-  release-behavior questions, best-practice surveys, or recent ecosystem news —
-  use researching-web.
+description: Find exact, version-correct library/API/framework docs through one lookup
+  workflow. Use when the user says "look up docs", "how to use", "API for", "syntax
+  for", "examples of", "show me the docs", mentions "ctx7"/"Context7", passes a `/org/project`
+  library ID, or needs API signatures, config keys, syntax, examples, or versioned
+  docs. NOT for comparisons, current-state or release-behavior questions, best-practice
+  surveys, or recent ecosystem news — use researching-web.
 name: looking-up-docs
 ---
 

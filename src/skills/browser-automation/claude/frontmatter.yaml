@@ -1,3 +1,0 @@
-user-invocable: true
-context: fork
-argument-hint: '[explore|verify|screenshot|record|test <target>]'

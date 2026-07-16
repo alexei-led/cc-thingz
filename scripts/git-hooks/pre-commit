@@ -12,22 +12,20 @@ make lint || {
 	exit 1
 }
 
-# Validate plugin frontmatter (fast, ~1s) — catches broken manifests early
-make validate-config || {
-	echo "FAIL: make validate-config"
+# Validate canonical sources and Agent Bundler availability.
+make validate || {
+	echo "FAIL: make validate"
 	exit 1
 }
 
-# If anything under src/ is staged, rebuild dist/ so generated artifacts stay
-# in sync with their canonical sources. Re-stage updated dist/ files so the
-# commit includes the regenerated outputs.
-if git diff --cached --name-only --diff-filter=ACMR | grep -qE '^src/'; then
-	echo "src/ changed — running 'make build' to refresh dist/"
+# Rebuild when canonical source or Agent Bundler configuration changes.
+if git diff --cached --name-only --diff-filter=ACMR | grep -qE '^(src/|agentbundle\.json)'; then
+	echo "canonical source/config changed — running 'make build' to refresh dist/"
 	make build || {
 		echo "FAIL: make build"
 		exit 1
 	}
-	regen_paths=(dist/ .claude-plugin/marketplace.json .agents/plugins/marketplace.json gemini-extension.json)
+	regen_paths=(dist/)
 	if ! git diff --quiet -- "${regen_paths[@]}"; then
 		git add -- "${regen_paths[@]}"
 		echo "re-staged regenerated dist/ and root manifests"

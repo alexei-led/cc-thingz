@@ -1,9 +1,8 @@
 ---
-description: >-
-  Creates isolated git worktrees for parallel development. Use when starting
-  feature work needing isolation or working on multiple branches simultaneously.
-  NOT for simple branch switching, bulk branch cleanup (use cleanup-git), or git
-  hook/config setup (use configuring-git-hygiene).
+description: Creates isolated git worktrees for parallel development. Use when starting
+  feature work needing isolation or working on multiple branches simultaneously. NOT
+  for simple branch switching, bulk branch cleanup (use cleanup-git), or git hook/config
+  setup (use configuring-git-hygiene).
 name: using-git-worktrees
 ---
 
