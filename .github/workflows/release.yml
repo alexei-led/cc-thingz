@@ -23,6 +23,12 @@ jobs:
           version: latest
           enable-cache: true
       - run: uv sync --all-groups --extra test
+      - name: Install shell tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes shellcheck
+          go install mvdan.cc/sh/v3/cmd/shfmt@v3.13.1
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
       - name: Install Agent Bundler
