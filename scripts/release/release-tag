@@ -48,10 +48,31 @@ sed_inplace() {
 	rm -f "$file.release-tag.bak"
 }
 
+update_agentbundle_version() {
+	local path=$1
+	local version=$2
+	python3 - "$path" "$version" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+version = sys.argv[2]
+data = json.loads(path.read_text())
+data["distribution"]["version"] = version
+for output in data["composition"]:
+    aggregate = output.get("aggregate")
+    if aggregate is not None:
+        aggregate["metadata"]["version"] = version
+path.write_text(json.dumps(data, indent=2) + "\n")
+PY
+}
+
 # Bump Agent Bundler package metadata.
 shopt -s nullglob
 package_jsons=(src/.agentbundler/packages/*.json)
 project_version_files=(
+	agentbundle.json
 	pyproject.toml
 	uv.lock
 	package.json
@@ -70,7 +91,9 @@ for f in "${project_version_files[@]}"; do
 		echo "ERROR: expected version file missing: $f"
 		exit 1
 	fi
-	if [[ "$f" == *.toml ]]; then
+	if [[ "$f" == "agentbundle.json" ]]; then
+		update_agentbundle_version "$f" "$VERSION"
+	elif [[ "$f" == *.toml ]]; then
 		sed_inplace "s/^version = .*/version = \"$VERSION\"/" "$f"
 	else
 		sed_inplace "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" "$f"

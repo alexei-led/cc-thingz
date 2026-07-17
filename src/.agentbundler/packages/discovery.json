@@ -24,7 +24,8 @@
     {
       "path": "agents/engineer.md",
       "targets": [
-        "claude"
+        "claude",
+        "grok"
       ]
     },
     {
@@ -32,21 +33,25 @@
       "targets": [
         "claude",
         "copilot",
-        "cursor"
+        "cursor",
+        "grok"
       ]
     },
     {
       "path": "agents/runner.md",
       "targets": [
         "claude",
+        "codex",
         "pi",
         "copilot",
-        "cursor"
+        "cursor",
+        "grok"
       ]
     },
     {
       "path": "agents/advisor.md",
       "targets": [
+        "codex",
         "pi"
       ]
     }

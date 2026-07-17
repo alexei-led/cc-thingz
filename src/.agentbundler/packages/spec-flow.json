@@ -6,7 +6,8 @@
     {
       "path": "agents/engineer.md",
       "targets": [
-        "claude"
+        "claude",
+        "grok"
       ]
     },
     {
@@ -14,7 +15,8 @@
       "targets": [
         "claude",
         "copilot",
-        "cursor"
+        "cursor",
+        "grok"
       ]
     }
   ],

@@ -28,7 +28,8 @@
       "path": "agents/engineer.md",
       "targets": [
         "claude",
-        "pi"
+        "pi",
+        "grok"
       ]
     }
   ],

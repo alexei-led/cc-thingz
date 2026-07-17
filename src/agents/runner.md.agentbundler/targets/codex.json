@@ -1,0 +1,7 @@
+{
+  "frontmatterPatch": {
+    "model": "gpt-5.4-mini",
+    "effort": "low",
+    "sandbox_mode": "read-only"
+  }
+}

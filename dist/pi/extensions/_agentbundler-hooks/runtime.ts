@@ -66,6 +66,7 @@ export function createPiHookRuntime(pi: PiExtensionAPI, value: unknown, options:
         timeoutMilliseconds: hook.timeoutMilliseconds,
         signal: controller.signal,
         ...(options.outputLimitBytes === undefined ? {} : { outputLimitBytes: options.outputLimitBytes }),
+        ...(hook.environment === undefined ? {} : { environment: hook.environment }),
       });
       if (result.exitCode !== 0) {
         const detail = result.stderr.trim();
@@ -104,7 +105,7 @@ export function createPiHookRuntime(pi: PiExtensionAPI, value: unknown, options:
       } catch (error) {
         report(error, hook, options.onError);
         if (hook.failurePolicy === "open") continue;
-        if (hook.event === "pre-tool") return { block: true, reason: errorMessage(error) };
+        if (hook.event === "pre-tool") return { block: true, reason: `hook execution failed: ${errorMessage(error)}` };
         throw error;
       }
 

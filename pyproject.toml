@@ -3,9 +3,7 @@ name = "claude-code-config"
 version = "6.7.0"
 requires-python = ">=3.12"
 dependencies = [
-    "mergedeep",
     "python-frontmatter",
-    "pyyaml",
 ]
 
 [project.optional-dependencies]

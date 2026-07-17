@@ -1,12 +1,19 @@
 import { spawn, type ChildProcess } from "node:child_process";
+import { homedir } from "node:os";
 import { isAbsolute, relative, resolve } from "node:path";
 import type { HookCommand } from "./schema.js";
 
 export const DEFAULT_OUTPUT_LIMIT_BYTES = 64 * 1024;
 const KILL_GRACE_MILLISECONDS = 100;
-const HOOK_ENVIRONMENT_VARIABLES = process.platform === "win32"
-  ? new Set(["COMSPEC", "PATH", "PATHEXT", "SYSTEMROOT", "WINDIR"])
-  : new Set(["PATH"]);
+const COMMON_HOOK_ENVIRONMENT_VARIABLES = new Set([
+  "PATH", "HOME", "TMPDIR", "TMP", "TEMP", "LANG", "LC_ALL", "LC_CTYPE",
+  "LC_COLLATE", "LC_MESSAGES", "LC_MONETARY", "LC_NUMERIC", "LC_TIME", "LC_PAPER",
+  "LC_NAME", "LC_ADDRESS", "LC_TELEPHONE", "LC_MEASUREMENT", "LC_IDENTIFICATION",
+]);
+const WINDOWS_HOOK_ENVIRONMENT_VARIABLES = new Set([
+  "COMSPEC", "PATHEXT", "SYSTEMROOT", "WINDIR", "USERPROFILE", "HOMEDRIVE", "HOMEPATH",
+  "APPDATA", "LOCALAPPDATA", "PROGRAMDATA",
+]);
 
 export interface ProcessResult {
   exitCode: number | null;
@@ -21,6 +28,7 @@ export interface RunProcessOptions {
   timeoutMilliseconds: number;
   signal?: AbortSignal;
   outputLimitBytes?: number;
+  environment?: readonly string[];
 }
 
 export type ProcessRunner = (command: HookCommand, options: RunProcessOptions) => Promise<ProcessResult>;
@@ -54,7 +62,7 @@ export const runProcess: ProcessRunner = async (command, options) => {
       child = spawn(invocation.program, invocation.arguments, {
         cwd: options.packageRoot,
         detached: process.platform !== "win32",
-        env: hookEnvironment(),
+        env: hookEnvironment(options.environment),
         stdio: ["pipe", "pipe", "pipe"],
       });
     } catch (error) {
@@ -125,15 +133,30 @@ export const runProcess: ProcessRunner = async (command, options) => {
   });
 };
 
-function hookEnvironment(): Record<string, string> {
+export function hookEnvironment(
+  requested: readonly string[] = [],
+  parent: Readonly<Record<string, string | undefined>> = process.env,
+): Record<string, string> {
+  const allowed = new Set(COMMON_HOOK_ENVIRONMENT_VARIABLES);
+  if (process.platform === "win32") {
+    for (const name of WINDOWS_HOOK_ENVIRONMENT_VARIABLES) allowed.add(name);
+  }
+  for (const name of requested) allowed.add(canonicalEnvironmentName(name));
+
   const environment: Record<string, string> = {};
-  for (const [name, value] of Object.entries(process.env)) {
-    const canonicalName = process.platform === "win32" ? name.toUpperCase() : name;
-    if (value !== undefined && HOOK_ENVIRONMENT_VARIABLES.has(canonicalName)) {
-      environment[canonicalName] = value;
-    }
+  for (const [name, value] of Object.entries(parent)) {
+    const canonicalName = canonicalEnvironmentName(name);
+    if (value !== undefined && allowed.has(canonicalName)) environment[canonicalName] = value;
+  }
+  if (environment.HOME === undefined) {
+    const fallback = homedir();
+    if (fallback !== "") environment.HOME = fallback;
   }
   return environment;
+}
+
+function canonicalEnvironmentName(name: string): string {
+  return process.platform === "win32" ? name.toUpperCase() : name;
 }
 
 function invocationFor(command: HookCommand, packageRoot: string): { program: string; arguments: string[] } {

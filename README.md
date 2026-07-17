@@ -2,19 +2,21 @@
 
 [![CI](https://github.com/alexei-led/cc-thingz/actions/workflows/ci.yml/badge.svg)](https://github.com/alexei-led/cc-thingz/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Agent Bundler](https://img.shields.io/badge/Agent_Bundler-v0.4.2+-00897B)](https://github.com/alexei-led/agentbundler)
+[![Agent Bundler](https://img.shields.io/badge/Agent_Bundler-compatible_build_required-00897B)](https://github.com/alexei-led/agentbundler)
 [![Skills](https://img.shields.io/badge/skills-29-green)](src/skills/)
 
-Portable skills and agents for Claude Code, Codex CLI, Pi, GitHub Copilot, and
+Portable skills and agents for Claude Code, Codex CLI, Pi, GitHub Copilot,
 Cursor, and Grok. Gemini is retired.
 
 ## Build
 
-Install Agent Bundler v0.4.2 or newer:
+This branch requires an Agent Bundler build with `package`, flat per-agent
+sidecars, declared hook environments, bundled Pi dependencies, and native Pi
+extension assets and Codex project-agent profiles. Verify the installed binary
+supports packaging:
 
 ```bash
-brew install alexei-led/tap/agentbundler
-agbun --version
+agbun package --help
 ```
 
 Build and check the complete generated tree:
@@ -25,8 +27,8 @@ make check
 ```
 
 `make build` is a direct `agbun build --root .` invocation. `make check` runs
-the build and then `agbun check --root .`. Agent Bundler replaces the configured
-`dist/` output tree, so do not edit generated files.
+the non-mutating `agbun check --root .` drift gate. Agent Bundler replaces the
+configured `dist/` output tree during builds, so do not edit generated files.
 
 ## Source layout
 
@@ -38,7 +40,8 @@ src/
 ├── agents/<name>.md                # canonical agent assets
 ├── .agentbundler/packages/*.json   # package membership and metadata
 ├── hooks/<name>/                   # typed Agent Bundler hooks
-└── pi-extensions/                  # source-only Pi-native extension gap
+├── plugins/pi/<asset>/             # declarative Pi-native extension trees
+└── pi-extensions/                  # source-only legacy extension dependencies
 
 dist/<target>/<package>/             # generated Agent Bundler package roots
 ```
@@ -64,34 +67,57 @@ manifest or edit `dist/` by hand.
 | Grok Build     | `dist/grok/<package>/`    | enabled                                |
 | Gemini CLI     | none                      | retired                                |
 
-## Installation boundaries
+## Release packages
 
-Agent Bundler renders package layouts. It does not publish marketplaces, install
-packages, run vendor smoke tests, or package arbitrary Pi-native extensions.
+`agbun package --root . --out DIR` creates deterministic, target-native release
+archives:
 
-The generated package roots are intended to be copied or installed according to
-the target vendor's current documentation. No cc-thingz marketplace manifest
-is generated anymore.
+- `cc-thingz-claude.tar.gz`
+- `cc-thingz-codex.tar.gz`
+- `cc-thingz-pi.tgz`
+- `cc-thingz-copilot.tar.gz`
+- `cc-thingz-cursor.tar.gz`
+- `cc-thingz-grok.tar.gz`
 
-Agent Bundler v0.4.2 emits typed hook payloads and manifests, including the Pi
-aggregate hook runtime. The source-only Pi extensions in `src/pi-extensions/`
-remain unbundled because arbitrary Pi native resources are not yet supported.
+Once a compatible Agent Bundler tag is pinned, the release workflow attaches
+all six files. Each archive expands directly to the native package or
+marketplace root shown above. The Codex archive also includes separate
+`.codex/agents/*.toml` profiles; they are not plugin contents. Installation and marketplace
+registration still use the target vendor's CLI; Agent Bundler does not mutate
+user configuration or publish to a vendor registry.
 
-## Agent Bundler gaps
+The Pi archive is directly installable:
 
-Current `agbun v0.4.2` still does not provide these cc-thingz behaviors:
+```bash
+pi install ./cc-thingz-pi.tgz -l
+```
 
-- Pi TypeScript extension copying and runtime package registration;
-- typed Claude lifecycle hooks for exit-plan mode and worktree creation/removal;
-- portable blocking/rewrite hooks outside Pi;
-- a lossless Cursor edit matcher or Pi notification event;
-- marketplace publishing, installation workflows, or vendor runtime smoke tests.
+For a local release rehearsal:
 
-See [Agent Bundler gaps](docs/agentbundler-gaps.md) for the exact capability
-requests and source-only compatibility hooks.
+```bash
+agbun check --root .
+agbun package --root . --out /tmp/cc-thingz-release
+```
 
-These gaps are now explicit. Add a native adapter only when the behavior is
-needed; do not rebuild a second general-purpose skill compiler in Python.
+The generated Pi package includes its typed hook adapter, bundled
+`pi-subagents` runtime, and native `ask_user_question`, `structured_output`,
+and `todo` extensions from `src/plugins/pi/extensions/`. The legacy
+`hook-runner`, `permission-gate`, `plan-mode`, and shared bridge remain
+source-only because their synthetic-hook runtime configuration is incomplete.
+
+The package command, flat per-agent sidecars, safe Pi hook environments, and
+bundled Pi dependencies, native extension assets, and Codex project-agent
+profiles require a compatible installed Agent Bundler.
+
+## Remaining Agent Bundler gaps
+
+Current unsupported behavior includes Claude exit-plan/worktree lifecycle
+hooks, incomplete legacy Pi hook-runner configuration, portable block/rewrite
+guards outside Pi, lossless Cursor edit matching, and Pi notifications. Codex
+agents render as separate `.codex/agents/*.toml` profiles, not plugin contents.
+
+See [Agent Bundler migration status](docs/agentbundler-gaps.md) for exact
+boundaries. Do not recreate a custom compiler or post-process `dist/`.
 
 ## Development checks
 
@@ -103,12 +129,14 @@ make check
 make test
 make test-ts
 make ci
+agbun package --root . --out /tmp/cc-thingz-release
 ```
 
 `make validate` checks Agent Bundler availability, source genericity, and
 executable source scripts. `make test` covers source and release helpers.
 `make test-ts` covers source-only Pi extension behavior. `make test` verifies
-Agent Bundler hook manifests and Pi decision-hook protocol output.
+Agent Bundler hook manifests, target inventories, agent envelopes, version
+consistency, release archives, and Pi decision-hook protocol output.
 
 ## Contributing
 

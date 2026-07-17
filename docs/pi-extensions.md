@@ -1,525 +1,95 @@
-# Pi Extensions
+# Pi package
 
-Extensions bundled with cc-thingz that run inside [Pi](https://pi.dev). All
-extensions install automatically when you `pi install` this package.
+Agent Bundler produces one aggregate Pi package at `dist/pi/`. Release builds
+archive that package as `cc-thingz-pi.tgz`.
 
-## Included Extensions
+## Generated resources
 
-### hook-runner
+The package registers:
 
-Bridges Pi's lifecycle events to the same CC-compatible hook scripts used by
-Claude Code and Codex. This is the primary integration point between Pi and
-the rest of cc-thingz.
+- `extensions/agentbundler-hooks.ts` — the generated typed hook adapter;
+- `extensions/ask-user-question.ts`, `extensions/structured-output.ts`, and
+  `extensions/todo.ts` — declaratively bundled native tool extensions;
+- `node_modules/pi-subagents/src/extension/index.ts` — the bundled subagent
+  runtime;
+- `skills/` — all Pi-eligible cc-thingz skills;
+- `agents/` — advisor, engineer, reviewer, and runner definitions;
+- `hooks/hooks.v1.json` — normalized hook data consumed by the adapter.
 
-**What it wires:**
+`pi-subagents` and its runtime dependencies are present in
+`bundledDependencies`, so a fresh installation does not require a separate
+`pi install npm:pi-subagents` step.
 
-| Pi event                   | Hook script         | Behavior                                                      |
-| -------------------------- | ------------------- | ------------------------------------------------------------- |
-| `session_start`            | `session-start.py`  | Prints project context to chat on startup                     |
-| `session_start` / all      | `ccgram hook`       | Tracks sessions in ccgram (async)                             |
-| `before_agent_start`       | `skill-enforcer.sh` | Suggests relevant skills before each prompt                   |
-| `tool_call` (Write/Edit)   | `file-protector.py` | Blocks writes to protected paths                              |
-| `tool_call` (Bash)         | `git-guardrails.sh` | Blocks destructive git commands                               |
-| `tool_result` (Write/Edit) | `smart-lint.sh`     | Injects focused lint errors into tool result (LLM feedback)   |
-| `agent_end` (`Stop`)       | `test-runner.sh`    | Runs focused tests once after the agent turn                  |
-| `agent_end`                | `ccgram hook`       | Tracks session end in ccgram (async)                          |
-| `agent_end`                | `notify.sh`         | Fires a macOS idle-prompt notification on every `agent_end`   |
-| `input` (slash commands)   | user-configured     | Emits `UserPromptExpansion` hooks before command expansion    |
-| `turn_end` (tool batches)  | user-configured     | Emits `PostToolBatch` hooks with per-turn tool call summaries |
-
-**Hook configuration:** default hook wiring is data, not hard-coded. The
-package ships `dist/pi/extensions/hooks.json` (generated at build time from
-`src/hooks/*/meta.yaml` plus `scripts/build/pi-hooks-external.json`), and
-hook-runner loads it at runtime. Sources are merged in this order
-(bundled → package → global → project):
-
-- bundled defaults from `dist/pi/extensions/hooks.json`
-- per-package contributions via `cc-thingz.hooks` in any installed Pi
-  package's `package.json` (auto-discovered under `~/.pi/agent/git/`)
-- `hooks` key in global `settings.json` or project `.pi/settings.json`
-- dedicated global `hooks.json` or project `.pi/hooks.json`
-
-The global config directory is `PI_CODING_AGENT_DIR` when set, otherwise Pi's
-default `~/.pi/agent`. `hooks.json` accepts either the direct hooks map or
-`{ "hooks": { ... } }`.
-
-Example in `settings.json`:
-
-```jsonc
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/usr/local/bin/my-audit.sh",
-            "timeout": 10,
-          },
-        ],
-      },
-    ],
-  },
-}
-```
-
-Equivalent `hooks.json` form:
-
-```jsonc
-{
-  "PreToolUse": [
-    {
-      "matcher": "Bash",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "/usr/local/bin/my-audit.sh",
-          "timeout": 10,
-        },
-      ],
-    },
-  ],
-}
-```
-
-Hook commands run via `bash -c`, so shell features and PATH resolution work.
-User hooks are appended after bundled defaults. The `matcher` field is a
-case-insensitive regex matched against the CC tool name (e.g. `Write`, `Bash`,
-`MultiEdit`).
-
-Disable bundled defaults while keeping user/project hooks by adding this to
-`.pi/hooks.json`:
-
-```jsonc
-{
-  "hookRunner": {
-    "disableBundledHooks": true,
-  },
-}
-```
-
-`smart-lint.sh` is scoped to the edited file set from hook stdin and falls
-back to git diff only for small changed-file sets. It formats and lints focused
-files first, then uses project fallbacks only for the missing side: package
-scripts (`fmt` / `format`, `lint`) before Makefile targets (`fmt`, `lint`). For
-C# /.NET, source edits use `dotnet format` on the nearest project or containing
-solution with `--include`; `.csproj`, `.sln`, `.props`, and `.targets` edits use
-the nearest safe project or solution target. For Java/Kotlin, file-scoped
-`google-java-format`, `ktlint --format`, and `detekt --input` run first, with
-configured Gradle/Maven Spotless/detekt fallbacks only when needed. Disable
-project fallbacks with `HOOK_PROJECT_FALLBACK=0` or a `.nohooks-project` file.
-
-`test-runner.sh` runs on `Stop`, using the edited-file state from
-`smart-lint.sh`; it runs focused tests only unless `TEST_RUNNER_FULL=1` is set.
-Focused tests use pytest, Go packages, Cargo manifests, Gradle/Maven Java/Kotlin
-module filters, `dotnet test` on the nearest obvious test `*.csproj`, else the
-containing `*.sln`, else the nearest `*.csproj`, Vitest related tests, Jest
-related tests, Bun tests, or Bats where applicable. If a changed file lives
-under a nearest non-root Makefile with `test`, `tests`, `check`, or `verify`,
-that target runs before the generic language runners. Otherwise focused runners
-try first, then package scripts (`test`, `tests`, `check`, `verify`).
-`TEST_RUNNER_FULL=1` runs one project-level target: root Makefile,
-then Go/Rust/Java/Kotlin/C#/.NET/Python runners, then package scripts selected by yarn/bun/npm lockfiles.
-
-Mute individual hooks (bundled or user) by basename without disabling the
-whole bundled set:
-
-```jsonc
-{
-  "hookRunner": {
-    "disabledHooks": ["smart-lint.sh", "test-runner.sh"],
-  },
-}
-```
-
-`disabledHooks` is merged from every config file that hook-runner reads
-(global and project). Entries still appear in `/hooks` → **Show active hooks**
-with a `(disabled)` marker so they remain discoverable.
-
-**Package-contributed hooks:** any Pi package installed via `pi install` may
-register hooks declaratively. Add a `cc-thingz.hooks` field to the package's
-`package.json` mirroring the standard hook config shape:
-
-```jsonc
-{
-  "name": "my-pi-plugin",
-  "cc-thingz": {
-    "hooks": {
-      "PostToolUse": [
-        {
-          "matcher": "Write|Edit",
-          "hooks": [
-            { "type": "command", "command": "/usr/local/bin/my-audit" },
-          ],
-        },
-      ],
-    },
-  },
-}
-```
-
-Hook-runner scans `~/.pi/agent/git/<host>/<org>/<repo>/package.json` at
-session start and merges contributions under `source: "package"`. The
-`/hooks` UI labels them accordingly. This removes the need for cc-thingz
-edits when a third-party Pi extension wants to ship a hook.
-
-**Progress protocol:** long-running hooks may emit lines on stderr matching
-`^^PROGRESS <0-100> <message>` to report progress. Hook-runner strips the
-markers from the stderr that reaches the LLM feedback loop and surfaces the
-last update through an internal `onProgress` callback. Hooks that don't emit
-the marker behave unchanged.
-
-**Telemetry:** every hook run appends a JSONL line to
-`~/.pi/agent/logs/hooks.log` recording `ts`, `hook`, `event`, `source`,
-`exit_code`, `duration_ms`, `timed_out`, and `stderr_head` (first 500
-characters). Useful for diagnosing flaky hooks. Disable by setting
-`PI_HOOKS_DISABLE_TELEMETRY=1` in the environment. The writer is
-best-effort — telemetry failures never break dispatch.
-
-Use `/hooks` in Pi for an interactive TUI:
-
-- **Show active hooks** — lists every loaded hook grouped by event, with its
-  matcher, source (`bundled` / `global` / `project` / `package`), and disabled status.
-  `package` is for hooks contributed by installed Pi packages via the
-  `cc-thingz.hooks` field in their `package.json` (auto-discovered at session start).
-- **Toggle individual hook** — pick a hook from the list, then choose whether
-  to record the toggle in project (`.pi/hooks.json`) or global
-  (`~/.pi/agent/hooks.json`) `hookRunner.disabledHooks`.
-- **Disable/Enable bundled hooks (project)** — flips
-  `hookRunner.disableBundledHooks` in `.pi/hooks.json`.
-- **Edit project hooks (`.pi/hooks.json`)** — opens the project config in the
-  TUI editor; saves are JSON-validated and trigger a reload.
-- **Edit global hooks (`~/.pi/agent/hooks.json`)** — same flow for the global
-  scope so the same hook can apply across projects.
-
-**Synthetic event bridge for extensions:** other Pi extensions can invoke
-hook-runner directly via `cc-hooks:invoke` event-bus channel to trigger
-first-class CC hook events not emitted natively by Pi. Payload shape:
-
-```ts
-pi.events.emit("cc-hooks:invoke", {
-  hookEventName: "ConfigChange", // any supported synthetic event
-  stdin: {
-    session_id: ctx.sessionManager.getSessionId(),
-    cwd: ctx.cwd,
-    hook_event_name: "ConfigChange",
-    source: "project_settings",
-    file_path: `${ctx.cwd}/.pi/settings.json`,
-  },
-  onResult: (result) => {
-    // { blocked?, reason?, additionalContext?, ... }
-  },
-});
-```
-
-Additional compatibility behavior:
-
-- `find` tool is exposed to hooks as CC tool name `Glob`
-- `subagent` tool is exposed as `Agent`
-- `ask_user_question` is exposed as `AskUserQuestion`
-- plan-mode emits a synthetic `PreToolUse` event with
-  `tool_name: ExitPlanMode` when the user picks **Execute the plan**
-- native extra hooks:
-  - `InstructionsLoaded` (session-start snapshot of loaded AGENTS/CLAUDE/rules files)
-  - `CwdChanged` (when cwd changes between turns)
-  - `StopFailure` (when assistant turn ends with `stopReason: error`)
-- extensions can emit synthetic CC-style hook events through Pi's event bus channel `cc-hooks:invoke`
-  for additional first-class events such as:
-  `Setup`, `TeammateIdle`, `ConfigChange`, `FileChanged`, `WorktreeCreate`,
-  `WorktreeRemove`, `Elicitation`, `ElicitationResult`, `TaskCreated`,
-  `TaskCompleted`, `PostToolBatch`, `UserPromptExpansion`
-
-**Exit code semantics** (same as Claude Code):
-
-- `0` — allow; stdout shown to user (`SessionStart`) or injected as LLM
-  context (`UserPromptSubmit`)
-- `1` — non-blocking error; logged and shown to user, execution continues
-- `2` — significant: blocks the tool call (`PreToolUse`), injects stderr into
-  tool result so the LLM self-corrects (`PostToolUse`), blocks slash-command
-  expansion (`UserPromptExpansion`), injects context before the prompt
-  (`UserPromptSubmit`), or — for `Stop` — surfaces stderr as an agent-visible
-  message that triggers a follow-up turn (handled via
-  `sendHookMessageToAgent` in `hook-runner/index.ts`).
-
-#### Revdiff plan-review integration (Pi + hook-runner)
-
-The bundled `hooks.json` includes a default `PreToolUse` hook for
-`ExitPlanMode`:
-
-```jsonc
-{
-  "matcher": "ExitPlanMode",
-  "hooks": [
-    {
-      "type": "command",
-      "command": "${PI_HOOKS_DIR}/revdiff-plan-review.py",
-      "timeout": 1740,
-    },
-  ],
-}
-```
-
-The wrapper is optional and safe by default:
-
-- If the `revdiff` package is not installed, it exits cleanly and plan
-  execution proceeds.
-- If installed, it resolves
-  `plugins/revdiff-planning/scripts/plan-review-hook.py` from:
-  - project-local `.pi/git/github.com/umputun/revdiff/...`
-  - `PI_PACKAGE_DIR` candidates
-  - global `PI_CODING_AGENT_DIR/git/github.com/umputun/revdiff/...`
-- It sets the Claude-compatible environment expected by `revdiff-planning`:
-  `CLAUDE_PLUGIN_ROOT`, `CLAUDE_PROJECT_DIR`, and `CLAUDE_PLUGIN_DATA`.
-- `revdiff-planning` preserves the Claude Code loop: annotations return deny
-  (`exit 2`), Pi keeps plan mode active, and the model revises the plan before
-  trying `ExitPlanMode` again.
-
-Install revdiff to activate the loop:
+Install a release archive in a project:
 
 ```bash
-pi install git:github.com/umputun/revdiff
+pi install ./cc-thingz-pi.tgz -l
 ```
 
-Requires the `revdiff` binary on `PATH` and a supported launcher environment
-from the revdiff package. Re-run the plan loop until hook output is clean, then
-execute.
-
-Supported CC hook events in this Pi bridge:
-
-- Native mappings: `SessionStart`, `SessionEnd`, `Stop`, `StopFailure`,
-  `Notification`, `PreToolUse`, `PostToolUse`, `PostToolUseFailure`,
-  `PostToolBatch`, `UserPromptSubmit`, `UserPromptExpansion`, `PreCompact`,
-  `PostCompact`, `InstructionsLoaded`, `CwdChanged`
-- Synthetic via `cc-hooks:invoke`: `Setup`, `PermissionRequest`,
-  `PermissionDenied`, `TaskCreated`, `TaskCompleted`, `TeammateIdle`,
-  `ConfigChange`, `FileChanged`, `WorktreeCreate`, `WorktreeRemove`,
-  `Elicitation`, `ElicitationResult`
-- Reserved for CC schema compatibility but **not currently emitted by Pi**:
-  `SubagentStart`, `SubagentStop`. Hooks configured under these keys load but
-  never fire — Pi has no reliable subagent lifecycle runtime events yet. Use
-  `SessionStart` / `SessionEnd` for the whole session and `Stop` /
-  `StopFailure` for the outer agent turn instead.
-
-`FileChanged`, `WorktreeCreate/Remove`, and MCP elicitation events are extension-driven in Pi (no built-in runtime event), so emit them through the synthetic bridge when your integration owns those flows.
-
-### ask-user-question
-
-Registers an `ask_user_question` tool that lets the LLM ask the user
-structured questions (single-select, multi-select, or free text). Used by
-`smart-lint.sh` when it needs a decision before applying a fix.
-
-Selectable prompts keep choices visible by wrapping and capping long question
-text. Single-select questions render as a navigable selector; multi-select
-questions open an editor with capped question text, numbered options, and
-comma-separated input guidance.
-
-No configuration.
-
-### permission-gate
-
-Intercepts `bash` tool calls matching dangerous patterns (`rm -rf`, `sudo`,
-`chmod/chown 777`) and prompts the user before proceeding. In non-interactive
-mode, blocks automatically.
-
-Also emits synthetic hook events through `cc-hooks:invoke`:
-
-- `PermissionRequest` before prompting (hook can allow, deny, or patch command)
-- `PermissionDenied` after a deny/block path
-
-Hook timeouts for `PermissionRequest` fail closed.
-
-No configuration needed. If you want to disable it, remove or rename the
-extension after install.
-
-### plan-mode
-
-Adds a plan mode that intercepts the agent's plan output, extracts numbered
-steps, and surfaces a progress tracker in the Pi TUI. Bash commands are
-restricted to an allowlisted read-only set while plan mode is active.
-
-On **Execute the plan**, plan-mode emits synthetic `PreToolUse` with
-`tool_name: ExitPlanMode` to support hook-based plan review (for example,
-revdiff plan-review loop). Empty plan content skips the hook (fail-open).
-Review hook timeouts block exit (fail-closed); align per-entry `timeout` in
-`hooks.json` to fire before the 30-minute outer wait.
-
-No configuration.
-
-### structured-output
-
-Registers a `structured_output` tool for the LLM to emit machine-readable
-JSON. Used by skills that need to pass structured data to follow-on tools.
-
-No configuration.
-
-### subagent
-
-Provides `subagent`, `wait`, and `subagent_supervisor` tools, enabling
-multi-agent orchestration inside a single Pi session.
-
-Runtime config lives at `~/.pi/agent/extensions/subagent/config.json`.
-
-### todo
-
-Registers a fallback `todo` tool for the LLM to maintain a persistent todo
-list across an agent session. Displayed in the Pi TUI sidebar.
-
-Use this when richer Task* tooling is not installed, or when you want the
-bundled branch-aware session-history behavior.
-
-No configuration.
-
----
-
-## Recommended Third-Party Extensions
-
-These extensions are used by cc-thingz skills or complement the workflow.
-Install each with `pi install`.
-
-### pi-powerline-footer
-
-Adds a configurable powerline-style status footer to the Pi TUI.
+For local development, build and install the generated package root:
 
 ```bash
-pi install npm:pi-powerline-footer
+make build
+pi install "$(pwd)/dist/pi" -l
 ```
 
-No skills depend on this directly, but it improves session readability.
+Run `/reload` or restart Pi after replacing a linked package.
 
-### pi-subagents
+## Generated hook coverage
 
-Provides the agent loader that reads agents from user/project directories and
-from installed package manifests. Required for cc-thingz Pi agents to work:
+The aggregate adapter currently handles these portable events:
+
+- session start;
+- prompt submission;
+- pre-tool command and write checks;
+- post-tool linting;
+- stop/test handling.
+
+The Pi package includes file protection and git guardrails. Hook subprocesses
+receive only the environment variables declared in each hook descriptor plus
+Agent Bundler's safe runtime baseline. They do not inherit arbitrary parent
+secrets.
+
+## Native extension assets
+
+`src/plugins/pi/extensions/` is a declarative native-resource asset. Its
+`.agentbundler/asset.json` registers only these entrypoints:
+
+- `extensions/ask-user-question.ts`;
+- `extensions/structured-output.ts`;
+- `extensions/todo.ts`.
+
+Agent Bundler copies the complete asset tree to the Pi package root and registers
+only those paths in `package.json#pi.extensions`. Add an entrypoint only when
+its relative imports and runtime contract are complete. Do not copy files into
+`dist/` after generation.
+
+## Source-only legacy extensions
+
+`src/pi-extensions/` retains the incomplete synthetic-hook stack:
+
+- `hook-runner` and its hook configuration;
+- `permission-gate`;
+- `plan-mode`;
+- shared hook bridge code.
+
+`permission-gate` and `plan-mode` call the shared bridge. Without a complete,
+bundled `hook-runner` configuration they cannot safely be registered: permission
+decisions fail closed and plan exit can wait for the outer hook timeout. Their
+source tests remain, but the release package does not expose them.
+
+## Verification
 
 ```bash
-pi install npm:pi-subagents
+agbun check --root .
+pytest -q tests/test_agentbundler_hooks.py tests/test_agentbundler_release.py
+make lint-typescript
+make test-ts
 ```
 
-cc-thingz now exposes Pi agents through `package.json` `pi.subagents.agents`, so
-new installs do not need a `~/.pi/agent/agents` symlink. If an old symlink is
-still present, remove it so builtin `pi-subagents` agents are not shadowed by
-user-scoped cc-thingz copies:
+The release tests verify the generated hook inventory, agent frontmatter,
+bundled Pi dependency, deterministic archive contents, and an isolated local
+`pi install` when the Pi CLI is available.
 
-```bash
-[ -L ~/.pi/agent/agents ] && rm ~/.pi/agent/agents
-```
-
-Project-local custom agents are read from `.pi/agents/*.md`. This repo adds
-package-qualified Pi agents to avoid collisions with `pi-subagents` builtins:
-
-- `cc-thingz.advisor`
-- `cc-thingz.engineer`
-- `cc-thingz.reviewer`
-- `cc-thingz.runner`
-
-cc-thingz Pi agents intentionally leave `model` and `thinking` unset in package
-frontmatter. By default they inherit the active Pi session model. Set local
-policy outside cc-thingz in `~/.pi/agent/settings.json` or `.pi/settings.json`:
-
-```json
-{
-  "subagents": {
-    "agentOverrides": {
-      "cc-thingz.engineer": {
-        "model": "openai-codex-personal/gpt-5.4",
-        "fallbackModels": ["openai-codex-work/gpt-5.4"],
-        "thinking": "high"
-      }
-    }
-  }
-}
-```
-
-Advisor source layout:
-
-- `src/agents/advisor/AGENT.md`
-- `src/agents/advisor/pi/frontmatter.yaml`
-
-Compiled artifact: `dist/pi/agents/advisor.md`.
-
-Advisor can use read-only exploration tools (`read`, `grep`, `find`, `ls`,
-read-only `bash`) and must avoid file edits.
-
-Expected advisor output:
-
-- `Verdict`
-- `Top Risks` (ranked)
-- `Next Actions` (ordered, concrete)
-
-Invoke with `subagent({ agent: "cc-thingz.advisor", ... })`.
-
-### @tintinweb/pi-tasks
-
-Adds a richer task widget plus Claude-style Task* tools for structured task
-tracking on Pi.
-
-```bash
-pi install npm:@tintinweb/pi-tasks
-```
-
-cc-thingz Pi skills prefer that Task* toolset when it is available and fall
-back to the bundled `todo` extension otherwise.
-
-### @trevonistrevon/pi-loop
-
-Adds `Loop*` scheduling tools plus `Monitor*` background-command tools.
-Useful for periodic checks, event-driven follow-up, and long-running commands
-that should finish in the background.
-
-```bash
-pi install npm:@trevonistrevon/pi-loop
-```
-
-`pi-loop` auto-detects `@tintinweb/pi-tasks`; no extra wiring is needed.
-When both are installed, Pi gets the richer Task* tools from `pi-tasks` and the
-loop/monitor tools from `pi-loop`.
-
-cc-thingz Pi skills prefer `MonitorCreate` over Bash sleep/poll loops for
-long-running background work, and prefer `LoopCreate` for scheduled or
-event-driven follow-up when those tools are available.
-
-### revdiff
-
-Used by the `reviewing-code` skill for rendering code review diffs in Pi.
-
-```bash
-pi install git:github.com/umputun/revdiff
-```
-
-### pi-web-providers
-
-Adds web search and research providers to Pi (used by the `researching-web`
-skill).
-
-```bash
-pi install npm:pi-web-providers
-```
-
-### @latentminds/pi-quotas
-
-Tracks token and cost quotas per session. Useful when running long coding
-sessions.
-
-```bash
-pi install npm:@latentminds/pi-quotas
-```
-
----
-
-## Extension Loading
-
-Pi loads extensions from the directories declared in `package.json`:
-
-```json
-"pi": {
-  "extensions": ["./dist/pi/extensions"],
-  "skills": ["./dist/pi/skills"]
-}
-```
-
-After `make build`, run `pi install "$(pwd)"` (or `pi install git:github.com/alexei-led/cc-thingz`)
-to register the latest build. Run `/reload` in Pi or restart it to pick up changes.
-
-Test files (`*.test.ts`) are excluded from `dist/pi/extensions/` by the build
-compiler and are never loaded by Pi.
+See [Agent Bundler migration status](agentbundler-gaps.md) for unsupported
+lifecycle events and remaining vendor gaps.

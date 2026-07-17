@@ -39,6 +39,7 @@ export interface HookDescriptor {
   timeoutMilliseconds: number;
   asynchronous: boolean;
   failurePolicy: "open" | "closed";
+  environment?: string[];
   order: number;
 }
 
@@ -92,7 +93,7 @@ function decodeHook(value: unknown, index: number): HookDescriptor {
   const field = `config.hooks[${index}]`;
   const object = asObject(value, field);
   // location is source evidence used by Go and deliberately ignored by this runtime.
-  exactKeys(object, ["identity", "location", "event", "matcher", "handler", "timeoutMilliseconds", "asynchronous", "failurePolicy", "order"], field);
+  exactKeys(object, ["identity", "location", "event", "matcher", "handler", "timeoutMilliseconds", "asynchronous", "failurePolicy", "environment", "order"], field);
   const identity = nonEmptyString(object.identity, `${field}.identity`);
   if (!EVENTS.has(object.event as HookEvent)) {
     throw new Error(`${field}.event is unsupported`);
@@ -126,6 +127,20 @@ function decodeHook(value: unknown, index: number): HookDescriptor {
     failurePolicy: object.failurePolicy,
     order,
   };
+  if (object.environment !== undefined) {
+    if (!Array.isArray(object.environment)) throw new Error(`${field}.environment must be an array`);
+    const environment = object.environment.map((name, environmentIndex) => {
+      const value = nonEmptyString(name, `${field}.environment[${environmentIndex}]`);
+      if (!/^[A-Za-z_][A-Za-z0-9_]*$/u.test(value)) {
+        throw new Error(`${field}.environment[${environmentIndex}] must be an environment variable name`);
+      }
+      return value;
+    });
+    if (new Set(environment).size !== environment.length) {
+      throw new Error(`${field}.environment contains a duplicate`);
+    }
+    hook.environment = environment;
+  }
   if (object.matcher !== undefined && object.matcher !== null) {
     if (event !== "pre-tool" && event !== "post-tool" && event !== "post-tool-failure") {
       throw new Error(`${field}.matcher is only valid for tool hooks`);
@@ -224,7 +239,7 @@ function exactKeys(object: JSONObject, allowed: readonly string[], field: string
     if (!allowedSet.has(key)) throw new Error(`${field} contains unknown field ${JSON.stringify(key)}`);
   }
   for (const key of allowed) {
-    if (key !== "location" && key !== "matcher" && object[key] === undefined) {
+    if (key !== "location" && key !== "matcher" && key !== "environment" && object[key] === undefined) {
       throw new Error(`${field}.${key} is required`);
     }
   }

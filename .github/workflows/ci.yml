@@ -61,6 +61,8 @@ jobs:
               - '.node-version'
             typescript:
               - 'src/pi-extensions/**/*.ts'
+              - 'src/plugins/**/*.ts'
+              - 'tests/pi-extensions/**/*.ts'
               - 'package.json'
               - 'tsconfig.json'
   lint-python:
@@ -97,7 +99,7 @@ jobs:
         with:
           globs: |
             **/*.md
-            !node_modules/**
+            !**/node_modules/**
   lint-typescript:
     name: Lint TypeScript
     needs: changes
@@ -124,7 +126,7 @@ jobs:
           go-version: 1.26.x
       - name: Install Agent Bundler
         run: |
-          go install github.com/alexei-led/agentbundler/cmd/agbun@v0.4.2
+          go install github.com/alexei-led/agentbundler/cmd/agbun@latest
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - run: make validate check
   test:
@@ -143,7 +145,7 @@ jobs:
           go-version: 1.26.x
       - name: Install Agent Bundler
         run: |
-          go install github.com/alexei-led/agentbundler/cmd/agbun@v0.4.2
+          go install github.com/alexei-led/agentbundler/cmd/agbun@latest
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - run: make test
   test-typescript:

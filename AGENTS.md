@@ -5,13 +5,13 @@ Portable skills, agents, and typed hooks for Pi, Claude Code, Codex CLI, Copilot
 ## Build
 
 ```bash
-make build    # render package targets and typed hooks with Agent Bundler v0.4.2+
+make build    # render package targets and typed hooks with Agent Bundler
 make fmt      # auto-fix ruff + shfmt + markdownlint
-make check    # rebuild and fail on generated drift
+make check    # fail on generated drift without rewriting dist
 make ci       # lint + validate + check + test + test-ts
 ```
 
-`make build` requires `agbun` v0.4.2+ on `PATH` and needs sandbox disabled — uv cache at `~/.cache/uv` is restricted in the CC sandbox.
+`make build` requires an installed `agbun` with `package`, flat per-agent sidecars, declared hook environments, bundled Pi dependencies, native Pi resources, and Codex project-agent profiles. Builds need sandbox disabled because the uv cache at `~/.cache/uv` is restricted in the CC sandbox.
 
 ## Writing Agent/Skill Instructions
 
@@ -61,7 +61,7 @@ Routing lives in the orchestrator instructions (`CLAUDE.md`, `AGENTS.md`, parent
 - Keep `engineer` as the sole normal mutator. Do not create weaker duplicates such as `junior-engineer` just to swap model tiers.
 - If a small explicit write task should use a cheaper model, override the model for that one call instead of adding a second general-purpose engineer role.
 - For Pi package agents, keep repo frontmatter model-agnostic. Do not pin `model` or `thinking` in cc-thingz; put user/project model policy in `~/.pi/agent/settings.json` or `.pi/settings.json` with `subagents.agentOverrides` or router profiles.
-- Agent Bundler is required for builds. Pin `agbun` v0.4.2+ in automation. It renders package assets, typed hooks, target manifests, and the Pi aggregate hook runtime. Pi native extensions and unsupported lifecycle hooks remain explicit source-only gaps; see `src/hooks/UNSUPPORTED.md`.
+- Agent Bundler is required for builds. It renders package assets, typed hooks, target manifests, deterministic archives, the Pi aggregate hook runtime, declared Pi-native extension trees, and Codex project-agent profiles. The incomplete legacy Pi hook-runner stack and unsupported lifecycle hooks remain explicit source-only gaps; see `docs/agentbundler-gaps.md` and `src/hooks/UNSUPPORTED.md`.
 - Do not auto-route architecture, ambiguous debugging, broad refactors, deep review, security-sensitive reasoning, or product decisions to a light model.
 - Put cross-tool shared routing policy in the chezmoi-managed top-level `CLAUDE.md`. Keep repo-local role boundaries and package rules here in `AGENTS.md`.
 - On Claude Code, a dedicated utility agent can opt into automatic delegation via its `description` with `Use proactively ...`. The role agents intentionally omit that phrase because they are orchestrator-selected, not auto-delegated.

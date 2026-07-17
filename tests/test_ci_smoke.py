@@ -4,9 +4,17 @@ from __future__ import annotations
 
 import hashlib
 import subprocess
+import tomllib
 from pathlib import Path
 
 from conftest import REPO_ROOT as _REPO_ROOT
+
+_LEGACY_GENERATORS = (
+    "scripts/build",
+    "scripts/release/rewrite-mirror.py",
+    "scripts/validate/validate-config.py",
+)
+_LEGACY_GENERATOR_DEPENDENCIES = {"mergedeep", "pyyaml"}
 
 
 def _hash_tree(root: Path) -> dict[str, str]:
@@ -20,6 +28,18 @@ def _hash_tree(root: Path) -> dict[str, str]:
             path.read_bytes()
         ).hexdigest()
     return digests
+
+
+def test_agentbundler_is_the_only_package_generator() -> None:
+    for relative_path in _LEGACY_GENERATORS:
+        assert not (_REPO_ROOT / relative_path).exists()
+
+    project = tomllib.loads((_REPO_ROOT / "pyproject.toml").read_text())
+    dependencies = {
+        dependency.split("[", 1)[0].split("=", 1)[0].lower()
+        for dependency in project["project"]["dependencies"]
+    }
+    assert dependencies.isdisjoint(_LEGACY_GENERATOR_DEPENDENCIES)
 
 
 def test_hash_tree_ignores_pycache_noise(tmp_path: Path) -> None:

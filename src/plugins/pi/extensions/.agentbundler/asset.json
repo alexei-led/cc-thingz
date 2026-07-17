@@ -1,0 +1,10 @@
+{
+  "capabilities": [
+    "asset.native-resource"
+  ],
+  "piExtensions": [
+    "extensions/ask-user-question.ts",
+    "extensions/structured-output.ts",
+    "extensions/todo.ts"
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "frontmatterPatch": {
+    "sandbox_mode": "read-only",
+    "effort": "high"
+  }
+}

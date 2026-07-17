@@ -1,7 +1,6 @@
 .DEFAULT_GOAL := help
 
 NODE_VERSION ?= $(shell cat .node-version 2>/dev/null || echo 24)
-AGBUN_MIN_VERSION ?= 0.4.2
 SKILL_EVAL_ROOT ?= /tmp/cc-thingz-skill-eval-root
 SKILL_EVAL_WORKSPACE ?= /tmp/cc-thingz-skill-eval-workspace
 SKILL_EVAL_INCLUDE ?= **
@@ -36,7 +35,7 @@ lint-shell: ## Lint shell scripts with shellcheck + shfmt (matches CI's action-s
 
 lint-markdown: ## Lint Markdown files
 	@command -v markdownlint-cli2 >/dev/null 2>&1 || { echo "markdownlint-cli2 not installed — skipping"; exit 0; }
-	markdownlint-cli2 '**/*.md' '!node_modules/**' '!.pi-subagents/**'
+	markdownlint-cli2 '**/*.md' '!**/node_modules/**' '!.pi-subagents/**'
 
 lint-typescript: ## Type-check Pi extension TypeScript
 	bun x tsc --noEmit
@@ -48,7 +47,7 @@ test: ## Run pytest suite
 	uv run --extra test python -m pytest tests/ -v
 
 test-ts: ## Run Bun TypeScript tests (Pi extensions)
-	bun test src/pi-extensions --isolate
+	bun test tests/pi-extensions src/pi-extensions --isolate
 
 skill-evals-prepare: ## Build temporary Agent Skills eval tree under /tmp
 	uv run python scripts/evals/prepare-skill-evals.py --out $(SKILL_EVAL_ROOT)
@@ -127,22 +126,20 @@ fmt: ## Auto-format Python and shell files
 # --- Agent Bundler build and drift checks ---
 
 .PHONY: build check check-agbun
-check-agbun: ## Require Agent Bundler v$(AGBUN_MIN_VERSION)+
-	@command -v agbun >/dev/null 2>&1 || { echo "agbun v$(AGBUN_MIN_VERSION)+ is required"; exit 1; }
-	@version=$$(agbun --version | sed -n 's/.*v\([0-9][0-9.]*\).*/\1/p'); \
-	[ -n "$$version" ] || { echo "could not parse agbun version"; exit 1; }; \
-	uv run python -c 'import sys; want=tuple(map(int, sys.argv[1].split("."))); got=tuple(map(int, sys.argv[2].split("."))); sys.exit(0 if got >= want else 1)' "$(AGBUN_MIN_VERSION)" "$$version" || { echo "agbun v$(AGBUN_MIN_VERSION)+ is required; found v$$version"; exit 1; }
+check-agbun: ## Require an installed Agent Bundler with package support
+	@command -v agbun >/dev/null 2>&1 || { echo "agbun is required"; exit 1; }
+	@agbun package --help >/dev/null 2>&1 || { echo "agbun with package support is required"; exit 1; }
 
 build: check-agbun ## Regenerate active target layouts with Agent Bundler
 	agbun build --root .
 
-check: build ## Build, then ask Agent Bundler to check generated drift
+check: check-agbun ## Ask Agent Bundler to check generated drift without mutating output
 	agbun check --root .
 
 # --- CI (runs everything) ---
 
 .PHONY: ci
-ci: lint validate check test test-ts ## Run full CI pipeline locally (lint + validate + build & check drift + tests)
+ci: lint validate check test test-ts ## Run full CI pipeline locally (lint + validate + drift check + tests)
 
 # --- Setup ---
 

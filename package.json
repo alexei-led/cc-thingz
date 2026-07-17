@@ -10,7 +10,7 @@
     "url": "https://github.com/alexei-led/cc-thingz.git"
   },
   "scripts": {
-    "test:ts": "bun test src/pi-extensions"
+    "test:ts": "bun test tests/pi-extensions src/pi-extensions"
   },
   "peerDependencies": {
     "@earendil-works/pi-ai": "*",

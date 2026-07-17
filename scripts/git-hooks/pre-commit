@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Pre-commit: fast checks only — lint, format, secrets on staged files.
-# Heavier validation (make build drift, full test suite) is in pre-push.
+# Heavier drift validation and the full test suite run in pre-push.
 # Install: make setup (uses core.hooksPath, no copy needed)
 set -euo pipefail
 
@@ -28,7 +28,7 @@ if git diff --cached --name-only --diff-filter=ACMR | grep -qE '^(src/|agentbund
 	regen_paths=(dist/)
 	if ! git diff --quiet -- "${regen_paths[@]}"; then
 		git add -- "${regen_paths[@]}"
-		echo "re-staged regenerated dist/ and root manifests"
+		echo "re-staged Agent Bundler output under dist/"
 	fi
 fi
 

@@ -21,16 +21,25 @@
     {
       "path": "agents/engineer.md",
       "targets": [
-        "claude"
+        "claude",
+        "grok"
       ]
     },
     {
       "path": "agents/reviewer.md",
       "targets": [
         "claude",
+        "codex",
         "pi",
         "copilot",
-        "cursor"
+        "cursor",
+        "grok"
+      ]
+    },
+    {
+      "path": "plugins/pi/extensions",
+      "targets": [
+        "pi"
       ]
     },
     {

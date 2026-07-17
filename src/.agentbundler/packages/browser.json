@@ -9,7 +9,8 @@
     {
       "path": "agents/engineer.md",
       "targets": [
-        "claude"
+        "claude",
+        "grok"
       ]
     }
   ],
