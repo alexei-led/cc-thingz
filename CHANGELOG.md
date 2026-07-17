@@ -8,6 +8,12 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.8.4] - 2026-07-17
+
+### Fixed
+
+- Declared markdownlint-cli2 as a Bun development dependency for clean release runners.
+
 ## [6.8.3] - 2026-07-17
 
 ### Fixed

@@ -23,6 +23,7 @@
     "@earendil-works/pi-coding-agent": "*",
     "@earendil-works/pi-tui": "*",
     "@types/bun": "latest",
+    "markdownlint-cli2": "^0.23.1",
     "typebox": "*"
   }
 }

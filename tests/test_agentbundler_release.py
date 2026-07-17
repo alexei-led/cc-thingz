@@ -518,6 +518,8 @@ def test_make_check_is_non_mutating_and_release_packages_artifacts() -> None:
     )
     assert "- uses: oven-sh/setup-bun@v2" in release_workflow
     assert "- run: bun install --frozen-lockfile" in release_workflow
+    node_package = json.loads((REPO_ROOT / "package.json").read_text())
+    assert "markdownlint-cli2" in node_package["devDependencies"]
     for workflow in (ci_workflow, release_workflow):
         assert "AGBUN_VERSION" not in workflow
         assert "agentbundler/cmd/agbun@latest" in workflow
