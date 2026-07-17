@@ -1,0 +1,1 @@
+{"acknowledgments":[{"asset":"hook/file-protector","target":"codex","key":"hook.failure.closed","reason":"Codex deny output blocks the matching pre-tool call, but a hook crash or timeout remains advisory."}]}

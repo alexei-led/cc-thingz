@@ -1,6 +1,7 @@
 [project]
-name = "claude-code-config"
+name = "cc-thingz"
 version = "6.7.0"
+description = "Portable skills, agents, hooks, and Pi extensions for coding agents."
 requires-python = ">=3.12"
 dependencies = [
     "python-frontmatter",

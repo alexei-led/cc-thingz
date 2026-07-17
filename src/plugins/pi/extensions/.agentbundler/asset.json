@@ -4,6 +4,9 @@
   ],
   "piExtensions": [
     "extensions/ask-user-question.ts",
+    "extensions/hook-runner/index.ts",
+    "extensions/permission-gate.ts",
+    "extensions/plan-mode/index.ts",
     "extensions/structured-output.ts",
     "extensions/todo.ts"
   ]

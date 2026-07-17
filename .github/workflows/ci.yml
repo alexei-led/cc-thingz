@@ -60,7 +60,6 @@ jobs:
               - 'Makefile'
               - '.node-version'
             typescript:
-              - 'src/pi-extensions/**/*.ts'
               - 'src/plugins/**/*.ts'
               - 'tests/pi-extensions/**/*.ts'
               - 'package.json'

@@ -1,39 +1,109 @@
-"""Agent Bundler hook integration contracts for the cc-thingz bundle."""
+"""Agent Bundler hook and Pi compatibility-stack integration contracts."""
 
 from __future__ import annotations
 
 import json
 import os
 import subprocess
+from pathlib import Path
 
 from conftest import REPO_ROOT
+
+PI_PORTABLE_HOOKS = {
+    "hook/session-start",
+    "hook/skill-enforcer",
+    "hook/file-protector",
+    "hook/git-guardrails",
+    "hook/smart-lint",
+    "hook/test-runner",
+}
+GUARD_TARGETS = {
+    "claude": {"file-protector", "git-guardrails"},
+    "codex": {"file-protector", "git-guardrails"},
+    "copilot": {"file-protector", "git-guardrails"},
+    "cursor": {"git-guardrails"},
+    "grok": {"file-protector", "git-guardrails"},
+    "pi": {"file-protector", "git-guardrails"},
+}
 
 
 def _build() -> None:
     subprocess.run(["agbun", "build", "--root", str(REPO_ROOT)], check=True)
 
 
-def test_agentbundler_renders_pi_aggregate_hook_runtime() -> None:
+def _generated_hook_paths(target: str, hook_name: str) -> list[Path]:
+    return list((REPO_ROOT / "dist" / target).rglob(hook_name))
+
+
+def test_agentbundler_renders_pi_portable_and_compatibility_hook_contracts() -> None:
     _build()
 
     manifest = json.loads((REPO_ROOT / "dist/pi/hooks/hooks.v1.json").read_text())
     hooks = {entry["identity"]: entry for entry in manifest["hooks"]}
 
-    assert set(hooks) == {
-        "hook/session-start",
-        "hook/skill-enforcer",
-        "hook/file-protector",
-        "hook/git-guardrails",
-        "hook/smart-lint",
-        "hook/test-runner",
-    }
+    assert set(hooks) == PI_PORTABLE_HOOKS
     assert hooks["hook/file-protector"]["failurePolicy"] == "closed"
     assert hooks["hook/git-guardrails"]["matcher"]["tools"] == ["command"]
     assert (REPO_ROOT / "dist/pi/extensions/agentbundler-hooks.ts").is_file()
 
+    compatibility = json.loads(
+        (REPO_ROOT / "dist/pi/extensions/hooks.json").read_text()
+    )
+    assert set(compatibility["hooks"]) == {
+        "Notification",
+        "PreToolUse",
+        "SessionEnd",
+        "SessionStart",
+        "Stop",
+    }
+    assert compatibility["hooks"]["PreToolUse"][0]["matcher"] == "ExitPlanMode"
+    assert (
+        "revdiff-plan-review.py"
+        in compatibility["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
+    )
+    assert compatibility["hooks"]["Notification"][0]["hooks"][0]["async"] is True
+    for event in ("SessionStart", "SessionEnd", "Stop"):
+        assert compatibility["hooks"][event][0]["hooks"][0] == {
+            "type": "command",
+            "command": "ccgram hook",
+            "timeout": 5,
+            "async": True,
+        }
+    assert "file-protector" not in json.dumps(compatibility)
+    assert "git-guardrails" not in json.dumps(compatibility)
+    assert "smart-lint" not in json.dumps(compatibility)
+    assert "test-runner" not in json.dumps(compatibility)
+
+
+def test_agentbundler_renders_target_hook_matrix() -> None:
+    _build()
+
+    for target, expected in GUARD_TARGETS.items():
+        for hook_name in ("file-protector", "git-guardrails"):
+            assert bool(_generated_hook_paths(target, hook_name)) is (
+                hook_name in expected
+            )
+
+    codex_hooks = json.loads(
+        (REPO_ROOT / "dist/codex/dev-flow/hooks/hooks.json").read_text()
+    )
+    assert (
+        codex_hooks["hooks"]["PostToolUse"][0]["matcher"]
+        == "^apply_patch$|^Edit$|^Write$"
+    )
+    assert "smart-lint" in codex_hooks["hooks"]["PostToolUse"][0]["hooks"][0]["command"]
+
+    grok_hooks = json.loads(
+        (REPO_ROOT / "dist/grok/dev-flow/hooks/hooks.json").read_text()
+    )
+    assert (
+        "notify-grok/hook.sh"
+        in grok_hooks["hooks"]["Notification"][0]["hooks"][0]["args"][0]
+    )
+
 
 def test_generated_pi_runtime_executes_real_git_guard_with_safe_environment(
-    tmp_path,
+    tmp_path: Path,
 ) -> None:
     _build()
     config = tmp_path / "hook-config.json"
@@ -100,25 +170,6 @@ for (const [command, configured] of cases) {
     assert reset["exitCode"] == 0
     assert json.loads(reset["stdout"])["decision"] == "deny"
     assert json.loads(configured["stdout"])["decision"] == "deny"
-
-
-def test_agentbundler_keeps_pi_decision_guards_off_portable_targets() -> None:
-    _build()
-
-    for target in ("claude", "codex", "copilot", "cursor", "grok"):
-        paths = list((REPO_ROOT / "dist" / target).rglob("file-protector"))
-        assert paths == []
-        paths = list((REPO_ROOT / "dist" / target).rglob("git-guardrails"))
-        assert paths == []
-
-
-def test_unbundled_lifecycle_hooks_are_explicit() -> None:
-    unsupported = (REPO_ROOT / "src/hooks/UNSUPPORTED.md").read_text()
-
-    for name in ("revdiff-plan-review", "worktree-create", "worktree-remove"):
-        assert name in unsupported
-        assert (REPO_ROOT / "src/hooks" / name).is_dir()
-        assert not any((REPO_ROOT / "dist").rglob(name))
 
 
 def test_pi_decision_guards_emit_runtime_protocol() -> None:

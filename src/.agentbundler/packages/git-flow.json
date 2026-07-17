@@ -12,6 +12,11 @@
     {
       "path": "hooks/git-guardrails",
       "targets": [
+        "claude",
+        "codex",
+        "copilot",
+        "cursor",
+        "grok",
         "pi"
       ]
     }

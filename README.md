@@ -2,18 +2,18 @@
 
 [![CI](https://github.com/alexei-led/cc-thingz/actions/workflows/ci.yml/badge.svg)](https://github.com/alexei-led/cc-thingz/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Agent Bundler](https://img.shields.io/badge/Agent_Bundler-compatible_build_required-00897B)](https://github.com/alexei-led/agentbundler)
+[![Targets](https://img.shields.io/badge/targets-6-00897B)](agentbundle.json)
 [![Skills](https://img.shields.io/badge/skills-29-green)](src/skills/)
+[![Agent Bundler](https://img.shields.io/badge/Agent_Bundler-required-00897B)](https://github.com/alexei-led/agentbundler)
 
-Portable skills and agents for Claude Code, Codex CLI, Pi, GitHub Copilot,
-Cursor, and Grok. Gemini is retired.
+Portable skills, agents, hooks, and Pi-native extensions for Claude Code, Codex
+CLI, GitHub Copilot, Cursor, Grok, and Pi. Gemini is retired.
 
 ## Build
 
-This branch requires an Agent Bundler build with `package`, flat per-agent
-sidecars, declared hook environments, bundled Pi dependencies, and native Pi
-extension assets and Codex project-agent profiles. Verify the installed binary
-supports packaging:
+Requires Agent Bundler with `build`, `check`, and `package`, plus support for
+per-agent sidecars, declared hook environments, Pi-native assets, and Codex
+project-agent profiles. Verify packaging support:
 
 ```bash
 agbun package --help
@@ -40,8 +40,8 @@ src/
 ├── agents/<name>.md                # canonical agent assets
 ├── .agentbundler/packages/*.json   # package membership and metadata
 ├── hooks/<name>/                   # typed Agent Bundler hooks
-├── plugins/pi/<asset>/             # declarative Pi-native extension trees
-└── pi-extensions/                  # source-only legacy extension dependencies
+└── plugins/pi/<asset>/             # declarative Pi-native extension tree
+    └── extensions/                 # Pi-native tools and compatibility runner
 
 dist/<target>/<package>/             # generated Agent Bundler package roots
 ```
@@ -57,15 +57,15 @@ manifest or edit `dist/` by hand.
 
 ## Targets and output
 
-| Target         | Output                    | Status                                 |
-| -------------- | ------------------------- | -------------------------------------- |
-| Claude Code    | `dist/claude/<package>/`  | enabled                                |
-| Codex CLI      | `dist/codex/<package>/`   | enabled                                |
-| Pi             | `dist/pi/`                | aggregate package + typed hook runtime |
-| GitHub Copilot | `dist/copilot/<package>/` | enabled                                |
-| Cursor         | `dist/cursor/<package>/`  | enabled                                |
-| Grok Build     | `dist/grok/<package>/`    | enabled                                |
-| Gemini CLI     | none                      | retired                                |
+| Target         | Output                    | Package contract                                      |
+| -------------- | ------------------------- | ----------------------------------------------------- |
+| Claude Code    | `dist/claude/<package>/`  | Marketplace packages, agents, and hooks               |
+| Codex CLI      | `dist/codex/<package>/`   | Plugin packages plus `.codex/agents/*.toml` profiles  |
+| Pi             | `dist/pi/`                | Aggregate package, typed hooks, and native extensions |
+| GitHub Copilot | `dist/copilot/<package>/` | Marketplace packages, agents, and hooks               |
+| Cursor         | `dist/cursor/<package>/`  | Marketplace packages, agents, and supported hooks     |
+| Grok Build     | `dist/grok/<package>/`    | Marketplace packages, agents, and hooks               |
+| Gemini CLI     | none                      | Retired                                               |
 
 ## Release packages
 
@@ -79,12 +79,11 @@ archives:
 - `cc-thingz-cursor.tar.gz`
 - `cc-thingz-grok.tar.gz`
 
-Once a compatible Agent Bundler tag is pinned, the release workflow attaches
-all six files. Each archive expands directly to the native package or
-marketplace root shown above. The Codex archive also includes separate
-`.codex/agents/*.toml` profiles; they are not plugin contents. Installation and marketplace
-registration still use the target vendor's CLI; Agent Bundler does not mutate
-user configuration or publish to a vendor registry.
+The release workflow attaches all six files. Each archive expands directly to
+the native package or marketplace root shown above. The Codex archive also
+includes separate `.codex/agents/*.toml` profiles; they are not plugin contents.
+Installation and marketplace registration use the target vendor's CLI; Agent
+Bundler does not mutate user configuration or publish to a vendor registry.
 
 The Pi archive is directly installable:
 
@@ -100,24 +99,20 @@ agbun package --root . --out /tmp/cc-thingz-release
 ```
 
 The generated Pi package includes its typed hook adapter, bundled
-`pi-subagents` runtime, and native `ask_user_question`, `structured_output`,
-and `todo` extensions from `src/plugins/pi/extensions/`. The legacy
-`hook-runner`, `permission-gate`, `plan-mode`, and shared bridge remain
-source-only because their synthetic-hook runtime configuration is incomplete.
+`pi-subagents` runtime, native `ask_user_question`, `structured_output`, and
+`todo` tools, plus `hook-runner`, `permission-gate`, and `plan-mode`. Its
+compatibility config contains only Pi-specific revdiff plan review and
+notifications, so portable Agent Bundler hooks do not run twice.
 
 The package command, flat per-agent sidecars, safe Pi hook environments, and
 bundled Pi dependencies, native extension assets, and Codex project-agent
 profiles require a compatible installed Agent Bundler.
 
-## Remaining Agent Bundler gaps
+## Target differences and gaps
 
-Current unsupported behavior includes Claude exit-plan/worktree lifecycle
-hooks, incomplete legacy Pi hook-runner configuration, portable block/rewrite
-guards outside Pi, lossless Cursor edit matching, and Pi notifications. Codex
-agents render as separate `.codex/agents/*.toml` profiles, not plugin contents.
-
-See [Agent Bundler migration status](docs/agentbundler-gaps.md) for exact
-boundaries. Do not recreate a custom compiler or post-process `dist/`.
+See [Agent Bundler port status](docs/agentbundler-gaps.md) for target-specific
+behavior, runtime validation, and upstream/vendor boundaries. Do not recreate a
+custom compiler or post-process `dist/`.
 
 ## Development checks
 
@@ -133,10 +128,10 @@ agbun package --root . --out /tmp/cc-thingz-release
 ```
 
 `make validate` checks Agent Bundler availability, source genericity, and
-executable source scripts. `make test` covers source and release helpers.
-`make test-ts` covers source-only Pi extension behavior. `make test` verifies
-Agent Bundler hook manifests, target inventories, agent envelopes, version
-consistency, release archives, and Pi decision-hook protocol output.
+executable source scripts. `make test` verifies source/release helpers, hook
+manifests, target inventories, agent envelopes, version consistency, archives,
+and Pi decision-hook protocol output. `make test-ts` covers Pi-native extension
+and compatibility-runner behavior.
 
 ## Contributing
 

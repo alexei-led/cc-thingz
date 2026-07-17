@@ -16,7 +16,7 @@
     "owner": {
       "name": "Alexei Led"
     },
-    "description": "Portable coding companion packages",
+    "description": "Portable skills, agents, hooks, and Pi-native extensions for coding agents.",
     "version": "6.7.0"
   },
   "composition": [
@@ -39,11 +39,13 @@
         "identity": "cc-thingz",
         "metadata": {
           "version": "6.7.0",
-          "description": "Portable coding companion for Pi",
+          "description": "Skills, agents, hooks, and native extensions for Pi",
           "keywords": [
             "coding-agent",
             "skills",
-            "hooks"
+            "agents",
+            "hooks",
+            "pi-extensions"
           ]
         }
       },

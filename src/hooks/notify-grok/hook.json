@@ -1,0 +1,16 @@
+{
+  "event": "notification",
+  "handler": {
+    "mode": "exec",
+    "program": "bash",
+    "arguments": [
+      {
+        "packageFile": "hook.sh"
+      }
+    ]
+  },
+  "timeoutMilliseconds": 10000,
+  "asynchronous": false,
+  "failurePolicy": "open",
+  "order": 70
+}

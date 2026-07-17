@@ -67,6 +67,10 @@
     {
       "path": "hooks/file-protector",
       "targets": [
+        "claude",
+        "codex",
+        "copilot",
+        "grok",
         "pi"
       ]
     },
@@ -74,6 +78,7 @@
       "path": "hooks/smart-lint",
       "targets": [
         "claude",
+        "codex",
         "copilot",
         "grok",
         "pi"
@@ -95,6 +100,12 @@
       "targets": [
         "claude",
         "copilot"
+      ]
+    },
+    {
+      "path": "hooks/notify-grok",
+      "targets": [
+        "grok"
       ]
     }
   ],

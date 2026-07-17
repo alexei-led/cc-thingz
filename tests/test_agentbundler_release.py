@@ -38,12 +38,28 @@ INSTALL_ROOTS = {
 }
 PI_NATIVE_EXTENSION_ENTRIES = {
     "./extensions/ask-user-question.ts",
+    "./extensions/hook-runner/index.ts",
+    "./extensions/permission-gate.ts",
+    "./extensions/plan-mode/index.ts",
     "./extensions/structured-output.ts",
     "./extensions/todo.ts",
 }
 PI_NATIVE_EXTENSION_FILES = {
     entry.removeprefix("./") for entry in PI_NATIVE_EXTENSION_ENTRIES
 }
+PI_NATIVE_ASSET_ROOT = REPO_ROOT / "src/plugins/pi/extensions"
+
+
+def _pi_native_asset_files() -> set[str]:
+    return {
+        str(path.relative_to(PI_NATIVE_ASSET_ROOT))
+        for path in PI_NATIVE_ASSET_ROOT.rglob("*")
+        if path.is_file()
+        and ".agentbundler" not in path.parts
+        and "__pycache__" not in path.parts
+        and path.suffix != ".pyc"
+    }
+
 
 EXPECTED_AGENTS = {
     "claude": {"engineer", "reviewer", "runner"},
@@ -141,6 +157,7 @@ def test_release_archives_have_native_install_roots(release_artifacts: Path) -> 
     pi_members = _archive_members(archives["cc-thingz-pi.tgz"])
     assert "extensions/agentbundler-hooks.ts" in pi_members
     assert PI_NATIVE_EXTENSION_FILES <= pi_members
+    assert _pi_native_asset_files() <= pi_members
     assert "node_modules/pi-subagents/src/extension/index.ts" in pi_members
 
 
@@ -260,12 +277,26 @@ def test_generated_target_inventory_matches_supported_contract() -> None:
         f"extensions/{path.name}"
         for path in (REPO_ROOT / "dist/pi/extensions").glob("*.ts")
     }
-    assert generated_extensions == PI_NATIVE_EXTENSION_FILES | {
-        "extensions/agentbundler-hooks.ts"
+    assert generated_extensions == {
+        "extensions/agentbundler-hooks.ts",
+        "extensions/ask-user-question.ts",
+        "extensions/permission-gate.ts",
+        "extensions/structured-output.ts",
+        "extensions/todo.ts",
     }
 
     pi_manifest = json.loads((REPO_ROOT / "dist/pi/package.json").read_text())
     assert PI_NATIVE_EXTENSION_ENTRIES <= set(pi_manifest["pi"]["extensions"])
+    compatibility = json.loads(
+        (REPO_ROOT / "dist/pi/extensions/hooks.json").read_text()
+    )
+    assert set(compatibility["hooks"]) == {
+        "Notification",
+        "PreToolUse",
+        "SessionEnd",
+        "SessionStart",
+        "Stop",
+    }
 
 
 def test_generated_agent_frontmatter_preserves_target_envelopes() -> None:
@@ -331,6 +362,28 @@ def test_generated_agent_frontmatter_preserves_target_envelopes() -> None:
         assert profile["developer_instructions"]
 
 
+def test_public_metadata_matches_current_target_coverage() -> None:
+    description = (
+        "Portable skills, agents, hooks, and Pi extensions for Claude Code, "
+        "Codex CLI, Copilot, Cursor, Grok, and Pi."
+    )
+    package = json.loads((REPO_ROOT / "package.json").read_text())
+    project = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text())
+    bundle = json.loads((REPO_ROOT / "agentbundle.json").read_text())
+    readme = (REPO_ROOT / "README.md").read_text()
+
+    assert package["description"] == description
+    assert project["project"]["name"] == "cc-thingz"
+    assert project["project"]["description"] == (
+        "Portable skills, agents, hooks, and Pi extensions for coding agents."
+    )
+    assert bundle["distribution"]["description"] == (
+        "Portable skills, agents, hooks, and Pi-native extensions for coding agents."
+    )
+    assert "Gemini is retired." in readme
+    assert "targets-6" in readme
+
+
 def test_source_and_generated_versions_are_consistent() -> None:
     bundle = json.loads((REPO_ROOT / "agentbundle.json").read_text())
     expected = bundle["distribution"]["version"]
@@ -354,7 +407,7 @@ def test_source_and_generated_versions_are_consistent() -> None:
     versions["uv.lock"] = next(
         package["version"]
         for package in uv_lock["package"]
-        if package["name"] == "claude-code-config"
+        if package["name"] == "cc-thingz"
     )
 
     for path in sorted((REPO_ROOT / "src/.agentbundler/packages").glob("*.json")):
@@ -407,9 +460,9 @@ def test_source_and_generated_versions_are_consistent() -> None:
 
 def test_ci_typescript_filter_covers_native_pi_extension_sources() -> None:
     workflow = (REPO_ROOT / ".github/workflows/ci.yml").read_text()
-    assert "- 'src/pi-extensions/**/*.ts'" in workflow
     assert "- 'src/plugins/**/*.ts'" in workflow
     assert "- 'tests/pi-extensions/**/*.ts'" in workflow
+    assert "src/pi-extensions/**/*.ts" not in workflow
 
 
 def test_make_check_is_non_mutating_and_release_packages_artifacts() -> None:
