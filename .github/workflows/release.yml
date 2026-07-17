@@ -56,6 +56,8 @@ jobs:
       - run: uv sync --all-groups --extra test
       - name: Install Agent Bundler
         run: go install github.com/alexei-led/agentbundler/cmd/agbun@latest
+      - name: Build target-native distributions
+        run: agbun build --root .
       - name: Package target-native distributions
         run: agbun package --root . --out "$RUNNER_TEMP/release-artifacts"
       - name: Generate release notes

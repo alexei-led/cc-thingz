@@ -8,6 +8,12 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.8.6] - 2026-07-17
+
+### Fixed
+
+- Built generated Pi bundled dependencies before packaging release archives on clean runners.
+
 ## [6.8.5] - 2026-07-17
 
 ### Fixed

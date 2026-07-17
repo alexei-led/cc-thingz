@@ -503,6 +503,8 @@ def test_make_check_is_non_mutating_and_release_packages_artifacts() -> None:
         assert "- run: bun install --frozen-lockfile" in job
     assert "- run: make validate check-generated" in validation_job
 
+    assert "- name: Build target-native distributions" in release_workflow
+    assert "run: agbun build --root ." in release_workflow
     assert (
         'agbun package --root . --out "$RUNNER_TEMP/release-artifacts"'
         in release_workflow
