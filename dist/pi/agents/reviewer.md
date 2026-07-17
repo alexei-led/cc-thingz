@@ -1,8 +1,5 @@
 ---
-description: Read-only adversarial evaluator — reviews, audits, locates, or plans.
-  Inspects with Read/Grep/Glob and does not modify code, run builds, or execute commands.
-  Use for code review, security audit, locating code, or planning. Not for applying
-  changes (engineer) or strategic risk verdicts (advisor).
+description: Read-only adversarial evaluator — reviews, audits, locates, or plans. Inspects with Read/Grep/Glob and does not modify code, run builds, or execute commands. Use for code review, security audit, locating code, or planning. Not for applying changes (engineer) or strategic risk verdicts (advisor).
 name: reviewer
 package: cc-thingz
 tools: read, grep, find, ls

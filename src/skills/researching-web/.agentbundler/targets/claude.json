@@ -1,0 +1,19 @@
+{
+  "bodyPatch": {
+    "mode": "replace",
+    "text": "# Web Research\n\nFollow the base skill. This Claude overlay only defines tool use and execution details.\n\n## Claude tool rules\n\n- Use Perplexity for broad research questions, comparisons, or source discovery when it is available.\n- Use `WebFetch` to inspect primary or official sources directly after source discovery.\n- Do not answer research questions from memory.\n- Do not route exact API syntax or code-example questions here; use `looking-up-docs`.\n- Do not route repo-specific questions here when local files can answer them.\n\n## Tool selection on Claude\n\n- Simple factual question: use the smallest web query that can answer it.\n- Source selection: use Perplexity or another available search-capable tool, then fetch the best sources.\n- Broad investigation: use Perplexity first when it fits; if the runtime offers a deeper research mode, use it when the question truly needs it.\n- Follow-up detail: fetch only the sources needed to support the claim.\n\nInspect enough sources to support the answer. Do not fetch every citation unless the\nrisk or ambiguity justifies it.\n\n## Source handling\n\n- Prefer official docs, standards, vendor docs, maintainer posts, and primary announcements.\n- Treat forum summaries and secondary blogs as supporting evidence, not sole authority, when stronger sources should exist.\n- If sources conflict, show the conflict and reduce confidence.\n- If only a research plan is possible, say that final evidence must be grounded in URL-cited sources.\n\n## Optional delegation\n\nUse `Task` only for broad background research that can run independently without\nchanging the output contract. Keep the prompt bounded and ask it to return cited\nfacts, not final recommendations.\n\n## Output\n\nUse the base skill's `Research Result` output contract exactly.\n"
+  },
+  "frontmatterPatch": {
+    "allowed-tools": [
+      "Task",
+      "Read",
+      "Grep",
+      "Glob",
+      "WebFetch",
+      "mcp__perplexity-ask__perplexity_ask"
+    ],
+    "argument-hint": "<research question>",
+    "context": "fork",
+    "user-invocable": true
+  }
+}

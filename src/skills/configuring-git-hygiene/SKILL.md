@@ -1,12 +1,11 @@
 ---
+description: 'Configure safe git workflow hygiene: pre-commit/pre-push hooks, Gitleaks
+  secret scanning, .gitignore rules, local git config, and guardrails. Use when setting
+  up git hooks, gitleaks/git leaks, staged pre-commit checks, pre-push validation,
+  core.hooksPath, .gitignore, or git config best practices. NOT for creating commits
+  (use committing-code), cleaning branches/worktrees (use cleanup-git), or creating
+  worktrees (use using-git-worktrees).'
 name: configuring-git-hygiene
-description: >-
-  Configure safe git workflow hygiene: pre-commit/pre-push hooks, Gitleaks secret
-  scanning, .gitignore rules, local git config, and guardrails. Use when setting
-  up git hooks, gitleaks/git leaks, staged pre-commit checks, pre-push
-  validation, core.hooksPath, .gitignore, or git config best practices. NOT for
-  creating commits (use committing-code), cleaning branches/worktrees (use
-  cleanup-git), or creating worktrees (use using-git-worktrees).
 ---
 
 # Configure Git Hygiene

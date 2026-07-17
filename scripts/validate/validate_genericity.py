@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Detect Claude-only tokens in vendor-neutral base SKILL.md / AGENT.md files.
 
-Base files under `src/skills/<name>/SKILL.md` and `src/agents/<name>/AGENT.md`
-are expected to be runtime-agnostic; target-specific syntax belongs in
-`<target>/body.md` overlays.
+Base files under `src/skills/<name>/SKILL.md` and `src/agents/<name>.md`
+are expected to be runtime-agnostic; target-specific skill syntax belongs in
+`.agentbundler/targets/<target>.json` overlays.
 
 Forbidden token patterns:
 
@@ -119,21 +119,16 @@ def scan_file(path: Path) -> list[str]:
 def discover_base_files(root: Path = ROOT) -> list[Path]:
     """Return sorted vendor-neutral source files under src/.
 
-    Includes base SKILL.md / AGENT.md plus non-Claude overlay bodies
-    (`<target>/body.md` for codex, gemini, pi). The `claude/body.md`
-    overlay is intentionally excluded — it is allowed to use Claude
-    syntax.
+    Includes base SKILL.md / AGENT.md plus non-Claude active overlay bodies
+    (`<target>/body.md` for codex and pi). The `claude/body.md` overlay is
+    intentionally excluded — it is allowed to use Claude syntax.
     """
     src = root / "src"
     if not src.is_dir():
         return []
     skills = sorted(src.glob("skills/*/SKILL.md"))
-    agents = sorted(src.glob("agents/*/AGENT.md"))
-    overlays: list[Path] = []
-    for target in ("codex", "gemini", "pi"):
-        overlays.extend(sorted(src.glob(f"skills/*/{target}/body.md")))
-        overlays.extend(sorted(src.glob(f"agents/*/{target}/body.md")))
-    return skills + agents + overlays
+    agents = sorted(src.glob("agents/*.md"))
+    return skills + agents
 
 
 def main() -> int:

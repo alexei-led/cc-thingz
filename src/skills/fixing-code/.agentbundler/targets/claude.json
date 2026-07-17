@@ -1,0 +1,32 @@
+{
+  "bodyPatch": {
+    "mode": "replace",
+    "text": "# Fix and Diagnose Code\n\nFollow the base skill. This Claude overlay only defines tool use and execution details.\n\nFix the requested defect or failing gate one verified issue at a time. Do not expand\nto unrelated failures without asking. No guessing.\n\n## Arguments\n\n- `diagnose` or `investigate`: use the hard-bug workflow with hypotheses and probes.\n- `team`: spawn read-only analysis agents to challenge root cause before editing.\n\nUse `TaskCreate` and `TaskUpdate` when the fix has more than two steps:\n\n1. Reproduce or run the failing gate.\n2. Read the failing path.\n3. Diagnose root cause.\n4. Patch one issue.\n5. Verify narrow and broad checks.\n6. Clean up probes.\n\n## Tool order\n\n1. Run the smallest known failing command or project gate. Prefer focused tests, lint, or typecheck while editing and the broader project gate before final output.\n2. Use `Read`, `Grep`, and `Glob` to inspect the exact failing path.\n3. Use `AskUserQuestion` if logs, payloads, access, repro steps, environment, or instrumentation approval are missing.\n4. Use `Edit` for existing files and `Write` only for new files or complete rewrites.\n5. Run the narrow repro after each patch.\n6. Run the relevant broader check before final output.\n\nDo not use destructive git commands. Do not use `--no-verify`. Do not clear caches, disable rules, or skip fast tests as a routine speed fix.\n\n## Repro commands\n\nPrefer configured project commands. Examples:\n\n```bash\nmake lint\nmake test\ngo test ./...\nruff check .\npytest -q --maxfail=1 --tb=short\nbunx vitest run path/to/file.test.ts\nbun test path/to/file.test.ts\nnpm test\n```\n\nUse only commands supported by the repo and available tools. Browser-only debugging\nbelongs in `browser-automation` unless a cheaper CLI/unit signal exists.\n\n## Hard-bug mode\n\nBefore editing, write 3-5 ranked falsifiable hypotheses. Probe one at a time. If\nyou add temporary logs, tag them with `[DEBUG-<short-id>]` and remove them before\nfinal output.\n\nIf `team` is set, agents analyze only. Ask for root cause, evidence, suggested fix,\npriority, and confidence. Verify their claims before editing.\n\n## Scope control\n\n- If all checks pass and no bug is reproduced, report that and ask for a repro artifact.\n- If the failing gate contains unrelated failures, fix the requested issue first and ask before expanding.\n- If the only test seam is too shallow, say so; do not create fake-confidence tests.\n- If a patch causes new failures, diagnose that failure before continuing.\n"
+  },
+  "frontmatterPatch": {
+    "allowed-tools": [
+      "Task",
+      "TaskOutput",
+      "TaskCreate",
+      "TaskUpdate",
+      "TaskList",
+      "Read",
+      "Grep",
+      "Glob",
+      "Edit",
+      "Write",
+      "AskUserQuestion",
+      "Bash(make *)",
+      "Bash(go *)",
+      "Bash(golangci-lint *)",
+      "Bash(pytest *)",
+      "Bash(ruff *)",
+      "Bash(npm *)",
+      "Bash(bun *)",
+      "Bash(bunx *)"
+    ],
+    "argument-hint": "[diagnose|investigate] [team]",
+    "context": "fork",
+    "user-invocable": true
+  }
+}

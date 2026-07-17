@@ -13,28 +13,20 @@ DIST_DIR = ROOT / "dist"
 EVALS_DIR = ROOT / "tests" / "skill-evals"
 DEFAULT_OUT = Path("/tmp/cc-thingz-skill-eval-root")
 
-# Map the legacy --source-dir flag to the compiled distribution that has
-# the same role. ``skills`` = Claude variant (canonical reference set),
-# ``skills-codex`` = Codex overlay variant.
-SOURCE_TO_TARGET = {
-    "skills": "claude",
-    "skills-codex": "codex",
-}
+SOURCE_TARGET = "claude"
 
 
 class EvalPrepError(Exception):
     """Skill eval preparation failed."""
 
 
-def copy_skill(plugin: str, skill: str, out: Path, source_dir: str) -> Path | None:
+def copy_skill(plugin: str, skill: str, out: Path) -> Path | None:
     """Copy a compiled skill into the eval tree, or return None when absent.
 
-    A missing compiled source is normal in cross-target lanes: skills with
-    ``targets: [claude]`` are not emitted to ``dist/codex/...`` and vice
-    versa. Return None so the caller can skip the fixture without aborting.
+    A missing compiled source means the package no longer exports the fixture;
+    return None so the evaluator can skip it without aborting.
     """
-    target = SOURCE_TO_TARGET[source_dir]
-    source = DIST_DIR / target / "plugins" / plugin / "skills" / skill
+    source = DIST_DIR / SOURCE_TARGET / plugin / "skills" / skill
     if not source.is_dir():
         return None
     if not (source / "SKILL.md").is_file():
@@ -67,9 +59,7 @@ def copy_evals(eval_root: Path, skill_dest: Path) -> int:
     return eval_count
 
 
-def prepare(out: Path, source_dir: str = "skills") -> tuple[int, int]:
-    if source_dir not in SOURCE_TO_TARGET:
-        raise EvalPrepError("source directory must be 'skills' or 'skills-codex'")
+def prepare(out: Path) -> tuple[int, int]:
     if out == ROOT or ROOT in out.parents:
         raise EvalPrepError("output directory must not be inside the repository")
 
@@ -82,10 +72,8 @@ def prepare(out: Path, source_dir: str = "skills") -> tuple[int, int]:
         skill_root = eval_file.parents[1]
         plugin = skill_root.parent.name
         skill = skill_root.name
-        skill_dest = copy_skill(plugin, skill, out, source_dir)
+        skill_dest = copy_skill(plugin, skill, out)
         if skill_dest is None:
-            # Skill not emitted for this target (e.g. claude-only skill on the
-            # codex lane). Skipping keeps the cross-target evals running.
             continue
         eval_count += copy_evals(skill_root, skill_dest)
         skill_count += 1
@@ -105,16 +93,11 @@ def main() -> int:
         default=DEFAULT_OUT,
         help=f"output directory (default: {DEFAULT_OUT})",
     )
-    parser.add_argument(
-        "--source-dir",
-        choices=sorted(SOURCE_TO_TARGET),
-        default="skills",
-        help="skill tree to copy from while preserving evaluator layout",
-    )
+
     args = parser.parse_args()
 
     try:
-        skills, evals = prepare(args.out.resolve(), args.source_dir)
+        skills, evals = prepare(args.out.resolve())
     except EvalPrepError as exc:
         print(f"ERROR: {exc}")
         return 1

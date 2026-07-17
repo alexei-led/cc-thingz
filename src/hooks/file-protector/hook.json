@@ -1,0 +1,22 @@
+{
+  "event": "pre-tool",
+  "matcher": {
+    "tools": [
+      "write",
+      "edit"
+    ]
+  },
+  "handler": {
+    "mode": "exec",
+    "program": "python3",
+    "arguments": [
+      {
+        "packageFile": "hook.py"
+      }
+    ]
+  },
+  "timeoutMilliseconds": 10000,
+  "asynchronous": false,
+  "failurePolicy": "closed",
+  "order": 30
+}

@@ -1,12 +1,11 @@
 ---
+description:
+  Create, split, slim, or rewrite repository skills. Use when adding a
+  new `src/skills/<name>/` skill, editing a skill description, frontmatter, references,
+  overlays, or plugin placement, or tightening routing between neighboring skills.
+  NOT for score-only instruction review; use reviewing-instructions. NOT for broad
+  agent/package config audits; use evolving-config. NOT for ordinary docs; use documenting-code.
 name: writing-skills
-description: >-
-  Create, split, slim, or rewrite repository skills. Use when adding a new
-  `src/skills/<name>/` skill, editing a skill description, frontmatter,
-  references, overlays, or plugin placement, or tightening routing between
-  neighboring skills. NOT for score-only instruction review; use
-  reviewing-instructions. NOT for broad agent/package config audits; use
-  evolving-config. NOT for ordinary docs; use documenting-code.
 ---
 
 # Writing Skills
@@ -47,12 +46,12 @@ matches this repo's source and build rules.
 ## Workflow
 
 1. Find the source of truth under `src/skills/<name>/`. Read the owning
-   `src/plugins/*/plugin.yaml` and the closest neighboring skills before editing.
-   Treat `dist/` as generated.
+   `src/.agentbundler/packages/*.json` and the closest neighboring skills before
+   editing. Treat `dist/` as generated.
 2. State the smallest correct shape:
    - edit the current skill
    - move conditional detail to `references/`
-   - add a target overlay
+   - add a `.agentbundler/targets/<target>.json` overlay
    - split into two skills
    - merge or fold into a neighboring skill
 3. Decide invocation mode and trigger surface.
@@ -63,16 +62,14 @@ matches this repo's source and build rules.
      possible. Put the NOT-clause in the description, not as an afterthought.
 4. Split content per the information hierarchy in
    `references/skill-principles.md`. Keep only common-path rules in the main
-   body. Move conditional detail to `references/`. Use target overlays only
-   when the base cannot stay vendor-neutral: `<target>/frontmatter.yaml` for
-   target-specific frontmatter, `<target>/body.md` for target-specific body
-   changes, `<target>/references/`, `scripts/`, or `assets/` for target-specific
-   support.
+   body. Move conditional detail to `references/`. Use Agent Bundler JSON
+   overlays only when the base cannot stay vendor-neutral: `frontmatterPatch`,
+   `bodyPatch`, `files`, and `deletedFiles`.
 5. Tighten wording until each line changes behavior. Delete generic agent advice,
    duplicated rules, and pretty prose.
-6. When adding or removing a public skill, update the owning
-   `src/plugins/<plugin>/plugin.yaml`. Update `AGENTS.md` and `README.md` when
-   they expose the public skill surface or counts.
+6. When adding or removing a public skill, update the owning package JSON in
+   `src/.agentbundler/packages/`. Update `AGENTS.md` and `README.md` when they
+   expose the public skill surface or counts.
 7. Before claiming done, run the narrowest verification that proves the new skill
    compiles and reads well.
 8. If quality is still uncertain, run `reviewing-instructions` on the new or

@@ -57,10 +57,12 @@ def build_release_notes(
     lines.extend(
         [
             "",
-            "## Installation",
+            "## Distribution",
+            "",
+            "Artifacts are rendered by Agent Bundler from the repository root:",
             "",
             "```bash",
-            f"/plugin marketplace add {repository}",
+            "agbun build --root .",
             "```",
             "",
         ]
@@ -107,13 +109,35 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--tag", required=True, help="Release tag, for example v4.9.0")
     parser.add_argument("--changelog", type=Path, default=Path("CHANGELOG.md"))
     parser.add_argument(
-        "--marketplace", type=Path, default=Path(".claude-plugin/marketplace.json")
+        "--marketplace",
+        type=Path,
+        default=None,
+        help="optional legacy marketplace JSON; defaults to package metadata",
+    )
+    parser.add_argument(
+        "--packages-dir", type=Path, default=Path("src/.agentbundler/packages")
     )
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument(
         "--repository", required=True, help="GitHub repository, for example owner/repo"
     )
     return parser.parse_args(argv)
+
+
+def _packages_marketplace(packages_dir: Path) -> dict:
+    plugins = []
+    for path in sorted(packages_dir.glob("*.json")):
+        data = json.loads(path.read_text())
+        if data.get("id") == "cc-thingz-internal":
+            continue
+        metadata = data.get("metadata") or {}
+        plugins.append(
+            {
+                "name": data.get("id", path.stem),
+                "description": metadata.get("description", ""),
+            }
+        )
+    return {"plugins": plugins}
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -123,7 +147,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         changelog_section = extract_changelog_section(
             args.changelog.read_text(), version
         )
-        marketplace = json.loads(args.marketplace.read_text())
+        marketplace = (
+            json.loads(args.marketplace.read_text())
+            if args.marketplace is not None
+            else _packages_marketplace(args.packages_dir)
+        )
         notes = build_release_notes(changelog_section, marketplace, args.repository)
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(notes)

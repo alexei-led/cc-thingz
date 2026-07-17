@@ -1,9 +1,8 @@
 ---
-description:
-  Idiomatic TypeScript development. Use when writing TypeScript code, Node.js
+description: Idiomatic TypeScript development. Use when writing TypeScript code, Node.js
   services, React apps, or TypeScript design advice. Emphasizes strict typing, boundary
-  validation, composition, fast feedback, behavior tests, and project-configured tooling. NOT
-  for Go, Python, Rust, plain HTML/CSS/JS, or server-rendered templates (use writing-web).
+  validation, composition, fast feedback, behavior tests, and project-configured tooling.
+  NOT for Go, Python, Rust, plain HTML/CSS/JS, or server-rendered templates (use writing-web).
 name: writing-typescript
 ---
 

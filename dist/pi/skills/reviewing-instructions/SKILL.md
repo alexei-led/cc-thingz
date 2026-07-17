@@ -1,19 +1,12 @@
 ---
-description: 'Use when asked to lint, audit, review, or score AI-facing instruction
-  files such as SKILL.md, AGENT.md, AGENTS.md, CLAUDE.md, platform body.md files,
-  prompt files, rules, policies, and agent-facing references. NOT for plugin manifests,
-  application code review, harness configuration review, ordinary docs, tests, or
-  generated build output.
-
-  '
-name: reviewing-instructions
+{"description":"Use when asked to lint, audit, review, or score AI-facing instruction files such as SKILL.md, AGENT.md, AGENTS.md, CLAUDE.md, platform body.md files, prompt files, rules, policies, and agent-facing references. NOT for plugin manifests, application code review, harness configuration review, ordinary docs, tests, or generated build output.\n","name":"reviewing-instructions"}
 ---
-
 <!-- Pi platform guidance -->
 <!-- Use installed Pi tool names exactly. Installed extensions may add toolsets such as Task*, Monitor*, and Loop*; use the visible tool names exactly and do not translate them to Claude syntax. -->
-<!-- Prefer Task* over `todo` when task-tracking tools are available; `todo` is the cc-thingz fallback. Prefer MonitorCreate for long-running background commands and LoopCreate for scheduled or event-driven follow-up instead of Bash sleep/poll loops. -->
+<!-- Prefer Task* over `todo` when task-tracking tools are available; `todo` is the cc-thingz fallback. Prefer MonitorCreate for long-running or background commands and LoopCreate for scheduled or event-driven follow-up instead of Bash sleep/poll loops. -->
 <!-- Use subagent for delegated work. Use wait to block on async subagent runs only when no independent work remains. -->
 <!-- Use ctx7 or npx ctx7@latest through bash when Context7 documentation lookup is required. -->
+
 
 # Instruction Review
 
@@ -39,7 +32,7 @@ The user may pass:
 - requests such as lint, audit, review, score, compare, or rerank
 
 A name without a path separator expands to matching `src/skills/<name>` or
-`src/agents/<name>`. If it matches `src/plugins/<name>`, use `plugin.yaml`
+`src/agents/<name>.md`. If it matches `src/.agentbundler/packages/<name>.json`, use the package JSON
 only as routing evidence for agent-facing markdown or prompt files when the user
 explicitly asks for instruction scoring. Route plugin manifest review to
 `evolving-config`.
@@ -49,13 +42,13 @@ explicitly asks for instruction scoring. Route plugin manifest review to
 Review only markdown or prompt files that guide an AI agent or coding assistant.
 Include support files only when an entrypoint tells the agent to read them or when
 they live under that skill or agent folder. For plugins, score only agent-facing
-markdown or prompt files; never score `plugin.yaml`.
+markdown or prompt files; never score package JSON.
 
 Do not review:
 
 - application source code, tests, or generated artifacts
 - ordinary README, changelog, product, or design docs unless agent-facing
-- plugin or package manifests such as `src/plugins/*/plugin.yaml`; use `evolving-config`
+- package manifests such as `src/.agentbundler/packages/*.json`; use `evolving-config`
 - harness config quality; use evolving-config
 - code quality; use reviewing-code
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# notify.sh - Notification hook for AI coding agents (Claude Code, Pi, Codex, Gemini)
+# notify.sh - Notification hook for AI coding agents (Claude Code, Pi, Codex)
 #
 # Input JSON fields (common): title, message, notification_type, session_id, cwd
 # Input JSON fields (CC only): transcript_path, permission_mode

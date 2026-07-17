@@ -1,0 +1,16 @@
+{
+  "event": "session-start",
+  "handler": {
+    "mode": "exec",
+    "program": "python3",
+    "arguments": [
+      {
+        "packageFile": "hook.py"
+      }
+    ]
+  },
+  "timeoutMilliseconds": 5000,
+  "asynchronous": false,
+  "failurePolicy": "open",
+  "order": 10
+}

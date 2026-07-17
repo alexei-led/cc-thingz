@@ -1,0 +1,40 @@
+{
+  "assets": [
+    {
+      "path": "skills/cleanup-git"
+    },
+    {
+      "path": "skills/configuring-git-hygiene"
+    },
+    {
+      "path": "skills/using-git-worktrees"
+    },
+    {
+      "path": "hooks/git-guardrails",
+      "targets": [
+        "claude",
+        "codex",
+        "copilot",
+        "cursor",
+        "grok",
+        "pi"
+      ]
+    }
+  ],
+  "id": "git-flow",
+  "metadata": {
+    "author": {
+      "name": "Alexei Led"
+    },
+    "description": "Git worktrees, branch cleanup, hooks, secret scanning, config hygiene, and guardrails",
+    "homepage": "https://github.com/alexei-led/cc-thingz",
+    "keywords": [
+      "git",
+      "worktrees",
+      "hygiene"
+    ],
+    "license": "MIT",
+    "repository": "https://github.com/alexei-led/cc-thingz",
+    "version": "6.7.0"
+  }
+}

@@ -11,7 +11,7 @@ prepare_skill_evals = _load("prepare-skill-evals.py")
 
 
 def _write_skill(root: Path, target: str, plugin: str, skill: str, body: str) -> None:
-    skill_dir = root / "dist" / target / "plugins" / plugin / "skills" / skill
+    skill_dir = root / "dist" / target / plugin / "skills" / skill
     skill_dir.mkdir(parents=True)
     (skill_dir / "SKILL.md").write_text(body, encoding="utf-8")
 
@@ -51,7 +51,7 @@ def test_prepare_copies_claude_skill_and_evals(tmp_path):
 
     root_patch, dist_patch, evals_patch = _patch_roots(tmp_path)
     with root_patch, dist_patch, evals_patch:
-        skills, evals = prepare_skill_evals.prepare(out, "skills")
+        skills, evals = prepare_skill_evals.prepare(out)
 
     assert (skills, evals) == (1, 2)
     dest = out / "dev-tools" / "skills" / "writing-shell"
@@ -59,29 +59,9 @@ def test_prepare_copies_claude_skill_and_evals(tmp_path):
     assert (dest / "evals" / "evals.json").is_file()
 
 
-def test_prepare_can_copy_codex_overlay_while_preserving_eval_layout(tmp_path):
-    _write_skill(tmp_path, "claude", "dev-tools", "writing-shell", "source skill")
-    _write_skill(tmp_path, "codex", "dev-tools", "writing-shell", "codex overlay")
-    _write_eval(tmp_path, "dev-tools", "writing-shell", count=1)
-    out = tmp_path.parent / "skill-eval-out-codex"
-
-    root_patch, dist_patch, evals_patch = _patch_roots(tmp_path)
-    with root_patch, dist_patch, evals_patch:
-        skills, evals = prepare_skill_evals.prepare(out, "skills-codex")
-
-    assert (skills, evals) == (1, 1)
-    dest = out / "dev-tools" / "skills" / "writing-shell" / "SKILL.md"
-    assert dest.read_text(encoding="utf-8") == "codex overlay"
-
-
 def test_prepare_rejects_repo_output(tmp_path):
     with patch.object(prepare_skill_evals, "ROOT", tmp_path):
         with pytest.raises(
             prepare_skill_evals.EvalPrepError, match="inside the repository"
         ):
-            prepare_skill_evals.prepare(tmp_path / "nested", "skills")
-
-
-def test_prepare_rejects_unknown_source_dir(tmp_path):
-    with pytest.raises(prepare_skill_evals.EvalPrepError, match="source directory"):
-        prepare_skill_evals.prepare(tmp_path.parent / "out", "flat")
+            prepare_skill_evals.prepare(tmp_path / "nested")

@@ -1,9 +1,0 @@
-# Read-only envelope, hard-enforced by Gemini's `tools:` allowlist.
-# No run_shell_command / write_file / replace — the reviewer never mutates,
-# runs builds, or executes commands. Mirrors the Claude Read/Grep/Glob/LS set.
-tools:
-  - read_file
-  - grep_search
-  - glob
-  - list_directory
-max_turns: 30

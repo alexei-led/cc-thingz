@@ -1,0 +1,16 @@
+{
+  "event": "prompt-submit",
+  "handler": {
+    "mode": "exec",
+    "program": "bash",
+    "arguments": [
+      {
+        "packageFile": "hook.sh"
+      }
+    ]
+  },
+  "timeoutMilliseconds": 15000,
+  "asynchronous": false,
+  "failurePolicy": "open",
+  "order": 20
+}

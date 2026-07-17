@@ -4,39 +4,72 @@ on:
     tags:
       - v*.*.*
 permissions:
-  contents: write
+  contents: read
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 jobs:
   validate:
-    name: Validate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
-          fetch-depth: 0
+          python-version: "3.12"
+      - uses: actions/setup-go@v6
+        with:
+          go-version: 1.26.x
       - uses: astral-sh/setup-uv@v7
         with:
+          version: latest
           enable-cache: true
-          cache-dependency-glob: uv.lock
-      - run: make validate check test
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - name: Install Agent Bundler
+        run: go install github.com/alexei-led/agentbundler/cmd/agbun@latest
+      - run: make ci
   release:
-    name: Create Release
     needs: validate
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version: 1.26.x
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: latest
+          enable-cache: true
+      - name: Install Agent Bundler
+        run: go install github.com/alexei-led/agentbundler/cmd/agbun@latest
+      - name: Package target-native distributions
+        run: agbun package --root . --out "$RUNNER_TEMP/release-artifacts"
       - name: Generate release notes
         run: |
-          python3 scripts/release/generate-release-notes.py \
-            --tag "$GITHUB_REF_NAME" \
-            --changelog CHANGELOG.md \
-            --marketplace .claude-plugin/marketplace.json \
-            --output "$RUNNER_TEMP/release-notes.md" \
-            --repository "$GITHUB_REPOSITORY"
+          if git rev-parse "${{ github.ref_name }}^" >/dev/null 2>&1; then
+            previous_tag=$(git describe --tags --abbrev=0 "${{ github.ref_name }}^" 2>/dev/null || true)
+          else
+            previous_tag=""
+          fi
+          args=(
+            --changelog CHANGELOG.md
+            --packages-dir src/.agentbundler/packages
+            --version "${{ github.ref_name }}"
+            --output "$RUNNER_TEMP/release-notes.md"
+          )
+          if [[ -n "$previous_tag" ]]; then
+            args+=(--previous-tag "$previous_tag")
+          fi
+          uv run scripts/release/generate-release-notes.py "${args[@]}"
       - uses: softprops/action-gh-release@v3
         with:
           body_path: ${{ runner.temp }}/release-notes.md
+          files: ${{ runner.temp }}/release-artifacts/*
+          fail_on_unmatched_files: true
           generate_release_notes: false

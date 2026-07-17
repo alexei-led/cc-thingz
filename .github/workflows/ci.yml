@@ -46,9 +46,10 @@ jobs:
             config:
               - '**/*.json'
               - '**/*.toml'
-              - 'scripts/validate/validate-config.py'
-              - 'scripts/validate/validate_genericity.py'
+              - 'agentbundle.json'
               - 'src/**'
+              - 'src/.agentbundler/**'
+              - 'scripts/validate/validate_genericity.py'
             skill_evals:
               - 'src/skills/**'
               - 'dist/**'
@@ -59,7 +60,8 @@ jobs:
               - 'Makefile'
               - '.node-version'
             typescript:
-              - 'src/pi-extensions/**/*.ts'
+              - 'src/plugins/**/*.ts'
+              - 'tests/pi-extensions/**/*.ts'
               - 'package.json'
               - 'tsconfig.json'
   lint-python:
@@ -96,7 +98,7 @@ jobs:
         with:
           globs: |
             **/*.md
-            !node_modules/**
+            !**/node_modules/**
   lint-typescript:
     name: Lint TypeScript
     needs: changes
@@ -105,7 +107,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v2
-      - run: bun install
+      - run: bun install --frozen-lockfile
       - run: make lint-typescript
   validate:
     name: Config Validation
@@ -118,7 +120,16 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: uv.lock
-      - run: make validate check
+      - uses: actions/setup-go@v6
+        with:
+          go-version: 1.26.x
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - name: Install Agent Bundler
+        run: |
+          go install github.com/alexei-led/agentbundler/cmd/agbun@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - run: make validate check-generated
   test:
     name: Tests
     needs: changes
@@ -130,6 +141,15 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: uv.lock
+      - uses: actions/setup-go@v6
+        with:
+          go-version: 1.26.x
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - name: Install Agent Bundler
+        run: |
+          go install github.com/alexei-led/agentbundler/cmd/agbun@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - run: make test
   test-typescript:
     name: Test TypeScript
@@ -139,7 +159,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v2
-      - run: bun install
+      - run: bun install --frozen-lockfile
       - run: make test-ts
   skill-evals:
     name: Skill Evals

@@ -1,9 +1,9 @@
 ---
-description: Web research via platform web tools. Use for technical comparisons,
-  current-state and release-behavior questions, recent facts, ecosystem news,
-  best practices, standards, or questions needing grounded web evidence. NOT for
-  exact API syntax, config keys, or code examples — use looking-up-docs for
-  those. NOT for repo-specific questions — search local files first.
+description: Web research via platform web tools. Use for technical comparisons, current-state
+  and release-behavior questions, recent facts, ecosystem news, best practices, standards,
+  or questions needing grounded web evidence. NOT for exact API syntax, config keys,
+  or code examples — use looking-up-docs for those. NOT for repo-specific questions
+  — search local files first.
 name: researching-web
 ---
 

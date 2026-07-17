@@ -1,10 +1,9 @@
 ---
-description:
-  Brainstorm ideas and stress-test draft plans before coding. Use when
+description: Brainstorm ideas and stress-test draft plans before coding. Use when
   brainstorming, exploring approaches, designing a feature/API/flow, grilling or debating
-  a bounded plan, challenging assumptions, or resolving design-blocking terminology. NOT for
-  implementation task breakdown. NOT for generic technology comparisons or best-practice
-  research; use researching-web. NOT for docs updates; use documenting-code.
+  a bounded plan, challenging assumptions, or resolving design-blocking terminology.
+  NOT for implementation task breakdown. NOT for generic technology comparisons or
+  best-practice research; use researching-web. NOT for docs updates; use documenting-code.
 name: brainstorming-ideas
 ---
 

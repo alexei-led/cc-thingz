@@ -23,15 +23,6 @@ built-in web search  official-source discovery when enabled
 shell                Context7 CLI when allowed
 ```
 
-## Gemini
-
-```text
-Perplexity MCP     focused URL-cited source discovery when configured
-google_web_search  find official docs
-web_fetch          read selected source
-shell              Context7 CLI when allowed
-```
-
 ## Pi
 
 ```text

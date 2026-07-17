@@ -1,0 +1,1 @@
+{"acknowledgments":[{"asset":"hook/file-protector","target":"claude","key":"hook.failure.closed","reason":"Claude deny output blocks the matching pre-tool call, but a hook crash or timeout remains advisory."}]}

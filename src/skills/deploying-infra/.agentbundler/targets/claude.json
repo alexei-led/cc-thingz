@@ -1,0 +1,28 @@
+{
+  "frontmatterPatch": {
+    "allowed-tools": [
+      "Task",
+      "TaskOutput",
+      "TaskCreate",
+      "TaskUpdate",
+      "TaskList",
+      "Bash(command -v *)",
+      "Bash(kubectl *)",
+      "Bash(helm *)",
+      "Bash(kustomize *)",
+      "Bash(terraform *)",
+      "Bash(actionlint)",
+      "Bash(actionlint *)",
+      "Bash(docker *)",
+      "Bash(git *)",
+      "Bash(make *)",
+      "Read",
+      "Grep",
+      "Glob",
+      "AskUserQuestion"
+    ],
+    "argument-hint": "[--dry-run | --apply] [environment] [scope]",
+    "context": "fork",
+    "user-invocable": true
+  }
+}

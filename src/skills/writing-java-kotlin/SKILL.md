@@ -1,11 +1,10 @@
 ---
-description:
-  Idiomatic modern Java and Kotlin JVM development. Use when writing `.java`,
-  `.kt`, or `.kts` code; changing Gradle or Maven builds; or working on Spring,
-  Micronaut, Quarkus, Ktor, Android JVM modules, JUnit, Mockito, Kotest, ktlint,
-  detekt, or JVM CLI/services. Emphasizes JDK toolchains, null-safety, fast
-  focused Gradle/Maven feedback, deterministic formatting, and minimal dependencies.
-  NOT for JavaScript/TypeScript, C#/.NET, Python, shell scripts, or infra-only work.
+description: Idiomatic modern Java and Kotlin JVM development. Use when writing `.java`,
+  `.kt`, or `.kts` code; changing Gradle or Maven builds; or working on Spring, Micronaut,
+  Quarkus, Ktor, Android JVM modules, JUnit, Mockito, Kotest, ktlint, detekt, or JVM
+  CLI/services. Emphasizes JDK toolchains, null-safety, fast focused Gradle/Maven
+  feedback, deterministic formatting, and minimal dependencies. NOT for JavaScript/TypeScript,
+  C#/.NET, Python, shell scripts, or infra-only work.
 name: writing-java-kotlin
 ---
 

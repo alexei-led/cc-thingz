@@ -14,7 +14,8 @@
     "noUnusedParameters": false
   },
   "include": [
-    "src/pi-extensions/**/*.ts"
+    "src/plugins/pi/extensions/**/*.ts",
+    "tests/pi-extensions/**/*.ts"
   ],
   "exclude": [
     "node_modules",

@@ -27,22 +27,11 @@ fi
 
 echo "=== Pre-push (full) ==="
 
-# Regenerate derived artifacts
-make build || {
-	echo "FAIL: make build"
+# Agent Bundler rebuilds and checks the complete generated tree.
+make check || {
+	echo "FAIL: make check"
 	exit 1
 }
-
-# If the build produced drift, auto-commit and ask the user to re-push.
-# Happens when src/ was committed with --no-verify or pre-commit wasn't set up.
-regen_paths=(dist/ .claude-plugin/marketplace.json .agents/plugins/marketplace.json gemini-extension.json AGENTS.md skills agents hooks)
-untracked=$(git ls-files --others --exclude-standard -- dist/ .claude-plugin/ .agents/ 2>/dev/null || true)
-if ! git diff --quiet -- "${regen_paths[@]}" || [[ -n "$untracked" ]]; then
-	git add -- "${regen_paths[@]}"
-	git commit -m "chore: regenerate dist artifacts"
-	printf '\nNOTICE: dist was stale — regenerated and committed.\nRe-run git push to include this commit.\n'
-	exit 1
-fi
 
 # Full test suite
 make test || {

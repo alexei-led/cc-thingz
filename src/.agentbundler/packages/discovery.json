@@ -1,0 +1,78 @@
+{
+  "assets": [
+    {
+      "path": "skills/brainstorming-ideas"
+    },
+    {
+      "path": "skills/evolving-config"
+    },
+    {
+      "path": "skills/looking-up-docs"
+    },
+    {
+      "path": "skills/researching-web"
+    },
+    {
+      "path": "skills/reviewing-instructions"
+    },
+    {
+      "path": "skills/writing-skills"
+    },
+    {
+      "path": "skills/sequential-thinking"
+    },
+    {
+      "path": "agents/engineer.md",
+      "targets": [
+        "claude",
+        "grok"
+      ]
+    },
+    {
+      "path": "agents/reviewer.md",
+      "targets": [
+        "claude",
+        "copilot",
+        "cursor",
+        "grok"
+      ]
+    },
+    {
+      "path": "agents/runner.md",
+      "targets": [
+        "claude",
+        "codex",
+        "pi",
+        "copilot",
+        "cursor",
+        "grok"
+      ]
+    },
+    {
+      "path": "agents/advisor.md",
+      "targets": [
+        "codex",
+        "pi"
+      ]
+    }
+  ],
+  "id": "discovery",
+  "metadata": {
+    "author": {
+      "name": "Alexei Led"
+    },
+    "dependencies": {
+      "pi-subagents": "*"
+    },
+    "description": "Research, docs lookup, utility routing, skill authoring, instruction review, reasoning, and agent configuration audits",
+    "homepage": "https://github.com/alexei-led/cc-thingz",
+    "keywords": [
+      "research",
+      "documentation",
+      "skills"
+    ],
+    "license": "MIT",
+    "repository": "https://github.com/alexei-led/cc-thingz",
+    "version": "6.7.0"
+  }
+}

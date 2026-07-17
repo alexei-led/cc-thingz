@@ -1,12 +1,10 @@
 ---
-description:
-  Author, inspect, troubleshoot, and review infrastructure across IaC, Kubernetes,
-  cloud resources, containers, CI/CD, and Linux hosts. Use when changing Terraform/OpenTofu,
-  Kubernetes, Helm, Kustomize, Dockerfiles, GitHub Actions workflow/job/permissions
-  semantics, AWS, GCP, Cloud Run, BigQuery, IAM, logs, instances, or service
-  health. NOT for deploy/apply/rollback workflows (see deploying-infra). NOT for
-  shell scripts, generic command pipelines, or only the shell body inside `run:`
-  steps (see writing-shell).
+description: Author, inspect, troubleshoot, and review infrastructure across IaC,
+  Kubernetes, cloud resources, containers, CI/CD, and Linux hosts. Use when changing
+  Terraform/OpenTofu, Kubernetes, Helm, Kustomize, Dockerfiles, GitHub Actions workflow/job/permissions
+  semantics, AWS, GCP, Cloud Run, BigQuery, IAM, logs, instances, or service health.
+  NOT for deploy/apply/rollback workflows (see deploying-infra). NOT for shell scripts,
+  generic command pipelines, or only the shell body inside `run:` steps (see writing-shell).
 name: operating-infra
 ---
 

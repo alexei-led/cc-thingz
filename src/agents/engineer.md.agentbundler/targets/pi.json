@@ -1,0 +1,6 @@
+{
+  "frontmatterPatch": {
+    "package": "cc-thingz",
+    "tools": "read, edit, write, bash, grep, find, ls"
+  }
+}

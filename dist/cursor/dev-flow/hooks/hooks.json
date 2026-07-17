@@ -1,0 +1,1 @@
+{"version":1,"hooks":{"beforeSubmitPrompt":[{"command":"'bash' './hooks/skill-enforcer/hook.sh'","timeout":15}],"sessionStart":[{"command":"'python3' './hooks/session-start/hook.py'","timeout":5}],"stop":[{"command":"'bash' './hooks/test-runner/hook.sh'","timeout":120}]}}

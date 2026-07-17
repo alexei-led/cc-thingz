@@ -9,7 +9,15 @@ import sys
 import pytest
 from conftest import REPO_ROOT
 
-MODULE_PATH = REPO_ROOT / "src" / "hooks" / "revdiff-plan-review" / "hook.py"
+MODULE_PATH = (
+    REPO_ROOT
+    / "src"
+    / "plugins"
+    / "pi"
+    / "extensions"
+    / "hooks"
+    / "revdiff-plan-review.py"
+)
 
 
 def load_module():

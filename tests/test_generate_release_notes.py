@@ -77,7 +77,7 @@ def test_build_release_notes_uses_changelog_and_plugin_table() -> None:
 
     assert result.startswith("## Changes\n\n### Added\n\n- Faster focused hooks.")
     assert "| **dev-flow** | Review \\| lint \\| commit |" in result
-    assert "/plugin marketplace add alexei-led/cc-thingz" in result
+    assert "agbun build --root ." in result
 
 
 def test_main_writes_release_notes(tmp_path: Path) -> None:

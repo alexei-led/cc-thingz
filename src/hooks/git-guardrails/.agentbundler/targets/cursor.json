@@ -1,0 +1,1 @@
+{"acknowledgments":[{"asset":"hook/git-guardrails","target":"cursor","key":"hook.command.exec","reason":"Cursor renders the portable exec handler through its documented command string."}]}

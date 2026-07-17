@@ -1,0 +1,11 @@
+{
+  "frontmatterPatch": {
+    "tools": [
+      "Read", "Edit", "Write", "Bash", "Grep", "Glob", "LS",
+      "Bash(ctx7 *)", "Bash(npx ctx7@latest *)", "Bash(bunx ctx7@latest *)"
+    ],
+    "model": "sonnet",
+    "color": "green",
+    "skills": ["looking-up-docs"]
+  }
+}

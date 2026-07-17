@@ -1,10 +1,8 @@
 ---
-description:
-  Idiomatic Rust development. Use when writing Rust code, Cargo crates/workspaces,
-  Rust tests, or rustfmt/clippy/cargo workflows. Emphasizes ownership, Result
-  errors, small APIs, stdlib-first dependencies, fast cargo feedback, and
-  behavior tests. NOT for Go, Python, TypeScript, shell scripts, or infra-only
-  work.
+description: Idiomatic Rust development. Use when writing Rust code, Cargo crates/workspaces,
+  Rust tests, or rustfmt/clippy/cargo workflows. Emphasizes ownership, Result errors,
+  small APIs, stdlib-first dependencies, fast cargo feedback, and behavior tests.
+  NOT for Go, Python, TypeScript, shell scripts, or infra-only work.
 name: writing-rust
 ---
 

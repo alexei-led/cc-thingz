@@ -1,8 +1,0 @@
-user-invocable: true
-context: fork
-allowed-tools:
-  - Read
-  - Grep
-  - Glob
-  - Task
-  - Bash(uv run python src/skills/reviewing-instructions/scripts/lint-instructions.py *)

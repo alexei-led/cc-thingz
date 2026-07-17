@@ -1,0 +1,13 @@
+{
+  "frontmatterPatch": {
+    "allowed-tools": [
+      "Edit",
+      "mcp__morphllm__edit_file",
+      "Read",
+      "Grep",
+      "Glob"
+    ],
+    "context": "fork",
+    "user-invocable": false
+  }
+}

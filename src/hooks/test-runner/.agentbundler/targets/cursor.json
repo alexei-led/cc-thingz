@@ -1,0 +1,10 @@
+{
+  "acknowledgments": [
+    {
+      "asset": "hook/test-runner",
+      "target": "cursor",
+      "key": "hook.command.exec",
+      "reason": "Target renders the portable exec command as its documented command string."
+    }
+  ]
+}

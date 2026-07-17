@@ -1,17 +1,12 @@
 ---
-description: Use when planning, executing, checkpointing, finishing, or inspecting
-  lightweight spec-driven work. Runs one task at a time using `.spec/` markdown files
-  and the bundled `specctl` helper. NOT for broad product discovery beyond a short
-  requirement interview. NOT for generic implementation planning that does not read
-  or write `.spec/` files.
-name: spec-flow
+{"description":"Use when planning, executing, checkpointing, finishing, or inspecting lightweight spec-driven work. Runs one task at a time using `.spec/` markdown files and the bundled `specctl` helper. NOT for broad product discovery beyond a short requirement interview. NOT for generic implementation planning that does not read or write `.spec/` files.","name":"spec-flow"}
 ---
-
 <!-- Pi platform guidance -->
 <!-- Use installed Pi tool names exactly. Installed extensions may add toolsets such as Task*, Monitor*, and Loop*; use the visible tool names exactly and do not translate them to Claude syntax. -->
-<!-- Prefer Task* over `todo` when task-tracking tools are available; `todo` is the cc-thingz fallback. Prefer MonitorCreate for long-running background commands and LoopCreate for scheduled or event-driven follow-up instead of Bash sleep/poll loops. -->
+<!-- Prefer Task* over `todo` when task-tracking tools are available; `todo` is the cc-thingz fallback. Prefer MonitorCreate for long-running or background commands and LoopCreate for scheduled or event-driven follow-up instead of Bash sleep/poll loops. -->
 <!-- Use subagent for delegated work. Use wait to block on async subagent runs only when no independent work remains. -->
 <!-- Use ctx7 or npx ctx7@latest through bash when Context7 documentation lookup is required. -->
+
 
 # Spec flow
 

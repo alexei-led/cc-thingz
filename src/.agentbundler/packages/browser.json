@@ -1,0 +1,36 @@
+{
+  "assets": [
+    {
+      "path": "skills/browser-automation"
+    },
+    {
+      "path": "skills/playwright-skill"
+    },
+    {
+      "path": "agents/engineer.md",
+      "targets": [
+        "claude",
+        "grok"
+      ]
+    }
+  ],
+  "id": "browser",
+  "metadata": {
+    "author": {
+      "name": "Alexei Led"
+    },
+    "dependencies": {
+      "pi-subagents": "*"
+    },
+    "description": "Browser-based testing, validation, screenshots, recordings, and quick automation",
+    "homepage": "https://github.com/alexei-led/cc-thingz",
+    "keywords": [
+      "browser",
+      "playwright",
+      "testing"
+    ],
+    "license": "MIT",
+    "repository": "https://github.com/alexei-led/cc-thingz",
+    "version": "6.7.0"
+  }
+}

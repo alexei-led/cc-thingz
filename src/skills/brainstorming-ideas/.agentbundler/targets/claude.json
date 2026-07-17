@@ -1,0 +1,29 @@
+{
+  "bodyPatch": {
+    "mode": "replace",
+    "text": "# Brainstorming Ideas\n\nFollow the base skill. This Claude overlay only defines tool use and platform-specific behavior.\n\n## Claude tool rules\n\n- Use `AskUserQuestion` for every choice point. Do not write numbered menus and ask the user to type `1`, `2`, or `3`.\n- Ask one question per `AskUserQuestion` call.\n- Use single-select for one path, multi-select for multiple risks/constraints/goals, and `allowOther` for custom answers.\n- Use `TaskCreate` and `TaskUpdate` to track phases when the session has more than two steps.\n- Use `Read`, `Grep`, and `Glob` before asking questions that the repo can answer.\n- Use `Write` or `Edit` only after the user approves the exact design note, CONTEXT entry, or ADR target.\n- Use external research tools only after the user chooses research or asks for it.\n\n## Suggested interactive questions\n\nInitial question:\n\n- Header: `Idea type`\n- Question: `What would you like to brainstorm?`\n- Options: New feature, Modification, Integration, Plan grill/debate, Exploration\n- Allow Other: yes\n\nAssumptions check:\n\n- Header: `Assumptions`\n- Question: `Which assumptions are wrong or risky?`\n- Options: All correct, Some wrong, Not sure, Defer this\n- Allow Other: yes\n\nNext-step checkpoint:\n\n- Header: `Next step`\n- Question: `How should we proceed?`\n- Options: Explore codebase, Research solutions, Explore then research, Skip to approaches\n- Allow Other: yes\n\nApproach choice:\n\n- Header: `Approach`\n- Question: `Which approach fits best?`\n- Options: Recommended option, alternative option, minimal/YAGNI option\n- Allow Other: yes\n\nDesign validation:\n\n- Header: `Validate design`\n- Question: `Does this section look right?`\n- Options: Yes continue, Needs changes, Go back, Stop here\n- Allow Other: yes\n\nImplementation handoff:\n\n- Header: `Next steps`\n- Question: `What should happen next?`\n- Options: Create worktree, Create plan, Save design note, Done for now\n- Allow Other: yes\n\n## Optional exploration\n\nIf the user chooses codebase exploration, run a bounded read-only scan. Prefer direct `Read`/`Grep`/`Glob`; use a subagent only for broad scans.\n\nPrompt shape for a broad scan:\n\n```text\nQuick scan only. Find project structure, relevant flows, conventions, integration points, and tests for: <idea>. Return 5 bullets with file paths. Do not edit.\n```\n\nIf no relevant code appears, say `no prior implementation found`; do not fabricate patterns.\n\n## Optional research\n\nIf the user chooses research, use Perplexity or WebFetch with a scoped query. Summarize sourced patterns before proposing approaches. If live retrieval is unavailable, say so and continue from local context only.\n\n## Capture rules\n\n- For `CONTEXT.md` entries, ask for approval of the exact one-sentence definition before editing.\n- For ADRs, require all three: hard to reverse, surprising without context, and a real trade-off.\n- For design notes, write only concise Problem, Chosen approach, Trade-offs, Open questions, and Testing strategy.\n\n## Failure handling\n\n- Idea conflicts with domain docs: quote the conflicting terms and resolve with the user before designing.\n- A constraint blocks every approach: state the blocker, what would unblock it, and ask what to relax.\n- Idea is too vague: stay in understanding mode; ask one narrowing question at a time.\n- No bounded plan exists for grill/debate: ask for one; do not invent opposing positions.\n- If the user asks for task sequencing, state that it is outside this skill's scope.\n- If the user asks for generic technology research, route to `researching-web`.\n- If the user asks for docs-only work, route to `documenting-code`.\n- If the user stops mid-session, offer `BRAINSTORM PAUSED` or a short design note.\n\n### Execute this collaborative brainstorming workflow now\n"
+  },
+  "frontmatterPatch": {
+    "allowed-tools": [
+      "AskUserQuestion",
+      "Task",
+      "TaskCreate",
+      "TaskUpdate",
+      "TaskList",
+      "Read",
+      "Grep",
+      "Glob",
+      "Write",
+      "Edit",
+      "mcp__perplexity-ask__perplexity_ask",
+      "WebFetch",
+      "Bash(git status *)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Bash(git show *)"
+    ],
+    "argument-hint": "[idea|plan|grill|debate] <topic-or-plan>",
+    "context": "fork",
+    "user-invocable": true
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "bodyPatch": {
+    "mode": "replace",
+    "text": "# Test Improvement\n\nFollow the base skill. This Claude overlay only defines tool use and execution details.\n\nImprove tests through public behavior seams. Treat suite latency as a quality\nattribute. Do not inflate coverage with low-value assertions. Do not change\nproduction behavior unless the selected TDD slice requires it.\n\n## Arguments\n\n- `review`: find weak, duplicate, brittle, missing, slow, or flaky tests.\n- `refactor`: simplify tests without changing covered behavior.\n- `coverage`: add useful tests for uncovered business behavior or error paths.\n- `tdd`: one red-green-refactor slice at a time.\n- `performance`: measure slow tests and remove speed waste without weakening behavior.\n- `full`: review, refactor, performance, and add coverage.\n\nIf mode is missing, use `AskUserQuestion` with those options. Ask before adding a\nnew test framework.\n\nUse `TaskCreate` and `TaskUpdate` when the session has more than two steps:\n\n1. Choose mode and scope.\n2. Inspect test structure and project conventions.\n3. Select behavior seam.\n4. Apply one cluster or one TDD slice.\n5. Verify and report.\n\n## Tool order\n\n1. Use `Read`, `Grep`, `Glob`, and `LS` to find tests, fixtures, helpers, and nearby patterns.\n2. Load only matching language references. For `performance` mode or slow-suite work, also load the matching `references/<language>-performance.md` when present.\n3. Run the narrow test or coverage command only when it helps the selected mode.\n4. Use `Edit` for existing tests and `Write` only for new files.\n5. Run the relevant verification before final output.\n\nUse direct reads/search for small scopes. Spawn read-only agents only for broad or\nmixed-language audits.\n\n## Command discipline\n\nUse only commands supported by the repo and available tools. Examples:\n\n```bash\ngo test ./pkg -run TestName\ngo test ./...\ngo tool cover -func=/tmp/coverage.out\ngolangci-lint run ./...\nvitest run path/to/file.test.ts\njest path/to/file.test.ts --runInBand\npytest -q --maxfail=1 --tb=short\npytest -q --durations=10 --durations-min=0.5\nuv run pytest -q --maxfail=1 --tb=short\nbun test\nbun run tsc --noEmit\nnpm test\nnpx playwright test --list\nbunx playwright test --list\n```\n\nIf a referenced command is unavailable, report it as skipped with the exact reason.\nDo not install a test framework or tool without user approval.\n\n## TDD mode\n\nFor `tdd`, write one failing test for one behavior, confirm it fails for the expected\nreason, implement the smallest passing code, then refactor only while green. Do not\nwrite a bulk suite for imagined future behavior.\n\n## Scope control\n\n- Test through public module, package, API, CLI, component, or service boundaries.\n- Mock only system boundaries.\n- Remove real sleeps, external I/O, broad discovery, repeated setup, and coverage-on-default before reducing checks.\n- Delete shallow duplicates only after stronger public-boundary tests cover them.\n- Do not force table-driven, parametrized, or `it.each` consolidation when separate tests make distinct behavior clearer.\n- If no safe behavior seam exists, use `BLOCKED` or `Proposed Changes`.\n"
+  },
+  "frontmatterPatch": {
+    "allowed-tools": [
+      "Task",
+      "TaskOutput",
+      "TaskCreate",
+      "TaskUpdate",
+      "TaskList",
+      "Read",
+      "Grep",
+      "Glob",
+      "LS",
+      "Edit",
+      "Write",
+      "AskUserQuestion",
+      "Bash(go test *)",
+      "Bash(go tool *)",
+      "Bash(golangci-lint *)",
+      "Bash(pytest *)",
+      "Bash(uv run pytest *)",
+      "Bash(bun test *)",
+      "Bash(bun run *)",
+      "Bash(npm test *)",
+      "Bash(pnpm test *)",
+      "Bash(yarn test *)",
+      "Bash(vitest *)",
+      "Bash(jest *)",
+      "Bash(npx vitest *)",
+      "Bash(npx jest *)",
+      "Bash(node --test *)",
+      "Bash(npx playwright *)",
+      "Bash(bunx playwright *)"
+    ],
+    "argument-hint": "[review|refactor|coverage|tdd|performance|full]",
+    "context": "fork",
+    "user-invocable": true
+  }
+}

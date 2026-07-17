@@ -1,0 +1,55 @@
+{
+  "assets": [
+    {
+      "path": "skills/writing-csharp"
+    },
+    {
+      "path": "skills/writing-go"
+    },
+    {
+      "path": "skills/writing-java-kotlin"
+    },
+    {
+      "path": "skills/writing-python"
+    },
+    {
+      "path": "skills/writing-rust"
+    },
+    {
+      "path": "skills/writing-shell"
+    },
+    {
+      "path": "skills/writing-typescript"
+    },
+    {
+      "path": "skills/writing-web"
+    },
+    {
+      "path": "agents/engineer.md",
+      "targets": [
+        "claude",
+        "pi",
+        "grok"
+      ]
+    }
+  ],
+  "id": "programming",
+  "metadata": {
+    "author": {
+      "name": "Alexei Led"
+    },
+    "dependencies": {
+      "pi-subagents": "*"
+    },
+    "description": "Idiomatic development across C# /.NET, Go, Java/Kotlin, Python, Rust, TypeScript, shell, and web",
+    "homepage": "https://github.com/alexei-led/cc-thingz",
+    "keywords": [
+      "programming",
+      "languages",
+      "development"
+    ],
+    "license": "MIT",
+    "repository": "https://github.com/alexei-led/cc-thingz",
+    "version": "6.7.0"
+  }
+}

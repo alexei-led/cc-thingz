@@ -1,8 +1,5 @@
 ---
-description: Sole mutator role — applies and verifies code, test, doc, and infra changes.
-  Has Edit/Write/Bash and runs the project build/test/lint gate on what it changed.
-  Use for implement, fix, refactor, or apply tasks. Not for read-only review (reviewer)
-  or risk advice (advisor).
+description: Sole mutator role — applies and verifies code, test, doc, and infra changes. Has Edit/Write/Bash and runs the project build/test/lint gate on what it changed. Use for implement, fix, refactor, or apply tasks. Not for read-only review (reviewer) or risk advice (advisor).
 name: engineer
 package: cc-thingz
 tools: read, edit, write, bash, grep, find, ls

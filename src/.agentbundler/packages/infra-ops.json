@@ -1,0 +1,39 @@
+{
+  "assets": [
+    {
+      "path": "skills/deploying-infra",
+      "targets": [
+        "claude"
+      ]
+    },
+    {
+      "path": "skills/operating-infra"
+    },
+    {
+      "path": "agents/engineer.md",
+      "targets": [
+        "claude",
+        "grok"
+      ]
+    }
+  ],
+  "id": "infra-ops",
+  "metadata": {
+    "author": {
+      "name": "Alexei Led"
+    },
+    "dependencies": {
+      "pi-subagents": "*"
+    },
+    "description": "Kubernetes, Terraform, Helm, GitHub Actions, AWS, GCP, and Linux infrastructure operations",
+    "homepage": "https://github.com/alexei-led/cc-thingz",
+    "keywords": [
+      "infrastructure",
+      "kubernetes",
+      "terraform"
+    ],
+    "license": "MIT",
+    "repository": "https://github.com/alexei-led/cc-thingz",
+    "version": "6.7.0"
+  }
+}

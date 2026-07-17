@@ -1,0 +1,26 @@
+{
+  "bodyPatch": {
+    "mode": "replace",
+    "text": "# Code Review\n\n## Platform workflow additions\n\nTrack phases with `TaskCreate` and `TaskUpdate` when available:\n\n1. Scope resolved.\n2. References loaded.\n3. Evidence gathered.\n4. Findings consolidated.\n5. Report emitted.\n\n## Arguments\n\nIf `$ARGUMENTS` is passed, interpret these keywords:\n\n- `quick`: changed lines plus direct context; security and correctness only.\n- `deep`: all dimensions from the host skill.\n- `team`: parallel reviewer sub-tasks, then one consolidated report.\n- `external`: second-model or external-AI review; only when explicitly requested.\n\nDefault is standard. Never run `external` implicitly.\n\n## Scope prompt\n\nWhen scope is missing, use `AskUserQuestion` with header `Review scope` and these options:\n\n- Uncommitted changes.\n- Branch compared to default branch.\n- Specific files or PR diff supplied by the user.\n\n## Team mode\n\nRun sub-tasks as the read-only `reviewer` role. Split by review dimension or file group. Each sub-task must use the host skill's severity rubric and return only evidence-backed findings.\n\nConsolidate before reporting:\n\n- Deduplicate by `file:line` plus claim.\n- Keep the highest severity only when the evidence matches the rubric.\n- Move unsupported or disputed claims to Needs review.\n- Prefix confirmed findings with `[Flagged by: <dimension or file group>]` only when it helps explain coverage.\n\n## External mode\n\nWhen `external` is requested, spawn configured external reviewer bridges in parallel if available. Do not depend on a specific bridge or model.\n\nReport the result explicitly:\n\n- `External review: completed` when it ran.\n- `External review: unavailable` when no bridge exists.\n- `External review: skipped` when privacy, missing scope, or tooling prevents it.\n\nApply the host severity rubric to external output. Do not include external claims as confirmed findings unless the local review can verify the evidence.\n\n## Historical context\n\nIf memory search is available, query past observations for files in scope. Use it only to avoid repeating already-litigated findings. Do not treat memory as evidence for a new finding.\n"
+  },
+  "frontmatterPatch": {
+    "allowed-tools": [
+      "Task",
+      "TaskOutput",
+      "TaskCreate",
+      "TaskUpdate",
+      "TaskList",
+      "AskUserQuestion",
+      "Read",
+      "Grep",
+      "Glob",
+      "LS",
+      "Bash(git *)",
+      "Bash(gh pr *)",
+      "Bash(gh api *)"
+    ],
+    "argument-hint": "[deep] [team] [external]",
+    "context": "fork",
+    "user-invocable": true
+  }
+}

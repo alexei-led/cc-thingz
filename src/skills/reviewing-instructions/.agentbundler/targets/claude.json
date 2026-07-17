@@ -1,0 +1,17 @@
+{
+  "bodyPatch": {
+    "mode": "replace",
+    "text": "# Instruction Review\n\n## Claude platform additions\n\nThe host SKILL.md is canonical. This overlay only adds Claude-specific argument,\ntask, and aggregation behavior.\n\n## Argument parsing\n\nFrom `$ARGUMENTS`:\n\n- first non-flag token: file path, directory path, plugin name, or omitted scope\n- `--model <name>`: override model resolution\n- `--team`: use parallel review agents for large scopes\n- `--rerank`: use calibration anchors and pairwise comparison when comparing versions\n\n## Task use\n\nUse direct review for one file or one small skill folder.\n\nUse parallel tasks only when scope contains multiple independent files or plugins.\nLaunch at most 3 review tasks at once. Batch deterministically by sorted path, not\nby estimated difficulty.\n\nEach task prompt must include:\n\n- exact file list\n- resolved model context or instruction to resolve it\n- path to `references/scoring-rubric.md`\n- path to `references/model-resolution.md`\n- path to `references/skill-architecture.md` when the scope includes `SKILL.md`, `AGENT.md`, `body.md`, or agent-facing references\n- requirement to cite evidence for every score\n- requirement to apply gates and caps before final score\n\n## Aggregation\n\nWhen task results return:\n\n1. Verify each reviewed file was in scope.\n2. Recompute caps when a task forgot them.\n3. Deduplicate findings by file plus rule or dimension.\n4. If two scores differ by more than 1 point, compare gates and caps first.\n5. Use the lower-confidence score only as a signal; do not average incompatible scopes.\n6. Put unresolved disagreements in the report as low-confidence notes.\n\n## Rerank mode\n\nWhen `$ARGUMENTS` contains `--rerank`, read `references/calibration.md`.\nFor two versions of a file, compare gates first, then dimensions, then final score.\nIf the difference is less than 0.5, report a tie.\n\n## Web and model docs\n\nUse web lookup for model docs only when local references are missing or the user asks\nfor current vendor guidance. If web access fails, use local references or generic\ncontext and report the gap.\n"
+  },
+  "frontmatterPatch": {
+    "allowed-tools": [
+      "Read",
+      "Grep",
+      "Glob",
+      "Task",
+      "Bash(uv run python src/skills/reviewing-instructions/scripts/lint-instructions.py *)"
+    ],
+    "context": "fork",
+    "user-invocable": true
+  }
+}

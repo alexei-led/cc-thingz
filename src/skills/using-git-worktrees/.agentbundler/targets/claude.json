@@ -1,0 +1,20 @@
+{
+  "frontmatterPatch": {
+    "allowed-tools": [
+      "Read",
+      "AskUserQuestion",
+      "Bash(git status *)",
+      "Bash(git branch *)",
+      "Bash(git worktree *)",
+      "Bash(git rev-parse *)",
+      "Bash(git symbolic-ref *)",
+      "Bash(git fetch *)",
+      "Bash(mkdir *)",
+      "Bash(rmdir *)",
+      "Bash(scripts/setup-worktree.sh *)",
+      "Bash(scripts/cleanup-worktree.sh *)"
+    ],
+    "context": "fork",
+    "user-invocable": true
+  }
+}

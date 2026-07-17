@@ -1,4 +1,0 @@
-name: session-start
-event: sessionstart
-timeout: 5
-status_message: Loading session context

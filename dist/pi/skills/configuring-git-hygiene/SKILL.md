@@ -1,18 +1,12 @@
 ---
-description: 'Configure safe git workflow hygiene: pre-commit/pre-push hooks, Gitleaks
-  secret scanning, .gitignore rules, local git config, and guardrails. Use when setting
-  up git hooks, gitleaks/git leaks, staged pre-commit checks, pre-push validation,
-  core.hooksPath, .gitignore, or git config best practices. NOT for creating commits
-  (use committing-code), cleaning branches/worktrees (use cleanup-git), or creating
-  worktrees (use using-git-worktrees).'
-name: configuring-git-hygiene
+{"description":"Configure safe git workflow hygiene: pre-commit/pre-push hooks, Gitleaks secret scanning, .gitignore rules, local git config, and guardrails. Use when setting up git hooks, gitleaks/git leaks, staged pre-commit checks, pre-push validation, core.hooksPath, .gitignore, or git config best practices. NOT for creating commits (use committing-code), cleaning branches/worktrees (use cleanup-git), or creating worktrees (use using-git-worktrees).","name":"configuring-git-hygiene"}
 ---
-
 <!-- Pi platform guidance -->
 <!-- Use installed Pi tool names exactly. Installed extensions may add toolsets such as Task*, Monitor*, and Loop*; use the visible tool names exactly and do not translate them to Claude syntax. -->
-<!-- Prefer Task* over `todo` when task-tracking tools are available; `todo` is the cc-thingz fallback. Prefer MonitorCreate for long-running background commands and LoopCreate for scheduled or event-driven follow-up instead of Bash sleep/poll loops. -->
+<!-- Prefer Task* over `todo` when task-tracking tools are available; `todo` is the cc-thingz fallback. Prefer MonitorCreate for long-running or background commands and LoopCreate for scheduled or event-driven follow-up instead of Bash sleep/poll loops. -->
 <!-- Use subagent for delegated work. Use wait to block on async subagent runs only when no independent work remains. -->
 <!-- Use ctx7 or npx ctx7@latest through bash when Context7 documentation lookup is required. -->
+
 
 # Configure Git Hygiene
 

@@ -1,16 +1,12 @@
 ---
-description: Idiomatic Rust development. Use when writing Rust code, Cargo crates/workspaces,
-  Rust tests, or rustfmt/clippy/cargo workflows. Emphasizes ownership, Result errors,
-  small APIs, stdlib-first dependencies, fast cargo feedback, and behavior tests.
-  NOT for Go, Python, TypeScript, shell scripts, or infra-only work.
-name: writing-rust
+{"description":"Idiomatic Rust development. Use when writing Rust code, Cargo crates/workspaces, Rust tests, or rustfmt/clippy/cargo workflows. Emphasizes ownership, Result errors, small APIs, stdlib-first dependencies, fast cargo feedback, and behavior tests. NOT for Go, Python, TypeScript, shell scripts, or infra-only work.","name":"writing-rust"}
 ---
-
 <!-- Pi platform guidance -->
 <!-- Use installed Pi tool names exactly. Installed extensions may add toolsets such as Task*, Monitor*, and Loop*; use the visible tool names exactly and do not translate them to Claude syntax. -->
-<!-- Prefer Task* over `todo` when task-tracking tools are available; `todo` is the cc-thingz fallback. Prefer MonitorCreate for long-running background commands and LoopCreate for scheduled or event-driven follow-up instead of Bash sleep/poll loops. -->
+<!-- Prefer Task* over `todo` when task-tracking tools are available; `todo` is the cc-thingz fallback. Prefer MonitorCreate for long-running or background commands and LoopCreate for scheduled or event-driven follow-up instead of Bash sleep/poll loops. -->
 <!-- Use subagent for delegated work. Use wait to block on async subagent runs only when no independent work remains. -->
 <!-- Use ctx7 or npx ctx7@latest through bash when Context7 documentation lookup is required. -->
+
 
 # Rust Development
 

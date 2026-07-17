@@ -1,0 +1,5 @@
+{"acknowledgments":[
+  {"asset":"hook/git-guardrails","target":"copilot","key":"hook.command.exec","reason":"Copilot renders the portable exec handler through its documented command form."},
+  {"asset":"hook/git-guardrails","target":"copilot","key":"hook.event.pre-tool","reason":"Copilot pre-tool translation is advisory until vendor runtime deny behavior is smoke-tested."},
+  {"asset":"hook/git-guardrails","target":"copilot","key":"hook.failure.closed","reason":"Copilot pre-tool failure semantics are advisory for crashes and timeouts."}
+]}

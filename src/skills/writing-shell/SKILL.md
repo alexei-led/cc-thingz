@@ -1,12 +1,11 @@
 ---
-description:
-  Idiomatic shell development for POSIX sh, Bash, Zsh, Fish, hooks, CI shell
-  steps, and scriptable CLI glue. Use when writing or changing `.sh`, `.bash`,
-  `.zsh`, `.fish`, `.bats`, shell functions, shell pipelines, CI `run:` shell
-  bodies, or command-runner recipes. Emphasizes portability, quoting, safe
-  filesystem/process handling, non-TUI CLI tools, ShellCheck, shfmt, Bats, and
-  ShellSpec. NOT for Python, Rust, TypeScript, Go, web code, or GitHub Actions
-  workflow/job/permissions semantics; use operating-infra.
+description: Idiomatic shell development for POSIX sh, Bash, Zsh, Fish, hooks, CI
+  shell steps, and scriptable CLI glue. Use when writing or changing `.sh`, `.bash`,
+  `.zsh`, `.fish`, `.bats`, shell functions, shell pipelines, CI `run:` shell bodies,
+  or command-runner recipes. Emphasizes portability, quoting, safe filesystem/process
+  handling, non-TUI CLI tools, ShellCheck, shfmt, Bats, and ShellSpec. NOT for Python,
+  Rust, TypeScript, Go, web code, or GitHub Actions workflow/job/permissions semantics;
+  use operating-infra.
 name: writing-shell
 ---
 

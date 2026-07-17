@@ -14,11 +14,11 @@ tests/skill-evals/discovery/reviewing-instructions/
         └── optional-fixture.txt
 ```
 
-`<plugin>` must match the current plugin name from `src/plugins/<plugin>/plugin.yaml`.
+`<package>` must match the current package ID from `src/.agentbundler/packages/<package>.json`.
 
 `make skill-evals-prepare` copies the matching built skill from `dist/<target>/plugins/<plugin>/skills/<skill>/` into `/tmp/cc-thingz-skill-eval-root` and injects `evals/` there. This gives `agent-skills-eval` the layout it expects without shipping evals in plugin packages.
 
-Use `SKILL_EVAL_SOURCE=skills-codex` to test the Codex/Gemini overlays while preserving the evaluator's expected `plugins/<plugin>/skills/<skill>/` output layout. Pi exports are validated locally by `make validate`; paid eval preparation currently supports source skills and Codex/Gemini overlays only.
+Skill eval preparation copies the Claude package layout rendered by Agent Bundler into the evaluator's expected package/skill tree. Pi exports are validated locally by `make validate`; paid eval preparation does not run vendor-specific overlays.
 
 `make validate` runs `validate-no-plugin-evals`, which fails if any deployable skill tree under `dist/<target>/plugins/*/skills/*/evals` is populated from source-controlled eval fixtures.
 
@@ -152,10 +152,10 @@ Run one skill:
 make skill-evals SKILL_EVAL_INCLUDE='discovery/skills/reviewing-instructions'
 ```
 
-Run against exported Codex/Gemini skill overlays:
+Run against exported Codex skill overlays:
 
 ```bash
-make skill-evals SKILL_EVAL_SOURCE=skills-codex
+make skill-evals
 ```
 
 Validate Pi exports without paid model calls:
@@ -196,7 +196,7 @@ Fast fix loop, no baseline and no HTML report:
 make skill-evals-fast SKILL_EVAL_INCLUDE='discovery/skills/researching-web'
 ```
 
-Run source skills and Codex/Gemini overlays in parallel with separate workspaces:
+Run source skills and Codex overlays in parallel with separate workspaces:
 
 ```bash
 make skill-evals-both SKILL_EVAL_STRICT=0
@@ -224,7 +224,7 @@ Defaults:
 - judge: `gpt-5.4-mini`
 - workspace: `/tmp/cc-thingz-skill-eval-workspace`
 - prepared root: `/tmp/cc-thingz-skill-eval-root`
-- skill source: `skills` (`skills-codex` for exported Codex/Gemini overlays; Pi uses local validation)
+- skill source: Agent Bundler's Claude package output; Pi uses local validation
 - baseline: enabled (`SKILL_EVAL_BASELINE=0` disables it)
 - HTML report: enabled (`SKILL_EVAL_HTML_REPORT=0` disables it)
 - concurrency: `4`
