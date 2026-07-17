@@ -508,6 +508,7 @@ def test_make_check_is_non_mutating_and_release_packages_artifacts() -> None:
         in release_workflow
     )
     assert "files: ${{ runner.temp }}/release-artifacts/*" in release_workflow
+    assert release_workflow.count("- run: uv sync --all-groups") == 2
     assert "- uses: oven-sh/setup-bun@v2" in release_workflow
     assert "- run: bun install --frozen-lockfile" in release_workflow
     for workflow in (ci_workflow, release_workflow):
@@ -538,9 +539,25 @@ def test_release_tag_updates_agentbundle_versions(tmp_path: Path) -> None:
         path = tmp_path / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(content, indent=2) + "\n")
-    (tmp_path / "pyproject.toml").write_text('version = "1.0.0"\n')
+    (tmp_path / "pyproject.toml").write_text(
+        "[project]\n"
+        'name = "test-release"\n'
+        'version = "1.0.0"\n'
+        'requires-python = ">=3.12"\n'
+    )
     (tmp_path / "uv.lock").write_text('version = "1.0.0"\n')
     (tmp_path / "CHANGELOG.md").write_text("## [Unreleased]\n")
+    uv = tmp_path / "bin/uv"
+    uv.parent.mkdir()
+    uv.write_text(
+        """#!/usr/bin/env python3
+from pathlib import Path
+project = Path("pyproject.toml").read_text()
+version = project.split('version = "', 1)[1].split('"', 1)[0]
+Path("uv.lock").write_text(f'version = "{version}"\\n')
+"""
+    )
+    uv.chmod(0o755)
     (tmp_path / "Makefile").write_text(
         "build:\n\t@mkdir -p dist; echo generated > dist/build.txt\n"
     )
@@ -556,8 +573,15 @@ def test_release_tag_updates_agentbundle_versions(tmp_path: Path) -> None:
     )
     subprocess.run(["git", "add", "."], cwd=tmp_path, check=True)
     subprocess.run(["git", "commit", "-qm", "initial"], cwd=tmp_path, check=True)
-    subprocess.run(["bash", str(script), "v1.2.3"], cwd=tmp_path, check=True)
+    environment = os.environ | {"PATH": f"{uv.parent}:{os.environ['PATH']}"}
+    subprocess.run(
+        ["bash", str(script), "v1.2.3"],
+        cwd=tmp_path,
+        check=True,
+        env=environment,
+    )
 
     bundle = json.loads((tmp_path / "agentbundle.json").read_text())
     assert bundle["distribution"]["version"] == "1.2.3"
     assert bundle["composition"][0]["aggregate"]["metadata"]["version"] == "1.2.3"
+    assert (tmp_path / "uv.lock").read_text() == 'version = "1.2.3"\n'

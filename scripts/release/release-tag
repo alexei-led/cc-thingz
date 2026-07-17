@@ -93,6 +93,8 @@ for f in "${project_version_files[@]}"; do
 	fi
 	if [[ "$f" == "agentbundle.json" ]]; then
 		update_agentbundle_version "$f" "$VERSION"
+	elif [[ "$f" == "uv.lock" ]]; then
+		uv lock
 	elif [[ "$f" == *.toml ]]; then
 		sed_inplace "s/^version = .*/version = \"$VERSION\"/" "$f"
 	else
