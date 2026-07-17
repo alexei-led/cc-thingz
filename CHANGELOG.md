@@ -8,6 +8,13 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.8.1] - 2026-07-17
+
+### Fixed
+
+- Fixed release runners missing Python development tools by synchronizing all uv dependency groups before validation and publishing.
+- Fixed the release tag script leaving `uv.lock` at the prior project version.
+
 ## [6.8.0] - 2026-07-17
 
 ### Added
