@@ -34,8 +34,7 @@ lint-shell: ## Lint shell scripts with shellcheck + shfmt (matches CI's action-s
 	shfmt -i 0 -d scripts/git-hooks/pre-commit scripts/git-hooks/pre-push scripts/release/release-tag
 
 lint-markdown: ## Lint Markdown files
-	@command -v markdownlint-cli2 >/dev/null 2>&1 || { echo "markdownlint-cli2 not installed — skipping"; exit 0; }
-	markdownlint-cli2 '**/*.md' '!**/node_modules/**' '!.pi-subagents/**'
+	bunx --no-install markdownlint-cli2 '**/*.md' '!**/node_modules/**' '!.pi-subagents/**'
 
 lint-typescript: ## Type-check Pi extension TypeScript
 	bun x tsc --noEmit

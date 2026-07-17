@@ -8,6 +8,12 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.8.5] - 2026-07-17
+
+### Fixed
+
+- Resolved the local Bun markdownlint binary through bunx in the release validation path.
+
 ## [6.8.4] - 2026-07-17
 
 ### Fixed
