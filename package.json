@@ -1,6 +1,6 @@
 {
   "name": "cc-thingz",
-  "version": "6.8.5",
+  "version": "6.8.6",
   "private": true,
   "description": "Portable skills, agents, hooks, and Pi extensions for Claude Code, Codex CLI, Copilot, Cursor, Grok, and Pi.",
   "license": "MIT",
