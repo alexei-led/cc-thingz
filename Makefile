@@ -125,7 +125,7 @@ fmt: ## Auto-format Python and shell files
 
 # --- Agent Bundler build and drift checks ---
 
-.PHONY: build check check-agbun
+.PHONY: build check check-generated check-agbun
 check-agbun: ## Require an installed Agent Bundler with package support
 	@command -v agbun >/dev/null 2>&1 || { echo "agbun is required"; exit 1; }
 	@agbun package --help >/dev/null 2>&1 || { echo "agbun with package support is required"; exit 1; }
@@ -136,10 +136,14 @@ build: check-agbun ## Regenerate active target layouts with Agent Bundler
 check: check-agbun ## Ask Agent Bundler to check generated drift without mutating output
 	agbun check --root .
 
+check-generated: build ## Rebuild clean-checkout dependencies and fail if tracked dist output drifts
+	@git diff --exit-code -- dist
+	agbun check --root .
+
 # --- CI (runs everything) ---
 
 .PHONY: ci
-ci: lint validate check test test-ts ## Run full CI pipeline locally (lint + validate + drift check + tests)
+ci: lint validate check-generated test test-ts ## Run full CI pipeline locally (lint + validate + generated drift check + tests)
 
 # --- Setup ---
 

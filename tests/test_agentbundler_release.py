@@ -481,6 +481,28 @@ def test_make_check_is_non_mutating_and_release_packages_artifacts() -> None:
     ).stdout
     assert "agbun check --root ." in dry_run
     assert "agbun build" not in dry_run
+
+    generated_dry_run = subprocess.run(
+        ["make", "--no-print-directory", "-n", "check-generated"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        check=True,
+        text=True,
+    ).stdout
+    assert "agbun build --root ." in generated_dry_run
+    assert "git diff --exit-code -- dist" in generated_dry_run
+    assert "agbun check --root ." in generated_dry_run
+    validation_job = ci_workflow[
+        ci_workflow.index("  validate:") : ci_workflow.index("  test:")
+    ]
+    test_job = ci_workflow[
+        ci_workflow.index("  test:") : ci_workflow.index("  test-typescript:")
+    ]
+    for job in (validation_job, test_job):
+        assert "- uses: oven-sh/setup-bun@v2" in job
+        assert "- run: bun install --frozen-lockfile" in job
+    assert "- run: make validate check-generated" in validation_job
+
     assert (
         'agbun package --root . --out "$RUNNER_TEMP/release-artifacts"'
         in release_workflow
