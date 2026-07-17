@@ -17,7 +17,7 @@
       "name": "Alexei Led"
     },
     "description": "Portable skills, agents, hooks, and Pi-native extensions for coding agents.",
-    "version": "6.8.3"
+    "version": "6.8.4"
   },
   "composition": [
     {
@@ -38,7 +38,7 @@
       "aggregate": {
         "identity": "cc-thingz",
         "metadata": {
-          "version": "6.8.3",
+          "version": "6.8.4",
           "description": "Skills, agents, hooks, and native extensions for Pi",
           "keywords": [
             "coding-agent",
