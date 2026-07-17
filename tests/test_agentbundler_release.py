@@ -508,7 +508,12 @@ def test_make_check_is_non_mutating_and_release_packages_artifacts() -> None:
         in release_workflow
     )
     assert "files: ${{ runner.temp }}/release-artifacts/*" in release_workflow
-    assert release_workflow.count("- run: uv sync --all-groups") == 2
+    assert release_workflow.count("- run: uv sync --all-groups --extra test") == 2
+    project = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text())
+    assert any(
+        dependency.startswith("ruff")
+        for dependency in project["dependency-groups"]["dev"]
+    )
     assert "- uses: oven-sh/setup-bun@v2" in release_workflow
     assert "- run: bun install --frozen-lockfile" in release_workflow
     for workflow in (ci_workflow, release_workflow):

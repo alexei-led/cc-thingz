@@ -8,6 +8,12 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.8.2] - 2026-07-17
+
+### Fixed
+
+- Declared Ruff as a Python development dependency so clean release runners can execute the full validation suite.
+
 ## [6.8.1] - 2026-07-17
 
 ### Fixed

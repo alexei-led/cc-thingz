@@ -22,7 +22,7 @@ jobs:
         with:
           version: latest
           enable-cache: true
-      - run: uv sync --all-groups
+      - run: uv sync --all-groups --extra test
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
       - name: Install Agent Bundler
@@ -47,7 +47,7 @@ jobs:
         with:
           version: latest
           enable-cache: true
-      - run: uv sync --all-groups
+      - run: uv sync --all-groups --extra test
       - name: Install Agent Bundler
         run: go install github.com/alexei-led/agentbundler/cmd/agbun@latest
       - name: Package target-native distributions
