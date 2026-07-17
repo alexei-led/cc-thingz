@@ -8,8 +8,26 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
-## [6.7.0] - 2026-07-08
+## [6.8.0] - 2026-07-17
 
+### Added
+
+- Added Agent Bundler as the sole package compiler for Claude Code, Codex CLI, Copilot, Cursor, Grok, and Pi, with target-native release archives.
+- Added generated Codex project agent profiles and restored target-specific agent metadata.
+- Added bundled Pi native extensions for prompts, structured output, todos, plan-mode review, permission confirmation, and compatibility hooks.
+
+### Changed
+
+- Replaced custom compile, manifest, overlay, and post-processing scripts with declarative Agent Bundler package, hook, agent, and native-resource assets.
+- Retired Gemini exports; supported targets are Claude Code, Codex CLI, Copilot, Cursor, Grok, and Pi.
+- Release CI now packages and attaches one native archive per supported target.
+
+### Fixed
+
+- Restored target-specific guards, smart-lint, notifications, ccgram lifecycle hooks, and Pi compatibility behavior without duplicate portable-hook dispatch.
+- Made generated-output CI checks work from clean checkouts and provisioned Bun for Python hook tests that exercise the generated Pi runtime.
+
+## [6.7.0] - 2026-07-08
 
 ### Fixed
 
