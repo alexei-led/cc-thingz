@@ -62,21 +62,12 @@ jobs:
         run: agbun package --root . --out "$RUNNER_TEMP/release-artifacts"
       - name: Generate release notes
         run: |
-          if git rev-parse "${{ github.ref_name }}^" >/dev/null 2>&1; then
-            previous_tag=$(git describe --tags --abbrev=0 "${{ github.ref_name }}^" 2>/dev/null || true)
-          else
-            previous_tag=""
-          fi
-          args=(
-            --changelog CHANGELOG.md
-            --packages-dir src/.agentbundler/packages
-            --version "${{ github.ref_name }}"
+          uv run scripts/release/generate-release-notes.py \
+            --tag "${{ github.ref_name }}" \
+            --repository "${{ github.repository }}" \
+            --changelog CHANGELOG.md \
+            --packages-dir src/.agentbundler/packages \
             --output "$RUNNER_TEMP/release-notes.md"
-          )
-          if [[ -n "$previous_tag" ]]; then
-            args+=(--previous-tag "$previous_tag")
-          fi
-          uv run scripts/release/generate-release-notes.py "${args[@]}"
       - uses: softprops/action-gh-release@v3
         with:
           body_path: ${{ runner.temp }}/release-notes.md

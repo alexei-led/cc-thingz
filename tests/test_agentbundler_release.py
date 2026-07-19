@@ -510,6 +510,10 @@ def test_make_check_is_non_mutating_and_release_packages_artifacts() -> None:
         in release_workflow
     )
     assert "files: ${{ runner.temp }}/release-artifacts/*" in release_workflow
+    assert '            --tag "${{ github.ref_name }}"' in release_workflow
+    assert '            --repository "${{ github.repository }}"' in release_workflow
+    assert "            --version" not in release_workflow
+    assert "previous_tag=" not in release_workflow
     assert release_workflow.count("- run: uv sync --all-groups --extra test") == 2
     assert "sudo apt-get install --yes shellcheck" in release_workflow
     assert "go install mvdan.cc/sh/v3/cmd/shfmt@v3.13.1" in release_workflow

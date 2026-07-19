@@ -8,6 +8,13 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.8.8] - 2026-07-19
+
+### Fixed
+
+- Restored release-note generation by passing the current script's required tag
+  and repository arguments from the release workflow.
+
 ## [6.8.7] - 2026-07-18
 
 ### Fixed
