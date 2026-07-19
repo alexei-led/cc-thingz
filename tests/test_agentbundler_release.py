@@ -227,6 +227,80 @@ def test_release_marketplace_registers_in_isolated_home(
     subprocess.run(arguments, env=environment, check=True)
 
 
+def test_claude_release_hooks_load_once(
+    release_artifacts: Path, tmp_path: Path
+) -> None:
+    claude = shutil.which("claude")
+    if claude is None:
+        pytest.skip("Claude CLI is not installed")
+
+    package_root = tmp_path / "package"
+    package_root.mkdir()
+    with tarfile.open(release_artifacts / "cc-thingz-claude.tar.gz", "r:gz") as archive:
+        archive.extractall(package_root, filter="data")
+
+    for package_id in ("dev-flow", "git-flow"):
+        manifest = json.loads(
+            (package_root / package_id / ".claude-plugin/plugin.json").read_text()
+        )
+        assert "hooks" not in manifest
+        assert (package_root / package_id / "hooks/hooks.json").is_file()
+
+    environment = os.environ.copy()
+    environment.update(
+        {
+            "HOME": str(tmp_path / "home"),
+            "CLAUDE_CONFIG_DIR": str(tmp_path / "claude"),
+            "XDG_CACHE_HOME": str(tmp_path / "cache"),
+            "XDG_CONFIG_HOME": str(tmp_path / "config"),
+        }
+    )
+    for key in (
+        "HOME",
+        "CLAUDE_CONFIG_DIR",
+        "XDG_CACHE_HOME",
+        "XDG_CONFIG_HOME",
+    ):
+        Path(environment[key]).mkdir(parents=True, exist_ok=True)
+
+    project = tmp_path / "project"
+    project.mkdir()
+    subprocess.run(
+        [claude, "plugin", "marketplace", "add", str(package_root)],
+        cwd=project,
+        env=environment,
+        check=True,
+    )
+    for package_id in ("dev-flow", "git-flow"):
+        subprocess.run(
+            [
+                claude,
+                "plugin",
+                "install",
+                f"{package_id}@cc-thingz",
+                "--scope",
+                "user",
+            ],
+            cwd=project,
+            env=environment,
+            check=True,
+        )
+
+    plugins = json.loads(
+        subprocess.run(
+            [claude, "plugin", "list", "--json"],
+            cwd=project,
+            env=environment,
+            capture_output=True,
+            check=True,
+            text=True,
+        ).stdout
+    )
+    by_id = {plugin["id"].split("@", 1)[0]: plugin for plugin in plugins}
+    for package_id in ("dev-flow", "git-flow"):
+        assert by_id[package_id].get("errors", []) == []
+
+
 def test_pi_release_archive_installs_in_isolated_project(
     release_artifacts: Path, tmp_path: Path
 ) -> None:
