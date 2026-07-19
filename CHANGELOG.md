@@ -8,6 +8,13 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.8.10] - 2026-07-19
+
+### Fixed
+
+- Synchronized `bun.lock` with the removal of the bundled Pi runtime so frozen
+  dependency installation succeeds in release CI.
+
 ## [6.8.9] - 2026-07-19
 
 ### Fixed
