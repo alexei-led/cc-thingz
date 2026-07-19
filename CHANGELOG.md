@@ -8,6 +8,15 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.8.12] - 2026-07-19
+
+### Fixed
+
+- Allowed a clean revdiff plan review to proceed after the user selected
+  execution instead of re-entering plan mode indefinitely.
+- Preserved revdiff's previous-revision marker so repeated plan reviews show the
+  revision diff and annotations continue to drive plan rework.
+
 ## [6.8.11] - 2026-07-19
 
 ### Fixed

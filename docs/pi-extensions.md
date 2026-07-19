@@ -75,6 +75,32 @@ reject a hook-supplied replacement that remains dangerous.
 ExitPlanMode review. Revdiff denial, an updated plan, and timeout behavior flow
 through the compatibility runner.
 
+### Revdiff plan review
+
+Pi has no native `ExitPlanMode` event. The `plan-mode` extension detects the
+last assistant plan on `agent_end`, then invokes a synthetic `ExitPlanMode`
+`PreToolUse` hook when the user selects **Execute the plan**.
+
+Install the revdiff Pi package as well as the `revdiff` binary:
+
+```bash
+pi install git:github.com/umputun/revdiff
+```
+
+The review loop is:
+
+1. Run `/plan` and ask the agent to plan the work.
+2. Select **Execute the plan** after the agent emits a numbered `Plan:` block.
+3. Annotate the plan in revdiff and quit the review.
+4. With annotations, execution stays blocked and the annotations are sent back
+   to the agent so it revises the plan.
+5. Select **Execute the plan** again. Revdiff compares the revision with the
+   previous reviewed snapshot.
+6. Quit without annotations to approve the plan and start execution.
+
+If the revdiff package is absent, the optional wrapper fails open. A review
+subprocess timeout fails closed and leaves plan mode active.
+
 ## Native source layout
 
 `src/plugins/pi/extensions/` is one declarative native-resource asset.

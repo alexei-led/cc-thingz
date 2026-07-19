@@ -7,6 +7,7 @@ cc-thingz decoupled: if revdiff is not installed, plan execution proceeds.
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -77,6 +78,29 @@ def python_executable() -> str | None:
     return None
 
 
+def adapt_response_for_pi(stdout: str) -> str:
+    """Translate upstream's normal-confirmation decision to Pi's flow."""
+    try:
+        response = json.loads(stdout)
+    except (json.JSONDecodeError, TypeError):
+        return stdout
+    if not isinstance(response, dict):
+        return stdout
+
+    hook_output = response.get("hookSpecificOutput")
+    if not isinstance(hook_output, dict):
+        return stdout
+    if hook_output.get("permissionDecision") != "ask":
+        return stdout
+
+    # The user already selected "Execute the plan" before Pi invokes this
+    # wrapper. Upstream's `ask` requests that normal confirmation, so allowing
+    # here avoids asking twice while leaving other Pi hooks' `ask` decisions
+    # untouched in hook-runner.
+    hook_output["permissionDecision"] = "allow"
+    return json.dumps(response)
+
+
 # Fallback timeout matches meta.yaml `pi.timeout` so a Pi build without the
 # env var still gets a sane bound. Hook-runner exports PI_HOOK_TIMEOUT_SEC to
 # avoid drift between this constant and the manifest-driven value.
@@ -134,7 +158,7 @@ def main() -> None:
         print(f"revdiff plan review skipped: {exc}", file=sys.stderr)
         allow()
 
-    sys.stdout.write(result.stdout)
+    sys.stdout.write(adapt_response_for_pi(result.stdout))
     sys.stderr.write(result.stderr)
     sys.exit(result.returncode)
 

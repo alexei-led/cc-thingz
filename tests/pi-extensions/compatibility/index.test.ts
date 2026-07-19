@@ -201,6 +201,45 @@ describe("plan-mode / ExitPlanMode hook integration", () => {
 		expect(pi.sendMessage).toHaveBeenCalledWith(expect.objectContaining({ customType: "plan-mode-execute" }), expect.objectContaining({ triggerTurn: true }));
 	});
 
+	it("keeps plan mode active when a non-revdiff hook asks for clarification", async () => {
+		const { pi, getActiveTools } = await runAgentEndWithHook({
+			blocked: true,
+			decision: "ask",
+			reason: "Confirm the rollout window",
+		});
+
+		expect(getActiveTools()).toEqual(["read", "bash", "ask_user_question"]);
+		expect(pi.sendUserMessage).toHaveBeenCalledWith("Confirm the rollout window");
+		expect(pi.sendMessage).not.toHaveBeenCalledWith(expect.objectContaining({ customType: "plan-mode-execute" }), expect.any(Object));
+	});
+
+	it("preserves the previous-revision marker in the next hook input", async () => {
+		const { pi, handlers, commands, busHandlers } = makePi();
+		const ctx = makeCtx(["Execute the plan (track progress)"]);
+		const revisedPlan = `<!-- previous revision: /tmp/plan-rev-abc.md -->\n${PLAN_WITH_STEPS}`;
+		let capturedPlan = "";
+
+		await commands.get("plan")!.handler([], ctx);
+		busHandlers.set(HOOK_RUNNER_INVOKE_CHANNEL, (raw: unknown) => {
+			const req = raw as {
+				stdin: { tool_input: { plan: string } };
+				onResult?: (result: Record<string, unknown>) => void;
+			};
+			capturedPlan = req.stdin.tool_input.plan;
+			req.onResult?.({ blocked: false });
+		});
+
+		await handlers.get("agent_end")!(
+			{
+				messages: [{ role: "assistant", content: [{ type: "text", text: revisedPlan }] }],
+			},
+			ctx,
+		);
+
+		expect(capturedPlan).toBe(revisedPlan);
+		expect(pi.sendMessage).toHaveBeenCalledWith(expect.objectContaining({ customType: "plan-mode-execute" }), expect.objectContaining({ triggerTurn: true }));
+	});
+
 	it("blocks execution and notifies when hook returns blocked with reason", async () => {
 		const { pi, ctx, getActiveTools } = await runAgentEndWithHook({
 			blocked: true,

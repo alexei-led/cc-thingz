@@ -30,11 +30,37 @@ def load_module():
     return module
 
 
-def test_module_does_not_rewrite_ask_decisions():
-    """Wrapper passes `ask` through verbatim; plan-mode extension surfaces it
-    via the ask_user_question tool. The wrapper has no convert helper."""
+def test_adapt_response_converts_upstream_ask_to_allow():
     hook = load_module()
-    assert not hasattr(hook, "convert_ask_to_allow")
+    raw = json.dumps(
+        {
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "ask",
+                "permissionDecisionReason": "plan reviewed, no annotations",
+            }
+        }
+    )
+
+    output = json.loads(hook.adapt_response_for_pi(raw))
+
+    assert output["hookSpecificOutput"]["permissionDecision"] == "allow"
+    assert (
+        output["hookSpecificOutput"]["permissionDecisionReason"]
+        == "plan reviewed, no annotations"
+    )
+
+
+def test_adapt_response_leaves_other_output_unchanged():
+    hook = load_module()
+    outputs = [
+        "",
+        "not json",
+        json.dumps({"hookSpecificOutput": {"permissionDecision": "allow"}}),
+        json.dumps({"hookSpecificOutput": {"permissionDecision": "deny"}}),
+    ]
+
+    assert [hook.adapt_response_for_pi(output) for output in outputs] == outputs
 
 
 def test_no_plugin_found_exits_zero(monkeypatch, tmp_path):
@@ -203,7 +229,7 @@ def test_end_to_end_fail_open_when_revdiff_absent(tmp_path):
     )
 
 
-def test_main_invokes_plugin_and_passes_through_ask(monkeypatch, tmp_path, capsys):
+def test_main_invokes_plugin_and_converts_ask_to_allow(monkeypatch, tmp_path, capsys):
     hook = load_module()
     plugin_root = (
         tmp_path
@@ -248,4 +274,4 @@ def test_main_invokes_plugin_and_passes_through_ask(monkeypatch, tmp_path, capsy
 
     assert exc.value.code == 0
     output = json.loads(capsys.readouterr().out)
-    assert output["hookSpecificOutput"]["permissionDecision"] == "ask"
+    assert output["hookSpecificOutput"]["permissionDecision"] == "allow"

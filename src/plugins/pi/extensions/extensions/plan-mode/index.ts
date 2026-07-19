@@ -39,7 +39,11 @@ function getTextContent(message: AssistantMessage): string {
 function extractPlanMarkdown(message: string): string {
 	const header = message.match(/\*{0,2}Plan:\*{0,2}\s*\n/i);
 	if (!header || header.index === undefined) return "";
-	return message.slice(header.index).trim();
+
+	const plan = message.slice(header.index).trim();
+	const prefix = message.slice(0, header.index);
+	const revisionMarker = prefix.match(/(?:^|\n)\s*(<!--\s*previous revision:\s*[^\r\n]+?\s*-->)\s*$/i)?.[1];
+	return revisionMarker ? `${revisionMarker}\n${plan}` : plan;
 }
 
 function buildPlanMarkdownFromTodos(items: TodoItem[]): string {
