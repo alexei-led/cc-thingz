@@ -44,6 +44,12 @@ src/
     └── extensions/                 # Pi-native tools and compatibility runner
 
 dist/<target>/<package>/             # generated Agent Bundler package roots
+.claude-plugin/marketplace.json      # repository-root compatibility wrapper
+.agents/plugins/marketplace.json     # repository-root compatibility wrapper
+.codex/agents/*.toml                 # fixed-path Codex project-agent profiles
+.github/plugin/marketplace.json      # repository-root compatibility wrapper
+.cursor-plugin/marketplace.json      # repository-root compatibility wrapper
+package.json#pi                      # merged Pi root compatibility manifest
 ```
 
 Skills use Agent Bundler overlays for target-specific frontmatter, body, and
@@ -52,8 +58,10 @@ support-file changes. Target-wide preambles are composition entries in
 frontmatter; Agent Bundler emits normalized JSON frontmatter.
 
 Package membership is defined by `src/.agentbundler/packages/*.json`. Each
-package lists exact skill and agent asset paths. Do not create a second package
-manifest or edit `dist/` by hand.
+package lists exact skill and agent asset paths. Root marketplace files are
+routing wrappers only: their entries point into `dist/<target>` and contain no
+independent package trees. Do not edit `dist/` or give the wrappers independent
+metadata.
 
 ## Targets and output
 
@@ -85,15 +93,45 @@ includes separate `.codex/agents/*.toml` profiles; they are not plugin contents.
 Installation and marketplace registration use the target vendor's CLI; Agent
 Bundler does not mutate user configuration or publish to a vendor registry.
 
+## Repository-root installation
+
+Compatibility manifests at the repository root preserve Git and local-path
+installation while keeping `dist/<target>` canonical:
+
+```bash
+claude plugin marketplace add alexei-led/cc-thingz
+codex plugin marketplace add alexei-led/cc-thingz
+copilot plugin marketplace add alexei-led/cc-thingz
+grok plugin marketplace add alexei-led/cc-thingz
+pi install git:github.com/alexei-led/cc-thingz
+```
+
+Marketplace registration exposes the seven cc-thingz packages; install the
+required package IDs separately. Pi loads the aggregate package. Cursor uses
+the root `.cursor-plugin/marketplace.json` through Cursor Marketplace rather
+than a plugin-management CLI.
+
+Grok reads the Claude root marketplace for compatibility. Use `dist/grok` for
+Grok-specific overlays because Claude and Grok share the same root marker and
+cannot both select different target paths from one manifest. Root
+`.codex/agents` mirrors the generated project-agent profiles for checkout use;
+marketplace plugin installation does not install those fixed-path profiles into
+an unrelated Codex project.
+
+See [Repository-root compatibility](docs/root-compatibility.md) for local paths,
+verification, limitations, and migration details.
+
 The Pi archive is directly installable:
 
 ```bash
 pi install ./cc-thingz-pi.tgz -l
 ```
 
-For a local release rehearsal:
+For a local release rehearsal, build first so the ignored Pi runtime dependencies
+exist before packaging:
 
 ```bash
+agbun build --root .
 agbun check --root .
 agbun package --root . --out /tmp/cc-thingz-release
 ```

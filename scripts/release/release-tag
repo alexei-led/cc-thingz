@@ -106,6 +106,47 @@ done
 echo "Running 'make build' to regenerate manifests..."
 make build
 
+# Stage generated repository-root compatibility outputs when configured. The
+# compatibility state is Agent Bundler-owned; reject malformed paths rather than
+# allowing a release helper to stage arbitrary repository files.
+compatibility_files=()
+if [ -f .agentbundler/compatibility.json ]; then
+	while IFS= read -r path; do
+		compatibility_files+=("$path")
+	done < <(
+		python3 - <<'PY'
+import json
+from pathlib import Path
+
+state_path = Path(".agentbundler/compatibility.json")
+state = json.loads(state_path.read_text())
+allowed_files = {
+    ".agents/plugins/marketplace.json",
+    ".claude-plugin/marketplace.json",
+    ".cursor-plugin/marketplace.json",
+    ".github/plugin/marketplace.json",
+}
+paths = [str(state_path)]
+for path in state.get("files", []):
+    candidate = Path(path)
+    if (
+        candidate.is_absolute()
+        or ".." in candidate.parts
+        or not (
+            path in allowed_files
+            or path.startswith(".codex/agents/") and candidate.suffix == ".toml"
+        )
+    ):
+        raise SystemExit(f"invalid compatibility output path: {path}")
+    paths.append(path)
+if state.get("pi", {}).get("legacyPeerDeps"):
+    paths.append(".npmrc")
+for path in paths:
+    print(path)
+PY
+	)
+fi
+
 # Add CHANGELOG entry if not already present
 if ! grep -q "\[$VERSION\]" CHANGELOG.md; then
 	DATE=$(date +%Y-%m-%d)
@@ -136,7 +177,8 @@ git add \
 	"${package_jsons[@]}" \
 	"${project_version_files[@]}" \
 	dist/ \
-	CHANGELOG.md
+	CHANGELOG.md \
+	"${compatibility_files[@]}"
 git commit -m "chore: bump version to $VERSION"
 git tag -a "$TAG" -m "Release $VERSION"
 

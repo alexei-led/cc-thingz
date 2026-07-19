@@ -1,7 +1,8 @@
 # Pi package
 
 Agent Bundler produces the aggregate Pi package at `dist/pi/`; releases archive
-it as `cc-thingz-pi.tgz`.
+it as `cc-thingz-pi.tgz`. The development `package.json` also carries a merged
+root compatibility manifest whose resource paths point into `dist/pi`.
 
 ## Registered extensions
 
@@ -23,14 +24,28 @@ fresh archive install needs no separate `pi install npm:pi-subagents` step.
 pi install ./cc-thingz-pi.tgz -l
 ```
 
-For local development:
+For local development through the repository root:
 
 ```bash
+bun install
 make build
+pi install "$(pwd)" -l
+```
+
+The root install exercises the same layout used by
+`pi install git:github.com/alexei-led/cc-thingz`. Git installs run the root
+production dependency install, which supplies `node_modules/pi-subagents`.
+Root `.npmrc` disables automatic peer installation so npm does not install a
+second Pi host runtime; `pi-subagents` keeps its required dependencies nested.
+Local checkouts must run `bun install` first. Installing `dist/pi` remains useful
+for testing the target-native package:
+
+```bash
 pi install "$(pwd)/dist/pi" -l
 ```
 
-Restart Pi or run `/reload` after replacing a linked package.
+`-l` writes the package to project settings. Restart Pi or run `/reload` after
+changing a loaded package.
 
 ## Portable hooks
 
@@ -76,8 +91,14 @@ upstream boundaries.
 ## Verification
 
 ```bash
+agbun build --root .
 agbun check --root .
-pytest -q tests/test_agentbundler_hooks.py tests/test_agentbundler_release.py
+pytest -q tests/test_agentbundler_hooks.py tests/test_agentbundler_release.py \
+  tests/test_root_compatibility.py
 make lint-typescript
 make test-ts
 ```
+
+The root compatibility suite performs isolated Pi local-path and Git installs,
+then queries Pi RPC commands to prove extensions, skills, and `pi-subagents`
+loaded. `pi list` by itself is not a resource-loading assertion.

@@ -8,6 +8,17 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.8.7] - 2026-07-18
+
+### Fixed
+
+- Restored repository-root Git and local-path discovery with vendor marketplace
+  wrappers that route to the generated `dist/<target>` package roots.
+- Restored Pi Git installation through a merged root manifest and production
+  `pi-subagents` dependency, with isolated local and Git loader tests.
+- Documented the Claude/Grok root-marker collision, Codex project-agent profile
+  boundary, and the required build step before packaging Pi dependencies.
+
 ## [6.8.6] - 2026-07-17
 
 ### Fixed

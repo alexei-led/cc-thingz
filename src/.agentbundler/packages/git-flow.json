@@ -24,7 +24,7 @@
   "id": "git-flow",
   "metadata": {
     "author": {
-      "name": "Alexei Led"
+      "name": "Alexei Ledenev"
     },
     "description": "Git worktrees, branch cleanup, hooks, secret scanning, config hygiene, and guardrails",
     "homepage": "https://github.com/alexei-led/cc-thingz",

@@ -11,10 +11,19 @@
     "grok"
   ],
   "output": "dist",
+  "compatibility": {
+    "rootManifests": [
+      "claude",
+      "codex",
+      "copilot",
+      "cursor",
+      "pi"
+    ]
+  },
   "distribution": {
     "name": "cc-thingz",
     "owner": {
-      "name": "Alexei Led"
+      "name": "Alexei Ledenev"
     },
     "description": "Portable skills, agents, hooks, and Pi-native extensions for coding agents.",
     "version": "6.8.6"

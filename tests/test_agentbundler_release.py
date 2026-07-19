@@ -559,6 +559,22 @@ def test_release_tag_updates_agentbundle_versions(tmp_path: Path) -> None:
     )
     (tmp_path / "uv.lock").write_text('version = "1.0.0"\n')
     (tmp_path / "CHANGELOG.md").write_text("## [Unreleased]\n")
+    compatibility_state = tmp_path / ".agentbundler/compatibility.json"
+    compatibility_state.parent.mkdir()
+    compatibility_state.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "files": [".claude-plugin/marketplace.json"],
+                "pi": {"legacyPeerDeps": True},
+            }
+        )
+        + "\n"
+    )
+    root_marketplace = tmp_path / ".claude-plugin/marketplace.json"
+    root_marketplace.parent.mkdir()
+    root_marketplace.write_text("before\n")
+    (tmp_path / ".npmrc").write_text("legacy-peer-deps=true\n")
     uv = tmp_path / "bin/uv"
     uv.parent.mkdir()
     uv.write_text(
@@ -571,7 +587,10 @@ Path("uv.lock").write_text(f'version = "{version}"\\n')
     )
     uv.chmod(0o755)
     (tmp_path / "Makefile").write_text(
-        "build:\n\t@mkdir -p dist; echo generated > dist/build.txt\n"
+        "build:\n"
+        "\t@mkdir -p dist .claude-plugin; "
+        "echo generated > dist/build.txt; "
+        "echo generated > .claude-plugin/marketplace.json\n"
     )
 
     subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
@@ -597,3 +616,11 @@ Path("uv.lock").write_text(f'version = "{version}"\\n')
     assert bundle["distribution"]["version"] == "1.2.3"
     assert bundle["composition"][0]["aggregate"]["metadata"]["version"] == "1.2.3"
     assert (tmp_path / "uv.lock").read_text() == 'version = "1.2.3"\n'
+    committed = subprocess.run(
+        ["git", "show", "--format=", "--name-only", "HEAD"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=True,
+        text=True,
+    ).stdout.splitlines()
+    assert ".claude-plugin/marketplace.json" in committed

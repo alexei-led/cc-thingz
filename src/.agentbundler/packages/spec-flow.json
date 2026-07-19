@@ -23,7 +23,7 @@
   "id": "spec-flow",
   "metadata": {
     "author": {
-      "name": "Alexei Led"
+      "name": "Alexei Ledenev"
     },
     "dependencies": {
       "pi-subagents": "*"

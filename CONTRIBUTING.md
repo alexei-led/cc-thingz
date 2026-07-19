@@ -63,6 +63,14 @@ separately at `dist/codex/.codex/agents/*.toml`. Package metadata and membership
 come from `src/.agentbundler/packages/*.json`. Add an asset to a package JSON
 only when it is canonical source; do not edit generated output.
 
+Repository-root marketplace files and `package.json#pi` are compatibility
+wrappers around those target trees. Agent Bundler renders them from
+`agentbundle.json#compatibility.rootManifests`; they may only prefix generated
+local sources with `dist/<target>` and must not define independent package
+membership or copy generated trees. Codex is the fixed-path exception: root
+`.codex/agents/*.toml` must byte-match the generated project-agent profiles.
+`tests/test_root_compatibility.py` verifies the generated routing contract.
+
 ## Overlays
 
 Add target differences beside the asset:
