@@ -26,7 +26,7 @@
       "name": "Alexei Ledenev"
     },
     "description": "Portable skills, agents, hooks, and Pi-native extensions for coding agents.",
-    "version": "6.8.6"
+    "version": "6.8.7"
   },
   "composition": [
     {
@@ -47,7 +47,7 @@
       "aggregate": {
         "identity": "cc-thingz",
         "metadata": {
-          "version": "6.8.6",
+          "version": "6.8.7",
           "description": "Skills, agents, hooks, and native extensions for Pi",
           "keywords": [
             "coding-agent",
