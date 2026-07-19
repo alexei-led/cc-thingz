@@ -126,7 +126,7 @@ allowed_files = {
     ".cursor-plugin/marketplace.json",
     ".github/plugin/marketplace.json",
 }
-paths = [str(state_path)]
+paths = []
 for path in state.get("files", []):
     candidate = Path(path)
     if (
