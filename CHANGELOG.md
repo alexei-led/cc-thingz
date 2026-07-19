@@ -8,6 +8,8 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.8.11] - 2026-07-19
+
 ### Fixed
 
 - Stopped declaring Claude's standard `hooks/hooks.json` in plugin manifests;
