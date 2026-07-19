@@ -1,6 +1,6 @@
 [project]
 name = "cc-thingz"
-version = "6.8.7"
+version = "6.8.8"
 description = "Portable skills, agents, hooks, and Pi extensions for coding agents."
 requires-python = ">=3.12"
 dependencies = [
