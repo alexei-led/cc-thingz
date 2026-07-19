@@ -38,9 +38,6 @@
     "author": {
       "name": "Alexei Ledenev"
     },
-    "dependencies": {
-      "pi-subagents": "*"
-    },
     "description": "Idiomatic development across C# /.NET, Go, Java/Kotlin, Python, Rust, TypeScript, shell, and web",
     "homepage": "https://github.com/alexei-led/cc-thingz",
     "keywords": [

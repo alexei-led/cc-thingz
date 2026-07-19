@@ -12,12 +12,6 @@
   "scripts": {
     "test:ts": "bun test tests/pi-extensions"
   },
-  "peerDependencies": {
-    "@earendil-works/pi-ai": "*",
-    "@earendil-works/pi-coding-agent": "*",
-    "@earendil-works/pi-tui": "*",
-    "typebox": "*"
-  },
   "devDependencies": {
     "@earendil-works/pi-ai": "*",
     "@earendil-works/pi-coding-agent": "*",
@@ -25,18 +19,6 @@
     "@types/bun": "latest",
     "markdownlint-cli2": "^0.23.1",
     "typebox": "*"
-  },
-  "dependencies": {
-    "@earendil-works/pi-tui": "0.74.0",
-    "@types/mime-types": "2.1.4",
-    "chalk": "5.6.2",
-    "get-east-asian-width": "1.6.0",
-    "jiti": "2.7.0",
-    "marked": "15.0.12",
-    "mime-db": "1.54.0",
-    "mime-types": "3.0.2",
-    "pi-subagents": "0.34.0",
-    "typebox": "1.1.24"
   },
   "pi": {
     "extensions": [
@@ -46,8 +28,7 @@
       "./dist/pi/extensions/plan-mode/index.ts",
       "./dist/pi/extensions/structured-output.ts",
       "./dist/pi/extensions/todo.ts",
-      "./dist/pi/extensions/agentbundler-hooks.ts",
-      "./node_modules/pi-subagents/src/extension/index.ts"
+      "./dist/pi/extensions/agentbundler-hooks.ts"
     ],
     "skills": [
       "./dist/pi/skills"

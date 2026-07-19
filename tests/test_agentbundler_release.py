@@ -158,7 +158,6 @@ def test_release_archives_have_native_install_roots(release_artifacts: Path) -> 
     assert "extensions/agentbundler-hooks.ts" in pi_members
     assert PI_NATIVE_EXTENSION_FILES <= pi_members
     assert _pi_native_asset_files() <= pi_members
-    assert "node_modules/pi-subagents/src/extension/index.ts" in pi_members
 
 
 def test_release_archives_are_deterministic(

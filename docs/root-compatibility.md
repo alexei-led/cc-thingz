@@ -18,10 +18,7 @@ only reads `package.json#pi` from the installed package root.
 - `.github/plugin/marketplace.json` points to `dist/copilot/<package>`.
 - `.cursor-plugin/marketplace.json` points to `dist/cursor/<package>`.
 - `package.json#pi` points to `dist/pi/{extensions,skills,agents}`.
-- Root `package.json` depends on `pi-subagents`; Pi installs that dependency when
-  it clones a Git package and loads its extension from root `node_modules`.
-- Root `.npmrc` sets `legacy-peer-deps=true` so that production Git installs do
-  not auto-install the Pi host packages declared as development peers.
+- No third-party Pi extension is bundled or registered by cc-thingz.
 
 All relative paths must stay inside the repository and resolve to existing
 package roots. `tests/test_root_compatibility.py` compares each wrapper with its
@@ -69,27 +66,26 @@ checkout.
 ### Pi
 
 ```bash
+pi install npm:pi-subagents  # required only for cc-thingz.* agents
 pi install git:github.com/alexei-led/cc-thingz
 ```
 
 For a built checkout under development:
 
 ```bash
-bun install
 make build
+pi install npm:pi-subagents -l  # required only for cc-thingz.* agents
 pi install "$PWD"
 ```
 
-Restart Pi or run `/reload`, then verify that `cc-thingz.*` subagents and a
+Restart Pi or run `/reload`, then verify that `cc-thingz.*` agents and a
 cc-thingz skill such as `fixing-code` are present. `pi list` alone proves package
 registration, not resource loading.
 
-Git installation is intentionally different from installing `dist/pi`: Pi
-clones the root, installs root production dependencies, and then resolves the
-prefixed `dist/pi` resources. `.npmrc` suppresses automatic installation of host
-peer packages while preserving `pi-subagents` and its required nested runtime.
-A clean local checkout must run `bun install` so root
-`node_modules/pi-subagents` exists.
+cc-thingz supplies native extensions, skills, and hooks directly. Its packaged
+agent definitions are metadata consumed by the separately installed
+`pi-subagents` runtime. Users who do not need those agents can omit
+`pi-subagents`; the rest of cc-thingz still loads.
 
 ### GitHub Copilot CLI
 
@@ -147,14 +143,15 @@ Grok-specific package root.
   Cursor;
 - all referenced plugin manifests exist;
 - root Codex project-agent profiles byte-match the generated profiles;
-- root production npm installation excludes Pi host peers while keeping the
-  `pi-subagents` runtime;
 - root Pi fields preserve the development package and resolve every resource;
 - isolated local marketplace registration for installed Claude, Codex, Copilot,
   and Grok CLIs;
 - isolated Pi local installation followed by RPC command discovery;
-- a real Git-over-HTTP Pi installation, including dependency installation and
-  RPC discovery of extensions, skills, and the `pi-subagents` runtime.
+- standalone `pi-subagents` plus cc-thingz loading together, proving one package
+  supplies `subagent` while cc-thingz supplies its agents, skills, and native
+  extensions;
+- a real Git-over-HTTP Pi installation with RPC discovery of native extensions
+  and skills.
 
 Vendor CLI checks skip when a CLI is unavailable. Cursor runtime loading remains
 credential- and marketplace-dependent.

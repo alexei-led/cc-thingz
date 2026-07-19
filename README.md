@@ -119,16 +119,18 @@ marketplace plugin installation does not install those fixed-path profiles into
 an unrelated Codex project.
 
 See [Repository-root compatibility](docs/root-compatibility.md) for local paths,
-verification, limitations, and migration details.
+verification, limitations, and migration details. Install `npm:pi-subagents`
+separately when using the packaged `cc-thingz.*` agents in Pi.
 
-The Pi archive is directly installable:
+The Pi archive is directly installable. Install `pi-subagents` separately only
+when using the packaged `cc-thingz.*` agents:
 
 ```bash
+pi install npm:pi-subagents -l
 pi install ./cc-thingz-pi.tgz -l
 ```
 
-For a local release rehearsal, build first so the ignored Pi runtime dependencies
-exist before packaging:
+For a local release rehearsal:
 
 ```bash
 agbun build --root .
@@ -136,15 +138,15 @@ agbun check --root .
 agbun package --root . --out /tmp/cc-thingz-release
 ```
 
-The generated Pi package includes its typed hook adapter, bundled
-`pi-subagents` runtime, native `ask_user_question`, `structured_output`, and
-`todo` tools, plus `hook-runner`, `permission-gate`, and `plan-mode`. Its
-compatibility config contains only Pi-specific revdiff plan review and
-notifications, so portable Agent Bundler hooks do not run twice.
+The generated Pi package includes its typed hook adapter, native
+`ask_user_question`, `structured_output`, and `todo` tools, plus `hook-runner`,
+`permission-gate`, and `plan-mode`. Its compatibility config contains only
+Pi-specific revdiff plan review and notifications, so portable Agent Bundler
+hooks do not run twice.
 
-The package command, flat per-agent sidecars, safe Pi hook environments, and
-bundled Pi dependencies, native extension assets, and Codex project-agent
-profiles require a compatible installed Agent Bundler.
+The package command, flat per-agent sidecars, safe Pi hook environments, native
+extension assets, and Codex project-agent profiles require a compatible
+installed Agent Bundler.
 
 ## Target differences and gaps
 

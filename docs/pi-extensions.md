@@ -14,30 +14,29 @@ root compatibility manifest whose resource paths point into `dist/pi`.
 - `extensions/permission-gate.ts`;
 - `extensions/plan-mode/index.ts`;
 - `extensions/structured-output.ts`;
-- `extensions/todo.ts`;
-- bundled `pi-subagents` runtime.
+- `extensions/todo.ts`.
 
-`pi-subagents` and its runtime dependencies are in `bundledDependencies`, so a
-fresh archive install needs no separate `pi install npm:pi-subagents` step.
+cc-thingz does not bundle third-party Pi extensions. Install `pi-subagents`
+separately if you want the packaged `cc-thingz.*` agents:
 
 ```bash
+pi install npm:pi-subagents
 pi install ./cc-thingz-pi.tgz -l
 ```
+
+The native extensions, skills, and hooks work without `pi-subagents`; only the
+packaged agent definitions require its runtime.
 
 For local development through the repository root:
 
 ```bash
-bun install
 make build
+pi install npm:pi-subagents -l  # required only for cc-thingz.* agents
 pi install "$(pwd)" -l
 ```
 
 The root install exercises the same layout used by
-`pi install git:github.com/alexei-led/cc-thingz`. Git installs run the root
-production dependency install, which supplies `node_modules/pi-subagents`.
-Root `.npmrc` disables automatic peer installation so npm does not install a
-second Pi host runtime; `pi-subagents` keeps its required dependencies nested.
-Local checkouts must run `bun install` first. Installing `dist/pi` remains useful
+`pi install git:github.com/alexei-led/cc-thingz`. Installing `dist/pi` remains useful
 for testing the target-native package:
 
 ```bash
@@ -100,5 +99,7 @@ make test-ts
 ```
 
 The root compatibility suite performs isolated Pi local-path and Git installs,
-then queries Pi RPC commands to prove extensions, skills, and `pi-subagents`
-loaded. `pi list` by itself is not a resource-loading assertion.
+then queries Pi RPC commands to prove native extensions and skills load. It also
+installs standalone `pi-subagents` and proves the packaged agents are discovered
+without a duplicate tool provider. `pi list` by itself is not a resource-loading
+assertion.

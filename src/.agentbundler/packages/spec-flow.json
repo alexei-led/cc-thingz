@@ -25,9 +25,6 @@
     "author": {
       "name": "Alexei Ledenev"
     },
-    "dependencies": {
-      "pi-subagents": "*"
-    },
     "description": "Lightweight spec loop: plan one slice, execute one task, checkpoint or close",
     "homepage": "https://github.com/alexei-led/cc-thingz",
     "keywords": [

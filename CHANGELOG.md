@@ -8,6 +8,12 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+### Fixed
+
+- Stopped bundling and registering the third-party `pi-subagents` extension in
+  the Pi package; packaged agents now use a separately installed runtime.
+- Removed the obsolete bundled runtime dependency closure and root npm policy.
+
 ## [6.8.8] - 2026-07-19
 
 ### Fixed

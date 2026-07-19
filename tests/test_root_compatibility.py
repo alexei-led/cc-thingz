@@ -15,10 +15,10 @@ from typing import Any
 import pytest
 from conftest import REPO_ROOT
 
+PI_SUBAGENTS_PACKAGE = "npm:pi-subagents@0.35.1"
+
 ROOT_COMPATIBILITY_FILES = (
     "package.json",
-    "bun.lock",
-    ".npmrc",
     ".claude-plugin/marketplace.json",
     ".agents/plugins/marketplace.json",
     ".github/plugin/marketplace.json",
@@ -119,52 +119,22 @@ def test_root_pi_manifest_routes_to_generated_target() -> None:
     root = _json(REPO_ROOT / "package.json")
     generated = _json(REPO_ROOT / "dist/pi/package.json")
 
-    expected_extensions = []
-    for extension in generated["pi"]["extensions"]:
-        if extension == "./node_modules/pi-subagents/src/extension/index.ts":
-            expected_extensions.append(extension)
-        else:
-            expected_extensions.append(f"./dist/pi/{extension.removeprefix('./')}")
+    expected_extensions = [
+        f"./dist/pi/{extension.removeprefix('./')}"
+        for extension in generated["pi"]["extensions"]
+    ]
 
     assert root["pi"] == {
         "extensions": expected_extensions,
         "skills": ["./dist/pi/skills"],
         "subagents": {"agents": ["./dist/pi/agents"]},
     }
-    assert (
-        root["dependencies"]["pi-subagents"]
-        == generated["dependencies"]["pi-subagents"]
-    )
-
     for resource in (
         *root["pi"]["extensions"],
         *root["pi"]["skills"],
         *root["pi"]["subagents"]["agents"],
     ):
         assert (REPO_ROOT / resource.removeprefix("./")).exists(), resource
-
-
-def test_root_npm_install_omits_pi_host_peer_dependencies(tmp_path: Path) -> None:
-    shutil.copy2(REPO_ROOT / "package.json", tmp_path / "package.json")
-    shutil.copy2(REPO_ROOT / ".npmrc", tmp_path / ".npmrc")
-    subprocess.run(
-        [
-            "npm",
-            "install",
-            "--omit=dev",
-            "--ignore-scripts",
-            "--no-audit",
-            "--no-fund",
-        ],
-        cwd=tmp_path,
-        check=True,
-        timeout=60,
-    )
-    node_modules = tmp_path / "node_modules"
-    assert (node_modules / "pi-subagents").is_dir()
-    assert (node_modules / "pi-subagents/node_modules/@earendil-works/pi-tui").is_dir()
-    assert not (node_modules / "@earendil-works/pi-coding-agent").exists()
-    assert not (node_modules / "@earendil-works/pi-ai").exists()
 
 
 def _isolated_environment(tmp_path: Path) -> dict[str, str]:
@@ -264,6 +234,31 @@ def test_repository_root_marketplace_registers_from_local_path(
     )
 
 
+def _pi_rpc_commands(
+    pi: str, environment: dict[str, str], project: Path
+) -> tuple[subprocess.CompletedProcess[str], list[dict[str, Any]]]:
+    rpc = subprocess.run(
+        [pi, "--mode", "rpc", "--no-session"],
+        cwd=project,
+        env=environment,
+        input='{"type":"get_commands"}\n',
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    responses = [json.loads(line) for line in rpc.stdout.splitlines() if line.strip()]
+    commands = next(
+        (
+            response["data"]["commands"]
+            for response in responses
+            if response.get("type") == "response"
+            and response.get("command") == "get_commands"
+        ),
+        [],
+    )
+    return rpc, commands
+
+
 def test_repository_root_pi_package_loads_commands_from_local_path(
     tmp_path: Path,
 ) -> None:
@@ -281,29 +276,51 @@ def test_repository_root_pi_package_loads_commands_from_local_path(
         check=True,
         timeout=30,
     )
-    rpc = subprocess.run(
-        [pi, "--mode", "rpc", "--no-session"],
-        cwd=project,
-        env=environment,
-        input='{"type":"get_commands"}\n',
-        capture_output=True,
-        check=True,
-        text=True,
-        timeout=30,
-    )
-    responses = [json.loads(line) for line in rpc.stdout.splitlines() if line.strip()]
-    commands = next(
-        response["data"]["commands"]
-        for response in responses
-        if response.get("type") == "response"
-        and response.get("command") == "get_commands"
-    )
+    rpc, commands = _pi_rpc_commands(pi, environment, project)
+    assert rpc.returncode == 0, rpc.stderr
     names = {command["name"] for command in commands}
-    assert {"plan", "todos", "subagents-doctor", "skill:fixing-code"} <= names
+    assert {"plan", "todos", "skill:fixing-code"} <= names
     fixing_code = next(
         command for command in commands if command["name"] == "skill:fixing-code"
     )
     assert "/dist/pi/skills/fixing-code/SKILL.md" in fixing_code["sourceInfo"]["path"]
+
+
+def test_root_pi_package_coexists_with_standalone_subagents(tmp_path: Path) -> None:
+    pi = shutil.which("pi")
+    if pi is None:
+        pytest.skip("Pi CLI is not installed")
+
+    project = tmp_path / "project"
+    project.mkdir()
+    environment = _isolated_environment(tmp_path)
+    subprocess.run(
+        [pi, "install", PI_SUBAGENTS_PACKAGE, "--approve"],
+        cwd=project,
+        env=environment,
+        check=True,
+        timeout=60,
+    )
+    subprocess.run(
+        [pi, "install", str(REPO_ROOT), "--approve"],
+        cwd=project,
+        env=environment,
+        check=True,
+        timeout=30,
+    )
+
+    rpc, commands = _pi_rpc_commands(pi, environment, project)
+    assert rpc.returncode == 0, rpc.stderr
+    by_name = {command["name"]: command for command in commands}
+    assert {"plan", "todos", "subagents-doctor", "skill:fixing-code"} <= by_name.keys()
+    assert (
+        "/npm/node_modules/pi-subagents/"
+        in by_name["subagents-doctor"]["sourceInfo"]["path"]
+    )
+    assert (
+        "/dist/pi/skills/fixing-code/SKILL.md"
+        in by_name["skill:fixing-code"]["sourceInfo"]["path"]
+    )
 
 
 def test_repository_root_pi_package_loads_from_git_checkout(tmp_path: Path) -> None:
@@ -311,18 +328,50 @@ def test_repository_root_pi_package_loads_from_git_checkout(tmp_path: Path) -> N
     if pi is None:
         pytest.skip("Pi CLI is not installed")
 
+    git_environment = os.environ.copy()
+    for key in tuple(git_environment):
+        if key.startswith("GIT_"):
+            git_environment.pop(key)
+
     source = tmp_path / "source"
+    source.mkdir()
+    shutil.copy2(REPO_ROOT / "package.json", source / "package.json")
+    shutil.copytree(REPO_ROOT / "dist/pi", source / "dist/pi")
     subprocess.run(
-        ["git", "clone", "--quiet", "--no-local", str(REPO_ROOT), str(source)],
+        ["git", "init", "--quiet", str(source)], env=git_environment, check=True
+    )
+    subprocess.run(
+        ["git", "-C", str(source), "add", "."], env=git_environment, check=True
+    )
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(source),
+            "-c",
+            "user.name=cc-thingz test",
+            "-c",
+            "user.email=test@example.com",
+            "commit",
+            "--quiet",
+            "-m",
+            "root compatibility fixture",
+        ],
+        env=git_environment,
         check=True,
     )
     bare = tmp_path / "test/cc-thingz.git"
     bare.parent.mkdir()
     subprocess.run(
         ["git", "clone", "--quiet", "--bare", str(source), str(bare)],
+        env=git_environment,
         check=True,
     )
-    subprocess.run(["git", "-C", str(bare), "update-server-info"], check=True)
+    subprocess.run(
+        ["git", "-C", str(bare), "update-server-info"],
+        env=git_environment,
+        check=True,
+    )
 
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", 0))
@@ -347,6 +396,12 @@ def test_repository_root_pi_package_loads_from_git_checkout(tmp_path: Path) -> N
         environment.pop("PI_OFFLINE")
         environment["GIT_TERMINAL_PROMPT"] = "0"
         subprocess.run(
+            [pi, "install", PI_SUBAGENTS_PACKAGE, "--approve"],
+            env=environment,
+            check=True,
+            timeout=60,
+        )
+        subprocess.run(
             [
                 pi,
                 "install",
@@ -361,29 +416,9 @@ def test_repository_root_pi_package_loads_from_git_checkout(tmp_path: Path) -> N
         clone = (
             Path(environment["PI_CODING_AGENT_DIR"]) / "git/127.0.0.1/test/cc-thingz"
         )
-        assert (clone / "node_modules/pi-subagents/src/extension/index.ts").is_file()
-        assert (
-            clone / "node_modules/pi-subagents/node_modules/@earendil-works/pi-tui"
-        ).is_dir()
-        assert not (clone / "node_modules/@earendil-works/pi-coding-agent").exists()
-        rpc = subprocess.run(
-            [pi, "--mode", "rpc", "--no-session"],
-            env=environment,
-            input='{"type":"get_commands"}\n',
-            capture_output=True,
-            check=True,
-            text=True,
-            timeout=30,
-        )
-        responses = [
-            json.loads(line) for line in rpc.stdout.splitlines() if line.strip()
-        ]
-        commands = next(
-            response["data"]["commands"]
-            for response in responses
-            if response.get("type") == "response"
-            and response.get("command") == "get_commands"
-        )
+        assert clone.is_dir()
+        rpc, commands = _pi_rpc_commands(pi, environment, tmp_path)
+        assert rpc.returncode == 0, rpc.stderr
         assert {
             "plan",
             "todos",

@@ -19,9 +19,6 @@
     "author": {
       "name": "Alexei Ledenev"
     },
-    "dependencies": {
-      "pi-subagents": "*"
-    },
     "description": "Browser-based testing, validation, screenshots, recordings, and quick automation",
     "homepage": "https://github.com/alexei-led/cc-thingz",
     "keywords": [
