@@ -8,6 +8,8 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.8.9] - 2026-07-19
+
 ### Fixed
 
 - Stopped bundling and registering the third-party `pi-subagents` extension in
