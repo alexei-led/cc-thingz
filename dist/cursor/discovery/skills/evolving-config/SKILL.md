@@ -7,6 +7,9 @@
 Audit AI coding-agent configuration with local evidence first and current vendor
 docs second. Default to review-only. Apply fixes only after explicit approval.
 
+For installed cc-thingz resource/version diagnostics, use `installation-doctor`
+first. Continue here for broader configuration review or authorized changes.
+
 ## Read first
 
 - `references/RUBRIC.md` for shared review dimensions and severity.

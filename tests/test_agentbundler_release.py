@@ -8,6 +8,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tarfile
 import tomllib
 from pathlib import Path
@@ -344,7 +345,7 @@ def test_generated_target_inventory_matches_supported_contract() -> None:
     source_skills = {
         path.parent.name for path in (REPO_ROOT / "src/skills").glob("*/SKILL.md")
     }
-    assert len(source_skills) == 29
+    assert len(source_skills) == 30
 
     for target in TARGETS:
         assert _agent_names(target) == EXPECTED_AGENTS[target]
@@ -708,3 +709,48 @@ Path("uv.lock").write_text(f'version = "{version}"\\n')
         text=True,
     ).stdout.splitlines()
     assert ".claude-plugin/marketplace.json" in committed
+
+
+@pytest.mark.parametrize("target", TARGETS)
+def test_release_doctor_runs_without_checkout(
+    release_artifacts: Path, tmp_path: Path, target: str
+) -> None:
+    suffix = "pi.tgz" if target == "pi" else f"{target}.tar.gz"
+    archive_path = release_artifacts / f"alexei-led-cc-thingz-{suffix}"
+    package = tmp_path / "installed"
+    package.mkdir()
+    with tarfile.open(archive_path, "r:gz") as archive:
+        archive.extractall(package, filter="data")
+    owner = package if target == "pi" else package / "discovery"
+    skill = owner / "skills" / "installation-doctor"
+    script = skill / "scripts" / "doctor.py"
+    assert (skill / "SKILL.md").is_file()
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    environment = {**os.environ, "PYTHONPATH": ""}
+    scan_args = (
+        ["--plugin-root", str(package)]
+        if target in ("codex", "claude")
+        else ["--skill-root", str(empty)]
+    )
+    result = subprocess.run(
+        [sys.executable, "-B", str(script), *scan_args, "--json"],
+        cwd=empty,
+        env=environment,
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=True,
+    )
+    report = json.loads(result.stdout)
+    assert set(report["canonical_packages"]) == PACKAGE_IDS
+    assert "installation-doctor" in report["canonical_packages"]["discovery"]["skills"]
+    assert not [item for item in report["checks"] if item["status"] == "failed"]
+    assert not list(empty.iterdir())
+    if target in ("codex", "claude"):
+        assert {item["name"] for item in report["plugins"]} == PACKAGE_IDS
+        versions = [
+            item for item in report["checks"] if item["check"] == "package-version"
+        ]
+        assert len(versions) == len(PACKAGE_IDS)
+        assert all(item["status"] == "passed" for item in versions)

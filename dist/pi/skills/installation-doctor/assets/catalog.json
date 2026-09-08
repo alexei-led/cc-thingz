@@ -1,0 +1,194 @@
+{
+  "browser": {
+    "skills": [
+      "browser-automation",
+      "playwright-skill"
+    ],
+    "skill_targets": {},
+    "resources": {
+      "browser-automation": [
+        "SKILL.md"
+      ],
+      "playwright-skill": [
+        "SKILL.md",
+        "scripts/.gitignore",
+        "scripts/lib/helpers.js",
+        "scripts/lib/runtime.js",
+        "scripts/lib/screenshot.js",
+        "scripts/package.json",
+        "scripts/run.js",
+        "scripts/screenshot-sequence.js",
+        "scripts/screenshot-url.js",
+        "scripts/setup-runtime.js"
+      ]
+    }
+  },
+  "dev-flow": {
+    "skills": [
+      "committing-code",
+      "documenting-code",
+      "fixing-code",
+      "improving-tests",
+      "refactoring-code",
+      "reviewing-code"
+    ],
+    "skill_targets": {},
+    "resources": {
+      "committing-code": [
+        "SKILL.md",
+        "scripts/commit-state.sh"
+      ],
+      "documenting-code": [
+        "SKILL.md"
+      ],
+      "fixing-code": [
+        "SKILL.md"
+      ],
+      "improving-tests": [
+        "SKILL.md"
+      ],
+      "refactoring-code": [
+        "SKILL.md"
+      ],
+      "reviewing-code": [
+        "SKILL.md"
+      ]
+    }
+  },
+  "discovery": {
+    "skills": [
+      "brainstorming-ideas",
+      "evolving-config",
+      "installation-doctor",
+      "looking-up-docs",
+      "researching-web",
+      "reviewing-instructions",
+      "writing-skills",
+      "sequential-thinking"
+    ],
+    "skill_targets": {},
+    "resources": {
+      "brainstorming-ideas": [
+        "SKILL.md"
+      ],
+      "evolving-config": [
+        "SKILL.md"
+      ],
+      "installation-doctor": [
+        "SKILL.md",
+        "scripts/doctor.py",
+        "assets/catalog.json"
+      ],
+      "looking-up-docs": [
+        "SKILL.md"
+      ],
+      "researching-web": [
+        "SKILL.md"
+      ],
+      "reviewing-instructions": [
+        "SKILL.md",
+        "scripts/lint-instructions.py"
+      ],
+      "writing-skills": [
+        "SKILL.md"
+      ],
+      "sequential-thinking": [
+        "SKILL.md"
+      ]
+    }
+  },
+  "git-flow": {
+    "skills": [
+      "cleanup-git",
+      "configuring-git-hygiene",
+      "using-git-worktrees"
+    ],
+    "skill_targets": {},
+    "resources": {
+      "cleanup-git": [
+        "SKILL.md",
+        "scripts/cleanup-git.sh"
+      ],
+      "configuring-git-hygiene": [
+        "SKILL.md"
+      ],
+      "using-git-worktrees": [
+        "SKILL.md",
+        "scripts/cleanup-worktree.sh",
+        "scripts/setup-worktree.sh"
+      ]
+    }
+  },
+  "infra-ops": {
+    "skills": [
+      "deploying-infra",
+      "operating-infra"
+    ],
+    "skill_targets": {
+      "deploying-infra": [
+        "claude"
+      ]
+    },
+    "resources": {
+      "deploying-infra": [
+        "SKILL.md"
+      ],
+      "operating-infra": [
+        "SKILL.md",
+        "scripts/bq-cost-check.py"
+      ]
+    }
+  },
+  "programming": {
+    "skills": [
+      "writing-csharp",
+      "writing-go",
+      "writing-java-kotlin",
+      "writing-python",
+      "writing-rust",
+      "writing-shell",
+      "writing-typescript",
+      "writing-web"
+    ],
+    "skill_targets": {},
+    "resources": {
+      "writing-csharp": [
+        "SKILL.md"
+      ],
+      "writing-go": [
+        "SKILL.md"
+      ],
+      "writing-java-kotlin": [
+        "SKILL.md"
+      ],
+      "writing-python": [
+        "SKILL.md"
+      ],
+      "writing-rust": [
+        "SKILL.md"
+      ],
+      "writing-shell": [
+        "SKILL.md"
+      ],
+      "writing-typescript": [
+        "SKILL.md"
+      ],
+      "writing-web": [
+        "SKILL.md"
+      ]
+    }
+  },
+  "spec-flow": {
+    "skills": [
+      "spec-flow"
+    ],
+    "skill_targets": {},
+    "resources": {
+      "spec-flow": [
+        "SKILL.md",
+        "scripts/specctl",
+        "scripts/specctl.py"
+      ]
+    }
+  }
+}

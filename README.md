@@ -3,7 +3,7 @@
 [![CI](https://github.com/alexei-led/cc-thingz/actions/workflows/ci.yml/badge.svg)](https://github.com/alexei-led/cc-thingz/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Targets](https://img.shields.io/badge/targets-6-00897B)](agentbundle.json)
-[![Skills](https://img.shields.io/badge/skills-29-green)](src/skills/)
+[![Skills](https://img.shields.io/badge/skills-30-green)](src/skills/)
 [![Agent Bundler](https://img.shields.io/badge/Agent_Bundler-required-00897B)](https://github.com/alexei-led/agentbundler)
 
 Portable skills, agents, hooks, and Pi-native extensions for Claude Code, Codex
@@ -150,8 +150,9 @@ installed Agent Bundler pinned in `.agentbundler-version`.
 
 ## Installation diagnostics
 
-Run `make doctor` from this checkout to inspect cached plugins without changing
-configuration. See [doctor usage and migration](docs/doctor.md) and
+Use the `installation-doctor` skill from the installed `discovery` plugin to
+inspect cached plugins without changing configuration or cloning this repository.
+The checkout also retains `make doctor`. See [doctor usage and migration](docs/doctor.md) and
 [runtime defaults](docs/runtime-reliability.md) before upgrading older installations.
 
 ## Target differences and gaps

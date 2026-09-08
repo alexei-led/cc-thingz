@@ -1,10 +1,15 @@
 # Installation doctor
 
-The doctor ships as a checkout CLI (`make doctor`), not as a standalone
-installed plugin capability. It requires this repository's canonical manifests.
+The `installation-doctor` skill ships in the `discovery` plugin with its Python
+helper and a versionless resource catalog. Ask the agent to run installation
+diagnostics, or invoke the installed helper directly; no repository checkout is
+required. `make doctor` remains the checkout entry point.
 
-The doctor compares resources on disk with this checkout's source package
-manifests. It identifies stale package versions, old package names, duplicate
+The installed doctor compares resources on disk with its bundled catalog and the
+release version in the enclosing native plugin manifest (or Pi `package.json`).
+It does not query the latest online release. If a flat skill copy has no native
+release manifest, version comparison is explicitly skipped. Pass `--repo` to
+compare against a checkout's source package manifests instead. It identifies stale package versions, old package names, duplicate
 skill directories, missing skill helpers, missing Codex agent profiles, and
 exact duplicate hook registrations within one manifest.
 
@@ -14,6 +19,16 @@ compared in memory and never included in output. JSON errors do not echo file
 contents. Use Python's `-B` option to avoid interpreter bytecode writes.
 
 ## Run
+
+From an installed skill, substitute its actual directory:
+
+```bash
+uv run --no-project python -B <skill-directory>/scripts/doctor.py --json
+uv run --no-project python -B <skill-directory>/scripts/doctor.py \
+  --plugin-root <plugin-directory> --json
+```
+
+From a repository checkout:
 
 ```bash
 uv run python -B scripts/diagnostics/doctor.py
@@ -38,7 +53,9 @@ root can be a plugin directory, target distribution directory, or marketplace
 cache. The scanner recognizes `.codex-plugin/plugin.json` and
 `.claude-plugin/plugin.json` at the root or up to three directory levels below
 it. Flat skill roots use the conventional `<skill>/SKILL.md` layout; identities
-come from directory names. Expected skill files respect the source package asset target restrictions.
+come from directory names. Expected skill files respect package asset target restrictions. The bundled
+catalog includes skill entrypoints, script helpers, and static assets. A contract
+test checks this catalog against source manifests and resources on every test run.
 Custom skill-directory declarations and other vendor
 installation layouts are outside this first version.
 
@@ -80,7 +97,7 @@ Each check has:
 - `status`: `passed`, `failed`, `skipped`, or `unsupported`.
 - `reason`: the observation or reason the check could not run.
 - `command`: argument array for an executed command, or null. Always null here.
-- `cwd`: checkout used for the comparison.
+- `cwd`: checkout used for source comparison, or invocation directory in installed mode.
 - `scope`: inspected paths, or the missing paths for an incomplete resource set.
 - `timestamp`: UTC observation time.
 
