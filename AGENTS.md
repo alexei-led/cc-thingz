@@ -107,6 +107,7 @@ Routing lives in the orchestrator instructions (`CLAUDE.md`, `AGENTS.md`, parent
 ## Developer Tools
 
 - **brainstorming-ideas** — Brainstorm ideas and stress-test draft plans or trade-offs before coding
+- **installation-doctor** — Read-only installed-plugin diagnostics, versions, duplicate resources, and migration suggestions; bundled with discovery
 - **evolving-config** — Audit AI coding-agent configuration and plugin/package manifests; review-only by default, explicit approval for fixes
 - **looking-up-docs** — Find exact API/config syntax and versioned docs via Context7, official registries/docs, and GitHub fallback
 - **researching-web** — Web research for comparisons, current-state, and release-behavior questions with grounded source selection and stale-source reporting

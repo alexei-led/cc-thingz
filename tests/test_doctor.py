@@ -42,9 +42,11 @@ def fixture_tree(tmp_path: Path) -> tuple[Path, Path, Path]:
 
 def snapshot(root: Path) -> dict:
     return {
-        str(path.relative_to(root)): (path.read_bytes(), path.stat().st_mtime_ns)
+        str(path.relative_to(root)): (
+            path.read_bytes() if path.is_file() else None,
+            path.stat().st_mtime_ns,
+        )
         for path in root.rglob("*")
-        if path.is_file()
     }
 
 
@@ -199,3 +201,114 @@ def test_historical_package_migrations(load_script, tmp_path, old_name, replacem
     result = next(c for c in report["checks"] if c["check"] == "obsolete-package")
     assert result["status"] == "failed"
     assert result["reason"] == f"{old_name}: review migration to {replacement}"
+
+
+def test_bundled_catalog_matches_source_contract(load_script):
+    doctor = load_script("diagnostics/doctor.py")
+    repo = Path(__file__).resolve().parents[1]
+    expected = doctor.Inspection(repo).canonical()
+    for package in expected.values():
+        package.pop("version")
+        package.pop("source")
+    bundled = json.loads(
+        (repo / "src/skills/installation-doctor/assets/catalog.json").read_text()
+    )
+    assert bundled == expected
+
+
+@pytest.mark.parametrize(
+    "manifest",
+    [
+        ".codex-plugin/plugin.json",
+        ".claude-plugin/plugin.json",
+        ".cursor-plugin/plugin.json",
+        "plugin.json",
+        "package.json",
+    ],
+)
+def test_installed_doctor_runs_without_checkout(tmp_path, manifest):
+    import shutil
+    import subprocess
+    import sys
+
+    repo = Path(__file__).resolve().parents[1]
+    installation = tmp_path / "installed"
+    skill = installation / "skills/installation-doctor"
+    shutil.copytree(repo / "src/skills/installation-doctor", skill)
+    write_json(
+        installation / manifest,
+        {
+            "name": "cc-thingz" if manifest == "package.json" else "discovery",
+            "version": "91.2.3",
+        },
+    )
+    plugin = tmp_path / "scan/programming"
+    write_json(
+        plugin / ".codex-plugin/plugin.json",
+        {"name": "programming", "version": "91.2.3"},
+    )
+    workspace = tmp_path / "empty-workspace"
+    workspace.mkdir()
+    before = snapshot(tmp_path)
+    command = [sys.executable, "-I", "-B", str(skill / "scripts/doctor.py")]
+    help_result = subprocess.run(
+        [*command, "--help"], cwd=workspace, capture_output=True, text=True
+    )
+    assert help_result.returncode == 0
+    assert "--repo" in help_result.stdout
+    result = subprocess.run(
+        [*command, "--plugin-root", str(plugin), "--json"],
+        cwd=workspace,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 1
+    assert result.stderr == ""
+    report = json.loads(result.stdout)
+    assert "No source package manifests" not in result.stdout
+    assert all(
+        package["version"] == "91.2.3"
+        for package in report["canonical_packages"].values()
+    )
+    assert any(
+        check["check"] == "package-version" and check["status"] == "passed"
+        for check in report["checks"]
+    )
+    resources = [
+        check for check in report["checks"] if check["check"] == "skill-resources"
+    ]
+    assert resources and all(check["status"] == "failed" for check in resources)
+    assert any("SKILL.md" in path for check in resources for path in check["scope"])
+    assert str(repo) not in result.stdout
+    assert snapshot(tmp_path) == before
+
+
+def test_standalone_skill_without_manifest_skips_version(tmp_path):
+    import shutil
+    import subprocess
+    import sys
+
+    source = Path(__file__).resolve().parents[1] / "src/skills/installation-doctor"
+    skill = tmp_path / "installation-doctor"
+    shutil.copytree(source, skill)
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-B",
+            str(skill / "scripts/doctor.py"),
+            "--skill-root",
+            str(tmp_path),
+            "--json",
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0
+    report = json.loads(result.stdout)
+    assert any(
+        check["check"] == "catalog-version" and check["status"] == "skipped"
+        for check in report["checks"]
+    )
+    assert report["canonical_packages"]["discovery"]["version"] is None

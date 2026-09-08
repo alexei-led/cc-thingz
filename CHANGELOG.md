@@ -8,6 +8,16 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.9.1] - 2026-09-08
+
+### Fixed
+
+- Shipped installation diagnostics as the discoverable `installation-doctor`
+  skill in `discovery`, including its implementation and catalog. Installed
+  plugins no longer require a cc-thingz checkout to run the doctor.
+- Kept `make doctor` as a thin wrapper around the same packaged implementation,
+  and added relocated-release tests for all six targets.
+
 ## [6.9.0] - 2026-09-08
 
 ### Added

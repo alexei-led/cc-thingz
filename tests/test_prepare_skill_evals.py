@@ -111,6 +111,7 @@ def test_repository_inventory_accounts_for_all_original_scenarios():
     assert report["evals"] == 72
     assert sum(entry["evals"] for entry in report["archived"]) == 2
     assert report["uncovered_skills"] == [
+        "discovery/installation-doctor",
         "git-flow/cleanup-git",
         "programming/writing-csharp",
         "programming/writing-java-kotlin",
