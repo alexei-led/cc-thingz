@@ -17,6 +17,7 @@ allow_exit() {
 	[[ "$PI_RUNTIME" == "1" ]] && echo '{"decision":"allow"}'
 	exit 0
 }
+[[ "${HOOK_SKILL_ENFORCER:-1}" == "0" ]] && allow_exit
 [[ -n "$PROMPT" ]] || allow_exit
 PROMPT_LOWER=$(echo "$PROMPT" | tr '[:upper:]' '[:lower:]')
 
@@ -33,25 +34,25 @@ skills=""
 
 # writing-go: Idiomatic Go development
 # Triggers: .go files, go commands, Go-specific terms
-if echo "$PROMPT_LOWER" | grep -qE '\.go\b|go\.(mod|sum)|go (test|build|run|fmt|vet|mod|get|generate)|golangci|mockery|\bgolang\b|\bgoroutines?\b|\bchannel\b|\bdefer\b.*func|urfave|testify|cobra/|idiomatic go|in go\b|go (code|project|package|module|interface|struct)|write.*go|implement.*go|\berror\s*handling\b.*go'; then
+if echo "$PROMPT_LOWER" | grep -qE '\.go\b|go\.(mod|sum)|\bgo (test|build|run|fmt|vet|mod|get|generate)|golangci|mockery|\bgolang\b|\bgoroutines?\b|\bdefer\b.*func|urfave|testify|cobra/|idiomatic go|in go\b|go (code|project|package|module|interface|struct)|write.*\bgo\b|implement.*\bgo\b|\berror\s*handling\b.*go'; then
 	skills+="writing-go "
 fi
 
 # writing-rust: Idiomatic Rust development
 # Triggers: .rs files, Cargo commands, Rust-specific terms
-if echo "$PROMPT_LOWER" | grep -qE '\.rs\b|cargo\.(toml|lock)|\bcargo (test|build|run|check|fmt|clippy|doc|bench|nextest)\b|rustfmt|\bclippy\b|rust-analyzer|\brustc\b|\brustup\b|\brust\b|\bcrate\b|borrow checker|\bownership\b|\blifetime\b|\btraits?\b.*\bimpl\b|\bimpl\b.*\btraits?\b|\bderive\b.*\bdebug\b|tokio|serde|idiomatic rust|write.*rust|implement.*rust'; then
+if echo "$PROMPT_LOWER" | grep -qE '\.rs\b|cargo\.(toml|lock)|\bcargo (test|build|run|check|fmt|clippy|doc|bench|nextest)\b|rustfmt|\bclippy\b|rust-analyzer|\brustc\b|\brustup\b|\brust\b|\bcrate\b|borrow checker|\btraits?\b.*\bimpl\b|\bimpl\b.*\btraits?\b|\bderive\b.*\bdebug\b|tokio|serde|idiomatic rust|write.*rust|implement.*rust'; then
 	skills+="writing-rust "
 fi
 
 # writing-python: Idiomatic Python 3.12+ development
 # Triggers: .py files, Python commands, Python frameworks
-if echo "$PROMPT_LOWER" | grep -qE '\.pyi?\b|pyproject|requirements\.txt|setup\.py|__init__|python[3]?\b|\buv (run|pip|sync|add|lock)|\bruff\b|pytest|poetry\b|mypy\b|django|flask|fastapi|pandas|numpy|pydantic|dataclass|type\s*hint|\btyping\b|asyncio|\basync\b.*\bawait\b|pip install|write.*python|implement.*python'; then
+if echo "$PROMPT_LOWER" | grep -qE '\.pyi?\b|pyproject|requirements\.txt|setup\.py|__init__|python[3]?\b|\buv (run|pip|sync|add|lock)|\bruff\b|pytest|poetry\b|mypy\b|django|flask|fastapi|pandas|numpy|pydantic|dataclass|type\s*hint|\btyping\b|asyncio|pip install|write.*python|implement.*python'; then
 	skills+="writing-python "
 fi
 
 # writing-typescript: TypeScript development with strict typing
 # Triggers: .ts files, TypeScript commands, Node.js/React/Bun
-if echo "$PROMPT_LOWER" | grep -qE '\.(ts|tsx)\b|typescript|tsconfig|package\.json|\bnpm\b|\bbun\b|\byarn\b|\bvite\b|react|next\.?js|node\.?js|\bexpress\b|\best\b|vitest|jest|eslint|prettier|write.*typescript|implement.*ts|strict typing'; then
+if echo "$PROMPT_LOWER" | grep -qE '\.(ts|tsx)\b|typescript|tsconfig|package\.json|\bnpm\b|\bbun\b|\byarn\b|\bvite\b|react|next\.?js|node\.?js|\bexpress\b|\best\b|vitest|jest|eslint|prettier|write.*typescript|implement.*\bts\b|strict typing'; then
 	skills+="writing-typescript "
 fi
 
@@ -86,7 +87,7 @@ fi
 # researching-web: Web research via Perplexity AI (comparisons, best practices, standards)
 # Triggers: Research language, comparisons, best practices, industry standards
 # NOT for API references or library docs (use looking-up-docs)
-if echo "$PROMPT_LOWER" | grep -qE '\bresearch\b|search.*(web|online)|look\s*up.*online|find\s*out.*(about|if|whether)|compare.*(tool|lib|framework|approach|option|technolog)|(\w+)\s+vs\s+(\w+)|pros\s*(and|&)\s*cons|trade[[:space:]-]?off|which.*(better|should|recommend)|latest.*(version|release|update)|current.*(version|best)|what.?s\s*new\s*in|best\s*practice|up[[:space:]-]?to[[:space:]-]?date|2024|2025|2026|industry\s*standard|owasp|recommended\s*(practice|approach|pattern)|perplexity'; then
+if echo "$PROMPT_LOWER" | grep -qE '\bresearch\b|search.*(web|online)|look\s*up.*online|find\s*out.*(about|if|whether)|compare.*(tool|lib|framework|approach|option|technolog)|(\w+)\s+vs\s+(\w+)|pros\s*(and|&)\s*cons|trade[[:space:]-]?off|which.*(tool|lib(rary)?|framework|approach|option|technolog(y|ies)|database|language|runtime|package|service).*(better|should|recommend)|latest.*(version|release|update)|current.*(version|best)|what.?s\s*new\s*in|best\s*practice|up[[:space:]-]?to[[:space:]-]?date|2024|2025|2026|industry\s*standard|owasp|recommended\s*(practice|approach|pattern)|perplexity'; then
 	skills+="researching-web "
 fi
 
@@ -201,10 +202,8 @@ if echo "$PROMPT_LOWER" | grep -qE '\bspec[[:space:]-]?flow\b|\bspec[[:space:]-]
 	fi
 fi
 
-# sequential-thinking: Externalized stepwise reasoning with revisions and branches
-# Triggers: explicit "step by step" / "sequential thinking" / revise-and-branch language
-# NOT for "think through" or "stress test" (brainstorming-ideas)
-if echo "$PROMPT_LOWER" | grep -qE '\bsequential[[:space:]-]?thinking\b|\bstep[[:space:]-]?by[[:space:]-]?step\b|\breason\s*through\s*(this|it|the)\b|\bplan\s*(this|it)\s*out\b|\bwalk\s*(me\s*)?through\s*(this|the|your)?\s*reasoning\b|\bbranch\s*(this|the|an?)\s*(idea|approach|reasoning|thought)\b|\brevise\s*(my|the|your)?\s*(reasoning|thought|earlier\s*step)\b|\bnumbered\s*thoughts?\b|\bshow\s*(your|the)?\s*reasoning\s*steps?\b'; then
+# sequential-thinking: Explicit requests for structured reasoning summaries
+if echo "$PROMPT_LOWER" | grep -qE '\bsequential[[:space:]-]?thinking\b|\b(think|reason)[[:space:]]+step[[:space:]-]+by[[:space:]-]+step\b|\bwalk[[:space:]]+(me[[:space:]]+)?through[[:space:]]+(this[[:space:]]+|the[[:space:]]+|your[[:space:]]+)?reasoning\b|\bstructured[[:space:]]+comparison[[:space:]]+of[[:space:]]+decision[[:space:]]+branches\b'; then
 	skills+="sequential-thinking "
 fi
 
@@ -232,3 +231,5 @@ if [[ -n "$skills" ]]; then
 	fi
 fi
 [[ "$PI_RUNTIME" == "1" ]] && echo '{"decision":"allow"}'
+
+exit 0

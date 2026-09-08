@@ -3,101 +3,74 @@
  * Extracted for testability.
  */
 
-// Destructive commands blocked in plan mode
-const DESTRUCTIVE_PATTERNS = [
-	/\brm\b/i,
-	/\brmdir\b/i,
-	/\bmv\b/i,
-	/\bcp\b/i,
-	/\bmkdir\b/i,
-	/\btouch\b/i,
-	/\bchmod\b/i,
-	/\bchown\b/i,
-	/\bchgrp\b/i,
-	/\bln\b/i,
-	/\btee\b/i,
-	/\btruncate\b/i,
-	/\bdd\b/i,
-	/\bshred\b/i,
-	/(^|[^<])>(?!>)/,
-	/>>/,
-	/\bnpm\s+(install|uninstall|update|ci|link|publish)/i,
-	/\byarn\s+(add|remove|install|publish)/i,
-	/\bpnpm\s+(add|remove|install|publish)/i,
-	/\bpip\s+(install|uninstall)/i,
-	/\bapt(-get)?\s+(install|remove|purge|update|upgrade)/i,
-	/\bbrew\s+(install|uninstall|upgrade)/i,
-	/\bgit\s+(add|commit|push|pull|merge|rebase|reset|checkout|branch\s+-[dD]|stash|cherry-pick|revert|tag|init|clone)/i,
-	/\bsudo\b/i,
-	/\bsu\b/i,
-	/\bkill\b/i,
-	/\bpkill\b/i,
-	/\bkillall\b/i,
-	/\breboot\b/i,
-	/\bshutdown\b/i,
-	/\bsystemctl\s+(start|stop|restart|enable|disable)/i,
-	/\bservice\s+\S+\s+(start|stop|restart)/i,
-	/\b(vim?|nano|emacs|code|subl)\b/i,
-];
+// This intentionally accepts a small shell subset, not arbitrary shell syntax.
+// It is a workflow guard; executable resolution and repository config remain trusted.
+interface InspectionOptions {
+	flags: RegExp;
+	values?: readonly string[];
+}
 
-// Safe read-only commands allowed in plan mode
-const SAFE_PATTERNS = [
-	/^\s*cat\b/,
-	/^\s*head\b/,
-	/^\s*tail\b/,
-	/^\s*less\b/,
-	/^\s*more\b/,
-	/^\s*grep\b/,
-	/^\s*find\b/,
-	/^\s*ls\b/,
-	/^\s*pwd\b/,
-	/^\s*echo\b/,
-	/^\s*printf\b/,
-	/^\s*wc\b/,
-	/^\s*sort\b/,
-	/^\s*uniq\b/,
-	/^\s*diff\b/,
-	/^\s*file\b/,
-	/^\s*stat\b/,
-	/^\s*du\b/,
-	/^\s*df\b/,
-	/^\s*tree\b/,
-	/^\s*which\b/,
-	/^\s*whereis\b/,
-	/^\s*type\b/,
-	/^\s*env\b/,
-	/^\s*printenv\b/,
-	/^\s*uname\b/,
-	/^\s*whoami\b/,
-	/^\s*id\b/,
-	/^\s*date\b/,
-	/^\s*cal\b/,
-	/^\s*uptime\b/,
-	/^\s*ps\b/,
-	/^\s*top\b/,
-	/^\s*htop\b/,
-	/^\s*free\b/,
-	/^\s*git\s+(status|log|diff|show|branch|remote|config\s+--get)/i,
-	/^\s*git\s+ls-/i,
-	/^\s*npm\s+(list|ls|view|info|search|outdated|audit)/i,
-	/^\s*yarn\s+(list|info|why|audit)/i,
-	/^\s*node\s+--version/i,
-	/^\s*python\s+--version/i,
-	/^\s*curl\s/i,
-	/^\s*wget\s+-O\s*-/i,
-	/^\s*jq\b/,
-	/^\s*sed\s+-n/i,
-	/^\s*awk\b/,
-	/^\s*rg\b/,
-	/^\s*fd\b/,
-	/^\s*bat\b/,
-	/^\s*eza\b/,
-];
+const INSPECTION_COMMANDS: Record<string, InspectionOptions> = {
+	cat: { flags: /^-[benstuvAET]+$/ },
+	ls: { flags: /^-[laAdFhRrSt1]+$/ },
+	pwd: { flags: /^-[LP]$/ },
+	head: { flags: /^-(?:[qv]+|\d+)$/, values: ["-n", "-c"] },
+	tail: { flags: /^-(?:[qv]+|\d+)$/, values: ["-n", "-c"] },
+	wc: { flags: /^-[clmwL]+$/ },
+	grep: { flags: /^(?:-[rinvElwFcsho]+|--(?:line-number|ignore-case|files-with-matches|fixed-strings))$/, values: ["-e", "-f", "-A", "-B", "-C", "-m", "--include", "--exclude"] },
+	rg: { flags: /^(?:-[nvilwFcsoSU]+|--(?:files|hidden|no-ignore|line-number|ignore-case|fixed-strings|files-with-matches|count|json|no-heading))$/, values: ["-e", "-f", "-g", "-t", "-T", "-A", "-B", "-C", "-m", "--glob", "--type", "--max-count", "--max-depth"] },
+	find: { flags: /^-(?:print|print0|empty|a|o|not)$/, values: ["-name", "-iname", "-path", "-ipath", "-type", "-maxdepth", "-mindepth", "-size", "-mtime"] },
+	jq: { flags: /^-[rcesM]+$/ },
+	sort: { flags: /^-[nrfbu]+$/ },
+	diff: { flags: /^-[uqrwB]+$/ },
+};
+
+const GIT_INSPECTION: Record<string, InspectionOptions> = {
+	status: { flags: /^(?:-[sb]+|--(?:short|branch|porcelain(?:=v[12])?|untracked-files(?:=(?:no|normal|all))?))$/ },
+	log: { flags: /^(?:-\d+|--(?:oneline|stat|name-only|name-status|all|graph|decorate|no-decorate|reverse|no-merges|no-ext-diff|no-textconv))$/, values: ["-n", "--max-count", "--since", "--until", "--author", "--grep"] },
+	diff: { flags: /^(?:--(?:stat|numstat|shortstat|name-only|name-status|cached|staged|check|no-ext-diff|no-textconv)|-[Uw]\d*)$/ },
+	show: { flags: /^(?:--(?:stat|name-only|name-status|oneline|no-patch|no-ext-diff|no-textconv))$/ },
+	"ls-files": { flags: /^(?:-[zcmots]+|--(?:cached|modified|others|exclude-standard|stage))$/ },
+};
+
+function inspectionArgs(args: string[], options: InspectionOptions): boolean {
+	for (let i = 0; i < args.length; i++) {
+		const arg = args[i];
+		if (arg === "--") return true;
+		if (!arg.startsWith("-")) continue;
+		const equals = arg.indexOf("=");
+		const name = equals < 0 ? arg : arg.slice(0, equals);
+		if (options.values?.includes(name)) {
+			if (equals >= 0) {
+				if (equals === arg.length - 1) return false;
+			} else if (++i >= args.length) return false;
+			continue;
+		}
+		if (!options.flags.test(arg)) return false;
+	}
+	return true;
+}
 
 export function isSafeCommand(command: string): boolean {
-	const isDestructive = DESTRUCTIVE_PATTERNS.some((p) => p.test(command));
-	const isSafe = SAFE_PATTERNS.some((p) => p.test(command));
-	return !isDestructive && isSafe;
+	// No expansion, escaping, operators, redirection, comments or multiline input.
+	// Quotes may group literal words, but do not expand the supported syntax.
+	if (/[\x00-\x1f\x7f$`\\;<>|&(){}#!]/.test(command)) return false;
+	const tokens = command.match(/'[^']*'|"[^"]*"|[^\s'"]+/g);
+	if (!tokens || tokens.join(" ") !== command.trim().replace(/ +/g, " ")) return false;
+	if (tokens.some((token) => !/^["']/.test(token) && /[*?\[\]]/.test(token))) return false;
+	const args = tokens.map((token) => /^["']/.test(token) ? token.slice(1, -1) : token);
+	const name = args.shift();
+	if (name === "git") {
+		while (args[0] === "-C" || args[0] === "--no-pager" || args[0] === "--no-optional-locks") {
+			if (args.shift() === "-C" && !args.shift()) return false;
+		}
+		const subcommand = args.shift();
+		const options = subcommand && Object.hasOwn(GIT_INSPECTION, subcommand) && GIT_INSPECTION[subcommand];
+		return !!options && inspectionArgs(args, options);
+	}
+	if (name === "find" && args.includes("--")) return false;
+	const options = name && Object.hasOwn(INSPECTION_COMMANDS, name) && INSPECTION_COMMANDS[name];
+	return !!options && inspectionArgs(args, options);
 }
 
 export interface TodoItem {

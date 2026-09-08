@@ -2,15 +2,17 @@
 
 Use only the sections for detected infrastructure types. Report READY/BLOCKED per
 category with `file:line` for source-backed issues and exact command output for
-tool-backed issues.
+tool-backed issues. Use the same explicit destination and frozen inputs for validation
+and apply. Hash local artifacts and verify them immediately before apply; keep secrets
+out of evidence output.
 
 ## Kubernetes
 
 Validation commands:
 
-- `kubectl diff -f <path>`
-- `kubectl apply --dry-run=server -f <path>` when cluster access exists
-- `kubectl apply --dry-run=client -f <path>` when cluster access is unavailable
+- `kubectl --context <context> --namespace <namespace> diff -f <reviewed-rendered-file>`
+- `kubectl --context <context> --namespace <namespace> apply --dry-run=server -f <reviewed-rendered-file>` when cluster access exists
+- `kubectl --context <context> --namespace <namespace> apply --dry-run=client -f <reviewed-rendered-file>` when cluster access is unavailable
 
 Checks:
 
@@ -30,8 +32,8 @@ Checks:
 Validation commands:
 
 - `helm lint <chart>`
-- `helm template <release> <chart> --values <values-file>`
-- `helm diff upgrade <release> <chart> --values <values-file>` when `helm-diff` is installed
+- `helm template <release> <pinned-local-chart> --kube-context <context> --namespace <namespace> --values <reviewed-values-file>`
+- `helm diff upgrade <release> <pinned-local-chart> --kube-context <context> --namespace <namespace> --values <reviewed-values-file>` when `helm-diff` is installed
 
 Checks:
 
@@ -45,9 +47,9 @@ Checks:
 
 Validation commands:
 
-- `kustomize build <overlay>`
-- `kustomize build <overlay> | kubectl apply --dry-run=server -f -` when cluster access exists
-- `kustomize build <overlay> | kubectl apply --dry-run=client -f -` when cluster access is unavailable
+- `kustomize build <overlay> > <reviewed-rendered-file>`
+- Run the Kubernetes diff and dry-run commands above on that saved file.
+- Apply that same file after review; do not rebuild the overlay between review and apply.
 
 Checks:
 

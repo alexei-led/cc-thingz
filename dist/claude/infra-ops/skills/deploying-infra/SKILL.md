@@ -27,7 +27,7 @@ Rules:
 
 - Default mode is `--dry-run`.
 - `--background` is valid only with `--dry-run`.
-- `--apply` always stops for confirmation after showing plan/diff evidence.
+- `--apply` requires authorization covering the reviewed artifact and exact destination. Reuse existing explicit authorization when those inputs are unchanged.
 - Production confirmation must include the exact environment name.
 - If environment, context, namespace, workspace, chart, release, path, or account is unclear, ask one question.
 
@@ -40,7 +40,7 @@ Rules:
 5. Read `references/validation-checklists.md` and use only detected sections.
 6. Run validation and inspect source-backed policy checks.
 7. For apply-capable types, show plan/diff evidence.
-8. Stop on `--dry-run`; ask and apply on `--apply`.
+8. Stop on `--dry-run`; on `--apply`, confirm any unapproved artifact/destination and apply.
 9. Verify changed resources after apply.
 
 Use a background or delegated validation agent only for large scans or explicit
@@ -83,16 +83,24 @@ If validation is blocked, stop. Do not continue to confirmation.
 
 ## Confirmation and apply
 
-Ask before every apply with options: apply now, review plan again, cancel. For
-production, require the exact environment name. Cancel on ambiguous or mismatched
-confirmation.
+Bind authorization to the shown plan or rendered artifact and the exact account,
+context, namespace, workspace, chart/version, release, and values as applicable.
+Record artifact and input hashes locally without exposing secrets. Immediately
+before apply, verify they still match. Revalidate changed inputs and obtain renewed
+authorization for the change; do not ask again for an unchanged approved apply.
+For production, authorization must name the exact environment. Stop on ambiguous
+or mismatched authorization.
 
 Allowed apply patterns only:
 
 - `terraform apply tfplan`
-- `helm upgrade --install <release> <chart> --values <values-file>`
-- `kustomize build <overlay> | kubectl apply -f -`
-- `kubectl apply -f <path>`
+- `helm upgrade --install <release> <pinned-local-chart> --kube-context <context> --namespace <namespace> --values <reviewed-values-file>`
+- `kubectl --context <context> --namespace <namespace> apply -f <reviewed-rendered-file>`
+
+Render Kustomize or Kubernetes inputs once into a local artifact, review and dry-run
+that file, then apply the same file. For Helm, freeze the chart package/dependencies
+and every values/flag input; use the same context, namespace and release in validation
+and upgrade. Bind Terraform to the reviewed saved plan and its workspace/backend.
 
 Use only commands already matched to the repo layout. Do not write deployment logs
 unless the repo already documents that convention.

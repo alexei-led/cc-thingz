@@ -38,15 +38,20 @@ git branch --show-current
 git worktree list
 ```
 
-If the current worktree is dirty, ask whether to commit, stash, or proceed anyway. Do not stash silently.
+If the current worktree is dirty, leave those changes intact. Use `--allow-dirty` when the user has authorized creating an isolated worktree while preserving them; otherwise ask before proceeding. Do not stash silently.
 
 Use the helper when available:
 
 ```bash
-scripts/setup-worktree.sh <branch> [--base <ref>]
+scripts/setup-worktree.sh <branch> [--base <ref>] [--setup] [--test]
 ```
 
 The helper creates `<project>.worktrees/<branch-slug>` from the main worktree root, handles existing local/remote branches, refuses path conflicts, and refuses dirty state unless `--allow-dirty` is passed after user approval.
+
+`--setup` selects the declared package manager and lockfile, uses frozen installs,
+and uses uv for Python. Conflicting lockfiles or manager declarations stop setup.
+`--test` runs the detected baseline command. A skipped setup or test is not a pass.
+Existing branch divergence is reported from local refs without fetching or merging.
 
 Manual fallback lives in [workflow.md](references/workflow.md).
 
@@ -74,7 +79,7 @@ Do not run `git pull` as part of cleanup. Pull the integration branch only after
 
 - Worktree path exists: pick a different branch/slug; never overwrite.
 - Branch already exists remotely: check it out without `-b` or use the helper.
-- Dirty current worktree: ask to commit, stash, or continue with explicit approval.
+- Dirty current worktree: preserve changes; existing authorization to isolate work permits `--allow-dirty`. Ask if the intended treatment is unclear.
 - `git worktree remove` fails because the worktree is dirty: confirm before `--force`.
 - `git branch -d` fails after squash/rebase PR merge: confirm the PR is `MERGED`, then use `-D`.
 - Invoked from inside the worktree being removed: change to the main worktree before removing it.

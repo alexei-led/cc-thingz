@@ -40,7 +40,7 @@ printf '%s\n' "$*" >>"$PWD/pyright.args"
 SH
 	chmod +x bin/ruff bin/pyright
 
-	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s1\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"pkg/one.py\"}}" bash "$HOOK"
+	run env -u HOOK_INPUT_JSON PATH="$WORK_DIR/bin:$PATH" bash "$HOOK" <<<"{\"session_id\":\"s1\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"pkg/one.py\"}}"
 	[ "$status" -eq 0 ]
 	grep -q 'pkg/one.py' ruff.args
 	run grep -q 'pkg/two.py' ruff.args
@@ -307,7 +307,7 @@ SH
 	[ "$(cat gradle.args)" = "help --quiet" ]
 }
 
-@test "smart-lint: HOOK_PROJECT_FALLBACK=0 disables project fallback" {
+@test "smart-lint: default disables project fallback" {
 	cd "$WORK_DIR" || exit
 	git init -q
 	git config user.email test@example.com
@@ -323,9 +323,11 @@ printf '%s\n' "$*" >"$PWD/yarn.args"
 SH
 	chmod +x bin/yarn
 
-	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_PROJECT_FALLBACK=0 HOOK_INPUT_JSON="{\"session_id\":\"s_no_project\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"src/app.ts\"}}" bash "$HOOK"
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_no_project\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"src/app.ts\"}}" bash "$HOOK"
 	[ "$status" -eq 0 ]
 	[ ! -f yarn.args ]
+	[[ "$output" == *"unsupported: no lint checks completed"* ]]
+	[[ "$output" != *"Style OK"* ]]
 }
 
 @test "smart-lint: package lint fallback still runs after focused formatter" {
@@ -348,7 +350,7 @@ printf '%s\n' "$*" >"$PWD/yarn.args"
 SH
 	chmod +x node_modules/.bin/prettier bin/yarn
 
-	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_format_then_lint\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"src/app.ts\"}}" bash "$HOOK"
+	run env HOOK_PROJECT_FALLBACK=1 PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_format_then_lint\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"src/app.ts\"}}" bash "$HOOK"
 	[ "$status" -eq 0 ]
 	[ "$(cat prettier.args)" = "--write src/app.ts" ]
 	[ "$(cat yarn.args)" = "run lint" ]
@@ -440,7 +442,7 @@ printf '%s\n' "$*" >"$PWD/yarn.args"
 SH
 	chmod +x bin/yarn
 
-	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_pkg\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"src/app.ts\"}}" bash "$HOOK"
+	run env HOOK_PROJECT_FALLBACK=1 PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_pkg\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"src/app.ts\"}}" bash "$HOOK"
 	[ "$status" -eq 0 ]
 	[ "$(cat yarn.args)" = "run lint" ]
 }

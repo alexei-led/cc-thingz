@@ -5,6 +5,8 @@ set -o pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INPUT=$(cat)
+export -n HOOK_INPUT_JSON
+HOOK_INPUT_JSON="${INPUT:-${HOOK_INPUT_JSON:-}}"
 
 if command -v python3 >/dev/null 2>&1 && python3 -c 'import json,sys
 try:

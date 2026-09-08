@@ -1,3 +1,4 @@
+import { EventEmitter } from "node:events";
 import { beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 
 import { HOOK_RUNNER_INVOKE_CHANNEL } from "../../../src/plugins/pi/extensions/extensions/shared/hook-bridge.js";
@@ -6,7 +7,7 @@ import { HOOK_RUNNER_INVOKE_CHANNEL } from "../../../src/plugins/pi/extensions/e
 // Module mocks — must be established before the first import of hook-runner
 // ---------------------------------------------------------------------------
 
-type ExecCallback = (err: Error | null, stdout: string, stderr: string) => void;
+
 
 const execQueue: Array<{ exitCode: number; stdout: string; stderr: string }> =
   [];
@@ -117,29 +118,18 @@ const originalPiCodingAgentDir = process.env.PI_CODING_AGENT_DIR;
 let capturedStdin = "";
 
 mock.module("node:child_process", () => ({
-  execFile: (
-    _cmd: string,
-    args: string[],
-    _opts: unknown,
-    cb: ExecCallback,
-  ) => {
+  spawn: (_cmd: string, args: string[]) => {
     capturedCommands.push(args.join(" "));
     const resp = execQueue.shift() ?? { exitCode: 0, stdout: "", stderr: "" };
-    const child = {
-      stdin: {
-        write: (data: string) => {
-          capturedStdin = data;
-        },
-        end: () => {},
-      },
-    };
+    const child = Object.assign(new EventEmitter(), {
+      stdin: Object.assign(new EventEmitter(), { end: (data: string) => { capturedStdin = data; } }),
+      stdout: new EventEmitter(),
+      stderr: new EventEmitter(),
+    });
     setTimeout(() => {
-      if (resp.exitCode === 0) {
-        cb(null, resp.stdout, resp.stderr);
-      } else {
-        const err = Object.assign(new Error("exit"), { code: resp.exitCode });
-        cb(err as Error, resp.stdout, resp.stderr);
-      }
+      child.stdout.emit("data", Buffer.from(resp.stdout));
+      child.stderr.emit("data", Buffer.from(resp.stderr));
+      child.emit("close", resp.exitCode);
     }, 0);
     return child;
   },

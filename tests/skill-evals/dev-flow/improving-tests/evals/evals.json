@@ -1,0 +1,33 @@
+{
+  "skill_name": "improving-tests",
+  "evals": [
+    {
+      "id": "empty-mode-asks-scope",
+      "name": "empty mode asks scope",
+      "prompt": "A user says: improve tests. No mode or scope is provided. Describe the first response and workflow.",
+      "expected_output": "The response asks the user to choose a mode instead of assuming one, offering review, refactor, coverage, TDD, performance, or full improvement, then outlines exploration and verification.",
+      "assertions": [
+        "The output asks a clarifying question about what test-improvement mode to use instead of silently choosing.",
+        "The output includes mode options equivalent to review, refactor, coverage, TDD, performance, and full.",
+        "The output says it would explore existing test files and frameworks before editing.",
+        "The output mentions running relevant test or coverage commands as part of the workflow.",
+        "The output includes verification after changes."
+      ]
+    },
+    {
+      "id": "refactor-brittle-private-helper-tests",
+      "name": "refactor brittle private helper tests",
+      "prompt": "Mode: refactor. A Python project has many duplicate tests that call `_normalize_user_payload()` directly and assert internal mock call counts. The public behavior is `create_user(payload)`. Describe the test-improvement plan.",
+      "expected_output": "The response shifts tests to public behavior through create_user, avoids private helper and internal call-count coupling, consolidates duplicate cases with pytest parametrization, mocks only true system boundaries, deletes shallow tests once deeper tests cover the behavior, and verifies with pytest.",
+      "assertions": [
+        "The output says the public interface create_user(payload) should be the primary test surface.",
+        "The output discourages tests coupled to the private helper _normalize_user_payload().",
+        "The output discourages asserting internal collaborator call counts as the main behavior check.",
+        "The output recommends pytest parametrization or table-style consolidation for duplicate scenarios.",
+        "The output says to mock only system boundaries rather than internal collaborators.",
+        "The output mentions deleting shallow duplicate tests once deeper behavior tests cover them.",
+        "The output includes verification with pytest or an equivalent test command."
+      ]
+    }
+  ]
+}

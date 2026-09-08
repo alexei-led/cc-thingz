@@ -8,6 +8,39 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.9.0] - 2026-09-08
+
+### Added
+
+- Read-only installation doctor with plugin/version/duplicate diagnostics and
+  explicit verification outcomes; migration guidance for retired packages.
+- Mandatory core runtime smoke jobs, pinned compiler installation, and a separate
+  upstream compiler canary.
+- Offline skill-routing experiments and explicit eval fixture migration/coverage.
+
+### Fixed
+
+- Preserved smart-lint JSON input, project cwd, changed files, and session identity
+  through native and Pi adapters, including large edit payloads.
+- Closed common plan-mode, git global-option, and patch-rename guard gaps; hook
+  cancellation now cleans up POSIX process groups and bounds captured output.
+- Repaired eval preparation CLI, restored migrated scenarios, protected output
+  ownership, and corrected CI report artifacts.
+- Made reviewer instructions portable without granting write access; specctl now
+  enforces task dependencies and preserves resumed session state.
+- Made worktree setup honor lockfiles/uv and browser helpers use immutable plugin
+  assets, explicit browser setup, and sandboxed Chromium by default.
+- Corrected Go version gates and made BigQuery cost checks explicit and noninteractive.
+
+### Changed
+
+- Session start no longer removes global user artifacts. Full-project lint/test
+  fallback and the Pi structured-output demonstration require explicit opt-in.
+- Skill instructions retain existing authorization and bind deployment review to
+  the exact artifact and destination; sequential-thinking requires explicit intent.
+- Tightened measured false skill suggestions while preserving the existing router
+  by default. See `docs/runtime-reliability.md` for upgrade settings and limits.
+
 ## [6.8.13] - 2026-09-08
 
 

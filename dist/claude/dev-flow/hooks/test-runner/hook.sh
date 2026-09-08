@@ -19,8 +19,9 @@ TEST_RUNNER_DIFF_FALLBACK_LIMIT="${TEST_RUNNER_DIFF_FALLBACK_LIMIT:-50}"
 TEST_RUNNER_FULL="${TEST_RUNNER_FULL:-0}"
 TEST_RUNNER_DEBUG="${TEST_RUNNER_DEBUG:-0}"
 TEST_RUNNER_COMPACT_LINES=120
-HOOK_PROJECT_FALLBACK="${HOOK_PROJECT_FALLBACK:-1}"
+HOOK_PROJECT_FALLBACK="${HOOK_PROJECT_FALLBACK:-0}"
 TESTS_RAN=0
+TESTS_PASSED=0
 
 log_debug() { [[ "$TEST_RUNNER_DEBUG" == "1" ]] && echo -e "${CYAN}[DEBUG]${NC} $*" >&2; }
 log_info() { echo -e "${BLUE}[INFO]${NC} $*" >&2; }
@@ -379,6 +380,7 @@ run_test_compact() {
 	output=$("$@" 2>&1)
 	code=$?
 	if [[ "$code" -eq 0 ]]; then
+		TESTS_PASSED=1
 		log_debug "$label passed"
 		return 0
 	fi
@@ -392,7 +394,7 @@ run_and_capture() {
 }
 
 # Like run_test_compact, but treats pytest exit code 5 ("no tests collected")
-# as success — handing pytest a file with no test functions is not a failure.
+# as skipped — handing pytest a file with no test functions is not a failure.
 run_pytest_compact() {
 	local label="$1"
 	shift
@@ -401,8 +403,13 @@ run_pytest_compact() {
 	local output code
 	output=$("$@" 2>&1)
 	code=$?
-	if [[ "$code" -eq 0 || "$code" -eq 5 ]]; then
-		log_debug "$label passed (exit $code)"
+	if [[ "$code" -eq 5 ]]; then
+		log_info "skipped: $label collected no tests"
+		return 0
+	fi
+	if [[ "$code" -eq 0 ]]; then
+		TESTS_PASSED=1
+		log_debug "$label passed"
 		return 0
 	fi
 	[[ -n "$output" ]] && compact_output "$output" >&2
@@ -1404,7 +1411,7 @@ main() {
 	done < <(collect_focus_files)
 
 	if [[ "${#focus_files[@]}" -eq 0 ]]; then
-		log_info "No changed code files with focused test support"
+		log_info "skipped: no changed code files with focused test support"
 		clear_hook_state
 		finish_hook 0
 	fi
@@ -1440,7 +1447,13 @@ main() {
 
 	echo "" >&2
 	if [[ "$status" -eq 0 ]]; then
-		echo -e "${GREEN}✅ Focused tests passed or no targeted tests found${NC}" >&2
+		if [[ "$TESTS_RAN" -eq 0 ]]; then
+			log_info "unsupported: no targeted tests ran; project fallback requires HOOK_PROJECT_FALLBACK=1"
+		elif [[ "$TESTS_PASSED" -eq 0 ]]; then
+			log_info "skipped: no tests completed"
+		else
+			echo -e "${GREEN}✅ Focused tests passed${NC}" >&2
+		fi
 		clear_hook_state
 	else
 		echo -e "${RED}❌ Focused tests failed${NC}" >&2

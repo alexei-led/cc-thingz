@@ -25,3 +25,18 @@
 ## Helper
 
 Use `scripts/bq-cost-check.py` when a local BigQuery CLI dry-run cost estimate is useful and the user wants a guard before execution.
+
+
+The helper performs a dry-run only and never prompts or executes the query:
+
+```bash
+uv run python scripts/bq-cost-check.py "SELECT ..." --location <location> --max-bytes <bytes> --json
+```
+
+- Default output reports exact processed bytes and GiB.
+- Supply `--price-per-tib <USD>` only from an applicable tariff for the project's
+  location and billing model; there is no built-in dollar rate.
+- `--max-usd <USD>` requires that explicit rate. It is an estimate, not a billing guarantee.
+- Exit 1 means a threshold was exceeded or the dry-run failed; exit 2 means invalid arguments.
+- This preflight threshold does not enforce the later query's billing limit. Set
+  maximum bytes billed on the actual query as well.

@@ -5,11 +5,11 @@
   "author": "lackeyjb",
   "main": "run.js",
   "scripts": {
-    "setup": "bun install && bunx playwright install chromium",
-    "setup:npm": "npm install && npx playwright install chromium",
+    "setup": "node setup-runtime.js chromium",
+    "setup:npm": "node setup-runtime.js chromium",
     "screenshot-url": "node screenshot-url.js",
     "screenshot-sequence": "node screenshot-sequence.js",
-    "install-all-browsers": "bunx playwright install chromium firefox webkit"
+    "install-all-browsers": "node setup-runtime.js chromium firefox webkit"
   },
   "keywords": [
     "playwright",
@@ -20,7 +20,7 @@
     "general-purpose"
   ],
   "dependencies": {
-    "playwright": "^1.57.0"
+    "playwright": "1.57.0"
   },
   "engines": {
     "node": ">=14.0.0"

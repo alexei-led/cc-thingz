@@ -125,8 +125,9 @@ fmt: ## Auto-format Python and shell files
 # --- Agent Bundler build and drift checks ---
 
 .PHONY: build check check-generated check-agbun
-check-agbun: ## Require an installed Agent Bundler with package support
+check-agbun: ## Require the pinned Agent Bundler with package support
 	@command -v agbun >/dev/null 2>&1 || { echo "agbun is required"; exit 1; }
+	@test "$$(agbun --version)" = "agbun $$(cat .agentbundler-version)" || { echo "Install the pinned compiler: scripts/setup/install-agbun.sh"; exit 1; }
 	@agbun package --help >/dev/null 2>&1 || { echo "agbun with package support is required"; exit 1; }
 
 build: check-agbun ## Regenerate active target layouts with Agent Bundler
@@ -143,6 +144,10 @@ check-generated: build ## Rebuild clean-checkout dependencies and fail if tracke
 
 .PHONY: ci
 ci: lint validate check-generated test test-ts ## Run full CI pipeline locally (lint + validate + generated drift check + tests)
+
+.PHONY: doctor
+doctor: ## Inspect installed plugins without changing configuration
+	uv run python scripts/diagnostics/doctor.py
 
 # --- Setup ---
 

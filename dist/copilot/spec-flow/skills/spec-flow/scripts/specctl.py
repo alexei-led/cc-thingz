@@ -808,6 +808,15 @@ def cmd_start(args: argparse.Namespace) -> None:
     active = session.get("task")
     if active and active != item["id"] and not args.force:
         fail(f"Session exists for {active}. Run 'specctl session handoff' first.")
+    done = {task["id"] for task in artifacts(base, "task") if status_of(task) == DONE}
+    blockers = [
+        dep for dep in listify(item["meta"].get("blocked-by")) if dep not in done
+    ]
+    if blockers:
+        fail(f"Task {item['id']} is blocked by: {', '.join(blockers)}")
+    if active == item["id"] and status_of(item) == IN_PROGRESS:
+        ok(f"Resumed {item['id']}")
+        return
     item["meta"]["status"] = IN_PROGRESS
     save(item)
     write_session(

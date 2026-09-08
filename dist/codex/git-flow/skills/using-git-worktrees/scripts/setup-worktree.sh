@@ -147,6 +147,13 @@ has_ref "$BASE_REF" || {
 	exit 1
 }
 
+UPSTREAM=$(git -C "$REPO_ROOT" rev-parse --abbrev-ref --symbolic-full-name "$BASE_REF@{upstream}" 2>/dev/null || true)
+if [ -n "$UPSTREAM" ]; then
+	DIVERGENCE=$(git -C "$REPO_ROOT" rev-list --left-right --count "$BASE_REF...$UPSTREAM")
+	read -r AHEAD BEHIND <<<"$DIVERGENCE"
+	echo "Base $BASE_REF vs $UPSTREAM: ahead $AHEAD, behind $BEHIND (local tracking data; not fetched)." >&2
+fi
+
 mkdir -p "$ROOT"
 
 if git -C "$REPO_ROOT" show-ref --verify --quiet "refs/heads/$BRANCH_NAME"; then
@@ -160,16 +167,71 @@ else
 	git -C "$REPO_ROOT" worktree add "$WORKTREE_PATH" -b "$BRANCH_NAME" "$BASE_REF"
 fi
 
+detect_node_manager() {
+	local declared manager="" candidate count=0
+	declared=$(node -e 'const p=require(process.cwd()+"/package.json"); process.stdout.write(p.packageManager || "")') || return 1
+	for candidate in npm pnpm yarn bun; do
+		case "$candidate" in
+		npm) [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ] || continue ;;
+		pnpm) [ -f pnpm-lock.yaml ] || continue ;;
+		yarn) [ -f yarn.lock ] || continue ;;
+		bun) [ -f bun.lock ] || [ -f bun.lockb ] || continue ;;
+		esac
+		manager=$candidate
+		count=$((count + 1))
+	done
+	if [ "$count" -gt 1 ]; then
+		echo "Error: conflicting Node lockfiles; choose the project package manager manually." >&2
+		return 1
+	fi
+	if [ -n "$declared" ]; then
+		candidate=${declared%%@*}
+		case "$candidate" in npm | pnpm | yarn | bun) ;; *)
+			echo "Error: unsupported packageManager: $declared" >&2
+			return 1
+			;;
+		esac
+		if [ -n "$manager" ] && [ "$manager" != "$candidate" ]; then
+			echo "Error: packageManager conflicts with lockfile." >&2
+			return 1
+		fi
+		manager=$candidate
+	fi
+	if [ -z "$manager" ]; then
+		echo "Error: no packageManager or lockfile; dependency commands need manual selection." >&2
+		return 1
+	fi
+	printf '%s\n' "$manager"
+}
+
+run_node_setup() {
+	local manager version
+	manager=$(detect_node_manager) || return 1
+	if [ ! -f package-lock.json ] && [ ! -f npm-shrinkwrap.json ] && [ ! -f pnpm-lock.yaml ] && [ ! -f yarn.lock ] && [ ! -f bun.lock ] && [ ! -f bun.lockb ]; then
+		echo "Error: frozen setup requires a committed lockfile." >&2
+		return 1
+	fi
+	case "$manager" in
+	npm) npm ci ;;
+	pnpm) pnpm install --frozen-lockfile ;;
+	bun) bun install --frozen-lockfile ;;
+	yarn)
+		version=$(yarn --version) || return 1
+		if [[ "$version" == 1.* ]]; then yarn install --frozen-lockfile; else yarn install --immutable; fi
+		;;
+	esac
+}
+
 run_setup() {
 	cd "$WORKTREE_PATH"
 	if [ -f package.json ]; then
-		npm install
+		run_node_setup
 	elif [ -f go.mod ]; then
 		go mod download
 	elif [ -f pyproject.toml ]; then
-		uv sync
+		uv sync --locked
 	elif [ -f requirements.txt ]; then
-		pip install -r requirements.txt
+		uv venv && uv pip sync --python .venv/bin/python requirements.txt
 	elif [ -f Cargo.toml ]; then
 		cargo build
 	elif [ -x ./gradlew ]; then
@@ -190,11 +252,15 @@ run_tests() {
 	if [ -f Makefile ]; then
 		make test
 	elif [ -f package.json ]; then
-		npm test
+		local manager
+		manager=$(detect_node_manager) || return 1
+		"$manager" run test
 	elif [ -f go.mod ]; then
 		go test ./...
-	elif [ -f pyproject.toml ] || [ -d tests ]; then
-		pytest
+	elif [ -f pyproject.toml ]; then
+		uv run --locked --extra test python -m pytest
+	elif [ -f requirements.txt ]; then
+		uv run --no-project --python .venv/bin/python python -m pytest
 	elif [ -f Cargo.toml ]; then
 		cargo test
 	elif [ -x ./gradlew ]; then

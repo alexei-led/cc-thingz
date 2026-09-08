@@ -40,7 +40,7 @@ Existing remote branch:
 git worktree add --track -b "$BRANCH_NAME" "$path" "origin/$BRANCH_NAME"
 ```
 
-After creation, ask before running dependency setup or baseline tests. Do not install packages silently.
+After creation, run dependency setup and baseline tests when already authorized by the development task. State the commands and use the project package manager and lockfile. Ask only when setup requires a new system dependency or changes scope.
 
 ## Cleanup After PR Merge
 

@@ -1,0 +1,167 @@
+{
+  "date": "2026-09-08",
+  "baseline_commit": "0992ca8c",
+  "limitations": "Small curated hint-routing fixture set; not task-quality, actual activation, cost or general multilingual evaluation. Current fixes were informed by these probes, so this is regression evidence, not held-out performance.",
+  "runs": {
+    "baseline": {
+      "hook_sha256": "d7947bfcf7c1b0cc0c1e6d9970640f6a3952de976d181b0e1b7845f6416a6c70",
+      "fixtures_sha256": "4fbdb4209984206fd80b20837d38ce752be81bd765c1d989a0f4483e48543cb2",
+      "disabled": false,
+      "summary": {
+        "cases": 26,
+        "matching_cases": 15,
+        "suggested_hints": 24,
+        "unexpected_hints": 8,
+        "required_hints": 19,
+        "missing_hints": 4,
+        "allowed_hint_precision": 0.6666666666666666,
+        "required_hint_recall": 0.7894736842105263,
+        "nonzero_hook_exits": 26
+      },
+      "by_language": {
+        "en": {
+          "cases": 18,
+          "matching_cases": 11,
+          "suggested_hints": 22,
+          "unexpected_hints": 8,
+          "required_hints": 13,
+          "missing_hints": 0,
+          "allowed_hint_precision": 0.6363636363636364,
+          "required_hint_recall": 1.0,
+          "nonzero_hook_exits": 18
+        },
+        "ru": {
+          "cases": 8,
+          "matching_cases": 4,
+          "suggested_hints": 2,
+          "unexpected_hints": 0,
+          "required_hints": 6,
+          "missing_hints": 4,
+          "allowed_hint_precision": 1.0,
+          "required_hint_recall": 0.3333333333333333,
+          "nonzero_hook_exits": 8
+        }
+      },
+      "mismatched_case_ids": [
+        "slack-channel",
+        "javascript-await",
+        "ownership-process",
+        "travel-steps",
+        "python-file",
+        "rust-file",
+        "plan-exploration",
+        "ru-review",
+        "ru-commit",
+        "ru-brainstorm",
+        "ru-research"
+      ]
+    },
+    "current": {
+      "hook_sha256": "8db95f1f7a655f4e69dc2fcf99524d0badd3faad32fee3128f5874c77dce36d4",
+      "fixtures_sha256": "4fbdb4209984206fd80b20837d38ce752be81bd765c1d989a0f4483e48543cb2",
+      "disabled": false,
+      "summary": {
+        "cases": 26,
+        "matching_cases": 22,
+        "suggested_hints": 16,
+        "unexpected_hints": 0,
+        "required_hints": 19,
+        "missing_hints": 4,
+        "allowed_hint_precision": 1.0,
+        "required_hint_recall": 0.7894736842105263,
+        "nonzero_hook_exits": 0
+      },
+      "by_language": {
+        "en": {
+          "cases": 18,
+          "matching_cases": 18,
+          "suggested_hints": 14,
+          "unexpected_hints": 0,
+          "required_hints": 13,
+          "missing_hints": 0,
+          "allowed_hint_precision": 1.0,
+          "required_hint_recall": 1.0,
+          "nonzero_hook_exits": 0
+        },
+        "ru": {
+          "cases": 8,
+          "matching_cases": 4,
+          "suggested_hints": 2,
+          "unexpected_hints": 0,
+          "required_hints": 6,
+          "missing_hints": 4,
+          "allowed_hint_precision": 1.0,
+          "required_hint_recall": 0.3333333333333333,
+          "nonzero_hook_exits": 0
+        }
+      },
+      "mismatched_case_ids": [
+        "ru-review",
+        "ru-commit",
+        "ru-brainstorm",
+        "ru-research"
+      ]
+    },
+    "disabled": {
+      "hook_sha256": "8db95f1f7a655f4e69dc2fcf99524d0badd3faad32fee3128f5874c77dce36d4",
+      "fixtures_sha256": "4fbdb4209984206fd80b20837d38ce752be81bd765c1d989a0f4483e48543cb2",
+      "disabled": true,
+      "summary": {
+        "cases": 26,
+        "matching_cases": 7,
+        "suggested_hints": 0,
+        "unexpected_hints": 0,
+        "required_hints": 19,
+        "missing_hints": 19,
+        "allowed_hint_precision": null,
+        "required_hint_recall": 0.0,
+        "nonzero_hook_exits": 0
+      },
+      "by_language": {
+        "en": {
+          "cases": 18,
+          "matching_cases": 5,
+          "suggested_hints": 0,
+          "unexpected_hints": 0,
+          "required_hints": 13,
+          "missing_hints": 13,
+          "allowed_hint_precision": null,
+          "required_hint_recall": 0.0,
+          "nonzero_hook_exits": 0
+        },
+        "ru": {
+          "cases": 8,
+          "matching_cases": 2,
+          "suggested_hints": 0,
+          "unexpected_hints": 0,
+          "required_hints": 6,
+          "missing_hints": 6,
+          "allowed_hint_precision": null,
+          "required_hint_recall": 0.0,
+          "nonzero_hook_exits": 0
+        }
+      },
+      "mismatched_case_ids": [
+        "go-file",
+        "python-file",
+        "rust-file",
+        "typescript-file",
+        "shell-file",
+        "code-review",
+        "research-comparison",
+        "docs-api",
+        "explicit-reasoning",
+        "plan-exploration",
+        "commit",
+        "ru-python-token",
+        "ru-go-token",
+        "ru-review",
+        "ru-commit",
+        "ru-brainstorm",
+        "ru-research",
+        "technical-recommendation",
+        "rust-ownership"
+      ]
+    }
+  }
+}

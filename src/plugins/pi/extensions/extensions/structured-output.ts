@@ -1,6 +1,7 @@
 /**
- * Structured Output Tool
+ * Opt-in Structured Output Example
  *
+ * Set CC_THINGZ_STRUCTURED_OUTPUT=1 before starting Pi to register this fixed schema.
  * Demonstrates `terminate: true` so the agent can end on a tool call
  * without paying for an extra follow-up LLM turn.
  */
@@ -59,6 +60,7 @@ const structuredOutputTool = defineTool({
 	},
 });
 
-export default function (pi: ExtensionAPI) {
+export default function (pi: Pick<ExtensionAPI, "registerTool">) {
+	if (process.env.CC_THINGZ_STRUCTURED_OUTPUT !== "1") return;
 	pi.registerTool(structuredOutputTool);
 }

@@ -1,0 +1,159 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "source": "browser-automation/browser-automation/evals/evals.json",
+      "destination": "browser/browser-automation/evals/evals.json",
+      "status": "migrated",
+      "reason": "Canonical package identity; existing scenarios merged without dropping cases.",
+      "evals": 4
+    },
+    {
+      "source": "browser-automation/playwright-skill/evals/evals.json",
+      "destination": "browser/playwright-skill/evals/evals.json",
+      "status": "migrated",
+      "reason": "Canonical package identity; existing scenarios merged without dropping cases.",
+      "evals": 4
+    },
+    {
+      "source": "dev-tools/brainstorming-ideas/evals/evals.json",
+      "destination": "discovery/brainstorming-ideas/evals/evals.json",
+      "status": "migrated",
+      "reason": "Canonical package identity; existing scenarios merged without dropping cases.",
+      "evals": 3
+    },
+    {
+      "source": "dev-tools/evolving-config/evals/evals.json",
+      "destination": "discovery/evolving-config/evals/evals.json",
+      "status": "migrated",
+      "reason": "Canonical package identity; existing scenarios merged without dropping cases.",
+      "evals": 2
+    },
+    {
+      "source": "dev-tools/learning-patterns/evals/evals.json",
+      "destination": "archive/dev-tools/learning-patterns/evals/evals.json",
+      "status": "archived",
+      "reason": "Skill retired; durable-learning extraction has no direct exported replacement. Retained for a future explicit redesign.",
+      "evals": 2
+    },
+    {
+      "source": "dev-tools/looking-up-docs/evals/evals.json",
+      "destination": "discovery/looking-up-docs/evals/evals.json",
+      "status": "migrated",
+      "reason": "Canonical package identity; existing scenarios merged without dropping cases.",
+      "evals": 5
+    },
+    {
+      "source": "dev-tools/researching-web/evals/evals.json",
+      "destination": "discovery/researching-web/evals/evals.json",
+      "status": "migrated",
+      "reason": "Canonical package identity; existing scenarios merged without dropping cases.",
+      "evals": 2
+    },
+    {
+      "source": "dev-tools/reviewing-cc-config/evals/evals.json",
+      "destination": "discovery/evolving-config/evals/evals.json",
+      "status": "migrated",
+      "reason": "Canonical package identity; reviewing-cc-config scenarios now exercise evolving-config.",
+      "evals": 2
+    },
+    {
+      "source": "dev-tools/reviewing-instructions/evals/evals.json",
+      "destination": "discovery/reviewing-instructions/evals/evals.json",
+      "status": "migrated",
+      "reason": "Canonical package identity; existing scenarios merged without dropping cases.",
+      "evals": 2
+    },
+    {
+      "source": "dev-tools/sequential-thinking/evals/evals.json",
+      "destination": "discovery/sequential-thinking/evals/evals.json",
+      "status": "migrated",
+      "reason": "Canonical package identity; existing scenarios merged without dropping cases.",
+      "evals": 3
+    },
+    {
+      "source": "dev-tools/writing-shell/evals/evals.json",
+      "destination": "programming/writing-shell/evals/evals.json",
+      "status": "migrated",
+      "reason": "Canonical package identity; existing scenarios merged without dropping cases.",
+      "evals": 2
+    },
+    {
+      "source": "dev-workflow/committing-code/evals/evals.json",
+      "destination": "dev-flow/committing-code/evals/evals.json",
+      "status": "migrated",
+      "reason": "Canonical package identity; existing scenarios merged without dropping cases.",
+      "evals": 3
+    },
+    {
+      "source": "dev-workflow/documenting-code/evals/evals.json",
+      "destination": "dev-flow/documenting-code/evals/evals.json",
+      "status": "migrated",
+      "reason": "Canonical package identity; existing scenarios merged without dropping cases.",
+      "evals": 2
+    },
+    {
+      "source": "dev-workflow/fixing-code/evals/evals.json",
+      "destination": "dev-flow/fixing-code/evals/evals.json",
+      "status": "migrated",
+      "reason": "Canonical package identity; existing scenarios merged without dropping cases.",
+      "evals": 2
+    },
+    {
+      "source": "dev-workflow/improving-tests/evals/evals.json",
+      "destination": "dev-flow/improving-tests/evals/evals.json",
+      "status": "migrated",
+      "reason": "Canonical package identity; existing scenarios merged without dropping cases.",
+      "evals": 2
+    },
+    {
+      "source": "dev-workflow/refactoring-code/evals/evals.json",
+      "destination": "dev-flow/refactoring-code/evals/evals.json",
+      "status": "migrated",
+      "reason": "Canonical package identity; existing scenarios merged without dropping cases.",
+      "evals": 2
+    },
+    {
+      "source": "dev-workflow/reviewing-code/evals/evals.json",
+      "destination": "dev-flow/reviewing-code/evals/evals.json",
+      "status": "migrated",
+      "reason": "Canonical package identity; existing scenarios merged without dropping cases.",
+      "evals": 2
+    },
+    {
+      "source": "go-dev/writing-go/evals/evals.json",
+      "destination": "programming/writing-go/evals/evals.json",
+      "status": "migrated",
+      "reason": "Canonical package identity; existing scenarios merged without dropping cases.",
+      "evals": 2
+    },
+    {
+      "source": "python-dev/writing-python/evals/evals.json",
+      "destination": "programming/writing-python/evals/evals.json",
+      "status": "migrated",
+      "reason": "Canonical package identity; existing scenarios merged without dropping cases.",
+      "evals": 2
+    },
+    {
+      "source": "rust-dev/writing-rust/evals/evals.json",
+      "destination": "programming/writing-rust/evals/evals.json",
+      "status": "migrated",
+      "reason": "Canonical package identity; existing scenarios merged without dropping cases.",
+      "evals": 2
+    },
+    {
+      "source": "typescript-dev/writing-typescript/evals/evals.json",
+      "destination": "programming/writing-typescript/evals/evals.json",
+      "status": "migrated",
+      "reason": "Canonical package identity; existing scenarios merged without dropping cases.",
+      "evals": 2
+    },
+    {
+      "source": "web-dev/writing-web/evals/evals.json",
+      "destination": "programming/writing-web/evals/evals.json",
+      "status": "migrated",
+      "reason": "Canonical package identity; existing scenarios merged without dropping cases.",
+      "evals": 2
+    }
+  ]
+}

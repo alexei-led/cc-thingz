@@ -37,7 +37,7 @@ Three role agents plus one utility agent. A role is a capability envelope plus a
 Envelope enforcement is per-target: Claude grants a hard `tools:` allowlist; Codex blocks writes via `sandbox_mode: read-only`; Pi has no tool-allowlist primitive, so the envelope there is a system-prompt directive. Copilot and Cursor are portable artifact targets without a cc-thingz-owned runtime envelope yet. The role descriptions omit "use proactively" deliberately — roles are picked by the orchestrator to compose with a skill, not auto-delegated. `runner` is the exception: it is a utility lane and can opt into proactive routing.
 
 - **engineer** — read + write + execute. The only mutator: applies changes and runs the build/test/lint verification on what it changed. Fork target for `writing-{csharp,go,java-kotlin,python,rust,shell,typescript,web}` and `operating-infra`. Claude preloads `looking-up-docs`; `sequential-thinking` stays Skill-discoverable to keep spawn context lean.
-- **reviewer** — Read + Grep + Glob + LS. Adversarial evaluator (assume bugs exist); emits structured findings/proposals, applies nothing. Non-mutating: tool-enforced on Claude, write-blocked on Codex, directive on Pi. Absorbs the review family, code search, and planning (via `spec-flow`).
+- **reviewer** — read, search, and diff inspection through native tools. Adversarial evaluator (assume bugs exist); emits structured findings/proposals, applies nothing. Non-mutating: tool-enforced on Claude, write-blocked on Codex, directive on Pi. Absorbs the review family, code search, and planning (via `spec-flow`).
 - **runner** — fast utility lane: file lookup, grep/glob, `git status/log/show/diff`, file reads, log summaries, and focused shell inspection. Read-only across targets. Use proactively for simple bounded tasks; escalate to `engineer`, `reviewer`, or `advisor` when the task stops being cheap or obvious.
 - **advisor** — strategic escalation: verdict, ranked risks, next actions. Ships to Codex and Pi; excluded from Claude, which has a built-in advisor. Codex enforces read-only via sandbox; Pi uses xhigh thinking with read-only Bash and transcript-forwarding invocation.
 
@@ -45,7 +45,7 @@ Envelope enforcement is per-target: Claude grants a hard `tools:` allowlist; Cod
 
 Agent × target coverage. Every gap is intentional and documented below.
 
-- **engineer**: claude (full Edit/Write/Bash) and pi (full Bash/Edit/Write). Excluded from codex — Codex enforces `sandbox_mode: read-only`; a mutator role is inoperable under that constraint.
+- **engineer**: claude (full Edit/Write/Bash) and pi (full Bash/Edit/Write). Excluded from this bundle's Codex profile set; the shipped Codex roles deliberately use `sandbox_mode: read-only`. This is a package policy, not a universal Codex limitation.
 - **reviewer** and **runner**: Claude, Codex, Pi, Copilot, Cursor, and Grok portable outputs. Read-only enforcement is native on Claude and Codex, directive-based on Pi; new-target runtime policy remains vendor-owned.
 - **advisor**: Codex and Pi. Excluded from Claude — Claude Code has a built-in advisor; adding a custom one would duplicate or conflict with the native capability.
 

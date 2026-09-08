@@ -10,9 +10,10 @@ CLAUDE_HOOKS_DEBUG="${CLAUDE_HOOKS_DEBUG:-0}"
 PROJECT_TYPE="${PROJECT_TYPE:-unknown}"
 SMART_LINT_DIFF_FALLBACK_LIMIT="${SMART_LINT_DIFF_FALLBACK_LIMIT:-5}"
 SMART_LINT_COMPACT_LINES=80
-HOOK_PROJECT_FALLBACK="${HOOK_PROJECT_FALLBACK:-1}"
+HOOK_PROJECT_FALLBACK="${HOOK_PROJECT_FALLBACK:-0}"
 SMART_LINT_FORMAT_RAN=0
 SMART_LINT_LINT_RAN=0
+export -n HOOK_INPUT_JSON
 HOOK_INPUT_JSON="${HOOK_INPUT_JSON:-}"
 HOOK_EDITED_FILES_LOADED=0
 HOOK_EDITED_FILES=()
@@ -174,6 +175,22 @@ init_hook_input() {
 	if [[ -z "$HOOK_INPUT_JSON" && ! -t 0 ]]; then
 		HOOK_INPUT_JSON=$(cat 2>/dev/null || true)
 	fi
+	local hook_cwd
+	if command_exists python3; then
+		hook_cwd=$(python3 -c 'import json,sys
+try:
+    data=json.loads(sys.stdin.read() or "{}")
+    source=data.get("piEvent", {}) if data.get("event") == "post-tool" else data
+    cwd=source.get("cwd")
+    if isinstance(cwd, str):
+        print(cwd)
+except (ValueError, AttributeError):
+    pass
+' <<<"$HOOK_INPUT_JSON")
+		if [[ -n "$hook_cwd" && -d "$hook_cwd" ]]; then
+			cd "$hook_cwd" || return 0
+		fi
+	fi
 }
 
 declare -a ERRORS=()
@@ -192,6 +209,10 @@ print_summary_and_exit() {
 		# See: https://docs.claude.com/en/docs/claude-code/hooks
 		exit 2
 	else
+		if [[ "$SMART_LINT_LINT_RAN" -eq 0 ]]; then
+			log_info "unsupported: no lint checks completed"
+			exit 0
+		fi
 		local total_words=0
 		local w
 		# CLAUDE.md + settings
@@ -335,7 +356,8 @@ try:
     data=json.loads(sys.stdin.read() or "{}")
 except Exception:
     data={}
-print(str(data.get("session_id") or "default"))
+source = data.get("piEvent", {}) if data.get("event") == "post-tool" else data
+print(str(source.get("session_id") or data.get("session_id") or "default"))
 ' <<<"$HOOK_INPUT_JSON" 2>/dev/null || true)
 		[[ -n "$parsed" ]] && printf '%s\n' "$parsed" && return 0
 	fi
@@ -577,6 +599,12 @@ run_make_lint_fallback() {
 }
 
 run_lint_fallbacks() {
+	if ! project_fallback_enabled; then
+		if [[ "$SMART_LINT_LINT_RAN" -eq 0 ]]; then
+			log_info "unsupported: no focused linter ran; project fallback requires HOOK_PROJECT_FALLBACK=1"
+		fi
+		return 0
+	fi
 	run_package_lint_fallback
 	run_make_lint_fallback
 }

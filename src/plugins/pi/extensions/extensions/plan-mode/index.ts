@@ -233,7 +233,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		if (!isSafeCommand(commandRaw)) {
 			return {
 				block: true,
-				reason: `Plan mode: command blocked (not allowlisted). Use /plan to disable plan mode first.\nCommand: ${commandRaw}`,
+				reason: `Plan mode: command blocked (not allowlisted). Use native read/search tools or a single supported inspection command. Disable plan mode with /plan for other actions.\nCommand: ${commandRaw}`,
 			};
 		}
 	});

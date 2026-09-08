@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import { buildTelemetryLine, classifyExecResult, extractProgress, HOOK_OUTPUT_MAX_BYTES } from "../../../src/plugins/pi/extensions/extensions/hook-runner/dispatch.ts";
+import { buildTelemetryLine, extractProgress } from "../../../src/plugins/pi/extensions/extensions/hook-runner/dispatch.ts";
 import type { HookEntryRuntime, HookRunResult } from "../../../src/plugins/pi/extensions/extensions/hook-runner/types.ts";
 
 describe("extractProgress", () => {
@@ -72,64 +72,5 @@ describe("buildTelemetryLine", () => {
 		const line = buildTelemetryLine(entry, { exitCode: 1, stdout: "", stderr: noisy, timedOut: false }, 5, fixedNow);
 		const parsed = JSON.parse(line) as { stderr_head: string };
 		expect(parsed.stderr_head.length).toBeLessThanOrEqual(500);
-	});
-});
-
-// ---------------------------------------------------------------------------
-// classifyExecResult — pure translation of the execFile callback shape into
-// the canonical HookRunResult. Mocking child_process at the suite level (see
-// hook-runner.test.ts) blocks real-subprocess assertions, so the branches are
-// tested directly via this extracted function.
-// ---------------------------------------------------------------------------
-
-describe("classifyExecResult", () => {
-	it("flags timed_out=true when the child was killed by the timeout", () => {
-		const err = Object.assign(new Error("timeout"), { killed: true, code: undefined });
-		const result = classifyExecResult(err, "", "child stderr");
-		expect(result.timedOut).toBe(true);
-		// Numeric exit code is absent on timeout; fallback is 1.
-		expect(result.exitCode).toBe(1);
-		expect(result.stderr).toBe("child stderr");
-	});
-
-	it("collapses maxBuffer overflow into exit 2 with the cap notice", () => {
-		const err = Object.assign(new Error("stdout maxBuffer length exceeded"), {
-			code: "ERR_CHILD_PROCESS_STDIO_MAXBUFFER",
-		});
-		const result = classifyExecResult(err, "huge", "noise");
-		expect(result.exitCode).toBe(2);
-		expect(result.timedOut).toBe(false);
-		expect(result.stderr.startsWith(`Hook output exceeded ${HOOK_OUTPUT_MAX_BYTES / (1024 * 1024)}MB cap`)).toBe(true);
-		// Existing stderr is preserved after the cap notice for debugging.
-		expect(result.stderr).toContain("noise");
-	});
-
-	it("uses the bare cap notice when stderr is empty at overflow", () => {
-		const err = Object.assign(new Error("overflow"), { code: "ERR_CHILD_PROCESS_STDIO_MAXBUFFER" });
-		const result = classifyExecResult(err, "", "");
-		expect(result.exitCode).toBe(2);
-		expect(result.stderr).toBe(`Hook output exceeded ${HOOK_OUTPUT_MAX_BYTES / (1024 * 1024)}MB cap`);
-	});
-
-	it("propagates a numeric exit code as the result code", () => {
-		const err = Object.assign(new Error("blocked"), { code: 2, killed: false });
-		const result = classifyExecResult(err, "out", "blocked by hook");
-		expect(result.exitCode).toBe(2);
-		expect(result.timedOut).toBe(false);
-		expect(result.stderr).toBe("blocked by hook");
-	});
-
-	it("returns exit 0 + clean stderr when the child succeeds", () => {
-		const result = classifyExecResult(null, "{}", "");
-		expect(result.exitCode).toBe(0);
-		expect(result.stdout).toBe("{}");
-		expect(result.timedOut).toBe(false);
-	});
-
-	it("falls back to exit 1 when err.code is missing", () => {
-		const err = new Error("opaque");
-		const result = classifyExecResult(err, "", "boom");
-		expect(result.exitCode).toBe(1);
-		expect(result.timedOut).toBe(false);
 	});
 });
