@@ -26,8 +26,10 @@ PACKAGE_IDS = {
     "programming",
     "spec-flow",
 }
-ARCHIVE_NAMES = {f"cc-thingz-{target}.tar.gz" for target in TARGETS if target != "pi"}
-ARCHIVE_NAMES.add("cc-thingz-pi.tgz")
+ARCHIVE_NAMES = {
+    f"alexei-led-cc-thingz-{target}.tar.gz" for target in TARGETS if target != "pi"
+}
+ARCHIVE_NAMES.add("alexei-led-cc-thingz-pi.tgz")
 INSTALL_ROOTS = {
     "claude": ".claude-plugin/marketplace.json",
     "codex": ".agents/plugins/marketplace.json",
@@ -87,7 +89,7 @@ def release_artifacts(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 def _archive_target(path: Path) -> str:
     return (
-        path.name.removeprefix("cc-thingz-")
+        path.name.removeprefix("alexei-led-cc-thingz-")
         .removesuffix(".tar.gz")
         .removesuffix(".tgz")
     )
@@ -147,14 +149,14 @@ def test_release_archives_have_native_install_roots(release_artifacts: Path) -> 
             }
             assert PACKAGE_IDS <= archive_packages
 
-    codex_members = _archive_members(archives["cc-thingz-codex.tar.gz"])
+    codex_members = _archive_members(archives["alexei-led-cc-thingz-codex.tar.gz"])
     assert {
         ".codex/agents/advisor.toml",
         ".codex/agents/reviewer.toml",
         ".codex/agents/runner.toml",
     } <= codex_members
 
-    pi_members = _archive_members(archives["cc-thingz-pi.tgz"])
+    pi_members = _archive_members(archives["alexei-led-cc-thingz-pi.tgz"])
     assert "extensions/agentbundler-hooks.ts" in pi_members
     assert PI_NATIVE_EXTENSION_FILES <= pi_members
     assert _pi_native_asset_files() <= pi_members
@@ -196,7 +198,7 @@ def test_release_marketplace_registers_in_isolated_home(
     if executable is None:
         pytest.skip(f"{target} CLI is not installed")
 
-    archive_path = release_artifacts / f"cc-thingz-{target}.tar.gz"
+    archive_path = release_artifacts / f"alexei-led-cc-thingz-{target}.tar.gz"
     package_root = tmp_path / "package"
     package_root.mkdir()
     with tarfile.open(archive_path, "r:gz") as archive:
@@ -236,7 +238,9 @@ def test_claude_release_hooks_load_once(
 
     package_root = tmp_path / "package"
     package_root.mkdir()
-    with tarfile.open(release_artifacts / "cc-thingz-claude.tar.gz", "r:gz") as archive:
+    with tarfile.open(
+        release_artifacts / "alexei-led-cc-thingz-claude.tar.gz", "r:gz"
+    ) as archive:
         archive.extractall(package_root, filter="data")
 
     for package_id in ("dev-flow", "git-flow"):
@@ -277,7 +281,7 @@ def test_claude_release_hooks_load_once(
                 claude,
                 "plugin",
                 "install",
-                f"{package_id}@cc-thingz",
+                f"{package_id}@alexei-led-cc-thingz",
                 "--scope",
                 "user",
             ],
@@ -321,7 +325,7 @@ def test_pi_release_archive_installs_in_isolated_project(
             "PI_OFFLINE": "1",
         }
     )
-    archive = release_artifacts / "cc-thingz-pi.tgz"
+    archive = release_artifacts / "alexei-led-cc-thingz-pi.tgz"
     subprocess.run(
         [pi, "install", str(archive), "-l", "--approve"],
         cwd=project,
@@ -330,7 +334,10 @@ def test_pi_release_archive_installs_in_isolated_project(
     )
 
     settings = json.loads((project / ".pi/settings.json").read_text())
-    assert any(package.endswith("cc-thingz-pi.tgz") for package in settings["packages"])
+    assert any(
+        package.endswith("alexei-led-cc-thingz-pi.tgz")
+        for package in settings["packages"]
+    )
 
 
 def test_generated_target_inventory_matches_supported_contract() -> None:

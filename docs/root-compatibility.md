@@ -55,7 +55,7 @@ For a checkout under development:
 codex plugin marketplace add "$PWD" --json
 ```
 
-Install the required package IDs from the registered `cc-thingz` marketplace.
+Install the required package IDs from the registered `alexei-led-cc-thingz` marketplace.
 Codex project-agent profiles are a separate contract. The repository mirrors
 the generated profiles into root `.codex/agents`, so Codex discovers them when
 running in this checkout. Marketplace plugin installation covers plugin

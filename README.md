@@ -80,12 +80,12 @@ metadata.
 `agbun package --root . --out DIR` creates deterministic, target-native release
 archives:
 
-- `cc-thingz-claude.tar.gz`
-- `cc-thingz-codex.tar.gz`
-- `cc-thingz-pi.tgz`
-- `cc-thingz-copilot.tar.gz`
-- `cc-thingz-cursor.tar.gz`
-- `cc-thingz-grok.tar.gz`
+- `alexei-led-cc-thingz-claude.tar.gz`
+- `alexei-led-cc-thingz-codex.tar.gz`
+- `alexei-led-cc-thingz-pi.tgz`
+- `alexei-led-cc-thingz-copilot.tar.gz`
+- `alexei-led-cc-thingz-cursor.tar.gz`
+- `alexei-led-cc-thingz-grok.tar.gz`
 
 The release workflow attaches all six files. Each archive expands directly to
 the native package or marketplace root shown above. The Codex archive also
@@ -127,7 +127,7 @@ when using the packaged `cc-thingz.*` agents:
 
 ```bash
 pi install npm:pi-subagents -l
-pi install ./cc-thingz-pi.tgz -l
+pi install ./alexei-led-cc-thingz-pi.tgz -l
 ```
 
 For a local release rehearsal:
