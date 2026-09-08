@@ -608,8 +608,8 @@ def test_make_check_is_non_mutating_and_release_packages_artifacts() -> None:
     assert "markdownlint-cli2" in node_package["devDependencies"]
     assert "bunx --no-install markdownlint-cli2" in makefile
     for workflow in (ci_workflow, release_workflow):
-        assert "AGBUN_VERSION" not in workflow
-        assert "agentbundler/cmd/agbun@latest" in workflow
+        assert "scripts/setup/install-agbun.sh" in workflow
+        assert "agentbundler/cmd/agbun@latest" not in workflow
 
 
 def test_release_tag_updates_agentbundle_versions(tmp_path: Path) -> None:

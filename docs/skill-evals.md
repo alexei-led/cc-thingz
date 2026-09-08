@@ -16,11 +16,11 @@ tests/skill-evals/discovery/reviewing-instructions/
 
 `<package>` must match the current package ID from `src/.agentbundler/packages/<package>.json`.
 
-`make skill-evals-prepare` copies the matching built skill from `dist/<target>/plugins/<plugin>/skills/<skill>/` into `/tmp/cc-thingz-skill-eval-root` and injects `evals/` there. This gives `agent-skills-eval` the layout it expects without shipping evals in plugin packages.
+`make skill-evals-prepare` copies the matching built skill from `dist/claude/<plugin>/skills/<skill>/` into `/tmp/cc-thingz-skill-eval-root` and injects `evals/` there. This gives `agent-skills-eval` the layout it expects without shipping evals in plugin packages.
 
 Skill eval preparation copies the Claude package layout rendered by Agent Bundler into the evaluator's expected package/skill tree. Pi exports are validated locally by `make validate`; paid eval preparation does not run vendor-specific overlays.
 
-`make validate` runs `validate-no-plugin-evals`, which fails if any deployable skill tree under `dist/<target>/plugins/*/skills/*/evals` is populated from source-controlled eval fixtures.
+CI runs deterministic preparation separately from paid scores. Unknown fixture identities fail preparation; intentionally retired scenarios are listed in `tests/skill-evals/migrations.json`. Use `--inventory` for coverage. The migration retains 72 active scenarios across 25 skills and two archived learning-patterns scenarios; uncovered skills are listed explicitly. `--out` must be new or carry the preparer's exact-path ownership marker; an old unmarked temporary tree is refused. Trees containing entries absent from the ownership record are also refused. Choose a fresh path rather than deleting unknown contents. Release tests check that eval fixtures are not shipped inside deployable skills.
 
 ## Basic eval file
 
@@ -152,12 +152,6 @@ Run one skill:
 make skill-evals SKILL_EVAL_INCLUDE='discovery/skills/reviewing-instructions'
 ```
 
-Run against exported Codex skill overlays:
-
-```bash
-make skill-evals
-```
-
 Validate Pi exports without paid model calls:
 
 ```bash
@@ -196,7 +190,7 @@ Fast fix loop, no baseline and no HTML report:
 make skill-evals-fast SKILL_EVAL_INCLUDE='discovery/skills/researching-web'
 ```
 
-Run source skills and Codex overlays in parallel with separate workspaces:
+Run the legacy alias for the same Claude package evaluation:
 
 ```bash
 make skill-evals-both SKILL_EVAL_STRICT=0
@@ -269,3 +263,35 @@ Use advisory mode locally when you want the same behavior:
 ```bash
 make skill-evals SKILL_EVAL_STRICT=0
 ```
+
+## Offline hook routing probes
+
+Measure skill-enforcer suggestions against curated English/Russian prompts without
+calling any model:
+
+```bash
+uv run python scripts/evals/evaluate-skill-routing.py
+uv run python scripts/evals/evaluate-skill-routing.py --disabled
+```
+
+Use `--hook /path/to/previous/hook.sh` to compare a saved hook revision against
+the same fixtures. JSON includes hook and fixture hashes, per-case unexpected
+and missing hints, precision among allowed hints, recall of required hints,
+language breakdowns, and nonzero hook exits. Missing denominators are `null`,
+not perfect scores. A successful command means the probes executed; mismatches
+remain advisory data in the report.
+
+The dataset is `tests/skill-evals/routing/prompts.json`. It includes Slack channel
+and JavaScript async/await negatives, ordinary development positives, and Russian
+requests with and without English technical tokens. This measures hint matching
+on a small curated set. It does not measure actual skill activation, task quality,
+model cost, or representative multilingual performance. Required misses when the
+hook is disabled are expected and do not imply the model cannot select skills.
+
+The 2026-09-08 repair probe preserved in
+`tests/skill-evals/routing/results-2026-09-08.json` used 26 cases. Unexpected
+hints fell from eight to zero while required-hint recall stayed at 15/19.
+All four missing hints were Russian requests without English technical tokens.
+Native nonzero exits fell from 26 to zero. The fixes were informed by this
+dataset, so these numbers are regression evidence, not held-out performance.
+Keep the hook advisory; use native skill descriptions for broader intent routing.

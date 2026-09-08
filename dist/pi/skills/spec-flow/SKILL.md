@@ -90,7 +90,7 @@ Use when the user has an idea, requirement, bug, or project gap and wants an exe
    - one clear slice → one `TASK-*`
    - several slices → one `EPIC-*` plus tasks
    - unclear WHY/WHAT → one `REQ-*` first
-6. Show the proposed plan and ask before writing.
+6. Show the proposed plan; obtain approval if the user has not already authorized that scope.
 7. Write with `scripts/specctl new task <slug>` when possible, then edit details.
 8. Run `scripts/specctl validate` and `scripts/specctl ready`.
 
@@ -101,10 +101,10 @@ Do not write implementation code in plan files.
 Use when the user wants to work, continue, or implement a task.
 
 1. Run `scripts/specctl status` and `scripts/specctl session show`.
-2. If a session exists, ask whether to resume, checkpoint, clear, or stop.
+2. Resume an existing matching session when the user asks to continue. Ask before replacing a conflicting session.
 3. Select with `scripts/specctl ready` or verify the named task with `scripts/specctl show TASK-<id>`.
 4. Start with `scripts/specctl start TASK-<id>`.
-5. Make a short implementation plan; ask before editing.
+5. Make a short implementation plan; obtain approval if that implementation scope is not already approved.
 6. Implement only the approved task.
 7. Run project-appropriate checks from project instructions and changed files.
 8. Show scoped diff or `scripts/specctl session handoff` before close.
@@ -130,7 +130,7 @@ scripts/specctl done TASK-<id> \
   --commits "<sha or none>"
 ```
 
-`specctl done` needs `--summary` and `--tests` unless the user explicitly approves `--force`.
+`specctl done` needs `--summary` and `--tests` unless the user explicitly approves `--force`. These fields record the caller's evidence; the helper does not execute or certify checks. Name commands and results honestly, including skip reasons, and satisfy project gates before closing.
 
 ## Guardrails
 
@@ -139,7 +139,7 @@ scripts/specctl done TASK-<id> \
 - Keep work inside the approved task.
 - File follow-up tasks instead of expanding scope.
 - Verification is adaptive; do not assume every project has `make`.
-- User approval is required before writing plan files, editing code, forcing state, or clearing another session.
+- Authorization persists for the agreed plan and implementation scope; do not repeat approval at each mechanical step. Ask when scope changes or before forcing state or clearing a conflicting session.
 
 ## Output
 

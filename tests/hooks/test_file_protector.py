@@ -380,3 +380,21 @@ def test_custom_lock_patterns_override_defaults(tmp_path: Path) -> None:
     rc, err = _run({"tool_input": {"file_path": "go.sum"}}, tmp_path)
     assert rc == 0
     assert err == ""
+
+
+@pytest.mark.parametrize(
+    "source,destination,blocked",
+    [
+        ("src/app.py", ".env", True),
+        (".env", "src/app.py", True),
+        ("src/app.py", "src/renamed.py", False),
+    ],
+)
+def test_patch_rename_checks_both_paths(source, destination, blocked, home):
+    patch = (
+        f"*** Begin Patch\n*** Update File: {source}\n"
+        f"*** Move to: {destination}\n@@\n-old\n+new\n*** End Patch\n"
+    )
+    rc, err = _patch(patch, home)
+    assert rc == (2 if blocked else 0)
+    assert ("BLOCKED" in err) == blocked

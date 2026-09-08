@@ -1,28 +1,20 @@
 ---
-description:
-  Structured stepwise reasoning with explicit revisions and branches. Use
-  when the user says "think step by step", "sequential thinking", "plan this out",
-  "reason through this", "branch this idea", or when tackling a hard multi-step problem
-  (architecture decisions, ambiguous bugs, multi-constraint tradeoffs, plans that
-  may need revision). NOT for trivial lookups, single-tool fetches, or tasks the model
-  can answer directly without planning. NOT for open-ended option exploration or idea
-  generation; use brainstorming-ideas. NOT for arguing a claim from both sides to
-  prove or disprove it.
+description: Structured decision summaries with revisions and branches. Use only when
+  the user explicitly requests sequential thinking, step-by-step reasoning, or a
+  structured comparison of decision branches. NOT an automatic trigger for difficult
+  tasks, ordinary planning, or debugging. For open-ended ideas use brainstorming-ideas.
 name: sequential-thinking
 ---
 
 # Sequential Thinking
 
-Same intent as MCP-based sequential-thinking tools — externalize a numbered chain of thoughts with revision and branch semantics — implemented as visible Markdown so reasoning-capable models can follow it without an extra tool round-trip.
+Same intent as MCP-based sequential-thinking tools — present numbered decision summaries with revision and branch semantics — implemented as visible Markdown so reasoning-capable models can follow it without an extra tool round-trip.
 
 ## When to use
 
-- The problem has 3+ interacting constraints or sub-decisions.
-- An earlier conclusion may need revising as new evidence arrives.
-- More than one viable approach is on the table and they should be compared, not silently chosen.
-- The user explicitly asked for stepwise/structured reasoning.
-
-If none of these hold, answer directly — protocol overhead on a simple question wastes tokens and looks performative.
+Use only on an explicit user request for this format. Complexity alone is not a
+trigger. For ordinary work, provide the decision, supporting evidence, assumptions,
+and validation briefly without Thought blocks.
 
 ## Why a visible protocol (not just internal CoT)
 

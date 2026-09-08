@@ -27,7 +27,8 @@ installation documentation.
 
 ```bash
 uv sync --all-groups
-bun install
+bun install --frozen-lockfile
+scripts/setup/install-agbun.sh
 agbun package --help # must support deterministic target archives
 ```
 
@@ -111,7 +112,10 @@ compiler or post-build copier.
 `make setup` installs the repository hooks. Pre-commit runs lint/validation and
 rebuilds when `src/` or `agentbundle.json` changes. Pre-push runs `make check`,
 Python tests, and TypeScript tests. CI installs the pinned Agent Bundler release
-before `make validate`, `make check`, and tests.
+from `.agentbundler-version` before `make validate`, `make check`, and tests.
+The separate scheduled canary checks upstream latest without changing the release
+pin. Core runtime smoke dependencies live in `tests/vendor-smoke/package-lock.json`;
+update them deliberately and rerun the isolated installation tests.
 
 ## Releases
 

@@ -12,5 +12,8 @@
   "timeoutMilliseconds": 15000,
   "asynchronous": false,
   "failurePolicy": "open",
-  "order": 20
+  "order": 20,
+  "environment": [
+    "HOOK_SKILL_ENFORCER"
+  ]
 }

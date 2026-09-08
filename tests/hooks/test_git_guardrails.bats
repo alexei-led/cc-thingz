@@ -42,3 +42,19 @@ FIXTURES="$BATS_TEST_DIRNAME/fixtures"
 	run bash "$HOOK" <<<'{"tool_input":{"command":"echo \"git reset --hard is dangerous\""}}' 2>&1
 	[ "$status" -eq 0 ]
 }
+
+@test "git-guardrails: global options cannot hide reset" {
+	run bash "$HOOK" <<<'{"tool_input":{"command":"git -C \"/tmp/my repo\" -c core.pager=cat --no-pager reset --hard"}}'
+	[ "$status" -eq 2 ]
+}
+
+@test "git-guardrails: Pi global options return deny envelope" {
+	run bash "$HOOK" <<<'{"event":"pre-tool","piEvent":{"input":{"command":"git --git-dir=/tmp/repo/.git --work-tree /tmp/repo push --force"}}}'
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'"decision":"deny"'* ]]
+}
+
+@test "git-guardrails: ordinary inspection with global options allowed" {
+	run bash "$HOOK" <<<'{"tool_input":{"command":"git -C /tmp/repo --no-pager diff --stat"}}'
+	[ "$status" -eq 0 ]
+}

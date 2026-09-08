@@ -145,7 +145,7 @@ function normalizeLaunchOptions(options) {
   return {
     browserName,
     headless,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    ...(browserName === "chromium" ? runtime.sandboxOptions() : {}),
   };
 }
 
@@ -165,6 +165,8 @@ async function captureUrl(options) {
     throw new Error(`Invalid browser '${launch.browserName}'`);
   }
 
+  runtime.ensureBrowserAvailable(browserType, launch.browserName);
+
   const timeout = parseInteger(options.timeout, "--timeout", {
     defaultValue: 30000,
     min: 0,
@@ -181,6 +183,7 @@ async function captureUrl(options) {
   const browser = await browserType.launch({
     headless: launch.headless,
     args: launch.args,
+    chromiumSandbox: launch.chromiumSandbox,
   });
 
   try {

@@ -3,7 +3,7 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { loadPlaywright } = require("./runtime");
+const { loadPlaywright, ensureBrowserAvailable, sandboxOptions } = require("./runtime");
 
 function isQuiet() {
   return process.env.PLAYWRIGHT_SKILL_QUIET === "1";
@@ -103,7 +103,7 @@ async function launchBrowser(browserType = "chromium", options = {}) {
   const defaultOptions = {
     headless: process.env.HEADLESS !== "false",
     slowMo: process.env.SLOW_MO ? parseInt(process.env.SLOW_MO, 10) : 0,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    ...(browserType === "chromium" ? sandboxOptions() : {}),
   };
 
   const browsers = ensurePlaywrightReady();
@@ -113,6 +113,9 @@ async function launchBrowser(browserType = "chromium", options = {}) {
     throw new Error(`Invalid browser type: ${browserType}`);
   }
 
+  if (!options.executablePath && !options.channel) {
+    ensureBrowserAvailable(browser, browserType);
+  }
   return await browser.launch({ ...defaultOptions, ...options });
 }
 

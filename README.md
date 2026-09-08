@@ -139,14 +139,20 @@ agbun package --root . --out /tmp/cc-thingz-release
 ```
 
 The generated Pi package includes its typed hook adapter, native
-`ask_user_question`, `structured_output`, and `todo` tools, plus `hook-runner`,
+`ask_user_question` and `todo` tools, plus `hook-runner`,
 `permission-gate`, and `plan-mode`. Its compatibility config contains only
 Pi-specific revdiff plan review and notifications, so portable Agent Bundler
 hooks do not run twice.
 
 The package command, flat per-agent sidecars, safe Pi hook environments, native
 extension assets, and Codex project-agent profiles require a compatible
-installed Agent Bundler.
+installed Agent Bundler pinned in `.agentbundler-version`.
+
+## Installation diagnostics
+
+Run `make doctor` from this checkout to inspect cached plugins without changing
+configuration. See [doctor usage and migration](docs/doctor.md) and
+[runtime defaults](docs/runtime-reliability.md) before upgrading older installations.
 
 ## Target differences and gaps
 

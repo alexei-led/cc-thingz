@@ -32,10 +32,12 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
       - name: Install Agent Bundler
-        run: go install github.com/alexei-led/agentbundler/cmd/agbun@latest
+        run: scripts/setup/install-agbun.sh
       - run: make ci
+  runtime-smoke:
+    uses: ./.github/workflows/runtime-smoke.yml
   release:
-    needs: validate
+    needs: [validate, runtime-smoke]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -55,7 +57,7 @@ jobs:
           enable-cache: true
       - run: uv sync --all-groups --extra test
       - name: Install Agent Bundler
-        run: go install github.com/alexei-led/agentbundler/cmd/agbun@latest
+        run: scripts/setup/install-agbun.sh
       - name: Build target-native distributions
         run: agbun build --root .
       - name: Package target-native distributions

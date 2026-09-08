@@ -511,3 +511,45 @@ def test_dep_add_refuses_cycles(empty_spec: Path):
 
     assert result.returncode != 0
     assert "creates a cycle" in result.stderr
+
+
+@pytest.mark.parametrize("blocker_status", ["todo", "in-progress", None])
+@pytest.mark.parametrize("force", [False, True])
+def test_start_rejects_unfinished_or_missing_blockers(
+    empty_spec: Path, blocker_status, force
+):
+    if blocker_status is not None:
+        write_task(empty_spec, "TASK-dependency", status=blocker_status)
+    task = write_task(empty_spec, "TASK-blocked", blocked_by=["TASK-dependency"])
+    before = task.read_bytes()
+    result = run_specctl(
+        "start", "TASK-blocked", *(["--force"] if force else []), cwd=empty_spec
+    )
+    assert result.returncode != 0
+    assert "blocked by: TASK-dependency" in result.stderr
+    assert task.read_bytes() == before
+    assert not (empty_spec / ".spec" / "SESSION.yaml").exists()
+
+
+def test_start_accepts_completed_blockers(empty_spec: Path):
+    write_task(empty_spec, "TASK-dependency", status="done")
+    task = write_task(empty_spec, "TASK-ready", blocked_by=["TASK-dependency"])
+    assert run_specctl("start", "TASK-ready", cwd=empty_spec).returncode == 0
+    assert parsed_meta(task)["status"] == "in-progress"
+
+
+def test_start_active_task_preserves_session_and_progress(empty_spec: Path):
+    task = write_task(empty_spec, "TASK-active")
+    assert run_specctl("start", "TASK-active", cwd=empty_spec).returncode == 0
+    session = empty_spec / ".spec" / "SESSION.yaml"
+    session.write_text(
+        "task: TASK-active\nstep: verifying\n"
+        "started: original\nbase_commit: original-sha\n",
+        encoding="utf-8",
+    )
+    progress = empty_spec / ".spec" / "PROGRESS.md"
+    before = {path: path.read_bytes() for path in (task, session, progress)}
+    result = run_specctl("start", "TASK-active", cwd=empty_spec)
+    assert result.returncode == 0
+    assert "Resumed TASK-active" in result.stdout
+    assert {path: path.read_bytes() for path in before} == before

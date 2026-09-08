@@ -43,6 +43,7 @@ function makePage() {
 
 const browserType = {
   name: "chromium-stub",
+  executablePath() { return process.execPath; },
   async launch() {
     return {
       async newContext() {
@@ -65,7 +66,7 @@ module.exports = {
 def copy_scripts(tmp_path: Path) -> Path:
     scripts = tmp_path / "scripts"
     shutil.copytree(SCRIPTS_SRC, scripts)
-    stub_dir = scripts / "node_modules" / "playwright"
+    stub_dir = tmp_path / "node_modules" / "playwright"
     stub_dir.mkdir(parents=True)
     (stub_dir / "index.js").write_text(PLAYWRIGHT_STUB)
     return scripts
@@ -216,3 +217,97 @@ def test_screenshot_sequence_rejects_wrong_step_direction(tmp_path: Path) -> Non
 
     assert result.returncode != 0
     assert "--step direction must move from --from toward --to" in result.stderr
+
+
+def test_runtime_prefers_project_dependency_and_keeps_plugin_immutable(
+    tmp_path: Path,
+) -> None:
+    scripts = copy_scripts(tmp_path)
+    before = sorted(str(p.relative_to(scripts)) for p in scripts.rglob("*"))
+    result = run_node(
+        scripts,
+        "run.js",
+        "--json",
+        "console.log(JSON.stringify({name: chromium.name}))",
+        cwd=tmp_path,
+    )
+    assert json.loads(result.stdout)["name"] == "chromium-stub"
+    assert sorted(str(p.relative_to(scripts)) for p in scripts.rglob("*")) == before
+
+
+def test_runtime_installs_exact_package_only_in_user_cache(tmp_path: Path) -> None:
+    scripts = tmp_path / "scripts"
+    shutil.copytree(SCRIPTS_SRC, scripts)
+    script = tmp_path / "check.js"
+    cache = tmp_path / "cache"
+    script.write_text(
+        'const fs = require("fs"); const path = require("path");\n'
+        f"const cache = {json.dumps(str(cache))};\n"
+        "const calls = [];\n"
+        'require("child_process").execFileSync = (command, args, options) => {\n'
+        "calls.push({command,args,cwd:options.cwd});\n"
+        'const moduleDir = path.join(cache,"node_modules/playwright");\n'
+        "fs.mkdirSync(moduleDir,{recursive:true});\n"
+        'fs.writeFileSync(path.join(moduleDir,"index.js"),"module.exports={marker:42}");\n'
+        "};\n"
+        f"const runtime = require({json.dumps(str(scripts / 'lib/runtime.js'))});\n"
+        "const loaded = runtime.loadPlaywright({cacheDir:cache,quiet:true});\n"
+        "console.log(JSON.stringify({calls,loaded}));\n"
+    )
+    result = subprocess.run(
+        ["node", str(script)], cwd=tmp_path, capture_output=True, text=True, check=True
+    )
+    payload = json.loads(result.stdout)
+    assert payload["loaded"] == {"marker": 42}
+    assert payload["calls"][0]["command"] == "npm"
+    assert "playwright@1.57.0" in payload["calls"][0]["args"]
+    assert payload["calls"][0]["cwd"] == str(cache)
+    assert not (scripts / "node_modules").exists()
+    assert not (scripts / "package-lock.json").exists()
+
+
+def test_missing_browser_reports_explicit_setup_without_install(tmp_path: Path) -> None:
+    scripts = copy_scripts(tmp_path)
+    stub = tmp_path / "node_modules/playwright/index.js"
+    stub.write_text(
+        PLAYWRIGHT_STUB.replace(
+            "return process.execPath;", 'return "/missing/browser";'
+        )
+    )
+    result = subprocess.run(
+        [
+            "node",
+            str(scripts / "screenshot-url.js"),
+            "--url",
+            "http://example.test",
+            "--json",
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0
+    assert "package is ready but chromium is missing" in result.stderr
+    assert "cli.js" in result.stderr
+    assert "install chromium" in result.stderr
+    assert not (scripts / "node_modules").exists()
+
+
+@pytest.mark.parametrize(("opt_in", "sandbox"), [("0", True), ("1", False)])
+def test_browser_sandbox_requires_explicit_opt_in(
+    tmp_path: Path, opt_in: str, sandbox: bool
+) -> None:
+    scripts = copy_scripts(tmp_path)
+    script = tmp_path / "check.js"
+    script.write_text(
+        f"process.env.PLAYWRIGHT_SKILL_NO_SANDBOX={json.dumps(opt_in)};\n"
+        'require("playwright").chromium.launch=async (options)=>{'
+        "console.log(JSON.stringify(options));return {};};\n"
+        f"require({json.dumps(str(scripts / 'lib/helpers.js'))}).launchBrowser();\n"
+    )
+    result = subprocess.run(
+        ["node", str(script)], cwd=tmp_path, capture_output=True, text=True, check=True
+    )
+    options = json.loads(result.stdout)
+    assert options["chromiumSandbox"] is sandbox
+    assert ("--no-sandbox" in options["args"]) is not sandbox

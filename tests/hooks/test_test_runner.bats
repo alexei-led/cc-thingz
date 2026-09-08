@@ -158,7 +158,7 @@ SH
 
 	run env PI_SUBAGENT_CHILD=1 HOOK_INPUT_JSON="{\"session_id\":\"s_child\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"No changed code files with focused test support"* ]]
+	[[ "$output" == *"skipped: no changed code files with focused test support"* ]]
 }
 
 @test "test-runner: uses nearest non-root Makefile target as fallback" {
@@ -170,7 +170,7 @@ test:
 MAKE
 	write_state s2 setup/files/foo.py
 
-	run env HOOK_INPUT_JSON="{\"session_id\":\"s2\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	run env HOOK_PROJECT_FALLBACK=1 HOOK_INPUT_JSON="{\"session_id\":\"s2\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
 	[ "$(cat make.marker)" = "setup-test" ]
 }
@@ -190,7 +190,7 @@ SH
 	chmod +x bin/go
 	write_state s_make_first setup/files/foo.go
 
-	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_make_first\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	run env HOOK_PROJECT_FALLBACK=1 PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_make_first\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
 	[ "$(cat make.marker)" = "setup-test" ]
 	[ ! -f go.args ]
@@ -218,7 +218,7 @@ SH
 	chmod +x bin/uv
 	write_state s_mixed setup/files/foo.go pkg/foo.py
 
-	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_mixed\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	run env HOOK_PROJECT_FALLBACK=1 PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_mixed\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
 	[ "$(cat make.marker)" = "setup-test" ]
 	[[ "$(cat uv.args)" == *"tests/test_foo.py"* ]]
@@ -660,7 +660,7 @@ SH
 	[ "$(cat bun.args)" = "test --isolate" ]
 }
 
-@test "test-runner: HOOK_PROJECT_FALLBACK=0 disables package and Makefile fallback" {
+@test "test-runner: default disables package and Makefile fallback" {
 	mkdir -p bin src
 	cat >package.json <<'JSON'
 {"scripts":{"test":"echo test"}}
@@ -673,9 +673,11 @@ SH
 	chmod +x bin/npm
 	write_state s_no_project src/foo.ts
 
-	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_PROJECT_FALLBACK=0 HOOK_INPUT_JSON="{\"session_id\":\"s_no_project\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_no_project\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
 	[ ! -f npm.args ]
+	[[ "$output" == *"unsupported: no targeted tests ran"* ]]
+	[[ "$output" != *"tests passed"* ]]
 }
 
 @test "test-runner: npm test script is fallback after focused runners miss" {
@@ -691,7 +693,7 @@ SH
 	chmod +x bin/npm
 	write_state s_npm src/foo.ts
 
-	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_npm\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	run env HOOK_PROJECT_FALLBACK=1 PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_npm\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
 	[ "$(cat npm.args)" = "run --silent test" ]
 }
@@ -710,7 +712,7 @@ SH
 	chmod +x bin/npm
 	write_state s_npm_fail src/foo.ts
 
-	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_npm_fail\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	run env HOOK_PROJECT_FALLBACK=1 PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_npm_fail\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 2 ]
 	[[ "$output" == *"npm-failure"* ]]
 	[[ "$output" == *"npm test failed with exit 7"* ]]
@@ -738,7 +740,7 @@ SH
 	chmod +x bin/python3 bin/node bin/npm
 	write_state s_node_package src/foo.ts
 
-	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_node_package\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	run env HOOK_PROJECT_FALLBACK=1 PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_node_package\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
 	[ -f node.args ]
 	[ "$(cat npm.args)" = "run --silent test" ]
@@ -787,4 +789,6 @@ SH
 
 	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_exit5\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
+	[[ "$output" == *"skipped: no tests completed"* ]]
+	[[ "$output" != *"tests passed"* ]]
 }

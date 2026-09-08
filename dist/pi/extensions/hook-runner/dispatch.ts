@@ -9,7 +9,7 @@
  */
 
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { execFile } from "node:child_process";
+import { spawn } from "node:child_process";
 import { appendFileSync, mkdirSync, renameSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 
@@ -128,41 +128,12 @@ export function matchingGroups(groups: HookGroup[], ccToolName: string): HookGro
 
 export interface RunHookOptions {
 	defaultTimeoutSec?: number;
+	signal?: AbortSignal;
 }
 
 export const HOOK_OUTPUT_MAX_BYTES = 10 * 1024 * 1024;
 const FALLBACK_PATH = "/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin";
-// execFile's own `timeout` sends SIGTERM at the deadline, not SIGKILL. A child
-// that traps SIGTERM never exits and execFile's callback never fires. This is
-// how long runHook waits after that SIGTERM before force-killing directly.
 const KILL_GRACE_MS = 1500;
-
-/**
- * Translate an execFile callback (`error`, `stdout`, `stderr`) into the canonical
- * `HookRunResult`. Extracted from `runHook` so the timeout/overflow/error-code
- * branches are testable as a pure function — bun's process-wide module mock on
- * `node:child_process` makes real-subprocess assertions impossible inside the
- * shared test suite.
- */
-export function classifyExecResult(error: unknown, stdout: string, cleanedStderr: string): HookRunResult {
-	if (!error) {
-		return { exitCode: 0, stdout, stderr: cleanedStderr, timedOut: false };
-	}
-	const err = error as Error & { killed?: boolean; code?: unknown };
-	const killed = err.killed ?? false;
-	// Output overflow is reported via a string code, not a numeric exit.
-	// Treat it as a blocking signal so the dispatcher returns a deny rather
-	// than silently dropping the hook's would-be decision.
-	const codeStr = typeof err.code === "string" ? err.code : "";
-	const overflowed = codeStr === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER";
-	const exitCode = overflowed ? 2 : typeof err.code === "number" ? err.code : 1;
-	// `maxBuffer` caps stdout+stderr combined, so a non-empty stderr at
-	// overflow is unrelated noise — prepending the explicit cap notice keeps
-	// the actionable signal first while preserving the captured stderr.
-	const overflowStderr = `Hook output exceeded ${HOOK_OUTPUT_MAX_BYTES / (1024 * 1024)}MB cap`;
-	const stderrOut = overflowed ? (cleanedStderr.trim() ? `${overflowStderr}: ${cleanedStderr}` : overflowStderr) : cleanedStderr;
-	return { exitCode, stdout, stderr: stderrOut, timedOut: killed };
-}
 
 function hookChildEnv(timeoutSec: number): NodeJS.ProcessEnv {
 	const env = { ...process.env };
@@ -172,64 +143,97 @@ function hookChildEnv(timeoutSec: number): NodeJS.ProcessEnv {
 	if (!env.PATH || env.PATH.trim() === "") {
 		env.PATH = FALLBACK_PATH;
 	}
-	// Surface the effective timeout to the hook so it can self-bound and emit a
-	// proper blocking exit (2) before the deadline: execFile sends SIGTERM at
-	// `timeoutSec`, and runHook force-SIGKILLs at `timeoutSec + KILL_GRACE_MS`
-	// if the child is still alive by then.
+	// Hooks can self-bound before the runner terminates their process group.
 	env.PI_HOOK_TIMEOUT_SEC = String(timeoutSec);
 	return env;
 }
 
+const activeHooks = new Map<() => void, Promise<HookRunResult>>();
+
+/** Cancel running session hooks and wait for process-group cleanup. */
+export async function cancelRunningHooks(): Promise<void> {
+	const pending = [...activeHooks.entries()];
+	for (const [cancel] of pending) cancel();
+	await Promise.all(pending.map(([, result]) => result));
+}
+
 export function runHook(entry: HookEntryRuntime, stdinJson: string, optionsOrDefault?: RunHookOptions | number): Promise<HookRunResult> {
 	const options: RunHookOptions = typeof optionsOrDefault === "number" ? { defaultTimeoutSec: optionsOrDefault } : (optionsOrDefault ?? {});
-	const defaultTimeoutSec = options.defaultTimeoutSec ?? 30;
+	const timeoutSec = entry.config.timeout ?? options.defaultTimeoutSec ?? 30;
+	if (process.platform === "win32") return Promise.resolve({ exitCode: 2, stdout: "", stderr: "Hook process-group cleanup requires a POSIX platform", timedOut: false });
+	if (options.signal?.aborted) return Promise.resolve({ exitCode: 2, stdout: "", stderr: "Hook cancelled", timedOut: false });
+	if (!Number.isFinite(timeoutSec) || timeoutSec <= 0) return Promise.resolve({ exitCode: 2, stdout: "", stderr: "Invalid hook timeout", timedOut: false });
 	const started = Date.now();
-	return new Promise((resolve) => {
-		const timeoutSec = entry.config.timeout ?? defaultTimeoutSec;
-		const timeoutMs = timeoutSec * 1000;
+	let cancel = () => {};
+	const pending = new Promise<HookRunResult>((resolve) => {
 		let settled = false;
-		const child = execFile(
-			"bash",
-			["-c", entry.config.command],
-			{ timeout: timeoutMs, env: hookChildEnv(timeoutSec), maxBuffer: HOOK_OUTPUT_MAX_BYTES },
-			(error, stdout, stderr) => {
-				if (settled) return;
-				settled = true;
-				clearTimeout(killTimer);
-				const { stderr: cleanedStderr } = extractProgress(stderr ?? "");
-				const result = classifyExecResult(error, stdout, cleanedStderr);
-				logHookTelemetry(entry, result, Date.now() - started);
-				resolve(result);
-			},
-		);
-		// Fallback kill timer, independent of execFile's own `timeout`. execFile
-		// sends SIGTERM at the deadline; a child that traps SIGTERM (or has a
-		// descendant holding its stdio pipes open) never causes the callback
-		// above to fire. This fires KILL_GRACE_MS later and force-kills directly.
-		//
-		// Accepted tradeoff: this only signals `child` itself — orphaned
-		// descendants are not reaped. On Node 24 and Bun 1.3.14, execFile ignores
-		// `detached: true` and a negative-pid `process.kill(-pid)` ESRCHes every
-		// time, so a positive-pid SIGKILL via `child.kill` is the lever that
-		// actually works. The descendant-held-pipe case is already force-resolved
-		// by execFile's own timeout close to the deadline; this timer's job is
-		// the SIGTERM-trapping-child case, where execFile's SIGTERM never causes
-		// an exit and its callback never fires.
-		const killTimer = setTimeout(() => {
-			if (settled) return;
+		let stopReason: "timeout" | "cancelled" | "overflow" | undefined;
+		let stdout = Buffer.alloc(0);
+		let stderr = Buffer.alloc(0);
+		let killTimer: ReturnType<typeof setTimeout> | undefined;
+		const child = spawn("bash", ["-c", entry.config.command], {
+			detached: true,
+			env: hookChildEnv(timeoutSec),
+			stdio: ["pipe", "pipe", "pipe"],
+		});
+		const signalTree = (signal: NodeJS.Signals) => {
+			if (!child.pid) return;
 			try {
-				child.kill("SIGKILL");
-			} catch {
-				// Process already gone — nothing to do.
+				process.kill(-child.pid, signal);
+			} catch (error) {
+				if ((error as NodeJS.ErrnoException).code !== "ESRCH") child.kill(signal);
 			}
+		};
+		const finish = (exitCode: number, errorText = "") => {
+			if (settled) return;
 			settled = true;
-			const result: HookRunResult = { exitCode: 1, stdout: "", stderr: "hook timed out (killed)", timedOut: true };
+			clearTimeout(deadline);
+			clearTimeout(killTimer);
+			options.signal?.removeEventListener("abort", cancel);
+			const cleaned = extractProgress(stderr.toString("utf8")).stderr;
+			const notice = stopReason === "timeout" ? "Hook timed out" : stopReason === "cancelled" ? "Hook cancelled" : stopReason === "overflow" ? `Hook output exceeded ${HOOK_OUTPUT_MAX_BYTES / (1024 * 1024)}MB cap` : errorText;
+			const result = { exitCode, stdout: stdout.toString("utf8"), stderr: [notice, cleaned].filter(Boolean).join(": "), timedOut: stopReason === "timeout" };
 			logHookTelemetry(entry, result, Date.now() - started);
 			resolve(result);
-		}, timeoutMs + KILL_GRACE_MS);
-		child.stdin?.write(stdinJson);
-		child.stdin?.end();
+		};
+		const stop = (reason: typeof stopReason) => {
+			if (settled || stopReason) return;
+			stopReason = reason;
+			signalTree("SIGTERM");
+			// Keep the group deadline even when bash exits first: descendants may
+			// ignore TERM or close their stdio while continuing to run.
+			killTimer = setTimeout(() => {
+				signalTree("SIGKILL");
+				child.stdin.destroy();
+				child.stdout.destroy();
+				child.stderr.destroy();
+				finish(reason === "timeout" ? 1 : 2);
+			}, KILL_GRACE_MS);
+		};
+		cancel = () => stop("cancelled");
+		const deadline = setTimeout(() => stop("timeout"), timeoutSec * 1000);
+		options.signal?.addEventListener("abort", cancel, { once: true });
+		const collect = (chunk: Buffer, stream: "stdout" | "stderr") => {
+			if (stopReason || settled) return;
+			const current = stream === "stdout" ? stdout : stderr;
+			const remaining = Math.max(0, HOOK_OUTPUT_MAX_BYTES - stdout.length - stderr.length);
+			const next = Buffer.concat([current, chunk.subarray(0, remaining)]);
+			if (stream === "stdout") stdout = next;
+			else stderr = next;
+			if (chunk.length > remaining) stop("overflow");
+		};
+		child.stdout.on("data", (chunk: Buffer) => collect(chunk, "stdout"));
+		child.stderr.on("data", (chunk: Buffer) => collect(chunk, "stderr"));
+		child.on("error", (error) => finish(2, error.message));
+		child.on("close", (code) => {
+			if (!stopReason) finish(code ?? 1);
+		});
+		child.stdin.on("error", () => {});
+		child.stdin.end(stdinJson);
 	});
+	activeHooks.set(cancel, pending);
+	void pending.finally(() => activeHooks.delete(cancel));
+	return pending;
 }
 
 export function runHookAsync(

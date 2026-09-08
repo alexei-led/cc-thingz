@@ -57,7 +57,7 @@ _DEFAULT_LOCKS: list[str] = [
 
 # Patch header patterns for apply_patch (Codex custom format + unified diff)
 _PATCH_FILE_RE = re.compile(
-    r"^\*\*\* (?:Update|Add|Delete) File: (.+)$|^\+\+\+ b/(.+)$",
+    r"^\*\*\* (?:(?:Update|Add|Delete) File|Move to): (.+)$|^\+\+\+ b/(.+)$",
     re.MULTILINE,
 )
 

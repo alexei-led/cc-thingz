@@ -59,7 +59,7 @@ If the user rejects the grouping, ask for revised grouping and do not proceed un
 
 Never stage likely secrets: `.env`, keys, certificates, credentials, passwords, tokens, or files that appear to contain secrets. Flag them to the user if detected in changes. This check does not replace secret-scanning tools.
 
-Pause for user approval before any `git add` or `git commit`. For one focused commit, one approval gate is enough. For multiple commits, pause before each commit.
+An explicit request to commit authorizes staging and committing the reviewed scope. Present the grouping, then execute within that authorization. Approval of several commit groups covers all of them; do not ask again before each group. Ask only when scope, sensitive content, or a history-changing action differs from what was authorized.
 
 If a pre-commit hook rejects, report the hook error verbatim. Do not retry with `--no-verify`.
 

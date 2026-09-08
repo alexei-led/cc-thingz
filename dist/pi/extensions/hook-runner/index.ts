@@ -42,6 +42,7 @@ import {
 	parseSlashCommand,
 	replaceInput,
 	runDecisionHooks,
+	cancelRunningHooks,
 	runHook,
 	runHookAsync,
 	runPermissionDeniedGroups,
@@ -245,6 +246,7 @@ export default function (pi: ExtensionAPI): void {
 
 	// --- session_shutdown → SessionEnd ---
 	pi.on("session_shutdown", async (event: SessionShutdownEvent, ctx: ExtensionContext) => {
+		await cancelRunningHooks();
 		const hookName: HookEventName = "SessionEnd";
 		const stdin = JSON.stringify({
 			...baseStdin(hookName, ctx),
@@ -252,7 +254,7 @@ export default function (pi: ExtensionAPI): void {
 		});
 		for (const group of resolvedConfig()[hookName] ?? []) {
 			for (const entry of group.hooks) {
-				runHookAsync(entry, stdin, (msg, lvl) => ctx.ui.notify(msg, lvl));
+				await runHook(entry, stdin);
 			}
 		}
 	});

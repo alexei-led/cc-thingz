@@ -43,8 +43,10 @@ node scripts/run.js --json "console.log(JSON.stringify({ ok: !!chromium }))"
 ```
 
 `run.js` preserves the caller working directory, auto-wraps code for `await`,
-auto-installs Playwright on first run using bun with npm fallback, and sends
-runner logs to stderr. Script stdout stays clean for JSON.
+uses the caller project's Playwright dependency first, then a pinned package in
+`$XDG_CACHE_HOME/cc-thingz/playwright/1.57.0` (default `~/.cache`). It installs the
+fallback package with npm outside the plugin directory. Runner logs go to stderr;
+script stdout stays clean for JSON. Browser binaries require separate setup.
 
 `chromium`, `firefox`, `webkit`, `devices`, `helpers`, and
 `getContextOptionsWithHeaders(opts)` are exposed as globals for all scripts.
@@ -128,13 +130,15 @@ Base success claims on script output or artifacts, not on command completion alo
   localhost:3000.
 - Script syntax error: quote the failing line, state the cause, rewrite the
   offending section — do not re-run the broken script.
-- Playwright not installed: `run.js` and screenshot helpers auto-install on
-  first run; if that fails, use `references/setup.md`.
+- Missing Playwright package or browser: follow `references/setup.md`. A package
+  import alone does not prove browser launch is available.
+- Keep Chromium sandboxing enabled. Set `PLAYWRIGHT_SKILL_NO_SANDBOX=1` only when
+  the execution environment requires it and the trust boundary permits it.
 
 ## References
 
-- [`references/setup.md`](references/setup.md) — first-time install (bun
-  preferred, npm fallback).
+- [`references/setup.md`](references/setup.md) — project runtime, pinned cache,
+  and explicit browser installation.
 - [`references/api.md`](references/api.md) — runtime-only patterns and links to
   official Playwright API docs. Open it when a helper doesn't cover the needed
   action (custom locators, waits, network interception, or auth patterns).

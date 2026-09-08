@@ -8,7 +8,7 @@ Bundled CLI: `scripts/specctl`.
 - `scripts/specctl new task <slug|topic/slug>` — create a task template.
 - `scripts/specctl new req <slug|topic/slug>` — create a requirement template.
 - `scripts/specctl ready [--epic EPIC-x]` — list unblocked `todo` tasks.
-- `scripts/specctl start TASK-x` — set a task `in-progress` and open `SESSION.yaml`.
+- `scripts/specctl start TASK-x` — reject unfinished or missing blockers, then set a task `in-progress` and open `SESSION.yaml`. Starting the active task again preserves its base commit and checkpoint state. `--force` replaces a conflicting session; it does not bypass dependencies.
 - `scripts/specctl checkpoint [--message "..."]` — append progress and print handoff.
 - `scripts/specctl session handoff` — print resume summary with git diff/status.
 - `scripts/specctl done TASK-x --summary ... --tests ... [--files ...] [--commits ...]` — close with evidence.
@@ -24,5 +24,7 @@ Bundled CLI: `scripts/specctl`.
 - `scripts/specctl dep rm TASK-b TASK-a` — remove a blocker.
 - `scripts/specctl dep list TASK-b` — list task links.
 - `scripts/specctl session show|resume|clear|step <name>` — inspect or update active session.
+
+Completion evidence is caller-supplied text, not a check runner or attestation. Record exact results and satisfy project completion gates.
 
 `specctl done` requires `--summary` and `--tests` unless `--force` is used. If checks were skipped, write the reason in `--tests`, for example `--tests "not run: docs-only task"`.

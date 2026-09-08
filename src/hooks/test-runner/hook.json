@@ -12,5 +12,13 @@
   "timeoutMilliseconds": 120000,
   "asynchronous": false,
   "failurePolicy": "open",
-  "order": 60
+  "order": 60,
+  "environment": [
+    "HOOK_PROJECT_FALLBACK",
+    "TEST_RUNNER_FULL",
+    "TEST_RUNNER_DIFF_FALLBACK_LIMIT",
+    "TEST_RUNNER_DEBUG",
+    "SKIP_TESTS",
+    "PI_SUBAGENT_CHILD"
+  ]
 }

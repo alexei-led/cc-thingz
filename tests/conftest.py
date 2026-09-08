@@ -7,6 +7,8 @@ module, mapping the filename to a snake-case module name.
 from __future__ import annotations
 
 import importlib.util
+import os
+import shutil
 import sys
 import textwrap
 from pathlib import Path
@@ -57,3 +59,10 @@ REPO_ROOT: Path = _REPO_ROOT
 def dedent_md(s: str) -> str:
     """Strip common leading whitespace and a leading blank line."""
     return textwrap.dedent(s).lstrip("\n")
+
+
+def pytest_sessionstart(session: pytest.Session) -> None:
+    required = os.environ.get("CC_THINGZ_REQUIRED_CLIS", "").split(",")
+    missing = [name for name in required if name and shutil.which(name) is None]
+    if missing:
+        raise pytest.UsageError(f"Required runtime CLIs missing: {', '.join(missing)}")

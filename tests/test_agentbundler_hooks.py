@@ -192,3 +192,50 @@ def test_pi_decision_guards_emit_runtime_protocol() -> None:
 
     assert json.loads(file_protector.stdout)["decision"] == "deny"
     assert json.loads(git_guardrails.stdout)["decision"] == "deny"
+
+
+def test_generated_pi_smart_lint_preserves_project_file_and_session(
+    tmp_path: Path,
+) -> None:
+    _build()
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    (tmp_path / "one.py").touch()
+    (tmp_path / "two.py").touch()
+    script = r"""
+import { readFileSync } from "node:fs";
+import { runProcess } from "./dist/pi/extensions/_agentbundler-hooks/index.ts";
+const manifest = JSON.parse(readFileSync("./dist/pi/hooks/hooks.v1.json", "utf8"));
+const hook = manifest.hooks.find((entry) => entry.identity === "hook/smart-lint");
+const result = await runProcess(hook.handler, {
+  packageRoot: "./dist/pi",
+  input: {
+    event: "post-tool",
+    hook: hook.identity,
+    piEvent: {
+      cwd: process.env.HOME,
+      session_id: "generated-stdin",
+      toolName: "write",
+      input: { path: "one.py" },
+    },
+  },
+  timeoutMilliseconds: hook.timeoutMilliseconds,
+  environment: hook.environment,
+});
+console.log(JSON.stringify(result));
+"""
+    result = subprocess.run(
+        ["bun", "-e", script],
+        cwd=REPO_ROOT,
+        env={**os.environ, "HOME": str(tmp_path), "SKIP_LINT": "1"},
+        text=True,
+        capture_output=True,
+        check=True,
+        timeout=20,
+    )
+    outcome = json.loads(result.stdout)
+    assert outcome["exitCode"] == 0, outcome["stderr"]
+    assert json.loads(outcome["stdout"]) == {"decision": "allow"}
+    assert "Linting skipped" in outcome["stderr"]
+    state = tmp_path / ".git/cc-thingz/hook-files-generated-stdin"
+    assert state.read_text() == "one.py\n"
+    assert not (state.parent / "hook-files-default").exists()

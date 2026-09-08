@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 import stat
 import subprocess
@@ -73,14 +74,18 @@ def test_realistic_banner_before_process_bytes_line_parses_right_number(
     )
     env = make_bq_stub(tmp_path, stdout="[]\n", stderr=stderr)
 
-    result = run(["SELECT * FROM t"], tmp_path, env=env)
+    result = run(
+        ["--price-per-tib", "5", "--max-usd", "1", "SELECT * FROM t"], tmp_path, env=env
+    )
 
     gb = real_bytes / 1024**3
     tb = real_bytes / 1024**4
     cost = tb * 5.00
-    assert f"Query will scan: {gb:.2f} GB" in result.stdout, result.stdout
+    assert f"Query will scan: {real_bytes} bytes ({gb:.2f} GiB)" in result.stdout, (
+        result.stdout
+    )
     assert f"Estimated cost: ${cost:.4f}" in result.stdout, result.stdout
-    assert "WARNING: Query cost exceeds $1.00" in result.stdout, result.stdout
+    assert "Threshold exceeded" in result.stderr
     assert result.returncode == 1
 
 
@@ -102,11 +107,9 @@ def test_happy_json_path_still_works(tmp_path: Path) -> None:
 
     n = 500_000_000
     gb = n / 1024**3
-    tb = n / 1024**4
-    cost = tb * 5.00
     assert result.returncode == 0, result.stdout + result.stderr
-    assert f"Query will scan: {gb:.2f} GB" in result.stdout
-    assert f"Estimated cost: ${cost:.4f}" in result.stdout
+    assert f"Query will scan: {n} bytes ({gb:.2f} GiB)" in result.stdout
+    assert "Estimated cost" not in result.stdout
 
 
 def test_bq_timeout_fails_loudly(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -121,3 +124,39 @@ def test_bq_timeout_fails_loudly(monkeypatch: pytest.MonkeyPatch) -> None:
 
     with pytest.raises(SystemExit, match="timed out"):
         module.estimate_bytes("SELECT 1")
+
+
+@pytest.mark.parametrize(("limit", "expected"), [(500, 0), (499, 1)])
+def test_bytes_threshold_and_json_are_noninteractive(
+    tmp_path: Path, limit: int, expected: int
+) -> None:
+    env = make_bq_stub(tmp_path, '{"totalBytesProcessed":"500"}', "CLI warning\n")
+    result = run(["--json", "--max-bytes", str(limit), "SELECT 1"], tmp_path, env)
+    assert result.returncode == expected
+    payload = json.loads(result.stdout)
+    assert payload["bytes_processed"] == 500
+    assert payload["estimated_cost_usd"] is None
+    assert payload["threshold_exceeded"] is bool(expected)
+
+
+@pytest.mark.parametrize(
+    "args", [["--price-per-tib", "nan"], ["--max-bytes", "-1"], ["--max-usd", "1"]]
+)
+def test_invalid_cost_options_rejected_before_cloud_call(args: list[str]) -> None:
+    with pytest.raises(SystemExit) as error:
+        _load_module().main([*args, "SELECT 1"])
+    assert error.value.code == 2
+
+
+def test_location_is_forwarded_to_dry_run(monkeypatch: pytest.MonkeyPatch) -> None:
+    module = _load_module()
+    calls = []
+
+    def fake_run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls.append(args)
+        return subprocess.CompletedProcess(args, 0, '{"totalBytesProcessed":"0"}', "")
+
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+    assert module.main(["--location", "EU", "SELECT 1"]) == 0
+    assert calls[0][:3] == ["bq", "--location=EU", "query"]
+    assert "--dry_run" in calls[0]

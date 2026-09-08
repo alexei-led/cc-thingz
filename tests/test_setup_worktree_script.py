@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import json
 import os
 import stat
 import subprocess
 from pathlib import Path
 
+import pytest
 from conftest import REPO_ROOT
 
 SCRIPT = (
@@ -114,3 +116,102 @@ def test_successful_setup_and_tests_print_ready_and_exit_zero(
     assert result.returncode == 0, result.stdout
     assert "warning: baseline tests failed" not in result.stdout
     assert "WORKTREE READY" in result.stdout
+
+
+@pytest.mark.parametrize(
+    ("manager", "lockfile", "version", "expected"),
+    [
+        ("npm", "package-lock.json", "10.0.0", "ci"),
+        ("pnpm", "pnpm-lock.yaml", "10.0.0", "install --frozen-lockfile"),
+        ("bun", "bun.lock", "1.2.0", "install --frozen-lockfile"),
+        ("yarn", "yarn.lock", "1.22.0", "install --frozen-lockfile"),
+        ("yarn", "yarn.lock", "4.0.0", "install --immutable"),
+    ],
+)
+def test_setup_uses_frozen_project_manager(
+    tmp_path: Path, manager: str, lockfile: str, version: str, expected: str
+) -> None:
+    repo = init_repo(tmp_path, "main")
+    write_commit(
+        repo,
+        "package.json",
+        json.dumps({"packageManager": f"{manager}@{version}"}),
+        "package",
+    )
+    write_commit(repo, lockfile, "locked\n", "lock")
+    env = make_exit_stub(tmp_path, manager, 0)
+    binary = tmp_path / "bin" / manager
+    binary.write_text(
+        f'#!/bin/sh\nif [ "$1" = --version ]; then echo {version}; '
+        'else echo "MANAGER $*"; fi\n'
+    )
+
+    result = run([str(SCRIPT), "--setup", "feature"], repo, env=env)
+
+    assert result.returncode == 0, result.stdout
+    assert f"MANAGER {expected}" in result.stdout
+    worktree = tmp_path / "repo-main.worktrees" / "feature"
+    assert (worktree / lockfile).read_text() == "locked\n"
+
+
+def test_setup_refuses_conflicting_manager_without_removing_worktree(
+    tmp_path: Path,
+) -> None:
+    repo = init_repo(tmp_path, "main")
+    write_commit(repo, "package.json", '{"packageManager":"pnpm@10.0.0"}', "package")
+    write_commit(repo, "package-lock.json", "locked\n", "lock")
+
+    result = run([str(SCRIPT), "--setup", "feature"], repo)
+
+    assert result.returncode == 1
+    assert "packageManager conflicts" in result.stdout
+    assert (
+        tmp_path / "repo-main.worktrees" / "feature" / "file.txt"
+    ).read_text() == "base\n"
+
+
+def test_reports_base_divergence_without_resetting_or_fetching(tmp_path: Path) -> None:
+    repo = init_repo(tmp_path, "main")
+    git(repo, "branch", "tracking")
+    git(repo, "branch", "--set-upstream-to=tracking", "main")
+    write_commit(repo, "ahead.txt", "ahead\n", "ahead")
+    original = git(repo, "rev-parse", "HEAD")
+
+    result = run([str(SCRIPT), "feature"], repo)
+
+    assert result.returncode == 0
+    assert "ahead 1, behind 0" in result.stdout
+    assert git(repo, "rev-parse", "main") == original
+
+
+def test_python_setup_and_tests_use_uv(tmp_path: Path) -> None:
+    repo = init_repo(tmp_path, "main")
+    write_commit(repo, "pyproject.toml", '[project]\nname="fixture"\n', "python")
+    env = make_exit_stub(tmp_path, "uv", 0)
+    (tmp_path / "bin" / "uv").write_text('#!/bin/sh\necho "UV $*"\n')
+
+    result = run([str(SCRIPT), "--setup", "--test", "feature"], repo, env=env)
+
+    assert result.returncode == 0
+    assert "UV sync --locked" in result.stdout
+    assert "UV run --locked --extra test python -m pytest" in result.stdout
+
+
+def test_setup_refuses_missing_lock_without_running_installer(tmp_path: Path) -> None:
+    repo = init_repo(tmp_path, "main")
+    write_commit(repo, "package.json", '{"packageManager":"npm@10.0.0"}', "package")
+    result = run([str(SCRIPT), "--setup", "feature"], repo)
+    assert result.returncode == 1
+    assert "frozen setup requires a committed lockfile" in result.stdout
+    assert not (tmp_path / "repo-main.worktrees/feature/package-lock.json").exists()
+
+
+def test_requirements_setup_uses_worktree_virtualenv(tmp_path: Path) -> None:
+    repo = init_repo(tmp_path, "main")
+    write_commit(repo, "requirements.txt", "pytest==8.0.0\n", "requirements")
+    env = make_exit_stub(tmp_path, "uv", 0)
+    (tmp_path / "bin" / "uv").write_text('#!/bin/sh\necho "UV $*"\n')
+    result = run([str(SCRIPT), "--setup", "feature"], repo, env=env)
+    assert result.returncode == 0
+    assert "UV venv" in result.stdout
+    assert "UV pip sync --python .venv/bin/python requirements.txt" in result.stdout

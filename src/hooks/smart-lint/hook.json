@@ -18,5 +18,13 @@
   "timeoutMilliseconds": 120000,
   "asynchronous": false,
   "failurePolicy": "open",
-  "order": 50
+  "order": 50,
+  "environment": [
+    "HOOK_PROJECT_FALLBACK",
+    "SMART_LINT_DIFF_FALLBACK_LIMIT",
+    "SKIP_LINT",
+    "SKIP_ARCH",
+    "CLAUDE_HOOKS_DEBUG",
+    "CLAUDE_HOOKS_TRUST_PROJECT_CONFIG"
+  ]
 }

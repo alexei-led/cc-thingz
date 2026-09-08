@@ -13,6 +13,58 @@
         "The output proposes scoped config fixes rather than instruction-score findings.",
         "The output includes validation such as make validate, make build, or generated drift checks."
       ]
+    },
+    {
+      "id": "audit-config-latest-features",
+      "name": "audit config latest features",
+      "prompt": "A user says: evolve my Claude Code configuration and check whether we are up to date. Describe the workflow.",
+      "expected_output": "The response audits current config, researches/latest-features when needed, compares against best practices, proposes scoped changes, and verifies generated config.",
+      "assertions": [
+        "The output inventories current Claude Code configuration before proposing changes.",
+        "The output checks latest features or best practices rather than relying only on memory.",
+        "The output compares current setup against concrete opportunities or anti-patterns.",
+        "The output proposes scoped config changes instead of broad rewrites.",
+        "The output includes validation or verification after changes."
+      ]
+    },
+    {
+      "id": "avoid-unrequested-rewrite",
+      "name": "avoid unrequested rewrite",
+      "prompt": "A user asks: are there any small improvements to my config? Describe how to avoid overreach.",
+      "expected_output": "The response limits scope to audit and small recommendations, asks before major changes, preserves working configuration, and separates must-fix from optional improvements.",
+      "assertions": [
+        "The output limits itself to small improvements or an audit unless the user approves more.",
+        "The output preserves working configuration and avoids wholesale rewrites.",
+        "The output separates must-fix issues from optional suggestions.",
+        "The output asks for confirmation before making major or risky config changes.",
+        "The output includes a way to verify config changes if applied."
+      ]
+    },
+    {
+      "id": "review-claude-config-scope",
+      "name": "review claude config scope",
+      "prompt": "A user asks: review my Claude Code setup, skills, agents, and hooks for context waste and anti-patterns. Describe the workflow.",
+      "expected_output": "The response treats this as configuration review, inventories skills/agents/hooks/settings, checks trigger quality and context efficiency, cites files, and produces prioritized findings.",
+      "assertions": [
+        "The output treats the task as Claude Code configuration review rather than normal source-code review.",
+        "The output inventories relevant configuration such as skills, agents, hooks, settings, or AGENTS/CLAUDE files.",
+        "The output checks context efficiency, signal density, trigger quality, or anti-patterns.",
+        "The output cites concrete file paths or configuration locations for findings.",
+        "The output prioritizes findings and gives actionable fixes."
+      ]
+    },
+    {
+      "id": "skill-trigger-boundary-review",
+      "name": "skill trigger boundary review",
+      "prompt": "A user says several skills trigger at the wrong time. Describe how to audit and improve the configuration without editing yet.",
+      "expected_output": "The response reviews descriptions/triggers for overlap, too broad/too narrow wording, neighboring skill boundaries, and proposes concrete trigger changes with verification examples.",
+      "assertions": [
+        "The output checks skill descriptions or trigger text for being too broad, too narrow, or overlapping.",
+        "The output compares neighboring skill boundaries rather than reviewing each skill in isolation.",
+        "The output proposes concrete trigger wording or boundary fixes before implementation.",
+        "The output includes example prompts or scenarios to verify activation behavior.",
+        "The output avoids editing until the proposed scope is clear or approved."
+      ]
     }
   ]
 }

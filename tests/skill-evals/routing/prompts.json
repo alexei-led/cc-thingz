@@ -1,0 +1,268 @@
+{
+  "version": 1,
+  "description": "Curated offline hint-routing probes, not model task-quality evaluations. Required hints measure omissions; allowed hints accommodate legitimate workflow composition. Negative cases permit no hints.",
+  "cases": [
+    {
+      "id": "slack-channel",
+      "language": "en",
+      "prompt": "Which Slack channel should I use for this question?",
+      "required": [],
+      "allowed": []
+    },
+    {
+      "id": "javascript-await",
+      "language": "en",
+      "prompt": "Please explain the difference between async and await in JavaScript.",
+      "required": [],
+      "allowed": [
+        "writing-web"
+      ]
+    },
+    {
+      "id": "ownership-process",
+      "language": "en",
+      "prompt": "Explain ownership of the release checklist in our team.",
+      "required": [],
+      "allowed": []
+    },
+    {
+      "id": "travel-steps",
+      "language": "en",
+      "prompt": "Give me step by step directions to the nearest bus stop.",
+      "required": [],
+      "allowed": []
+    },
+    {
+      "id": "greeting",
+      "language": "en",
+      "prompt": "Thanks for the explanation, that answers my question.",
+      "required": [],
+      "allowed": []
+    },
+    {
+      "id": "go-file",
+      "language": "en",
+      "prompt": "Implement a worker pool in worker.go using goroutines.",
+      "required": [
+        "writing-go"
+      ],
+      "allowed": [
+        "writing-go"
+      ]
+    },
+    {
+      "id": "python-file",
+      "language": "en",
+      "prompt": "Implement validation in parser.py with Python type hints.",
+      "required": [
+        "writing-python"
+      ],
+      "allowed": [
+        "writing-python"
+      ]
+    },
+    {
+      "id": "rust-file",
+      "language": "en",
+      "prompt": "Implement the Rust parser in lib.rs and run cargo test.",
+      "required": [
+        "writing-rust"
+      ],
+      "allowed": [
+        "writing-rust"
+      ]
+    },
+    {
+      "id": "typescript-file",
+      "language": "en",
+      "prompt": "Implement the typed parser in parser.ts.",
+      "required": [
+        "writing-typescript"
+      ],
+      "allowed": [
+        "writing-typescript"
+      ]
+    },
+    {
+      "id": "shell-file",
+      "language": "en",
+      "prompt": "Write a portable shell script and check it with ShellCheck.",
+      "required": [
+        "writing-shell"
+      ],
+      "allowed": [
+        "writing-shell"
+      ]
+    },
+    {
+      "id": "code-review",
+      "language": "en",
+      "prompt": "Review the changes in this pull request.",
+      "required": [
+        "reviewing-code"
+      ],
+      "allowed": [
+        "reviewing-code"
+      ]
+    },
+    {
+      "id": "research-comparison",
+      "language": "en",
+      "prompt": "Research Redis vs KeyDB for session storage.",
+      "required": [
+        "researching-web"
+      ],
+      "allowed": [
+        "researching-web"
+      ]
+    },
+    {
+      "id": "docs-api",
+      "language": "en",
+      "prompt": "Look up official docs for the FastAPI dependency overrides API.",
+      "required": [
+        "looking-up-docs"
+      ],
+      "allowed": [
+        "looking-up-docs",
+        "writing-python"
+      ]
+    },
+    {
+      "id": "explicit-reasoning",
+      "language": "en",
+      "prompt": "Use sequential thinking to reason through this algorithm.",
+      "required": [
+        "sequential-thinking"
+      ],
+      "allowed": [
+        "sequential-thinking"
+      ]
+    },
+    {
+      "id": "plan-exploration",
+      "language": "en",
+      "prompt": "Brainstorm design options for this feature and plan this out.",
+      "required": [
+        "brainstorming-ideas"
+      ],
+      "allowed": [
+        "brainstorming-ideas"
+      ]
+    },
+    {
+      "id": "commit",
+      "language": "en",
+      "prompt": "Commit these changes as one focused commit.",
+      "required": [
+        "committing-code"
+      ],
+      "allowed": [
+        "committing-code"
+      ]
+    },
+    {
+      "id": "ru-slack",
+      "language": "ru",
+      "prompt": "В какой канал Slack лучше задать этот вопрос?",
+      "required": [],
+      "allowed": []
+    },
+    {
+      "id": "ru-greeting",
+      "language": "ru",
+      "prompt": "Спасибо, теперь всё понятно.",
+      "required": [],
+      "allowed": []
+    },
+    {
+      "id": "ru-python-token",
+      "language": "ru",
+      "prompt": "Добавь в parser.py проверку типов Python.",
+      "required": [
+        "writing-python"
+      ],
+      "allowed": [
+        "writing-python"
+      ]
+    },
+    {
+      "id": "ru-go-token",
+      "language": "ru",
+      "prompt": "Реализуй очередь задач в worker.go.",
+      "required": [
+        "writing-go"
+      ],
+      "allowed": [
+        "writing-go"
+      ]
+    },
+    {
+      "id": "ru-review",
+      "language": "ru",
+      "prompt": "Проверь изменения в этом пулреквесте и найди ошибки.",
+      "required": [
+        "reviewing-code"
+      ],
+      "allowed": [
+        "reviewing-code"
+      ]
+    },
+    {
+      "id": "ru-commit",
+      "language": "ru",
+      "prompt": "Закоммить эти изменения одним логическим коммитом.",
+      "required": [
+        "committing-code"
+      ],
+      "allowed": [
+        "committing-code"
+      ]
+    },
+    {
+      "id": "ru-brainstorm",
+      "language": "ru",
+      "prompt": "Давай обсудим варианты дизайна этой новой функции.",
+      "required": [
+        "brainstorming-ideas"
+      ],
+      "allowed": [
+        "brainstorming-ideas"
+      ]
+    },
+    {
+      "id": "ru-research",
+      "language": "ru",
+      "prompt": "Сравни библиотеки для этой задачи по актуальным источникам в интернете.",
+      "required": [
+        "researching-web"
+      ],
+      "allowed": [
+        "researching-web"
+      ]
+    },
+    {
+      "id": "technical-recommendation",
+      "language": "en",
+      "prompt": "Which framework should I use for this web API?",
+      "required": [
+        "researching-web"
+      ],
+      "allowed": [
+        "researching-web",
+        "brainstorming-ideas"
+      ]
+    },
+    {
+      "id": "rust-ownership",
+      "language": "en",
+      "prompt": "Explain Rust ownership and lifetimes for this parser.",
+      "required": [
+        "writing-rust"
+      ],
+      "allowed": [
+        "writing-rust"
+      ]
+    }
+  ]
+}

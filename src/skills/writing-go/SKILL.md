@@ -37,7 +37,8 @@ Read [principles.md](references/principles.md) before writing, changing, or revi
 - Go 1.25+: use `sync.WaitGroup.Go` when no error propagation is needed.
 - Use existing `errgroup` for goroutine errors or shared cancellation; add it only when the dependency is justified.
 - Go 1.25+: use `testing/synctest` for deterministic concurrent tests when available.
-- Go 1.25+: prefer stdlib `crypto/hpke` and `testing/cryptotest` over third-party code when they fit.
+- Go 1.26+: prefer stdlib `crypto/hpke` when HPKE is needed ([release notes](https://go.dev/doc/go1.26#crypto-hpke)).
+- Go 1.26+: use `testing/cryptotest.SetGlobalRandom` only for deterministic crypto tests; it changes process-wide randomness and cannot run in parallel tests ([release notes](https://go.dev/doc/go1.26#testingcryptotest), [API](https://pkg.go.dev/testing/cryptotest)).
 - Treat `encoding/json/v2` as experimental unless the project opts into `GOEXPERIMENT=jsonv2`.
 - Go 1.26+: use `new(expr)` only when clearer than a local variable, composite literal, or address expression.
 - Go 1.26+: keep recursive type constraints in generic libraries; keep business logic concrete.

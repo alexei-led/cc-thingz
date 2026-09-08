@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Build a temporary agent-skills-eval tree from compiled skills and test fixtures."""
+"""Build an owned temporary eval tree; report active, archived, and uncovered skills."""
 
 import argparse
 import json
 import shutil
+import sys
 from pathlib import Path
 
 ROOT = next(
@@ -12,100 +13,196 @@ ROOT = next(
 DIST_DIR = ROOT / "dist"
 EVALS_DIR = ROOT / "tests" / "skill-evals"
 DEFAULT_OUT = Path("/tmp/cc-thingz-skill-eval-root")
-
 SOURCE_TARGET = "claude"
+MARKER = ".cc-thingz-eval-owner.json"
 
 
 class EvalPrepError(Exception):
     """Skill eval preparation failed."""
 
 
-def copy_skill(plugin: str, skill: str, out: Path) -> Path | None:
-    """Copy a compiled skill into the eval tree, or return None when absent.
-
-    A missing compiled source means the package no longer exports the fixture;
-    return None so the evaluator can skip it without aborting.
-    """
-    source = DIST_DIR / SOURCE_TARGET / plugin / "skills" / skill
-    if not source.is_dir():
-        return None
-    if not (source / "SKILL.md").is_file():
-        raise EvalPrepError(f"missing SKILL.md: {source.relative_to(ROOT)}")
-
-    dest = out / plugin / "skills" / skill
-    if dest.exists():
-        shutil.rmtree(dest)
-
-    def ignore(_dir: str, names: list[str]) -> set[str]:
-        ignored = {"evals", "node_modules", "__pycache__"}
-        return {name for name in names if name in ignored}
-
-    shutil.copytree(source, dest, ignore=ignore)
-    return dest
+def read_json(path: Path) -> dict:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise EvalPrepError(f"cannot read {path}: {exc}") from exc
+    if not isinstance(data, dict):
+        raise EvalPrepError(f"expected JSON object: {path}")
+    return data
 
 
-def copy_evals(eval_root: Path, skill_dest: Path) -> int:
-    eval_file = eval_root / "evals" / "evals.json"
-    if not eval_file.is_file():
-        raise EvalPrepError(f"missing evals/evals.json: {eval_root.relative_to(ROOT)}")
+def fixture_count(path: Path) -> int:
+    data = read_json(path)
+    cases = data.get("evals")
+    if not isinstance(cases, list) or not cases:
+        raise EvalPrepError(f"no evals defined: {path}")
+    ids = set()
+    for case in cases:
+        if not isinstance(case, dict):
+            raise EvalPrepError(f"invalid eval case: {path}")
+        case_id = case.get("id")
+        if not isinstance(case_id, str) or not case_id or case_id in ids:
+            raise EvalPrepError(f"missing or duplicate eval id: {path}")
+        ids.add(case_id)
+        if not case.get("prompt") or not any(
+            case.get(key)
+            for key in ("assertions", "expected_output", "tool_assertions")
+        ):
+            raise EvalPrepError(f"missing prompt or assertions: {path}: {case_id}")
+    if data.get("skill_name") != path.parents[1].name:
+        raise EvalPrepError(f"fixture skill_name does not match directory: {path}")
+    return len(cases)
 
-    with eval_file.open("r", encoding="utf-8") as file:
-        data = json.load(file)
-    eval_count = len(data.get("evals", [])) if isinstance(data, dict) else 0
-    if eval_count == 0:
-        raise EvalPrepError(f"no evals defined: {eval_file.relative_to(ROOT)}")
 
-    shutil.copytree(eval_root / "evals", skill_dest / "evals")
-    return eval_count
+def inventory() -> dict:
+    compiled = {
+        f"{path.parents[2].name}/{path.parent.name}": path.parent
+        for path in sorted((DIST_DIR / SOURCE_TARGET).glob("*/skills/*/SKILL.md"))
+    }
+    active = []
+    for path in sorted(EVALS_DIR.glob("*/*/evals/evals.json")):
+        identity = f"{path.parents[2].name}/{path.parents[1].name}"
+        if identity not in compiled:
+            raise EvalPrepError(
+                f"fixture has no compiled {SOURCE_TARGET} skill: {identity}"
+            )
+        active.append({"skill": identity, "evals": fixture_count(path)})
+    if not active:
+        raise EvalPrepError(f"no skill eval fixtures found under {EVALS_DIR}")
+    migration_file = EVALS_DIR / "migrations.json"
+    migrations = (
+        read_json(migration_file).get("entries", []) if migration_file.exists() else []
+    )
+    archives = {
+        entry["destination"]: entry
+        for entry in migrations
+        if entry.get("status") == "archived" and entry.get("reason")
+    }
+    actual_archives = {
+        path.relative_to(EVALS_DIR).as_posix(): path
+        for path in sorted((EVALS_DIR / "archive").glob("*/*/evals/evals.json"))
+    }
+    if archives.keys() != actual_archives.keys():
+        raise EvalPrepError("archived fixtures must exactly match migrations.json")
+    archived = []
+    for name, path in actual_archives.items():
+        count = fixture_count(path)
+        if archives[name].get("evals") != count:
+            raise EvalPrepError(f"archived fixture count changed: {name}")
+        archived.append(
+            {"fixture": name, "evals": count, "reason": archives[name]["reason"]}
+        )
+    covered = {entry["skill"] for entry in active}
+    return {
+        "source_target": SOURCE_TARGET,
+        "active": active,
+        "archived": archived,
+        "uncovered_skills": sorted(compiled.keys() - covered),
+        "skills": len(active),
+        "evals": sum(entry["evals"] for entry in active),
+    }
+
+
+def validate_output(out: Path) -> Path:
+    if out.is_symlink():
+        raise EvalPrepError("output directory must not be a symlink")
+    resolved = out.resolve()
+    root = ROOT.resolve()
+    if resolved == root or root in resolved.parents or resolved in root.parents:
+        raise EvalPrepError(
+            "output directory must not be inside the repository or its ancestor"
+        )
+    if resolved.exists():
+        marker = resolved / MARKER
+        if not resolved.is_dir() or marker.is_symlink() or not marker.is_file():
+            raise EvalPrepError(
+                "existing output is not an owned eval tree; choose a new --out"
+            )
+        ownership = read_json(marker)
+        entries = ownership.pop("entries", None)
+        if ownership != {
+            "version": 1,
+            "owner": "cc-thingz-skill-evals",
+            "path": str(resolved),
+        }:
+            raise EvalPrepError("invalid eval output ownership marker")
+        actual = sorted(
+            path.relative_to(resolved).as_posix()
+            for path in resolved.rglob("*")
+            if path != marker
+        )
+        if entries != actual or any(path.is_symlink() for path in resolved.rglob("*")):
+            raise EvalPrepError(
+                "owned output contains unexpected or missing entries; "
+                "choose a new --out"
+            )
+    return resolved
 
 
 def prepare(out: Path) -> tuple[int, int]:
-    if out == ROOT or ROOT in out.parents:
-        raise EvalPrepError("output directory must not be inside the repository")
+    out = validate_output(out)
+    report = inventory()
+    if out.exists():
+        shutil.rmtree(out)
+    out.mkdir(parents=True)
+    for entry in report["active"]:
+        plugin, skill = entry["skill"].split("/")
+        source = DIST_DIR / SOURCE_TARGET / plugin / "skills" / skill
+        dest = out / plugin / "skills" / skill
+        shutil.copytree(
+            source,
+            dest,
+            ignore=shutil.ignore_patterns("evals", "node_modules", "__pycache__"),
+        )
+        shutil.copytree(EVALS_DIR / plugin / skill / "evals", dest / "evals")
+    (out / "inventory.json").write_text(
+        json.dumps(report, indent=2) + "\n", encoding="utf-8"
+    )
+    (out / MARKER).write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "owner": "cc-thingz-skill-evals",
+                "path": str(out),
+                "entries": sorted(
+                    path.relative_to(out).as_posix() for path in out.rglob("*")
+                ),
+            }
+        ),
+        encoding="utf-8",
+    )
+    return report["skills"], report["evals"]
 
-    shutil.rmtree(out, ignore_errors=True)
-    out.mkdir(parents=True, exist_ok=True)
 
-    skill_count = 0
-    eval_count = 0
-    for eval_file in sorted(EVALS_DIR.glob("*/*/evals/evals.json")):
-        skill_root = eval_file.parents[1]
-        plugin = skill_root.parent.name
-        skill = skill_root.name
-        skill_dest = copy_skill(plugin, skill, out)
-        if skill_dest is None:
-            continue
-        eval_count += copy_evals(skill_root, skill_dest)
-        skill_count += 1
-
-    if skill_count == 0:
-        rel_evals_dir = EVALS_DIR.relative_to(ROOT)
-        raise EvalPrepError(f"no skill eval fixtures found under {rel_evals_dir}")
-
-    return skill_count, eval_count
-
-
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--out",
-        type=Path,
-        default=DEFAULT_OUT,
-        help=f"output directory (default: {DEFAULT_OUT})",
+        "--out", type=Path, default=DEFAULT_OUT, help="owned scratch output directory"
     )
-
-    args = parser.parse_args()
-
+    parser.add_argument(
+        "--inventory",
+        action="store_true",
+        help="print coverage JSON without writing files",
+    )
+    args = parser.parse_args(argv)
     try:
-        skills, evals = prepare(args.out.resolve())
-    except EvalPrepError as exc:
-        print(f"ERROR: {exc}")
+        if args.inventory:
+            print(json.dumps(inventory(), indent=2))
+        else:
+            skills, evals = prepare(args.out)
+            print(
+                f"prepared {skills} skill(s), {evals} eval(s) "
+                f"from {SOURCE_TARGET} at {args.out}"
+            )
+            report = read_json(args.out / "inventory.json")
+            archived_count = sum(item["evals"] for item in report["archived"])
+            print(
+                f"archived: {archived_count} eval(s); "
+                f"uncovered skills: {', '.join(report['uncovered_skills']) or 'none'}"
+            )
+    except (EvalPrepError, OSError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
         return 1
-
-    print(
-        f"prepared {skills} skill(s), {evals} eval(s) "
-        f"from {args.source_dir} at {args.out}"
-    )
     return 0
 
 

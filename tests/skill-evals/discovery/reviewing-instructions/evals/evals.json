@@ -24,6 +24,36 @@
         "The output says No confirmed findings replaces only the Findings section.",
         "The output does not collapse the whole report to only No confirmed findings."
       ]
+    },
+    {
+      "id": "score-skill-prompt-quality",
+      "name": "score skill prompt quality",
+      "prompt": "A user asks: review and score this skill prompt for quality. Prompt:\n---\nname: helper\ndescription: Helps with development stuff.\nallowed-tools: [Bash, Read, Write]\n---\n# Helper\nYou are a brilliant coding assistant. Explore the repo, improve whatever seems useful, and make the code better. Explain your reasoning and write files when needed.\n---\nDescribe the review workflow and report scores.",
+      "expected_output": "The response scores the provided prompt across 8 dimensions (signal density, scope specificity, output structure, format efficiency, failure handling, grounding discipline, routing precision, progressive disclosure), reports concrete issues, and proposes fixes.",
+      "assertions": [
+        "The output scores signal density or mentions token efficiency or fluff.",
+        "The output scores scope specificity or notes missing scope boundaries.",
+        "The output scores output structure or notes missing output format.",
+        "The output scores format efficiency or checks for tables/diagrams/italic.",
+        "The output scores failure handling or notes missing failure cases.",
+        "The output scores grounding discipline or notes missing evidence requirements.",
+        "The output scores routing precision or checks trigger quality in the description.",
+        "The output scores progressive disclosure or checks instruction length.",
+        "The output reports actionable findings with concrete fixes."
+      ]
+    },
+    {
+      "id": "reject-generic-style-review",
+      "name": "reject generic style review",
+      "prompt": "A user asks: make this agent prompt sound nicer and more polished. Describe how the reviewing-instructions skill should respond.",
+      "expected_output": "The response avoids cosmetic tone editing as the main goal and instead reviews instruction quality across behavioral dimensions.",
+      "assertions": [
+        "The output says the primary goal is not cosmetic polish or generic style improvement.",
+        "The output redirects to instruction quality criteria such as triggers, scope, tools, safety, or verifiability.",
+        "The output asks for or uses the actual prompt content before making findings.",
+        "The output avoids rewriting for tone without identifying behavioral issues.",
+        "The output produces findings that can be verified or tested."
+      ]
     }
   ]
 }

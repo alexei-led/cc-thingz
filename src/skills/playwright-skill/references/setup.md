@@ -1,38 +1,33 @@
 # Setup — Playwright Support Runtime
 
-Install Playwright and Chromium for the bundled executor and screenshot helpers
-used by `browser-automation`.
+## Runtime selection
 
-## Prerequisites
+- Require Node.js 18+ and npm for fallback package installation.
+- Resolve Playwright from the caller project first; keep that project's version.
+- Otherwise install exactly Playwright 1.57.0 into
+  `$XDG_CACHE_HOME/cc-thingz/playwright/1.57.0`, defaulting to `~/.cache`.
+- Do not run dependency installs in the plugin directory.
+- Package availability and browser binary availability are separate checks.
 
-- Node.js 18+
-- `bun` or `npm`
+## Explicit browser setup
 
-## Install
-
-Run from the `playwright-skill` directory, then `cd scripts`.
-
-### With bun
-
-```bash
-cd scripts && bun install && bunx playwright install chromium
-```
-
-### With npm
+From the loaded skill directory, or with an absolute helper path:
 
 ```bash
-cd scripts && npm install && npx playwright install chromium
+node scripts/setup-runtime.js chromium
 ```
 
-## Verify runner
+For other browsers:
 
 ```bash
-node scripts/run.js --json "console.log(JSON.stringify({ hasChromium: !!chromium }))"
+node scripts/setup-runtime.js firefox webkit
 ```
 
-If it prints JSON with `hasChromium: true`, setup is good.
+A missing browser error also prints the resolved Playwright CLI installation
+command. Use that command so browser binaries match the selected package version.
+Setup may require network access; report installation failures explicitly.
 
-## Verify screenshot helper
+## Verify
 
 ```bash
 node scripts/screenshot-url.js \
@@ -41,24 +36,6 @@ node scripts/screenshot-url.js \
   --json
 ```
 
-If it prints a manifest and `/tmp/playwright-example.png` exists, screenshot
-capture is good.
-
-## Auto-install fallback
-
-`run.js`, `screenshot-url.js`, and `screenshot-sequence.js` install Playwright
-on first use when missing. They try bun first and npm second. If auto-install
-fails, run one of the install commands above from the `playwright-skill`
-directory.
-
-## Other browsers
-
-Install only when Firefox or WebKit is needed.
-
-```bash
-# bun
-cd scripts && bunx playwright install firefox webkit
-
-# npm
-cd scripts && npx playwright install firefox webkit
-```
+Check the manifest and image. Successful package import alone does not verify launch.
+Chromium sandboxing stays enabled by default. `PLAYWRIGHT_SKILL_NO_SANDBOX=1` is
+an explicit environment-specific opt-out, not a general setup step.

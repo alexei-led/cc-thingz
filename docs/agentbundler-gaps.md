@@ -14,7 +14,8 @@ a portable hook schema:
   by the native compatibility runner.
 - Pi receives `ccgram hook` at session start, stop, and session end.
 - Pi native assets register ask-user-question, hook-runner, permission-gate,
-  plan-mode, structured-output, and todo.
+  plan-mode, and todo. The structured-output demonstration is available as an
+  explicitly loaded example, not a default tool.
 - The Pi compatibility runner loads only Pi-specific defaults from
   `extensions/hooks.json`: ExitPlanMode/revdiff review and notifications. It
   does not repeat portable Agent Bundler hooks.
@@ -59,5 +60,8 @@ Checked in the repository:
 - plan-mode ExitPlanMode bridge, updated-plan, deny, and timeout behavior;
 - hook-runner compatibility config and no duplicate portable default hooks.
 
-Vendor install/load smoke tests run sequentially when the corresponding CLI is
-installed. Cursor smoke is skipped without `CURSOR_API_KEY`.
+The required core runtime job installs lockfile-pinned Claude, Codex, and Pi
+CLIs and fails if one is missing. It tests archive installation/registration
+and generated hook adapters. Other local vendor tests run when their CLI is
+available; Cursor smoke requires `CURSOR_API_KEY`. These are install/adapter
+contracts, not proof of every event in a live authenticated model session.

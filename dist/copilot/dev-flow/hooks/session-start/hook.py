@@ -9,11 +9,9 @@ from __future__ import annotations
 
 import contextlib
 import json
-import os
 import shutil
 import subprocess
 import sys
-import time
 from pathlib import Path
 
 BLUE = "\033[0;34m"
@@ -88,38 +86,6 @@ def _specctl_json(args: list[str], cwd: Path) -> dict | list | None:
         return json.loads(out.stdout)
     except json.JSONDecodeError:
         return None
-
-
-def _cleanup_old_files() -> None:
-    """Best-effort retention sweep. Errors are silenced."""
-    home = Path.home()
-    now = time.time()
-    week = 7 * 86400
-    month = 30 * 86400
-
-    def _sweep(root: Path, max_age: float, gzip: bool = False) -> None:
-        if not root.is_dir():
-            return
-        for p in root.rglob("*"):
-            if not p.is_file():
-                continue
-            try:
-                if now - p.stat().st_mtime <= max_age:
-                    continue
-                if gzip and p.suffix == ".md":
-                    subprocess.run(
-                        ["gzip", str(p)],
-                        check=False,
-                        stderr=subprocess.DEVNULL,
-                    )
-                else:
-                    p.unlink()
-            except OSError:
-                continue
-
-    _sweep(home / ".claude" / "todos", week)
-    _sweep(home / ".claude" / "debug", month)
-    _sweep(home / ".claude" / "plans", month, gzip=True)
 
 
 def _show_git(cwd: Path) -> None:
@@ -228,10 +194,6 @@ def _show_project_hints(cwd: Path) -> None:
 
 
 def main() -> int:
-    if "--cleanup" in sys.argv[1:]:
-        _cleanup_old_files()
-        return 0
-
     payload = _read_payload()
     pi_runtime = payload.get("event") == "session-start" and isinstance(
         payload.get("piEvent"), dict
@@ -241,22 +203,6 @@ def main() -> int:
         if pi_runtime:
             print('{"decision":"allow"}')
         return 0
-
-    # Cleanup runs in a detached subprocess instead of via os.fork(): the
-    # forked child inherited this process's stdout pipe, so hook runners
-    # waiting for EOF (not just process exit) were unbounded by their
-    # timeout — the pipe stayed open until the child's sweep finished.
-    try:
-        subprocess.Popen(
-            [sys.executable or "python3", os.path.abspath(__file__), "--cleanup"],
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            start_new_session=True,
-            close_fds=True,
-        )
-    except OSError:
-        pass  # Skip background cleanup; session start still succeeds.
 
     output = sys.stderr if pi_runtime else sys.stdout
     with contextlib.redirect_stdout(output):

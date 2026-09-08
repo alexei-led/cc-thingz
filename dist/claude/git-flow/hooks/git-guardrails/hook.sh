@@ -44,6 +44,41 @@ unwrap_shell_dash_c() {
 
 UNWRAPPED_COMMAND=$(unwrap_shell_dash_c "$COMMAND" || true)
 
+# Normalize ordinary argv without executing shell input. This mistake guard is
+# not a shell sandbox: aliases, expansions and arbitrary wrappers are out of scope.
+normalize_git_options() {
+	command -v python3 >/dev/null 2>&1 || return 0
+	python3 -c 'import shlex,sys
+try:
+    lexer=shlex.shlex(sys.stdin.read(), posix=True, punctuation_chars=";&|\n")
+    lexer.whitespace_split=True
+    lexer.whitespace=" \t\r"
+    tokens=list(lexer)
+except ValueError:
+    sys.exit(0)
+separators={";", "&&", "||", "|", "&", "\n"}
+value_options={"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--config-env", "--super-prefix"}
+flags={"--no-pager", "--paginate", "-P", "-p", "--bare", "--no-replace-objects", "--literal-pathspecs", "--glob-pathspecs", "--noglob-pathspecs", "--icase-pathspecs", "--no-optional-locks"}
+for i, token in enumerate(tokens):
+    if token.rsplit("/",1)[-1] != "git" or (i and tokens[i-1] not in separators):
+        continue
+    j=i+1
+    while j < len(tokens):
+        arg=tokens[j]
+        if arg in value_options:
+            j+=2
+        elif arg in flags or any(arg.startswith(opt+"=") for opt in value_options if opt.startswith("--")) or (arg.startswith(("-C", "-c")) and len(arg)>2):
+            j+=1
+        else:
+            break
+    end=j
+    while end < len(tokens) and tokens[end] not in separators:
+        end+=1
+    print("git "+" ".join(tokens[j:end]))
+' <<<"$1"
+}
+NORMALIZED_COMMAND=$(normalize_git_options "${UNWRAPPED_COMMAND:-$COMMAND}" || true)
+
 DEFAULT_BLOCK_PATTERNS=$(
 	cat <<'PATTERNS'
 (^|[;&|[:space:]])git[[:space:]]+reset[[:space:]]+--hard([[:space:]]|$)
@@ -92,7 +127,7 @@ while IFS= read -r pattern; do
 	if [[ "$ALLOW_FORCE_PUSH" == "1" && "$pattern" == *"push"* ]]; then
 		continue
 	fi
-	if [[ "$COMMAND" =~ $pattern ]] || { [[ -n "$UNWRAPPED_COMMAND" ]] && [[ "$UNWRAPPED_COMMAND" =~ $pattern ]]; }; then
+	if [[ "$NORMALIZED_COMMAND" =~ $pattern ]] || [[ "$COMMAND" =~ $pattern ]] || { [[ -n "$UNWRAPPED_COMMAND" ]] && [[ "$UNWRAPPED_COMMAND" =~ $pattern ]]; }; then
 		message="dangerous git command: $COMMAND"
 		if [[ "$PI_RUNTIME" == "1" ]]; then
 			printf '{"decision":"deny","reason":%s}\n' "$(printf '%s' "$message" | jq -Rsa .)"

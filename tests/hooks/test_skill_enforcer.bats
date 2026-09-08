@@ -100,3 +100,92 @@ FIXTURES="$BATS_TEST_DIRNAME/fixtures"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"reviewing-instructions"* ]]
 }
+
+@test "skill-enforcer: Slack channel is not Go development" {
+	run bash "$HOOK" <<<'{"prompt":"Which Slack channel should I use for this question?"}'
+	[ "$status" -eq 0 ]
+	[[ "$output" != *"writing-go"* ]]
+}
+
+@test "skill-enforcer: JavaScript async await is not Python development" {
+	run bash "$HOOK" <<<'{"prompt":"Please explain the difference between async and await in JavaScript."}'
+	[ "$status" -eq 0 ]
+	[[ "$output" != *"writing-python"* ]]
+}
+
+@test "skill-enforcer: explicit Go and Python still route" {
+	run bash "$HOOK" <<<'{"prompt":"Implement a channel in Go and a Python asyncio worker."}'
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"writing-go"* ]]
+	[[ "$output" == *"writing-python"* ]]
+}
+
+@test "skill-enforcer: ordinary planning and procedural steps do not request reasoning format" {
+	run bash "$HOOK" <<<'{"prompt":"Plan this out: write a step-by-step installation guide."}'
+	[ "$status" -eq 0 ]
+	[[ "$output" != *"sequential-thinking"* ]]
+}
+
+@test "skill-enforcer: explicit stepwise thinking request routes" {
+	run bash "$HOOK" <<<'{"prompt":"Think step by step about the competing constraints."}'
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"sequential-thinking"* ]]
+}
+
+@test "skill-enforcer: disabled native hook is silent" {
+	run env HOOK_SKILL_ENFORCER=0 bash "$HOOK" <<<'{"prompt":"Implement the Python worker and run pytest."}'
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "skill-enforcer: disabled Pi hook preserves allow protocol" {
+	run env HOOK_SKILL_ENFORCER=0 bash "$HOOK" <<<'{"event":"prompt-submit","piEvent":{"prompt":"Implement the Python worker and run pytest."}}'
+	[ "$status" -eq 0 ]
+	[ "$output" = '{"decision":"allow"}' ]
+}
+
+@test "skill-enforcer: Pi suggestions use stderr and stdout remains a decision" {
+	bats_require_minimum_version 1.5.0
+	run --separate-stderr bash "$HOOK" <<<'{"event":"prompt-submit","piEvent":{"prompt":"Implement the Python worker and run pytest."}}'
+	[ "$status" -eq 0 ]
+	[ "$output" = '{"decision":"allow"}' ]
+	[[ "$stderr" == *"writing-python"* ]]
+}
+
+@test "skill-enforcer: cargo test does not match go test" {
+	run bash "$HOOK" <<<'{"prompt":"Implement the Rust parser in lib.rs and run cargo test."}'
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"writing-rust"* ]]
+	[[ "$output" != *"writing-go"* ]]
+}
+
+@test "skill-enforcer: Python type hints do not match ts abbreviation" {
+	run bash "$HOOK" <<<'{"prompt":"Implement validation in parser.py with Python type hints."}'
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"writing-python"* ]]
+	[[ "$output" != *"writing-typescript"* ]]
+}
+
+@test "skill-enforcer: ownership checklist is not Rust" {
+	run bash "$HOOK" <<<'{"prompt":"Write an ownership checklist for the support team."}'
+	[ "$status" -eq 0 ]
+	[[ "$output" != *"writing-rust"* ]]
+}
+
+@test "skill-enforcer: explicit Rust ownership still routes" {
+	run bash "$HOOK" <<<'{"prompt":"Explain Rust ownership and lifetimes for this parser."}'
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"writing-rust"* ]]
+}
+
+@test "skill-enforcer: Slack recommendation is not web research" {
+	run bash "$HOOK" <<<'{"prompt":"Which Slack channel should I use for this question?"}'
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "skill-enforcer: technical recommendation still suggests research" {
+	run bash "$HOOK" <<<'{"prompt":"Which framework should I use for this web API?"}'
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"researching-web"* ]]
+}
