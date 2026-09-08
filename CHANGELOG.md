@@ -8,6 +8,9 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.8.13] - 2026-09-08
+
+
 ### Fixed
 
 - Restored the configured `alexei-led-cc-thingz` marketplace identity in generated manifests so Codex marketplace upgrades succeed.
