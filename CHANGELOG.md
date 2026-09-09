@@ -8,6 +8,13 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.9.2] - 2026-09-09
+
+### Fixed
+
+- Prevented malformed or failed `todo` tool results from crashing Pi's renderer
+  or overwriting valid todo state during session reconstruction.
+
 ## [6.9.1] - 2026-09-08
 
 ### Fixed

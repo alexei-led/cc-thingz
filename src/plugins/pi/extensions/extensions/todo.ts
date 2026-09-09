@@ -21,11 +21,36 @@ interface Todo {
 	done: boolean;
 }
 
+type TodoAction = "list" | "add" | "toggle" | "clear";
+
 interface TodoDetails {
-	action: "list" | "add" | "toggle" | "clear";
+	action: TodoAction;
 	todos: Todo[];
 	nextId: number;
 	error?: string;
+}
+
+const TODO_ACTIONS: readonly TodoAction[] = ["list", "add", "toggle", "clear"];
+
+function isTodoDetails(value: unknown): value is TodoDetails {
+	if (typeof value !== "object" || value === null) return false;
+
+	const details = value as Partial<TodoDetails>;
+	return (
+		TODO_ACTIONS.includes(details.action as TodoAction) &&
+		Array.isArray(details.todos) &&
+		details.todos.every(
+			(todo) =>
+				typeof todo === "object" &&
+				todo !== null &&
+				typeof todo.id === "number" &&
+				typeof todo.text === "string" &&
+				typeof todo.done === "boolean",
+		) &&
+		Number.isSafeInteger(details.nextId) &&
+		details.nextId > 0 &&
+		(details.error === undefined || typeof details.error === "string")
+	);
 }
 
 const TodoParams = Type.Object({
@@ -119,8 +144,8 @@ export default function (pi: ExtensionAPI) {
 			const msg = entry.message;
 			if (msg.role !== "toolResult" || msg.toolName !== "todo") continue;
 
-			const details = msg.details as TodoDetails | undefined;
-			if (details) {
+			const details = msg.details;
+			if (isTodoDetails(details)) {
 				todos = details.todos;
 				nextId = details.nextId;
 			}
@@ -223,11 +248,12 @@ export default function (pi: ExtensionAPI) {
 		},
 
 		renderResult(result, { expanded }, theme, _context) {
-			const details = result.details as TodoDetails | undefined;
-			if (!details) {
+			const renderContent = () => {
 				const text = result.content[0];
 				return new Text(text?.type === "text" ? text.text : "", 0, 0);
-			}
+			};
+			const details = result.details;
+			if (!isTodoDetails(details)) return renderContent();
 
 			if (details.error) {
 				return new Text(theme.fg("error", `Error: ${details.error}`), 0, 0);
@@ -255,6 +281,7 @@ export default function (pi: ExtensionAPI) {
 
 				case "add": {
 					const added = todoList[todoList.length - 1];
+					if (!added) return renderContent();
 					return new Text(theme.fg("success", "✓ Added ") + theme.fg("accent", `#${added.id}`) + " " + theme.fg("muted", added.text), 0, 0);
 				}
 
@@ -266,6 +293,8 @@ export default function (pi: ExtensionAPI) {
 
 				case "clear":
 					return new Text(theme.fg("success", "✓ ") + theme.fg("muted", "Cleared all todos"), 0, 0);
+				default:
+					return renderContent();
 			}
 		},
 	});
