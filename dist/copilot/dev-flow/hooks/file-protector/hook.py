@@ -8,6 +8,11 @@ Configuration (~/.claude/hook-config.json, fileProtector section):
   protectedPatterns  — list of regex strings; matched files are blocked (exit 2)
   lockFilePatterns   — list of regex strings; matched files emit a warning (exit 0)
 
+Project-local configuration (nearest ancestor `.claude/file-protector.json`):
+  excludePatterns    — regex strings exempted from the global protected patterns.
+                       This file must be committed with the project and applies
+                       only to absolute paths below its nearest project root.
+
 Falls back to hardcoded defaults when the config file is absent or malformed.
 
 Exit codes:
@@ -23,6 +28,7 @@ import sys
 from pathlib import Path
 
 _CONFIG_FILE = Path.home() / ".claude" / "hook-config.json"
+_PROJECT_CONFIG_NAME = ".claude/file-protector.json"
 
 _DEFAULT_PROTECTED: list[str] = [
     r"\.env$",
@@ -117,6 +123,25 @@ def _deny(path: str, pattern: str, pi_runtime: bool) -> None:
     raise SystemExit(2)
 
 
+def _project_excludes(path: str) -> list[str]:
+    """Load excludes from the nearest project config, if the path is absolute."""
+    candidate = Path(path).expanduser()
+    if not candidate.is_absolute():
+        return []
+    for parent in (candidate.parent, *candidate.parents):
+        config = parent / _PROJECT_CONFIG_NAME
+        if not config.is_file():
+            continue
+        try:
+            value = json.loads(config.read_text()).get("excludePatterns", [])
+        except (json.JSONDecodeError, OSError):
+            return []
+        if isinstance(value, list) and all(isinstance(x, str) for x in value):
+            return value
+        return []
+    return []
+
+
 def _check_path(
     path: str,
     protected: list[str],
@@ -124,8 +149,11 @@ def _check_path(
     pi_runtime: bool,
 ) -> None:
     """Check one path and emit the Agent Bundler Pi decision when needed."""
+    excludes = _project_excludes(path)
     for pattern in protected:
-        if _safe_search(pattern, path):
+        if _safe_search(pattern, path) and not any(
+            _safe_search(exclude, path) for exclude in excludes
+        ):
             _deny(path, pattern, pi_runtime)
 
     for pattern in locks:

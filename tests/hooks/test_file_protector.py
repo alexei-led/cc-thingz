@@ -285,6 +285,58 @@ def test_codex_multi_file_patch_safe_allowed(home: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Project-local exclusions
+# ---------------------------------------------------------------------------
+
+
+def test_project_exclude_allows_selected_source_file(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    (project / ".claude").mkdir(parents=True)
+    (project / ".claude" / "file-protector.json").write_text(
+        json.dumps({"excludePatterns": [r"/api/deploy/credentials\.py$"]})
+    )
+    path = str(project / "api" / "deploy" / "credentials.py")
+    rc, err = _single(path, tmp_path)
+    assert rc == 0
+    assert err == ""
+
+
+def test_project_exclude_does_not_disable_other_protected_files(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    (project / ".claude").mkdir(parents=True)
+    (project / ".claude" / "file-protector.json").write_text(
+        json.dumps({"excludePatterns": [r"/api/deploy/credentials\.py$"]})
+    )
+    rc, err = _single(str(project / ".env"), tmp_path)
+    assert rc == 2
+    assert "BLOCKED" in err
+
+
+def test_project_exclude_is_nearest_ancestor_only(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    nested = project / "nested"
+    (project / ".claude").mkdir(parents=True)
+    nested.mkdir()
+    (project / ".claude" / "file-protector.json").write_text(
+        json.dumps({"excludePatterns": [r"credentials\.py$"]})
+    )
+    rc, err = _single(str(nested / "api" / "credentials.py"), tmp_path)
+    assert rc == 0
+    assert err == ""
+
+
+def test_relative_paths_do_not_use_project_excludes(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    (project / ".claude").mkdir(parents=True)
+    (project / ".claude" / "file-protector.json").write_text(
+        json.dumps({"excludePatterns": [r"credentials\\.py$"]})
+    )
+    rc, err = _single("credentials.py", tmp_path)
+    assert rc == 2
+    assert "BLOCKED" in err
+
+
+# ---------------------------------------------------------------------------
 # Custom hook-config.json overrides
 # ---------------------------------------------------------------------------
 
