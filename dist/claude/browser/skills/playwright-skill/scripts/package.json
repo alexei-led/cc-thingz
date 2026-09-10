@@ -1,6 +1,6 @@
 {
   "name": "playwright-skill",
-  "version": "6.9.2",
+  "version": "6.9.3",
   "description": "Support runtime for browser-automation using Playwright with dev-server detection and helper utilities",
   "author": "lackeyjb",
   "main": "run.js",
