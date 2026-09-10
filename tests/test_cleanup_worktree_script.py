@@ -23,6 +23,18 @@ def run(
     env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     merged_env = os.environ.copy()
+    # Git exports repository-specific variables from linked worktrees. Do not
+    # let fixture repositories inherit the worktree under test.
+    git_env = subprocess.run(
+        ["git", "rev-parse", "--local-env-vars"],
+        cwd=cwd,
+        text=True,
+        capture_output=True,
+        check=True,
+        env=merged_env,
+    ).stdout.split()
+    for name in git_env:
+        merged_env.pop(name, None)
     if env:
         merged_env.update(env)
     return subprocess.run(

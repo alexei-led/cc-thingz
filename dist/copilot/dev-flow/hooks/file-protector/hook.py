@@ -128,13 +128,17 @@ def _project_excludes(path: str) -> list[str]:
     candidate = Path(path).expanduser()
     if not candidate.is_absolute():
         return []
+    candidate = candidate.resolve(strict=False)
     for parent in (candidate.parent, *candidate.parents):
         config = parent / _PROJECT_CONFIG_NAME
         if not config.is_file():
             continue
         try:
-            value = json.loads(config.read_text()).get("excludePatterns", [])
-        except (json.JSONDecodeError, OSError):
+            decoded = json.loads(config.read_text())
+            value = (
+                decoded.get("excludePatterns", []) if isinstance(decoded, dict) else []
+            )
+        except (json.JSONDecodeError, OSError, UnicodeDecodeError):
             return []
         if isinstance(value, list) and all(isinstance(x, str) for x in value):
             return value

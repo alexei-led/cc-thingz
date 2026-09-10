@@ -325,6 +325,33 @@ def test_project_exclude_is_nearest_ancestor_only(tmp_path: Path) -> None:
     assert err == ""
 
 
+def test_project_exclude_cannot_escape_with_parent_path(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    (project / ".claude").mkdir(parents=True)
+    (project / ".claude" / "file-protector.json").write_text(
+        json.dumps({"excludePatterns": [r"credentials\\.py$"]})
+    )
+    outside = project / "api" / "deploy" / ".." / ".." / "outside" / "credentials.py"
+    rc, err = _single(str(outside), tmp_path)
+    assert rc == 2
+    assert "BLOCKED" in err
+
+
+def test_malformed_project_exclude_values_do_not_crash_hook(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    (project / ".claude").mkdir(parents=True)
+    config = project / ".claude" / "file-protector.json"
+    for value in [[], None, "credentials\\.py$"]:
+        config.write_text(json.dumps(value))
+        rc, err = _single(str(project / "credentials.py"), tmp_path)
+        assert rc == 2
+        assert "BLOCKED" in err
+    config.write_bytes(b"{\xff")
+    rc, err = _single(str(project / "credentials.py"), tmp_path)
+    assert rc == 2
+    assert "BLOCKED" in err
+
+
 def test_relative_paths_do_not_use_project_excludes(tmp_path: Path) -> None:
     project = tmp_path / "project"
     (project / ".claude").mkdir(parents=True)
