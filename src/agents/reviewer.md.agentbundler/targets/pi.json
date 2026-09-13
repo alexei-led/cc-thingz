@@ -1,6 +1,8 @@
 {
   "frontmatterPatch": {
     "package": "cc-thingz",
-    "tools": "read, grep, find, ls"
+    "tools": "read, grep, find, ls, contact_supervisor",
+    "inheritProjectContext": true,
+    "skills": "reviewing-code, improving-tests, documenting-code, spec-flow"
   }
 }

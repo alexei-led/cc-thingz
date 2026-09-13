@@ -8,6 +8,15 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.9.5] - 2026-09-13
+
+### Fixed
+
+- Disambiguated the packaged Pi reviewer from the built-in reviewer and updated
+  the Pi workflow prompts to use canonical agent names and `workflowScript`.
+- Removed the legacy Pi agent symlink path now that package-provided agents are
+  discovered through `pi.subagents.agents`.
+
 ## [6.9.3] - 2026-09-10
 
 ### Fixed

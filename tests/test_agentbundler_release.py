@@ -424,7 +424,7 @@ def test_generated_agent_frontmatter_preserves_target_envelopes() -> None:
     pi_expected = {
         "advisor": ("read, grep, find, ls, bash", False),
         "engineer": ("read, edit, write, bash, grep, find, ls", None),
-        "reviewer": ("read, grep, find, ls", None),
+        "reviewer": ("read, grep, find, ls, contact_supervisor", None),
         "runner": ("read, grep, find, ls, bash", False),
     }
     for role, (tools, completion_guard) in pi_expected.items():
@@ -432,6 +432,12 @@ def test_generated_agent_frontmatter_preserves_target_envelopes() -> None:
         assert metadata["package"] == "cc-thingz"
         assert metadata["tools"] == tools
         assert metadata.get("completionGuard") is completion_guard
+
+    reviewer_metadata = _metadata("dist/pi/agents/reviewer.md")
+    assert reviewer_metadata["inheritProjectContext"] is True
+    assert reviewer_metadata["skills"] == (
+        "reviewing-code, improving-tests, documenting-code, spec-flow"
+    )
 
     for role in ("advisor", "reviewer", "runner"):
         profile = _codex_agent(role)

@@ -46,6 +46,22 @@ pi install "$(pwd)/dist/pi" -l
 `-l` writes the package to project settings. Restart Pi or run `/reload` after
 changing a loaded package.
 
+## Agent names and defaults
+
+Pi runtime names for the packaged agents are package-qualified:
+
+```text
+cc-thingz.advisor
+cc-thingz.engineer
+cc-thingz.reviewer
+cc-thingz.runner
+```
+
+Use `cc-thingz.reviewer` when the builtin `pi-subagents` reviewer is also
+loaded. The unqualified `reviewer` name is ambiguous in that configuration.
+The Pi reviewer is read-only, inherits project instructions, and exposes the
+review, test, documentation, and spec-flow skills.
+
 ## Portable hooks
 
 `hooks/hooks.v1.json` and `agentbundler-hooks.ts` handle portable session-start,
