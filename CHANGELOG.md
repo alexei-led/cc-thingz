@@ -8,6 +8,12 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.11.1] - 2026-09-14
+
+### Changed
+
+- Synchronized patch version metadata across all supported target distributions.
+
 ## [6.11.0] - 2026-09-14
 
 ### Added
