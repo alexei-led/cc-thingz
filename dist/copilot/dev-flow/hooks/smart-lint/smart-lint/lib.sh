@@ -51,6 +51,80 @@ resolve_node_tool() {
 	return 1
 }
 
+find_upward_file() {
+	local name="$1" dir="$PWD"
+	while [[ -n "$dir" && "$dir" != "/" ]]; do
+		if [[ -f "$dir/$name" ]]; then
+			printf '%s\n' "$dir/$name"
+			return 0
+		fi
+		dir=$(dirname "$dir")
+	done
+	return 1
+}
+
+package_json_mentions_node_tool() {
+	local tool="$1" package_json="$2"
+	[[ -f "$package_json" ]] || return 1
+	case "$tool" in
+	biome) grep -qiE '(@biomejs/biome|"biome"[[:space:]]*:|(^|[[:space:]/;&])biome([[:space:]@;&]|$))' "$package_json" 2>/dev/null ;;
+	oxfmt) grep -qiE '("oxfmt"[[:space:]]*:|(^|[[:space:]/;&])oxfmt([[:space:]@;&]|$))' "$package_json" 2>/dev/null ;;
+	oxlint) grep -qiE '(@oxc-project/oxlint|"oxlint"[[:space:]]*:|(^|[[:space:]/;&])oxlint([[:space:]@;&]|$))' "$package_json" 2>/dev/null ;;
+	eslint) grep -qiE '("eslint"[[:space:]]*:|(^|[[:space:]/;&])eslint([[:space:]@;&]|$))' "$package_json" 2>/dev/null ;;
+	prettier) grep -qiE '("prettier"[[:space:]]*:|(^|[[:space:]/;&])prettier([[:space:]@;&]|$))' "$package_json" 2>/dev/null ;;
+	*) return 1 ;;
+	esac
+}
+
+# Project declarations win; callers separately resolve installed binaries so an
+# absent declared tool can fall back without adding per-tool environment flags.
+node_tool_is_adopted() {
+	local tool="$1" package_json
+	case "$tool" in
+	biome | oxfmt | oxlint | eslint | prettier) ;;
+	*) return 1 ;;
+	esac
+	if node_tool_configured "$tool"; then return 0; fi
+	package_json=$(find_upward_file package.json || true)
+	[[ -n "$package_json" ]] || return 1
+	package_json_mentions_node_tool "$tool" "$package_json"
+}
+
+node_tool_configured() {
+	local tool="$1" dir="$PWD" marker
+	while [[ -n "$dir" && "$dir" != "/" ]]; do
+		case "$tool" in
+		biome)
+			for marker in biome.json biome.jsonc; do
+				[[ -f "$dir/$marker" ]] && return 0
+			done
+			;;
+		oxfmt)
+			for marker in .oxfmtrc .oxfmtrc.json .oxfmtrc.jsonc .oxfmtrc.js .oxfmtrc.mjs .oxfmtrc.cjs .oxfmtrc.ts .oxfmtrc.mts .oxfmtrc.cts; do
+				[[ -f "$dir/$marker" ]] && return 0
+			done
+			;;
+		oxlint)
+			for marker in .oxlintrc .oxlintrc.json .oxlintrc.jsonc oxlint.config.json oxlint.config.jsonc oxlint.config.js oxlint.config.mjs oxlint.config.cjs oxlint.config.ts oxlint.config.mts oxlint.config.cts; do
+				[[ -f "$dir/$marker" ]] && return 0
+			done
+			;;
+		eslint)
+			for marker in .eslintrc .eslintrc.json .eslintrc.json5 .eslintrc.yaml .eslintrc.yml .eslintrc.js .eslintrc.mjs .eslintrc.cjs eslint.config.js eslint.config.mjs eslint.config.cjs eslint.config.ts; do
+				[[ -f "$dir/$marker" ]] && return 0
+			done
+			;;
+		prettier)
+			for marker in .prettierrc .prettierrc.json .prettierrc.json5 .prettierrc.yaml .prettierrc.yml .prettierrc.js .prettierrc.mjs .prettierrc.cjs prettier.config.js prettier.config.mjs prettier.config.cjs prettier.config.ts; do
+				[[ -f "$dir/$marker" ]] && return 0
+			done
+			;;
+		esac
+		dir=$(dirname "$dir")
+	done
+	return 1
+}
+
 package_json_has_script() {
 	local script="$1"
 	[[ -f package.json ]] || return 1

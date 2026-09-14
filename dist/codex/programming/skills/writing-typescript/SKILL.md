@@ -14,6 +14,10 @@
 - Use for `.ts` and `.tsx`, Node.js services, React apps, typed APIs, and TypeScript design advice.
 - Do not use for Go, Python, Rust, plain HTML/CSS/JS, or server-rendered templates.
 - Follow the repository's TypeScript version, tsconfig, package manager, framework, test runner, and lint rules.
+- Prefer the project's configured Oxfmt or Biome formatter and Oxlint linter
+  when present. If no project choice exists, use available Oxfmt/Biome/Oxlint
+  before falling back to Prettier/ESLint.
+- Do not run overlapping formatter or linter passes; use one formatter and one linter for a file.
 - Do not add dependencies or switch frameworks unless the project already uses them or the user approves.
 
 ## Reference Reads
@@ -29,6 +33,7 @@
 
 - Preserve strict typing; do not weaken compiler options to pass checks.
 - Use `unknown` for untrusted input. Avoid `any`; isolate it only for unavoidable interop.
+- Keep formatter selection deterministic: project config or package declarations win; machine availability is only the fallback.
 - Validate API, JSON, env, storage, and form data at the boundary before typed use.
 - Use discriminated unions for variants, async state, and domain states.
 - Use guard clauses and focused helpers. Avoid deep nesting, global state, and mixed concerns.

@@ -54,6 +54,15 @@ while read -r local_ref local_sha remote_ref remote_sha; do
 done
 ```
 
+## Tool Selection
+
+- Prefer tools declared by project config or package dependencies.
+- If no project tool is declared, use the fastest available compatible tool, then
+  the established fallback (for example, Oxfmt → Biome → Prettier and Oxlint → Biome → ESLint).
+- Do not add one environment variable per tool. Keep the fallback order in the
+  hook implementation and report the selected tool.
+- Do not run overlapping formatter or linter passes.
+
 ## Script Discipline
 
 - Use `#!/usr/bin/env bash` with `set -euo pipefail` for Bash hooks.

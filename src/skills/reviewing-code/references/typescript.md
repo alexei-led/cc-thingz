@@ -11,6 +11,8 @@ Useful TypeScript gates:
 ```bash
 bunx tsc --noEmit
 bun test
+oxlint src tests
+# Fall back to `biome lint` or `eslint` when configured/available.
 npm audit --omit=dev
 ```
 

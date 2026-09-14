@@ -88,7 +88,7 @@ detect_project_type() {
 		types+=("jvm")
 	fi
 	# JavaScript/TypeScript project
-	if [[ -f "package.json" ]] || [[ -f "tsconfig.json" ]] || [[ -n "$(find . -maxdepth 3 \( -name "*.js" -o -name "*.ts" -o -name "*.jsx" -o -name "*.tsx" \) -type f -print -quit 2>/dev/null)" ]]; then
+	if [[ -f "package.json" ]] || [[ -f "tsconfig.json" ]] || [[ -n "$(find . -maxdepth 3 \( -name "*.js" -o -name "*.mjs" -o -name "*.cjs" -o -name "*.jsx" -o -name "*.ts" -o -name "*.mts" -o -name "*.cts" -o -name "*.tsx" \) -type f -print -quit 2>/dev/null)" ]]; then
 		types+=("javascript")
 	fi
 	# YAML files

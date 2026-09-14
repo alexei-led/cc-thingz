@@ -11,6 +11,13 @@ whole-project command. Set `HOOK_PROJECT_FALLBACK=1` to opt into existing projec
 Make/package fallback commands; `TEST_RUNNER_FULL=1` explicitly requests full
 tests. These options are declared in the portable hook environment.
 
+JavaScript and TypeScript tooling is selected without per-tool environment flags.
+Project configs and package declarations win. Without them, smart-lint uses the
+available formatter in `Oxfmt -> Biome -> Prettier` order and linter in
+`Oxlint -> Biome -> ESLint` order. It runs one formatter and one linter per file.
+The pre-push hook runs `make lint`, so the same non-mutating linter selection is
+checked before a push.
+
 Smart-lint reads native or Pi JSON once and honors its project cwd, file paths,
 and session identity. Guard hooks inspect ordinary git global options and both
 patch rename paths. They prevent common mistakes; they do not sandbox arbitrary

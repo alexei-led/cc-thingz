@@ -3,17 +3,31 @@
 Use before changing TypeScript or JavaScript lint commands, ESLint config, or
 lint-heavy verification flow.
 
-## Fast feedback
+## Tool selection
 
 - Use the project lint command and package manager first.
+- If the project declares Oxfmt, use `oxfmt` for formatting.
+- Otherwise, if the project declares Biome, use `biome format` and `biome lint`.
+- If the project declares Oxlint, use `oxlint` for linting.
+- If no project choice exists, prefer available Oxfmt/Biome for formatting and
+  Oxlint for linting, then fall back to Prettier and ESLint.
+- Do not run overlapping Biome and ESLint lint passes. Keep the configured rule
+  set authoritative.
+
+## Fast feedback
+
 - Prefer linting the changed file, package, or workspace when the command
   supports it.
-- Enable and preserve ESLint cache when the project supports it:
+- Use safe fixes only in file-modifying hooks:
 
 ```bash
-eslint "src/**/*.{js,ts,tsx}" --cache --cache-strategy content
+oxfmt --write path/to/changed.ts
+biome format --write path/to/changed.ts
+biome lint --write path/to/changed.ts
+oxlint --fix path/to/changed.ts
 ```
 
+- Keep commit and CI checks non-mutating (`biome lint`, `oxlint`, `eslint`).
 - Do not clear lint caches as a routine fix. Clear only when diagnosing cache
   corruption.
 - Keep coverage, test runners, and type-aware full-project lint separate unless
@@ -43,6 +57,14 @@ TIMING=1 eslint .
   TypeScript cache setup. Compare slow rules one at a time before disabling one.
 - Use `eslint --debug` or typescript-eslint debug output only while diagnosing;
   keep debug output off the hot path.
+
+## Legacy fallback
+
+- Use Biome when Oxfmt is unavailable or not selected for formatting.
+- Use Prettier when Oxfmt and Biome are unavailable or not selected for formatting.
+- Use ESLint when Oxlint and Biome are unavailable or not selected for linting.
+- Invoke project package scripts for whole-project checks instead of widening a
+  file-scoped edit-loop command.
 
 ## Output discipline
 

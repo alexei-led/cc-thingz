@@ -110,8 +110,8 @@ compiler or post-build copier.
 ## Git hooks and CI
 
 `make setup` installs the repository hooks. Pre-commit runs lint/validation and
-rebuilds when `src/` or `agentbundle.json` changes. Pre-push runs `make check`,
-Python tests, and TypeScript tests. CI installs the pinned Agent Bundler release
+rebuilds when `src/` or `agentbundle.json` changes. Pre-push runs `make lint`,
+`make check`, Python tests, and TypeScript tests. CI installs the pinned Agent Bundler release
 from `.agentbundler-version` before `make validate`, `make check`, and tests.
 The separate scheduled canary checks upstream latest without changing the release
 pin. Core runtime smoke dependencies live in `tests/vendor-smoke/package-lock.json`;

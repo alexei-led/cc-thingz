@@ -6,7 +6,7 @@ Portable skills, agents, and typed hooks for Pi, Claude Code, Codex CLI, Copilot
 
 ```bash
 make build    # render package targets and typed hooks with Agent Bundler
-make fmt      # auto-fix ruff + shfmt + markdownlint
+make fmt      # auto-fix Ruff + configured JS formatter (Oxfmt/Biome/Prettier) + shfmt
 make check    # fail on generated drift without rewriting dist
 make ci       # lint + validate + check + test + test-ts
 ```

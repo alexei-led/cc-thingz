@@ -89,7 +89,7 @@ SH
 	git config user.email test@example.com
 	git config user.name Test
 	mkdir -p bin node_modules/.bin src
-	touch package.json src/app.ts
+	touch package.json .prettierrc eslint.config.js src/app.ts
 	cat >node_modules/.bin/prettier <<'SH'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >"$PWD/prettier.args"
@@ -112,6 +112,143 @@ SH
 	[ "$status" -eq 0 ]
 	[ "$(cat prettier.args)" = "--write src/app.ts" ]
 	[ "$(cat eslint.args)" = "--fix src/app.ts" ]
+}
+
+@test "smart-lint: adopted Biome combines formatting and linting" {
+	cd "$WORK_DIR" || exit
+	git init -q
+	git config user.email test@example.com
+	git config user.name Test
+	mkdir -p bin src
+	printf '{}\n' >biome.json
+	printf '{}\n' >package.json
+	touch src/app.ts
+	cat >bin/biome <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/biome.args"
+SH
+	cat >bin/prettier <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/prettier.args"
+exit 99
+SH
+	cat >bin/eslint <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/eslint.args"
+exit 99
+SH
+	chmod +x bin/biome bin/prettier bin/eslint
+
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_biome\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"src/app.ts\"}}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat biome.args)" = "check --write src/app.ts" ]
+	[ ! -f prettier.args ]
+	[ ! -f eslint.args ]
+}
+
+@test "smart-lint: adopted Oxfmt owns formatting while Oxlint lints" {
+	cd "$WORK_DIR" || exit
+	git init -q
+	git config user.email test@example.com
+	git config user.name Test
+	mkdir -p bin src
+	printf '{}\n' >.oxfmtrc.json
+	printf '{}\n' >.oxlintrc.json
+	touch src/app.ts
+	cat >bin/oxfmt <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/oxfmt.args"
+SH
+	cat >bin/oxlint <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/oxlint.args"
+SH
+	chmod +x bin/oxfmt bin/oxlint
+
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_oxfmt\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"src/app.ts\"}}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat oxfmt.args)" = "--write src/app.ts" ]
+	[ "$(cat oxlint.args)" = "--fix src/app.ts" ]
+}
+
+@test "smart-lint: adopted Oxlint owns lint while Biome formats" {
+	cd "$WORK_DIR" || exit
+	git init -q
+	git config user.email test@example.com
+	git config user.name Test
+	mkdir -p bin src
+	printf '{}\n' >biome.json
+	printf '{}\n' >.oxlintrc.json
+	touch src/app.ts
+	cat >bin/biome <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/biome.args"
+SH
+	cat >bin/oxlint <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/oxlint.args"
+SH
+	chmod +x bin/biome bin/oxlint
+
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_oxlint\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"src/app.ts\"}}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat biome.args)" = "format --write src/app.ts" ]
+	[ "$(cat oxlint.args)" = "--fix src/app.ts" ]
+}
+
+@test "smart-lint: available Biome and Oxlint are used without project config" {
+	cd "$WORK_DIR" || exit
+	git init -q
+	git config user.email test@example.com
+	git config user.name Test
+	mkdir -p bin src
+	printf '{}\n' >package.json
+	touch src/app.ts
+	for tool in biome oxlint; do
+		cat >"bin/$tool" <<SH
+#!/usr/bin/env bash
+printf '%s\\n' "\$*" >"\$PWD/$tool.args"
+SH
+	done
+	cat >bin/prettier <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/prettier.args"
+exit 99
+SH
+	cat >bin/eslint <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/eslint.args"
+exit 99
+SH
+	chmod +x bin/biome bin/oxlint bin/prettier bin/eslint
+
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_machine\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"src/app.ts\"}}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat biome.args)" = "format --write src/app.ts" ]
+	[ "$(cat oxlint.args)" = "--fix src/app.ts" ]
+	[ ! -f prettier.args ]
+	[ ! -f eslint.args ]
+}
+
+@test "smart-lint: package-declared Biome enables an installed binary" {
+	cd "$WORK_DIR" || exit
+	git init -q
+	git config user.email test@example.com
+	git config user.name Test
+	mkdir -p bin src
+	cat >package.json <<'JSON'
+{"devDependencies":{"@biomejs/biome":"latest"}}
+JSON
+	touch src/app.ts
+	cat >bin/biome <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/biome.args"
+SH
+	chmod +x bin/biome
+
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_biome_package\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"src/app.ts\"}}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat biome.args)" = "check --write src/app.ts" ]
 }
 
 @test "smart-lint: Rust uses rustfmt and Cargo clippy on nearest manifest" {

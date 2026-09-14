@@ -177,7 +177,12 @@ agbun package --root . --out /tmp/cc-thingz-release
 `make validate` checks Agent Bundler availability, source genericity, and
 executable source scripts. `make test` verifies source/release helpers, hook
 manifests, target inventories, agent envelopes, version consistency, archives,
-and Pi decision-hook protocol output. `make test-ts` covers Pi-native extension
+and Pi decision-hook protocol output.
+
+JS/TS hooks select project-declared tooling first. Without a project choice, they
+use available Oxfmt, Biome, and Oxlint before falling back to Prettier and ESLint.
+The formatter and linter are selected independently, so overlapping lint passes
+are not run. `make fmt` and `make lint` use the same selection policy. `make test-ts` covers Pi-native extension
 and compatibility-runner behavior.
 
 ## Contributing

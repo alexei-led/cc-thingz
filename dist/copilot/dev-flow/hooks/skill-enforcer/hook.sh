@@ -46,13 +46,13 @@ fi
 
 # writing-python: Idiomatic Python 3.12+ development
 # Triggers: .py files, Python commands, Python frameworks
-if echo "$PROMPT_LOWER" | grep -qE '\.pyi?\b|pyproject|requirements\.txt|setup\.py|__init__|python[3]?\b|\buv (run|pip|sync|add|lock)|\bruff\b|pytest|poetry\b|mypy\b|django|flask|fastapi|pandas|numpy|pydantic|dataclass|type\s*hint|\btyping\b|asyncio|pip install|write.*python|implement.*python'; then
+if echo "$PROMPT_LOWER" | grep -qE '\.pyi?\b|pyproject|requirements\.txt|setup\.py|__init__|python[3]?\b|\buv (run|pip|sync|add|lock)|\bruff\b|\bty\b|pytest|poetry\b|mypy\b|django|flask|fastapi|pandas|numpy|pydantic|dataclass|type\s*hint|\btyping\b|asyncio|pip install|write.*python|implement.*python'; then
 	skills+="writing-python "
 fi
 
 # writing-typescript: TypeScript development with strict typing
 # Triggers: .ts files, TypeScript commands, Node.js/React/Bun
-if echo "$PROMPT_LOWER" | grep -qE '\.(ts|tsx)\b|typescript|tsconfig|package\.json|\bnpm\b|\bbun\b|\byarn\b|\bvite\b|react|next\.?js|node\.?js|\bexpress\b|\best\b|vitest|jest|eslint|prettier|write.*typescript|implement.*\bts\b|strict typing'; then
+if echo "$PROMPT_LOWER" | grep -qE '\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)\b|typescript|tsconfig|package\.json|\bnpm\b|\bbun\b|\byarn\b|\bvite\b|react|next\.?js|node\.?js|\bexpress\b|\best\b|vitest|jest|biome|oxlint|oxfmt|eslint|prettier|write.*typescript|implement.*\bts\b|strict typing'; then
 	skills+="writing-typescript "
 fi
 

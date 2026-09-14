@@ -16,7 +16,8 @@ Before editing:
 ```bash
 bun x tsc --noEmit
 bun test
-npx eslint path/to/changed/
+oxlint path/to/changed/
+# Fall back to biome lint or eslint when the project does not use Oxlint.
 ```
 
 Run `tsc --noEmit` before each batch to catch type errors. Run the full test suite before final output.

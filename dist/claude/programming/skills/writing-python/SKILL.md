@@ -1,5 +1,5 @@
 ---
-{"agent":"engineer","allowed-tools":["Read","Bash","Grep","Glob","Edit","Write","LS"],"context":"fork","description":"Idiomatic Python 3.12+ development. Use when writing Python code, CLI tools, scripts, or services. Emphasizes stdlib, type hints, fast pytest feedback, uv/ruff/pyright toolchain, and minimal dependencies. NOT for Go, Rust, TypeScript, or shell-only tasks.","name":"writing-python","user-invocable":false}
+{"agent":"engineer","allowed-tools":["Read","Bash","Grep","Glob","Edit","Write","LS"],"context":"fork","description":"Idiomatic Python 3.12+ development. Use when writing Python code, CLI tools, scripts, or services. Emphasizes stdlib, type hints, fast pytest feedback, uv/ruff/pyright toolchain, optional project-adopted ty, and minimal dependencies. NOT for Go, Rust, TypeScript, or shell-only tasks.","name":"writing-python","user-invocable":false}
 ---
 
 # Python Development
@@ -35,7 +35,7 @@ Read [principles.md](references/principles.md) before generating or changing Pyt
 
 ## Verification
 
-Run project-configured tests, lint, format, and type checks. Prefer focused pytest commands for the edit loop, then the broader project command before final output. Prefer pytest, ruff, and pyright when present.
+Run project-configured tests, lint, format, and type checks. Prefer focused pytest commands for the edit loop, then the broader project command before final output. Prefer pytest and Ruff when present. Use project-adopted `ty` for type checks when configured; otherwise use Pyright or the project's configured checker.
 
 If a tool is not configured, say so and run the closest available gate. If a check fails, diagnose the cause, make a targeted fix, and rerun the relevant check.
 

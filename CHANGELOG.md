@@ -8,6 +8,28 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.10.0] - 2026-09-14
+
+### Added
+
+- Added automatic Oxfmt, Biome, and Oxlint selection for JavaScript and
+  TypeScript hooks, with Prettier and ESLint fallbacks.
+- Added `scripts/tooling/js-tools.sh` for consistent JS/TS selection in `make fmt`
+  and `make lint`.
+
+### Changed
+
+- JS/TS tooling now respects project configuration and package declarations
+  before using the fastest compatible tool available on the machine.
+- Pre-push now runs the full lint/type-check gate before build and tests.
+- Updated language skills and runtime documentation with the modern fallback
+  policy.
+
+### Fixed
+
+- Extended smart-lint detection to modern JavaScript module extensions and
+  corrected formatter status tracking for YAML, JSON, and Terraform.
+
 ## [6.9.5] - 2026-09-13
 
 ### Fixed

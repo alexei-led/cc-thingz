@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Pre-commit: fast checks only — lint, format, secrets on staged files.
+# Pre-commit: fast lint/validation and secrets checks.
 # Heavier drift validation and the full test suite run in pre-push.
 # Install: make setup (uses core.hooksPath, no copy needed)
 set -euo pipefail
 
 echo "=== Pre-commit (fast) ==="
 
-# Fast linters: ruff is sub-second, shellcheck/shfmt only run on staged files
+# Fast linters: Ruff and Biome/Oxlint when available; shellcheck/shfmt remain enabled
 make lint || {
 	echo "FAIL: make lint — run 'make fmt' to auto-fix"
 	exit 1

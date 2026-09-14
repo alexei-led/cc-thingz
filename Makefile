@@ -18,7 +18,7 @@ SKILL_EVAL_CLI ?= $(shell if command -v agent-skills-eval >/dev/null 2>&1; then 
 # --- Lint ---
 
 .PHONY: lint lint-python lint-shell lint-markdown lint-typescript
-lint: lint-python lint-shell lint-markdown lint-typescript ## Run all linters
+lint: lint-python lint-shell lint-markdown lint-typescript ## Run all linters (modern tools when available)
 
 lint-python: ## Lint Python files with ruff
 	uv run ruff check .
@@ -36,7 +36,8 @@ lint-shell: ## Lint shell scripts with shellcheck + shfmt (matches CI's action-s
 lint-markdown: ## Lint Markdown files
 	bunx --no-install markdownlint-cli2 '**/*.md' '!**/node_modules/**' '!.pi-subagents/**'
 
-lint-typescript: ## Type-check Pi extension TypeScript
+lint-typescript: ## Lint and type-check Pi extension TypeScript
+	@scripts/tooling/js-tools.sh lint
 	bun x tsc --noEmit
 
 # --- Test ---
@@ -116,9 +117,10 @@ validate-executables: ## Check shell + Python entry scripts have executable bit
 # --- Format ---
 
 .PHONY: fmt
-fmt: ## Auto-format Python and shell files
+fmt: ## Auto-format Python, JavaScript/TypeScript, and shell files
 	uv run ruff check --fix .
 	uv run ruff format .
+	@scripts/tooling/js-tools.sh format
 	find src scripts -name '*.sh' -exec shfmt -i 0 -w {} +
 	shfmt -i 0 -w scripts/git-hooks/pre-commit scripts/git-hooks/pre-push scripts/release/release-tag
 

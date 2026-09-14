@@ -30,5 +30,6 @@ Before claiming fixed:
 
 - Failing test or repro no longer fails.
 - `tsc --noEmit` exits clean.
-- ESLint and project lint script exit clean on changed files.
+- The configured JS/TS lint path exits clean on changed files: prefer Oxlint,
+  then Biome, then ESLint.
 - No new unhandled promise rejection warnings at runtime.

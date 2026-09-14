@@ -27,6 +27,12 @@ fi
 
 echo "=== Pre-push (full) ==="
 
+# Full lint/type checks, including the fastest available JS tooling.
+make lint || {
+	echo "FAIL: make lint"
+	exit 1
+}
+
 # Agent Bundler rebuilds and checks the complete generated tree.
 make check || {
 	echo "FAIL: make check"

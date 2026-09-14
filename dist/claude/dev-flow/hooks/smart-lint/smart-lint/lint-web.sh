@@ -14,7 +14,7 @@ lint_yaml() {
 	fi
 
 	if command_exists yq; then
-		mark_tool_ran
+		mark_format_ran
 		# Process each file individually to prevent content merging
 		for file in "${files[@]}"; do
 			if ! yq eval -P -i "$file" 2>/dev/null; then
@@ -39,8 +39,69 @@ lint_json() {
 		return 0
 	fi
 
-	if command_exists jq; then
-		mark_tool_ran
+	local oxfmt_bin="" biome_bin="" prettier_bin="" formatter_kind="none"
+	local oxfmt_project=0 biome_project=0 prettier_project=0
+	node_tool_is_adopted oxfmt && oxfmt_project=1
+	node_tool_is_adopted biome && biome_project=1
+	node_tool_is_adopted prettier && prettier_project=1
+	if [[ "$oxfmt_project" -eq 1 ]]; then
+		oxfmt_bin=$(resolve_node_tool oxfmt || true)
+		[[ -n "$oxfmt_bin" ]] && formatter_kind="oxfmt"
+	fi
+	if [[ "$formatter_kind" == "none" && "$biome_project" -eq 1 ]]; then
+		biome_bin=$(resolve_node_tool biome || true)
+		[[ -n "$biome_bin" ]] && formatter_kind="biome"
+	fi
+	if [[ "$formatter_kind" == "none" && "$prettier_project" -eq 1 ]]; then
+		prettier_bin=$(resolve_node_tool prettier || true)
+		[[ -n "$prettier_bin" ]] && formatter_kind="prettier"
+	fi
+	if [[ "$formatter_kind" == "none" ]]; then
+		oxfmt_bin=$(resolve_node_tool oxfmt || true)
+		if [[ -n "$oxfmt_bin" ]]; then
+			formatter_kind="oxfmt"
+		else
+			biome_bin=$(resolve_node_tool biome || true)
+			if [[ -n "$biome_bin" ]]; then
+				formatter_kind="biome"
+			elif command_exists jq; then
+				formatter_kind="jq"
+			else
+				prettier_bin=$(resolve_node_tool prettier || true)
+				[[ -n "$prettier_bin" ]] && formatter_kind="prettier"
+			fi
+		fi
+	fi
+
+	case "$formatter_kind" in
+	oxfmt)
+		local oxfmt_files=() file
+		for file in "${files[@]}"; do
+			if head -1 "$file" | grep -q '^#!'; then
+				log_debug "Skipping $file (script with .json extension)"
+			else
+				oxfmt_files+=("$file")
+			fi
+		done
+		if [[ "${#oxfmt_files[@]}" -gt 0 ]]; then
+			run_formatter_on_files --format-only "JSON Formatter (oxfmt)" "$oxfmt_bin --write" "" "${oxfmt_files[@]}"
+		fi
+		;;
+	biome)
+		local biome_files=() file
+		for file in "${files[@]}"; do
+			if head -1 "$file" | grep -q '^#!'; then
+				log_debug "Skipping $file (script with .json extension)"
+			else
+				biome_files+=("$file")
+			fi
+		done
+		if [[ "${#biome_files[@]}" -gt 0 ]]; then
+			run_formatter_on_files --format-only "JSON Formatter (biome)" "$biome_bin format --write" "" "${biome_files[@]}"
+		fi
+		;;
+	jq)
+		mark_format_ran
 		log_debug "Running JSON formatter on files: ${files[*]}"
 		for file in "${files[@]}"; do
 			if head -1 "$file" | grep -q '^#!'; then
@@ -55,13 +116,11 @@ lint_json() {
 				add_error "JSON Formatter (jq)" "Failed to write $file"
 			fi
 		done
-	else
-		local prettier_bin
-		prettier_bin=$(resolve_node_tool prettier || true)
-		if [[ -n "$prettier_bin" ]]; then
-			run_formatter_on_files --format-only "JSON Formatter (prettier)" "$prettier_bin --write" "" "${files[@]}"
-		fi
-	fi
+		;;
+	prettier)
+		run_formatter_on_files --format-only "JSON Formatter (prettier)" "$prettier_bin --write" "" "${files[@]}"
+		;;
+	esac
 }
 
 lint_github_actions() {
@@ -99,7 +158,7 @@ lint_terraform() {
 	fi
 
 	if command_exists terraform; then
-		mark_tool_ran
+		mark_format_ran
 		log_debug "Found changed Terraform files, running terraform fmt on edited files"
 		if ! output=$(terraform fmt "${files[@]}" 2>&1); then
 			add_error "Terraform Formatter" "$(compact_output "$output")"

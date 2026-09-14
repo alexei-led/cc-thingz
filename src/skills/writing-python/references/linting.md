@@ -21,11 +21,13 @@ uv run pyright path/to/file.py
 - Use `uv run ruff check --fix .` and `uv run ruff format .` to apply fixes, then re-run the check.
 - Do not disable or narrow ruff rules just to make a scoped change pass. Fix the code or ask before changing `pyproject.toml` rule config.
 
-## Pyright
+## Type checking
 
-- Run `uv run pyright` (or the project's configured invocation) before final output when the change touches typed code.
+- Use project-configured `ty check` when the project adopts ty.
+- Otherwise run `uv run pyright` (or the project's configured invocation) before final output when the change touches typed code.
+- Fall back to the project's configured mypy or Pyright command when ty is unavailable.
 - Do not loosen `pyproject.toml`/`pyrightconfig.json` strictness or add blanket `# type: ignore` to silence an error. Fix the type or narrow the ignore with a reason.
-- If pyright reports missing imports or stubs, check `uv.lock`/dependencies before adding a suppression.
+- If a checker reports missing imports or stubs, check `uv.lock`/dependencies before adding a suppression.
 
 ## Do not weaken signal
 
@@ -42,3 +44,5 @@ uv run ruff check .
 uv run ruff format --check .
 uv run pyright
 ```
+
+Use `ty check` instead of Pyright only when the project has adopted ty.
