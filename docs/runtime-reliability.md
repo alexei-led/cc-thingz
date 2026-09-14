@@ -1,4 +1,4 @@
-# Runtime reliability and upgrading to 6.9
+# Runtime reliability and upgrading to 6.11
 
 ## Automatic checks
 
@@ -16,7 +16,8 @@ Project configs and package declarations win. Without them, smart-lint uses the
 available formatter in `Oxfmt -> Biome -> Prettier` order and linter in
 `Oxlint -> Biome -> ESLint` order. It runs one formatter and one linter per file.
 The pre-push hook runs `make lint`, so the same non-mutating linter selection is
-checked before a push.
+checked before a push. The repository helper discovers top-level JS/TS roots
+such as `src/`, `test/`, and `tests/`; it skips a project with no JS/TS roots.
 
 Smart-lint reads native or Pi JSON once and honors its project cwd, file paths,
 and session identity. Guard hooks inspect ordinary git global options and both
@@ -52,6 +53,22 @@ them or completes the task. See [skill evals](skill-evals.md).
   `--price-per-tib`; `--max-bytes` and `--max-usd` are noninteractive thresholds.
 - specctl rejects blocked tasks and preserves the original session on repeated
   start. Its completion text remains human/agent evidence, not attestation.
+
+## Real-project verification
+
+The released tooling was checked without modifying tracked files in:
+
+- `ccgram` — Ruff lint and tests passed.
+- `reflex` — Ruff and format checks passed; Pyright still needs the generated
+  local imports and optional dependencies available.
+- `pumba` — golangci-lint reported two existing `gci` fixes; Go tests were
+  blocked by a Podman temporary-socket path limit.
+- `pi-model-router` — Oxlint completed with warnings.
+- `pi-subagents-skill-layout` — the project Biome check passed.
+
+`omni` is intentionally excluded from this smoke pass because it is a large
+monorepo. These checks are evidence of integration, not a replacement for each
+project's own CI gate.
 
 ## Installation and verification
 

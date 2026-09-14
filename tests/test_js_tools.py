@@ -34,6 +34,8 @@ def test_prefers_oxfmt_for_formatting_when_available(tmp_path: Path) -> None:
     (tmp_path / "src").mkdir()
     (tmp_path / "tests").mkdir()
     (tmp_path / "package.json").write_text("{}\n")
+    (tmp_path / "src" / "example.ts").write_text("const value = 1;\n")
+    (tmp_path / "tests" / "example.ts").write_text("const value = 1;\n")
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     fake_tool(bin_dir, "oxfmt")
@@ -50,9 +52,39 @@ def test_prefers_oxfmt_for_formatting_when_available(tmp_path: Path) -> None:
     assert not (tmp_path / "biome.args").exists()
 
 
+def test_discovers_nonstandard_js_roots(tmp_path: Path) -> None:
+    (tmp_path / "src").mkdir()
+    (tmp_path / "test").mkdir()
+    (tmp_path / "package.json").write_text("{}\n")
+    (tmp_path / "src" / "example.ts").write_text("const value = 1;\n")
+    (tmp_path / "test" / "example.ts").write_text("const value = 1;\n")
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    fake_tool(bin_dir, "biome")
+
+    result = run_tool(tmp_path, "lint", bin_dir)
+
+    assert result.returncode == 0, result.stdout
+    assert (tmp_path / "biome.args").read_text() == "lint src test\n"
+
+
+def test_skips_when_project_has_no_js_roots(tmp_path: Path) -> None:
+    (tmp_path / "package.json").write_text("{}\n")
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    fake_tool(bin_dir, "biome")
+
+    result = run_tool(tmp_path, "lint", bin_dir)
+
+    assert result.returncode == 0, result.stdout
+    assert not (tmp_path / "biome.args").exists()
+
+
 def test_uses_fast_tools_when_project_has_no_tool_choice(tmp_path: Path) -> None:
     (tmp_path / "src").mkdir()
     (tmp_path / "tests").mkdir()
+    (tmp_path / "src" / "example.ts").write_text("const value = 1;\n")
+    (tmp_path / "tests" / "example.ts").write_text("const value = 1;\n")
     (tmp_path / "package.json").write_text("{}\n")
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
@@ -71,6 +103,7 @@ def test_uses_fast_tools_when_project_has_no_tool_choice(tmp_path: Path) -> None
 def test_project_formatter_and_linter_win_over_machine_defaults(tmp_path: Path) -> None:
     (tmp_path / "src").mkdir()
     (tmp_path / "tests").mkdir()
+    (tmp_path / "src" / "example.ts").write_text("const value = 1;\n")
     (tmp_path / ".prettierrc").write_text("{}\n")
     (tmp_path / "eslint.config.js").write_text("export default [];\n")
     bin_dir = tmp_path / "bin"

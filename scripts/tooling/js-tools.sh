@@ -104,16 +104,34 @@ node_tool_adopted() {
 	package_json_mentions_tool "$tool"
 }
 
-js_globs=(
-	'src/**/*.js' 'src/**/*.mjs' 'src/**/*.cjs' 'src/**/*.jsx'
-	'src/**/*.ts' 'src/**/*.mts' 'src/**/*.cts' 'src/**/*.tsx'
-	'tests/**/*.js' 'tests/**/*.mjs' 'tests/**/*.cjs' 'tests/**/*.jsx'
-	'tests/**/*.ts' 'tests/**/*.mts' 'tests/**/*.cts' 'tests/**/*.tsx'
-)
+js_roots=()
+if find . -maxdepth 1 -type f \( -name '*.js' -o -name '*.mjs' -o -name '*.cjs' -o -name '*.jsx' -o -name '*.ts' -o -name '*.mts' -o -name '*.cts' -o -name '*.tsx' \) -print -quit 2>/dev/null | grep -q .; then
+	js_roots+=(.)
+fi
+while IFS= read -r candidate; do
+	if find "$candidate" -type f \( -name '*.js' -o -name '*.mjs' -o -name '*.cjs' -o -name '*.jsx' -o -name '*.ts' -o -name '*.mts' -o -name '*.cts' -o -name '*.tsx' \) \
+		-not -path '*/.git/*' -not -path '*/node_modules/*' -not -path '*/dist/*' -print -quit 2>/dev/null | grep -q .; then
+		js_roots+=("${candidate#./}")
+	fi
+done < <(find . -mindepth 1 -maxdepth 1 -type d \
+	-not -name .git -not -name node_modules -not -name dist -not -name build -not -name .venv -print | sort)
+
+js_globs=()
+if [[ -n "${js_roots[*]-}" ]]; then
+	for root in "${js_roots[@]}"; do
+		for extension in js mjs cjs jsx ts mts cts tsx; do
+			js_globs+=("$root/**/*.$extension")
+		done
+	done
+fi
 
 run_format() {
 	local oxfmt_bin="" biome_bin="" prettier_bin="" formatter="none"
 	local oxfmt_project=0 biome_project=0 prettier_project=0
+	if [[ -z "${js_roots[*]-}" ]]; then
+		echo "JS formatter: skipped (no JS/TS roots)" >&2
+		return 0
+	fi
 	node_tool_adopted oxfmt && oxfmt_project=1
 	node_tool_adopted biome && biome_project=1
 	node_tool_adopted prettier && prettier_project=1
@@ -148,11 +166,11 @@ run_format() {
 	case "$formatter" in
 	oxfmt)
 		echo "JS formatter: oxfmt"
-		"$oxfmt_bin" --write src tests
+		"$oxfmt_bin" --write "${js_roots[@]}"
 		;;
 	biome)
 		echo "JS formatter: biome"
-		"$biome_bin" format --write src tests
+		"$biome_bin" format --write "${js_roots[@]}"
 		;;
 	prettier)
 		echo "JS formatter: prettier (fallback)"
@@ -165,6 +183,10 @@ run_format() {
 run_lint() {
 	local biome_bin="" oxlint_bin="" eslint_bin="" linter="none"
 	local biome_project=0 oxlint_project=0 eslint_project=0
+	if [[ -z "${js_roots[*]-}" ]]; then
+		echo "JS linter: skipped (no JS/TS roots)" >&2
+		return 0
+	fi
 	node_tool_adopted biome && biome_project=1
 	node_tool_adopted oxlint && oxlint_project=1
 	node_tool_adopted eslint && eslint_project=1
@@ -197,11 +219,11 @@ run_lint() {
 	case "$linter" in
 	oxlint)
 		echo "JS linter: oxlint"
-		"$oxlint_bin" src tests
+		"$oxlint_bin" "${js_roots[@]}"
 		;;
 	biome)
 		echo "JS linter: biome"
-		"$biome_bin" lint src tests
+		"$biome_bin" lint "${js_roots[@]}"
 		;;
 	eslint)
 		echo "JS linter: eslint (fallback)"

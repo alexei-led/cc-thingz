@@ -8,6 +8,21 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.11.0] - 2026-09-14
+
+### Added
+
+- Added JS/TS root discovery to the shared tooling resolver so projects using
+  `test/`, `extensions/`, or other top-level source roots do not receive checks
+  for missing `src/` or `tests/` paths.
+- Documented real-project smoke validation for the modern tooling fallback
+  chains.
+
+### Fixed
+
+- Prevented the JS/TS helper from passing nonexistent hard-coded directories to
+  Biome, Oxlint, or Oxfmt.
+
 ## [6.10.0] - 2026-09-14
 
 ### Added

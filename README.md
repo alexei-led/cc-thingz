@@ -182,8 +182,10 @@ and Pi decision-hook protocol output.
 JS/TS hooks select project-declared tooling first. Without a project choice, they
 use available Oxfmt, Biome, and Oxlint before falling back to Prettier and ESLint.
 The formatter and linter are selected independently, so overlapping lint passes
-are not run. `make fmt` and `make lint` use the same selection policy. `make test-ts` covers Pi-native extension
-and compatibility-runner behavior.
+are not run. The resolver discovers top-level JS/TS roots such as `src/`,
+`test/`, and `tests/`, and skips projects without JS/TS files. `make fmt` and
+`make lint` use the same selection policy. `make test-ts` covers Pi-native
+extension and compatibility-runner behavior.
 
 ## Contributing
 
