@@ -8,6 +8,9 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.11.2] - 2026-09-15
+
+
 ### Fixed
 
 - Aligned Pi instructions and config-audit guidance with current pi-subagents behavior:
