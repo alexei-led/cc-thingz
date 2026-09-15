@@ -8,6 +8,13 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+### Fixed
+
+- Aligned Pi instructions and config-audit guidance with current pi-subagents behavior:
+  one model per launch, explicit new-run retries after checking partial work,
+  and native async completion notifications instead of the old `wait` guidance.
+- Updated standalone pi-subagents compatibility smoke tests to use the current unversioned package spec.
+
 ## [6.11.1] - 2026-09-14
 
 ### Changed

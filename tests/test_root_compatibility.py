@@ -15,7 +15,7 @@ from typing import Any
 import pytest
 from conftest import REPO_ROOT
 
-PI_SUBAGENTS_PACKAGE = "npm:pi-subagents@0.35.1"
+PI_SUBAGENTS_PACKAGE = "npm:pi-subagents"
 
 ROOT_COMPATIBILITY_FILES = (
     "package.json",

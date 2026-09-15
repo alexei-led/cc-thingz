@@ -39,6 +39,20 @@ When available in this repo or installation, read Pi docs before web research:
 - `AGENTS.md` contains durable global or repo guidance, not per-task transcripts.
 - Pi-specific reality is respected: no built-in MCP, subagents, plan mode, permission popups, or todos unless extensions or packages provide them.
 
+## Current pi-subagents
+
+- Keep one `model` per agent override or watchdog scope. Current single-model
+  releases reject `fallbackModels` in agents, overrides, and watchdog settings;
+  even empty arrays fail.
+- In merge-based dotfiles, delete stale keys from existing settings as well as
+  desired defaults. Check user and project scopes; regenerate package assets from
+  source rather than editing installed exports.
+- Another model requires an explicit new launch, not resume or an automatic
+  fallback chain. First inspect the failed run, confirm it stopped, and reconcile
+  partial writes and external actions. Keep the task's permissions and isolation.
+- Use the owning workflow/controller for retries. Do not bypass a failed workflow
+  with a CLI or retry configuration/loader failures on another model.
+
 ## Common fixes
 
 - Move private package paths, sessions, or model defaults to user settings.

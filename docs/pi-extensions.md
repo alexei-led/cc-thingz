@@ -62,6 +62,40 @@ loaded. The unqualified `reviewer` name is ambiguous in that configuration.
 The Pi reviewer is read-only, inherits project instructions, and exposes the
 review, test, documentation, and spec-flow skills.
 
+## Models and retries
+
+This guidance applies to current pi-subagents releases with the single-model
+launch contract. Install the current `pi-subagents` release rather than pinning
+an exact version; older releases that still support `fallbackModels` need their
+version-matched documentation. The compatibility smoke tests use the unversioned
+`npm:pi-subagents` package spec.
+
+Current releases reject `fallbackModels` in agent definitions, overrides, and
+watchdog settings. Delete the key, including empty arrays; there is no replacement
+fallback-chain setting. Each launch resolves one model and returns its outcome.
+
+For a provider or quota failure:
+
+1. Record the failed run ID, error, selected model, and working directory.
+2. Confirm the child stopped; inspect its outputs and partial diff before replaying
+   work. Do not repeat completed writes or external actions blindly.
+3. Start a new run with an explicit available `model`, preserving the task's tools,
+   skills, isolation, and approval scope. Link it to the failed run in the handoff.
+   A resume keeps the original model contract; it is not a model-switch mechanism.
+4. Use the owning workflow/controller for managed runs. If it cannot express the
+   retry, stop and ask the operator; do not bypass it with a CLI or another agent.
+
+Do not retry loader, configuration, permission, or code failures on another model.
+Do not turn these steps into an automatic retry loop. Ordinary async subagents
+notify the parent natively; yield instead of polling or calling `bg_wait` merely
+because a child is active. Use blocking `bg_wait` only for provider, detached,
+or other background work without a native notification when a required same-turn
+result is needed.
+
+See the upstream [model selection and retries
+documentation](https://github.com/nicobailon/pi-subagents/blob/main/docs/models.md)
+for the current contract.
+
 ## Portable hooks
 
 `hooks/hooks.v1.json` and `agentbundler-hooks.ts` handle portable session-start,
