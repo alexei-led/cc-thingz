@@ -8,6 +8,9 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.12.0] - 2026-09-24
+
+
 ### Added
 
 - `documenting-code` has two modes: Update, for docs that a code change made
