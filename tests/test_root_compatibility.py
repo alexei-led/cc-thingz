@@ -333,6 +333,16 @@ def test_repository_root_pi_package_loads_from_git_checkout(tmp_path: Path) -> N
         if key.startswith("GIT_"):
             git_environment.pop(key)
 
+    # Background maintenance can expose temporary pack names to the HTTP clone.
+    git_environment.update(
+        {
+            "GIT_CONFIG_COUNT": "2",
+            "GIT_CONFIG_KEY_0": "maintenance.auto",
+            "GIT_CONFIG_VALUE_0": "false",
+            "GIT_CONFIG_KEY_1": "gc.auto",
+            "GIT_CONFIG_VALUE_1": "0",
+        }
+    )
     source = tmp_path / "source"
     source.mkdir()
     shutil.copy2(REPO_ROOT / "package.json", source / "package.json")
