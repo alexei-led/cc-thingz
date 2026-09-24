@@ -102,3 +102,31 @@ def test_real_hook_runs_bilingual_fixture_sample():
     assert report["summary"]["cases"] == 3
     assert set(report["by_language"]) == {"en", "ru"}
     assert report["summary"]["nonzero_hook_exits"] == 0
+
+
+def test_real_hook_routes_doc_writing_and_doc_lookup():
+    if not shutil.which("jq"):
+        pytest.skip("actual hook requires jq")
+    doc_ids = {
+        "docs-architecture-rewrite",
+        "docs-readme-front-page",
+        "docs-all-readable",
+        "docs-release-notes",
+        "ru-docs-rewrite",
+        "docs-lookup-still-routes",
+        "docs-lookup-documentation-say",
+        "docs-api",
+    }
+    cases = [
+        case
+        for case in routing.load_cases(routing.DEFAULT_FIXTURES)
+        if case["id"] in doc_ids
+    ]
+    assert {case["id"] for case in cases} == doc_ids
+    report = routing.evaluate(routing.DEFAULT_HOOK, cases)
+    mismatches = {
+        row["id"]: {"missing": row["missing"], "unexpected": row["unexpected"]}
+        for row in report["cases"]
+        if row["missing"] or row["unexpected"]
+    }
+    assert mismatches == {}
