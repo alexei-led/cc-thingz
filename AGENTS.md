@@ -70,10 +70,11 @@ Routing lives in the orchestrator instructions (`CLAUDE.md`, `AGENTS.md`, parent
 ## Development Workflow
 
 - **committing-code** — Smart git commits with logical grouping
-- **documenting-code** — Write, rewrite, or update project docs, release notes, and code comments; checks claims, renders diagrams, and links
+- **documenting-code** — Write, rewrite, or update project docs and code comments; checks claims, renders diagrams, and links
 - **fixing-code** — Reproduce, diagnose, patch, regression-test, and verify code defects
 - **improving-tests** — Improve test design and coverage with behavior seams, characterization tests, TDD, and refactoring
 - **refactoring-code** — Behavior-preserving batch refactors with mapped sites and optional graph-backed impact checks
+- **releasing-code** — Prepare, publish, or repair software releases and write validated release notes; explicit authorization is required for external mutation
 - **reviewing-code** — Evidence-backed code review with severity/confidence rubric, depth modes, and optional team/external review
 - **spec-init** — Bootstrap a new `.spec/` project or import requirements from a design doc
 - **spec-interview** — Capture PRD-quality requirements via structured Q&A

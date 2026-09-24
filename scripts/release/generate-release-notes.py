@@ -1,73 +1,50 @@
 #!/usr/bin/env python3
+"""Render GitHub release notes from the committed CHANGELOG section."""
+
 from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-TAG_RE = re.compile(r"^v(?P<version>\d+\.\d+\.\d+)$")
-VERSION_HEADER_RE = re.compile(
-    r"^## \[(?P<version>\d+\.\d+\.\d+)\](?:\s+-\s+.*)?\s*$", re.MULTILINE
+sys.dont_write_bytecode = True
+
+NOTES_CONTRACT_DIR = (
+    Path(__file__).resolve().parents[2]
+    / "src"
+    / "skills"
+    / "releasing-code"
+    / "scripts"
+)
+sys.path.insert(0, str(NOTES_CONTRACT_DIR))
+
+from release_notes import (  # noqa: E402
+    ReleaseNotesError,
+    budget_for_kind,
+    extract_changelog_section,
+    render_release_notes,
+    validate_notes,
+    verify_previous_tag,
+    version_from_tag,
 )
 
 
-class ReleaseNotesError(RuntimeError):
-    pass
-
-
-def version_from_tag(tag: str) -> str:
-    match = TAG_RE.fullmatch(tag.strip())
-    if match is None:
-        raise ReleaseNotesError(f"tag must match vX.Y.Z: {tag}")
-    return match.group("version")
-
-
-def extract_changelog_section(changelog: str, version: str) -> str:
-    matches = list(VERSION_HEADER_RE.finditer(changelog))
-    for index, match in enumerate(matches):
-        if match.group("version") != version:
-            continue
-        start = match.end()
-        end = matches[index + 1].start() if index + 1 < len(matches) else len(changelog)
-        section = changelog[start:end].strip()
-        if not _has_body_content(section):
-            raise ReleaseNotesError(f"CHANGELOG.md section for {version} is empty")
-        return section
-    raise ReleaseNotesError(f"CHANGELOG.md is missing section for {version}")
-
-
 def build_release_notes(
-    changelog_section: str, marketplace: dict, repository: str
+    changelog_section: str,
+    marketplace: dict,
+    repository: str,
+    tag: str = "v0.0.0",
+    previous_tag: str | None = None,
 ) -> str:
-    lines = [
-        "## Changes",
-        "",
+    return render_release_notes(
+        tag,
         changelog_section,
-        "",
-        "## Plugins",
-        "",
-        "| Plugin | Description |",
-        "| ------ | ----------- |",
-    ]
-    for name, description in plugin_rows(marketplace):
-        lines.append(f"| **{_markdown_cell(name)}** | {_markdown_cell(description)} |")
-    lines.extend(
-        [
-            "",
-            "## Distribution",
-            "",
-            "Artifacts are rendered by Agent Bundler from the repository root:",
-            "",
-            "```bash",
-            "agbun build --root .",
-            "```",
-            "",
-        ]
+        plugin_rows(marketplace),
+        repository,
+        previous_tag,
     )
-    return "\n".join(lines)
 
 
 def plugin_rows(marketplace: dict) -> list[tuple[str, str]]:
@@ -91,17 +68,6 @@ def plugin_rows(marketplace: dict) -> list[tuple[str, str]]:
     return rows
 
 
-def _has_body_content(section: str) -> bool:
-    return any(
-        line.strip() and not line.lstrip().startswith("#")
-        for line in section.splitlines()
-    )
-
-
-def _markdown_cell(value: str) -> str:
-    return " ".join(value.split()).replace("|", "\\|")
-
-
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Generate GitHub release notes from CHANGELOG.md"
@@ -121,13 +87,26 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--repository", required=True, help="GitHub repository, for example owner/repo"
     )
+    parser.add_argument(
+        "--previous-tag",
+        help=(
+            "append a compare link only when this older tag exists "
+            "in the local repository"
+        ),
+    )
+    parser.add_argument(
+        "--budget",
+        choices=("patch", "minor"),
+        default=None,
+        help="optional advisory word budget; content is never truncated",
+    )
     return parser.parse_args(argv)
 
 
 def _packages_marketplace(packages_dir: Path) -> dict:
     plugins = []
     for path in sorted(packages_dir.glob("*.json")):
-        data = json.loads(path.read_text())
+        data = json.loads(path.read_text(encoding="utf-8"))
         if data.get("id") == "cc-thingz-internal":
             continue
         metadata = data.get("metadata") or {}
@@ -143,18 +122,35 @@ def _packages_marketplace(packages_dir: Path) -> dict:
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     try:
-        version = version_from_tag(args.tag)
+        version_from_tag(args.tag)
         changelog_section = extract_changelog_section(
-            args.changelog.read_text(), version
+            args.changelog.read_text(encoding="utf-8"), args.tag[1:]
         )
+        budget = budget_for_kind(args.budget) if args.budget else None
+        report = validate_notes(changelog_section, budget)
+        if report.over_budget:
+            print(
+                f"release notes: advisory budget exceeded for {args.budget} release "
+                f"({report.word_count}/{report.budget} words); review for clarity, "
+                "but preserve critical migration and known-issue information",
+                file=sys.stderr,
+            )
+        if args.previous_tag:
+            verify_previous_tag(args.previous_tag, args.tag, Path.cwd())
         marketplace = (
-            json.loads(args.marketplace.read_text())
+            json.loads(args.marketplace.read_text(encoding="utf-8"))
             if args.marketplace is not None
             else _packages_marketplace(args.packages_dir)
         )
-        notes = build_release_notes(changelog_section, marketplace, args.repository)
+        notes = build_release_notes(
+            changelog_section,
+            marketplace,
+            args.repository,
+            args.tag,
+            args.previous_tag,
+        )
         args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(notes)
+        args.output.write_text(notes, encoding="utf-8")
     except (OSError, json.JSONDecodeError, ReleaseNotesError) as exc:
         print(f"release notes: {exc}", file=sys.stderr)
         return 1

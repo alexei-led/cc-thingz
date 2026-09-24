@@ -14,9 +14,11 @@ PI_PORTABLE_HOOKS = {
     "hook/skill-enforcer",
     "hook/file-protector",
     "hook/git-guardrails",
+    "hook/release-guard",
     "hook/smart-lint",
     "hook/test-runner",
 }
+TARGETS = {"claude", "codex", "pi", "copilot", "cursor", "grok"}
 GUARD_TARGETS = {
     "claude": {"file-protector", "git-guardrails"},
     "codex": {"file-protector", "git-guardrails"},
@@ -44,6 +46,17 @@ def test_agentbundler_renders_pi_portable_and_compatibility_hook_contracts() -> 
     assert set(hooks) == PI_PORTABLE_HOOKS
     assert hooks["hook/file-protector"]["failurePolicy"] == "closed"
     assert hooks["hook/git-guardrails"]["matcher"]["tools"] == ["command"]
+    assert hooks["hook/release-guard"]["failurePolicy"] == "closed"
+    assert hooks["hook/release-guard"]["matcher"]["tools"] == ["command"]
+    assert hooks["hook/release-guard"]["environment"] == ["HOOK_RELEASE_GUARD"]
+    assert hooks["hook/release-guard"]["handler"] == {
+        "mode": "exec",
+        "program": "bash",
+        "arguments": [
+            {"packageFile": "hooks/payloads/release-guard/hook.sh"},
+            {"packageFile": "hooks/payloads/release-guard/hook.py"},
+        ],
+    }
     assert (REPO_ROOT / "dist/pi/extensions/agentbundler-hooks.ts").is_file()
 
     compatibility = json.loads(
@@ -83,6 +96,11 @@ def test_agentbundler_renders_target_hook_matrix() -> None:
             assert bool(_generated_hook_paths(target, hook_name)) is (
                 hook_name in expected
             )
+    for target in TARGETS:
+        release_guard_paths = _generated_hook_paths(target, "release-guard")
+        assert release_guard_paths
+        for release_guard_path in release_guard_paths:
+            assert (release_guard_path / "hook.sh").is_file()
 
     codex_hooks = json.loads(
         (REPO_ROOT / "dist/codex/dev-flow/hooks/hooks.json").read_text()
@@ -192,6 +210,59 @@ def test_pi_decision_guards_emit_runtime_protocol() -> None:
 
     assert json.loads(file_protector.stdout)["decision"] == "deny"
     assert json.loads(git_guardrails.stdout)["decision"] == "deny"
+
+
+def test_generated_pi_release_guard_denies_invalid_notes_with_pi_envelope(
+    tmp_path: Path,
+) -> None:
+    _build()
+    notes = tmp_path / "notes.md"
+    notes.write_text("TODO: fill in notes\n")
+    command = (
+        f"gh release create v6.13.0 --repo alexei-led/cc-thingz --verify-tag "
+        f"--title v6.13.0 --notes-file {notes}"
+    )
+    script = r"""
+import { readFileSync } from "node:fs";
+import { runProcess } from "./dist/pi/extensions/_agentbundler-hooks/index.ts";
+const manifest = JSON.parse(readFileSync("./dist/pi/hooks/hooks.v1.json", "utf8"));
+const hook = manifest.hooks.find((entry) => entry.identity === "hook/release-guard");
+const result = await runProcess(hook.handler, {
+  packageRoot: "./dist/pi",
+  input: {
+    event: "pre-tool",
+    hook: hook.identity,
+    piEvent: {
+      cwd: process.env.HOME,
+      toolName: "bash",
+      input: { command: process.env.RELEASE_COMMAND },
+    },
+  },
+  timeoutMilliseconds: hook.timeoutMilliseconds,
+  environment: hook.environment,
+});
+console.log(JSON.stringify(result));
+"""
+    result = subprocess.run(
+        ["bun", "-e", script],
+        cwd=REPO_ROOT,
+        env={
+            **os.environ,
+            "HOME": str(tmp_path),
+            "HOOK_RELEASE_GUARD": "1",
+            "RELEASE_COMMAND": command,
+        },
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=20,
+    )
+    outcome = json.loads(result.stdout)
+    assert outcome["exitCode"] == 0, outcome["stderr"]
+    assert json.loads(outcome["stdout"]) == {
+        "decision": "deny",
+        "reason": "release-guard: release notes need meaningful user-visible content",
+    }
 
 
 def test_generated_pi_smart_lint_preserves_project_file_and_session(

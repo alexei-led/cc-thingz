@@ -1,0 +1,25 @@
+{
+  "event": "pre-tool",
+  "matcher": {
+    "tools": [
+      "command"
+    ]
+  },
+  "handler": {
+    "mode": "exec",
+    "program": "bash",
+    "arguments": [
+      {
+        "packageFile": "hook.sh"
+      },
+      {
+        "packageFile": "hook.py"
+      }
+    ]
+  },
+  "timeoutMilliseconds": 10000,
+  "asynchronous": false,
+  "failurePolicy": "closed",
+  "environment": ["HOOK_RELEASE_GUARD"],
+  "order": 45
+}

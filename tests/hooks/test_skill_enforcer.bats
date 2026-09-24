@@ -1,5 +1,7 @@
 #!/usr/bin/env bats
 
+bats_require_minimum_version 1.5.0
+
 HOOK="$BATS_TEST_DIRNAME/../../src/hooks/skill-enforcer/hook.sh"
 FIXTURES="$BATS_TEST_DIRNAME/fixtures"
 
@@ -207,6 +209,58 @@ FIXTURES="$BATS_TEST_DIRNAME/fixtures"
 	run bash "$HOOK" <<<'{"prompt":"Перепиши документацию проекта и сделай её понятнее."}'
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"documenting-code"* ]]
+}
+
+@test "skill-enforcer: release preparation routes to releasing-code, not documenting-code" {
+	run bash "$HOOK" <<<'{"prompt":"Prepare the v6.13.0 release and write concise release notes."}'
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"releasing-code"* ]]
+	[[ "$output" != *"documenting-code"* ]]
+}
+
+@test "skill-enforcer: Russian release intent routes to releasing-code" {
+	run bash "$HOOK" <<<'{"prompt":"Подготовь релиз v6.13.0 и напиши заметки к релизу."}'
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"releasing-code"* ]]
+	[[ "$output" != *"documenting-code"* ]]
+}
+
+@test "skill-enforcer: Russian release-note repair routes to releasing-code" {
+	run bash "$HOOK" <<<'{"prompt":"Обнови заметки к релизу v6.13.0."}'
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"releasing-code"* ]]
+	[[ "$output" != *"documenting-code"* ]]
+}
+
+@test "skill-enforcer: installed package update is not release preparation" {
+	run bash "$HOOK" <<<'{"prompt":"Update the installed cc-thingz package to the latest release."}'
+	[ "$status" -eq 0 ]
+	[[ "$output" != *"releasing-code"* ]]
+}
+
+@test "skill-enforcer: publishing an article is not publishing a software release" {
+	run bash "$HOOK" <<<'{"prompt":"Publish this article to our engineering blog."}'
+	[ "$status" -eq 0 ]
+	[[ "$output" != *"releasing-code"* ]]
+}
+
+@test "skill-enforcer: publishing an article about a release is not a software release" {
+	run bash "$HOOK" <<<'{"prompt":"Publish this blog post about the v6.13 release."}'
+	[ "$status" -eq 0 ]
+	[[ "$output" != *"releasing-code"* ]]
+}
+
+@test "skill-enforcer: informational release discussion is not release preparation" {
+	run bash "$HOOK" <<<'{"prompt":"Explain what the v6.13 release means for users; do not publish anything."}'
+	[ "$status" -eq 0 ]
+	[[ "$output" != *"releasing-code"* ]]
+}
+
+@test "skill-enforcer: Pi release routing is model-visible and remains advisory" {
+	run --separate-stderr bash "$HOOK" <<<'{"event":"prompt-submit","piEvent":{"prompt":"Prepare the v6.13.0 release and write release notes."}}'
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'"decision":"allow"'* ]]
+	[[ "$stderr" == *"releasing-code"* ]]
 }
 
 @test "skill-enforcer: reading library docs still routes to looking-up-docs" {

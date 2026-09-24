@@ -1,57 +1,135 @@
 #!/usr/bin/env bash
-# Create a release tag with automatic version bumping.
-#
-# Usage: scripts/release/release-tag v1.2.0
-#
-# This script:
-# 1. Validates the version format (vX.Y.Z)
-# 2. Bumps versions in Agent Bundler package and project metadata
-# 3. Runs `make build` to regenerate dist/
-# 4. Updates CHANGELOG.md with a placeholder entry
-# 5. Commits the version bump
-# 6. Creates an annotated git tag
+# Prepare a release without committing; finalize an already-reviewed release commit.
 set -euo pipefail
 
-if [ $# -ne 1 ]; then
-	echo "Usage: scripts/release/release-tag <version>"
-	echo "Example: scripts/release/release-tag v1.2.0"
-	exit 1
-fi
+usage() {
+	cat <<'EOF'
+Usage:
+  scripts/release/release-tag prepare vX.Y.Z
+  scripts/release/release-tag finalize vX.Y.Z
 
-TAG="$1"
-VERSION="${TAG#v}"
-
-# Validate semver format
-if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-	echo "ERROR: '$TAG' is not a valid semver tag (expected vX.Y.Z)"
-	exit 1
-fi
-
-# Check for clean working tree
-if [ -n "$(git status --porcelain)" ]; then
-	echo "ERROR: working tree is not clean — commit or stash changes first"
-	exit 1
-fi
-
-# Check tag doesn't already exist
-if git rev-parse "$TAG" &>/dev/null; then
-	echo "ERROR: tag '$TAG' already exists"
-	exit 1
-fi
-
-echo "Bumping versions to $VERSION..."
-
-# Portable in-place sed: BSD sed needs -i '', GNU sed needs -i without ''.
-sed_inplace() {
-	local expr="$1" file="$2"
-	sed -i.release-tag.bak "$expr" "$file"
-	rm -f "$file.release-tag.bak"
+prepare updates version metadata, CHANGELOG.md, and generated outputs without
+committing or tagging. Review and commit those changes, then finalize validates
+the clean release commit and creates a local annotated tag. Neither step pushes.
+EOF
 }
 
-update_agentbundle_version() {
-	local path=$1
-	local version=$2
-	python3 - "$path" "$version" <<'PY'
+if [ "$#" -ne 2 ]; then
+	usage >&2
+	exit 2
+fi
+
+MODE="$1"
+TAG="$2"
+VERSION="${TAG#v}"
+if [[ "$MODE" != "prepare" && "$MODE" != "finalize" ]]; then
+	usage >&2
+	exit 2
+fi
+if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+	echo "ERROR: '$TAG' is not a valid semver tag (expected vX.Y.Z)" >&2
+	exit 1
+fi
+
+check_clean_tree() {
+	if [ -n "$(git status --porcelain)" ]; then
+		echo "ERROR: working tree is not clean — commit or stash changes first" >&2
+		exit 1
+	fi
+}
+
+check_tag_available() {
+	if git rev-parse --verify --quiet "refs/tags/$TAG" >/dev/null; then
+		echo "ERROR: local tag '$TAG' already exists; tags are never moved" >&2
+		exit 1
+	fi
+
+	while IFS= read -r remote; do
+		[ -n "$remote" ] || continue
+		set +e
+		git ls-remote --exit-code --refs "$remote" "refs/tags/$TAG" >/dev/null
+		status=$?
+		set -e
+		case "$status" in
+		0)
+			echo "ERROR: tag '$TAG' already exists on remote '$remote'; tags are never moved" >&2
+			exit 1
+			;;
+		2) ;;
+		*)
+			echo "ERROR: could not verify tag '$TAG' on remote '$remote'" >&2
+			exit 1
+			;;
+		esac
+	done < <(git remote)
+}
+
+check_clean_tree
+check_tag_available
+
+PACKAGE_JSONS=(src/.agentbundler/packages/*.json)
+PROJECT_VERSION_FILES=(
+	agentbundle.json
+	pyproject.toml
+	uv.lock
+	package.json
+	src/skills/playwright-skill/scripts/package.json
+)
+if [ ! -f "${PACKAGE_JSONS[0]}" ]; then
+	echo "ERROR: no src/.agentbundler/packages/*.json files found" >&2
+	exit 1
+fi
+for file in "${PROJECT_VERSION_FILES[@]}" "${PACKAGE_JSONS[@]}" CHANGELOG.md; do
+	if [ ! -f "$file" ]; then
+		echo "ERROR: expected release file missing: $file" >&2
+		exit 1
+	fi
+done
+
+CHECKER="src/skills/releasing-code/scripts/release_notes.py"
+if [ ! -f "$CHECKER" ]; then
+	echo "ERROR: release notes checker is missing: $CHECKER" >&2
+	exit 1
+fi
+
+if [[ "$MODE" == "prepare" ]]; then
+	if ! grep -Fqx '## [Unreleased]' CHANGELOG.md; then
+		echo "ERROR: CHANGELOG.md missing ## [Unreleased] marker" >&2
+		exit 1
+	fi
+	python3 "$CHECKER" check-versions --root .
+	python3 - "$VERSION" <<'PY'
+import sys
+import tomllib
+from pathlib import Path
+
+
+def semver(value):
+    try:
+        parts = tuple(int(part) for part in value.split("."))
+    except (AttributeError, ValueError):
+        raise SystemExit(f"ERROR: invalid existing version: {value!r}")
+    if len(parts) != 3:
+        raise SystemExit(f"ERROR: invalid existing version: {value!r}")
+    return parts
+
+
+target = sys.argv[1]
+project_version = tomllib.loads(Path("pyproject.toml").read_text())["project"]["version"]
+if semver(target) <= semver(project_version):
+    raise SystemExit(
+        f"ERROR: target {target} must be greater than current project version {project_version}"
+    )
+PY
+
+	echo "Preparing release $TAG (no commit or tag will be created)..."
+	sed_inplace() {
+		local expression="$1" file="$2"
+		sed -i.release-tag.bak "$expression" "$file"
+		rm -f "$file.release-tag.bak"
+	}
+	update_agentbundle_version() {
+		python3 - "$1" "$VERSION" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -66,122 +144,79 @@ for output in data["composition"]:
         aggregate["metadata"]["version"] = version
 path.write_text(json.dumps(data, indent=2) + "\n")
 PY
-}
+	}
 
-# Bump Agent Bundler package metadata.
-shopt -s nullglob
-package_jsons=(src/.agentbundler/packages/*.json)
-project_version_files=(
-	agentbundle.json
-	pyproject.toml
-	uv.lock
-	package.json
-	src/skills/playwright-skill/scripts/package.json
-)
-shopt -u nullglob
-if [ ${#package_jsons[@]} -eq 0 ]; then
-	echo "ERROR: no src/.agentbundler/packages/*.json files found"
-	exit 1
-fi
-for f in "${package_jsons[@]}"; do
-	sed_inplace 's/"version": "[^"]*"/"version": "'"$VERSION"'"/' "$f"
-done
-for f in "${project_version_files[@]}"; do
-	if [ ! -f "$f" ]; then
-		echo "ERROR: expected version file missing: $f"
-		exit 1
-	fi
-	if [[ "$f" == "agentbundle.json" ]]; then
-		update_agentbundle_version "$f" "$VERSION"
-	elif [[ "$f" == "uv.lock" ]]; then
-		uv lock
-	elif [[ "$f" == *.toml ]]; then
-		sed_inplace "s/^version = .*/version = \"$VERSION\"/" "$f"
-	else
-		sed_inplace "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" "$f"
-	fi
-done
+	for file in "${PACKAGE_JSONS[@]}"; do
+		sed_inplace 's/"version": "[^"]*"/"version": "'"$VERSION"'"/' "$file"
+	done
+	for file in "${PROJECT_VERSION_FILES[@]}"; do
+		if [[ "$file" == "agentbundle.json" ]]; then
+			update_agentbundle_version "$file"
+		elif [[ "$file" == "uv.lock" ]]; then
+			uv lock
+		elif [[ "$file" == *.toml ]]; then
+			sed_inplace "s/^version = .*/version = \"$VERSION\"/" "$file"
+		else
+			sed_inplace 's/"version": "[^"]*"/"version": "'"$VERSION"'"/' "$file"
+		fi
+	done
 
-# Regenerate dist/ and root manifests from the bumped sources
-echo "Running 'make build' to regenerate manifests..."
-make build
+	make build
 
-# Stage generated repository-root compatibility outputs when configured. The
-# compatibility state is Agent Bundler-owned; reject malformed paths rather than
-# allowing a release helper to stage arbitrary repository files.
-compatibility_files=()
-if [ -f .agentbundler/compatibility.json ]; then
-	while IFS= read -r path; do
-		compatibility_files+=("$path")
-	done < <(
-		python3 - <<'PY'
-import json
-from pathlib import Path
-
-state_path = Path(".agentbundler/compatibility.json")
-state = json.loads(state_path.read_text())
-allowed_files = {
-    ".agents/plugins/marketplace.json",
-    ".claude-plugin/marketplace.json",
-    ".cursor-plugin/marketplace.json",
-    ".github/plugin/marketplace.json",
-}
-paths = []
-for path in state.get("files", []):
-    candidate = Path(path)
-    if (
-        candidate.is_absolute()
-        or ".." in candidate.parts
-        or not (
-            path in allowed_files
-            or path.startswith(".codex/agents/") and candidate.suffix == ".toml"
-        )
-    ):
-        raise SystemExit(f"invalid compatibility output path: {path}")
-    paths.append(path)
-if state.get("pi", {}).get("legacyPeerDeps"):
-    paths.append(".npmrc")
-for path in paths:
-    print(path)
-PY
-	)
-fi
-
-# Add CHANGELOG entry if not already present
-if ! grep -q "\[$VERSION\]" CHANGELOG.md; then
-	DATE=$(date +%Y-%m-%d)
-	python3 - "$VERSION" "$DATE" <<'PY'
-from pathlib import Path
+	if ! grep -Fq "## [$VERSION]" CHANGELOG.md; then
+		date_string=$(date +%Y-%m-%d)
+		python3 - "$VERSION" "$date_string" <<'PY'
 import sys
+from pathlib import Path
 
 version, date = sys.argv[1:3]
 path = Path("CHANGELOG.md")
 text = path.read_text()
-marker = "## [Unreleased]\n"
-entry = f"\n## [{version}] - {date}\n\n"
+marker = "## [Unreleased]"
 if marker not in text:
-    raise SystemExit("CHANGELOG.md missing ## [Unreleased] marker")
+    raise SystemExit("ERROR: CHANGELOG.md missing ## [Unreleased] marker")
+entry = f"\n\n## [{version}] - {date}\n"
 path.write_text(text.replace(marker, marker + entry, 1))
 PY
-	echo "Added CHANGELOG entry for $VERSION — edit it before pushing."
+	fi
+
+	cat <<EOF
+
+Prepared $TAG. No commit, tag, or push was performed.
+Review CHANGELOG.md and generated output, then commit the release changes.
+Run 'scripts/release/release-tag finalize $TAG' only on that clean, validated commit.
+EOF
+	exit 0
 fi
 
-# Show what changed
-echo ""
-echo "Version bumped to $VERSION in:"
-git diff --name-only | sed 's/^/  /'
-echo ""
+python3 "$CHECKER" check-release --root . --tag "$TAG" --changelog CHANGELOG.md
 
-# Commit and tag
-git add \
-	"${package_jsons[@]}" \
-	"${project_version_files[@]}" \
-	dist/ \
-	CHANGELOG.md \
-	"${compatibility_files[@]}"
-git commit -m "chore: bump version to $VERSION"
-git tag -a "$TAG" -m "Release $VERSION"
+parent=$(git rev-parse --verify --quiet HEAD^) || {
+	echo "ERROR: finalize requires a committed release revision" >&2
+	exit 1
+}
+changed_files=$(git diff-tree --no-commit-id --name-only -r HEAD)
+for required_file in CHANGELOG.md agentbundle.json pyproject.toml uv.lock package.json src/skills/playwright-skill/scripts/package.json; do
+	if ! grep -Fxq "$required_file" <<<"$changed_files"; then
+		echo "ERROR: HEAD is not the release commit; missing committed change: $required_file" >&2
+		exit 1
+	fi
+done
+for file in "${PACKAGE_JSONS[@]}"; do
+	if ! grep -Fxq "$file" <<<"$changed_files"; then
+		echo "ERROR: HEAD is not the release commit; package version manifest is not committed: $file" >&2
+		exit 1
+	fi
+done
+if ! grep -q '^dist/' <<<"$changed_files"; then
+	echo "ERROR: HEAD is not the release commit; generated dist/ output is not committed" >&2
+	exit 1
+fi
 
-echo ""
-echo "Created tag $TAG"
-echo "Push with: git push origin master $TAG"
+printf 'Validating clean release commit %s with make ci...\n' "$parent"
+make ci
+check_clean_tree
+check_tag_available
+
+git tag --annotate "$TAG" --message "Release $TAG"
+printf 'Created local annotated tag %s at %s. No push was performed.\n' "$TAG" "$(git rev-parse --short HEAD)"

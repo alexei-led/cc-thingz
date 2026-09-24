@@ -167,13 +167,18 @@ push: ## Push master to origin
 
 # --- Release ---
 
-.PHONY: release
-release: ## Create release tag (usage: make release V=1.2.0)
+.PHONY: release release-finalize
+release: ## Prepare release metadata and changelog for review (usage: make release V=1.2.0)
 ifndef V
 	$(error Usage: make release V=1.2.0)
 endif
-	scripts/release/release-tag v$(V)
-	@echo "Push with: git push origin master v$(V)"
+	scripts/release/release-tag prepare v$(V)
+
+release-finalize: ## Validate a clean reviewed release commit and create its local tag (usage: make release-finalize V=1.2.0)
+ifndef V
+	$(error Usage: make release-finalize V=1.2.0)
+endif
+	scripts/release/release-tag finalize v$(V)
 
 # --- Help ---
 

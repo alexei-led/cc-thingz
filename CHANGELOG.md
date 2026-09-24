@@ -8,6 +8,36 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.13.0] - 2026-09-24
+
+Release preparation, notes, and publication now follow one reviewed process.
+
+### Upgrade
+
+- Maintainers: replace `release-tag vX.Y.Z` with
+  `scripts/release/release-tag prepare vX.Y.Z`. Review and commit the prepared
+  files, then run `scripts/release/release-tag finalize vX.Y.Z`. Preparation no
+  longer commits or creates a tag. Neither command pushes.
+- Use `releasing-code` for release notes instead of `documenting-code`.
+
+### Added
+
+- `releasing-code` owns release preparation, publication, and notes-only repair.
+  English and Russian release requests now receive the matching skill suggestion.
+- Optional `release-guard` checks direct GitHub release writes. Enable it with
+  `HOOK_RELEASE_GUARD=1`; it remains off by default. Enabled checks require
+  Python 3.11+. A disabled guard does not require Python.
+- Notes-only repair accepts a committed correction for an existing stable release,
+  saves its previous title and body in a 90-day backup, and preserves its assets
+  and tag. Drafts and prereleases are rejected.
+
+### Changed
+
+- Release notes come from the committed changelog. Checks reject placeholder-only
+  notes and mismatches between the tag and package versions before publication.
+- GitHub releases use the exact tag as their title. Third-party release actions
+  are pinned to verified commit SHAs.
+
 ## [6.12.0] - 2026-09-24
 
 

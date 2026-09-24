@@ -3,7 +3,7 @@
 [![CI](https://github.com/alexei-led/cc-thingz/actions/workflows/ci.yml/badge.svg)](https://github.com/alexei-led/cc-thingz/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Targets](https://img.shields.io/badge/targets-6-00897B)](agentbundle.json)
-[![Skills](https://img.shields.io/badge/skills-30-green)](src/skills/)
+[![Skills](https://img.shields.io/badge/skills-31-green)](src/skills/)
 [![Agent Bundler](https://img.shields.io/badge/Agent_Bundler-required-00897B)](https://github.com/alexei-led/agentbundler)
 
 Portable skills, agents, hooks, and Pi-native extensions for Claude Code, Codex
@@ -92,6 +92,41 @@ the native package or marketplace root shown above. The Codex archive also
 includes separate `.codex/agents/*.toml` profiles; they are not plugin contents.
 Installation and marketplace registration use the target vendor's CLI; Agent
 Bundler does not mutate user configuration or publish to a vendor registry.
+
+## Release flow
+
+The committed version section in `CHANGELOG.md` is the single authored notes
+source. Validate it before the release commit:
+
+```bash
+python3 src/skills/releasing-code/scripts/release_notes.py check-release \
+  --root . --tag v6.13.0 --changelog CHANGELOG.md --budget minor
+```
+
+The renderer adds package and distribution metadata separately; its word budget
+is advisory and does not truncate migration or known-issue details.
+
+Prepare and review a release without committing or tagging:
+
+```bash
+make release V=6.13.0
+# Edit and review CHANGELOG.md and generated output, then commit the release changes.
+make release-finalize V=6.13.0
+```
+
+`release-finalize` requires a clean release commit, validates its notes, runs
+`make ci`, and creates only a local annotated tag. It does not push. External
+publication requires explicit authorization. The tag-triggered
+`.github/workflows/release.yml` is the only GitHub release publisher for
+cc-thingz. Its `workflow_dispatch` repair requires the existing tag and a full
+`notes_source_sha` commit. The trusted default-branch workflow reads only
+`CHANGELOG.md` from that commit and uses package metadata from the tagged
+release. It requires an already-published non-draft, non-prerelease release,
+verifies tag/version and six attached artifacts, and preserves the prior
+title/body in a linked 90-day workflow artifact. It allows title correction,
+then verifies the exact tag title and corrected notes without uploading packages. An optional direct-command guard can be
+enabled with `HOOK_RELEASE_GUARD=1`; it checks a narrow set of `gh release`
+commands and is not publication authorization.
 
 ## Repository-root installation
 

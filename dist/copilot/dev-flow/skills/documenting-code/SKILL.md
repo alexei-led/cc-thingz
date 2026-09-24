@@ -1,5 +1,5 @@
 ---
-{"description":"Write, rewrite, or update project docs from implementation facts - README front pages, user guides, configuration references, architecture docs, evaluations, release notes, agent instructions, and code comments. Use when docs are stale after a change, or when a doc set must become clear, visual, and consistent with the code. NOT for looking up external library docs (looking-up-docs), scoring instruction files (reviewing-instructions), or ADRs unless explicitly requested.","name":"documenting-code"}
+{"description":"Write, rewrite, or update project docs from implementation facts - README front pages, user guides, configuration references, architecture docs, evaluations, agent instructions, and code comments. Use when docs are stale after a change, or when a doc set must become clear, visual, and consistent with the code. NOT for release preparation or release notes (use releasing-code), external library docs (looking-up-docs), scoring instruction files (reviewing-instructions), or ADRs unless explicitly requested.","name":"documenting-code"}
 ---
 
 # Documenting Code
@@ -56,7 +56,7 @@ Decide the reader before writing.
 7. Run the gate once. Run it again only after further edits.
 8. Report with the output contract.
 
-For release notes, use `references/release-notes.md` in place of steps 2 and 6.
+For release preparation and release notes, use `releasing-code`.
 
 ## Gate
 
@@ -79,8 +79,8 @@ python3 <skill-dir>/scripts/prose-lint.py <files or dirs>    # advisory plain-la
 ## Rules
 
 - No speculative, future, or dead behavior.
-- History (decision dates, "agreed with", replaced designs) belongs in git, the
-  changelog, or release notes, not in design docs.
+- History (decision dates, "agreed with", replaced designs) belongs in git or
+  the changelog, not in design docs. Use `releasing-code` for release notes.
 - No secrets, tokens, private paths, or internal hosts.
 - Generated docs: edit the source and run the generator.
 - No ADRs or `docs/adr/` changes unless explicitly requested.
