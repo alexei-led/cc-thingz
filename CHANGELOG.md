@@ -34,6 +34,9 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 - Prompts about writing docs ("make all docs easier to read", "rewrite the
   architecture document") no longer suggest `looking-up-docs`. The hook
   suggests `documenting-code` for them, also in Russian.
+- The pre-push hook clears the git environment before it runs the tests. A
+  push from a linked worktree no longer fails the tests that create their own
+  git repositories.
 
 ## [6.11.2] - 2026-09-15
 
