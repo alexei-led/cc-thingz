@@ -1,0 +1,1 @@
+{"acknowledgments":[{"asset":"hook/release-guard","target":"claude","key":"hook.failure.closed","reason":"The opt-in guard blocks detected malformed GitHub release commands; host failure semantics may still make runtime errors advisory."}]}

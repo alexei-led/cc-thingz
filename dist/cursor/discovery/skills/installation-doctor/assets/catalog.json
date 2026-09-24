@@ -27,6 +27,7 @@
     "skills": [
       "committing-code",
       "documenting-code",
+      "releasing-code",
       "fixing-code",
       "improving-tests",
       "refactoring-code",
@@ -48,6 +49,10 @@
         "assets/examples/pipeline.mmd",
         "assets/examples/request-flow.mmd",
         "assets/examples/system-context.mmd"
+      ],
+      "releasing-code": [
+        "SKILL.md",
+        "scripts/release_notes.py"
       ],
       "fixing-code": [
         "SKILL.md"

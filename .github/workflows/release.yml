@@ -3,25 +3,40 @@ on:
   push:
     tags:
       - v*.*.*
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag for a notes-only repair
+        required: true
+        type: string
+      notes_source_sha:
+        description: Full commit SHA containing the corrected release changelog section
+        required: true
+        type: string
 permissions:
   contents: read
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 jobs:
   validate:
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref_name == github.event.repository.default_branch)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version: 1.26.x
-      - uses: astral-sh/setup-uv@v7
+          cache: false
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           version: latest
-          enable-cache: true
+          enable-cache: false
       - run: uv sync --all-groups --extra test
       - name: Install shell tooling
         run: |
@@ -29,50 +44,217 @@ jobs:
           sudo apt-get install --yes shellcheck
           go install mvdan.cc/sh/v3/cmd/shfmt@v3.13.1
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          no-cache: true
       - run: bun install --frozen-lockfile
       - name: Install Agent Bundler
         run: scripts/setup/install-agbun.sh
       - run: make ci
   runtime-smoke:
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref_name == github.event.repository.default_branch)
     uses: ./.github/workflows/runtime-smoke.yml
   release:
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref_name == github.event.repository.default_branch)
     needs: [validate, runtime-smoke]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@v6
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        if: github.event_name == 'push'
         with:
           go-version: 1.26.x
-      - uses: actions/setup-python@v6
+          cache: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           version: latest
-          enable-cache: true
+          enable-cache: false
       - run: uv sync --all-groups --extra test
+      - name: Validate notes-only repair inputs
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          NOTES_SOURCE_SHA: ${{ inputs.notes_source_sha }}
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid release tag: $RELEASE_TAG" >&2
+            exit 1
+          fi
+          if [[ ! "$NOTES_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "notes_source_sha must be a full lowercase commit SHA" >&2
+            exit 1
+          fi
+      - name: Checkout target release metadata
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.tag }}
+          path: release-target
+          fetch-depth: 0
+          persist-credentials: false
+          sparse-checkout: |
+            agentbundle.json
+            pyproject.toml
+            uv.lock
+            package.json
+            src/.agentbundler/packages
+            src/skills/playwright-skill/scripts/package.json
+          sparse-checkout-cone-mode: false
+      - name: Checkout corrected notes source commit
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.notes_source_sha }}
+          path: notes-source
+          fetch-depth: 1
+          persist-credentials: false
+          sparse-checkout: CHANGELOG.md
+          sparse-checkout-cone-mode: false
+      - name: Verify repair refs
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          NOTES_SOURCE_SHA: ${{ inputs.notes_source_sha }}
+        run: |
+          tag_commit=$(git -C release-target rev-parse --verify "refs/tags/$RELEASE_TAG^{commit}")
+          checked_out_commit=$(git -C release-target rev-parse HEAD)
+          test "$tag_commit" = "$checked_out_commit"
+          source_commit=$(git -C notes-source rev-parse HEAD)
+          test "$source_commit" = "$NOTES_SOURCE_SHA"
       - name: Install Agent Bundler
+        if: github.event_name == 'push'
         run: scripts/setup/install-agbun.sh
+      - name: Validate release version contract and notes
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+          RELEASE_ROOT: ${{ github.event_name == 'workflow_dispatch' && 'release-target' || '.' }}
+          NOTES_CHANGELOG: ${{ github.event_name == 'workflow_dispatch' && 'notes-source/CHANGELOG.md' || 'CHANGELOG.md' }}
+        run: |
+          uv run python src/skills/releasing-code/scripts/release_notes.py check-release \
+            --root "$RELEASE_ROOT" \
+            --tag "$RELEASE_TAG" \
+            --changelog "$NOTES_CHANGELOG"
+      - name: Preserve existing release title and notes
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --json tagName,name,body,isDraft,isPrerelease,assets > "$RUNNER_TEMP/release-before.json"
+          uv run python src/skills/releasing-code/scripts/release_notes.py \
+            check-release-identity \
+            --identity "$RUNNER_TEMP/release-before.json" \
+            --tag "$RELEASE_TAG" \
+            --expected-asset "alexei-led-cc-thingz-claude.tar.gz" \
+            --expected-asset "alexei-led-cc-thingz-codex.tar.gz" \
+            --expected-asset "alexei-led-cc-thingz-pi.tgz" \
+            --expected-asset "alexei-led-cc-thingz-copilot.tar.gz" \
+            --expected-asset "alexei-led-cc-thingz-cursor.tar.gz" \
+            --expected-asset "alexei-led-cc-thingz-grok.tar.gz"
+      - name: Upload release repair backup
+        id: release-backup-artifact
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-notes-backup-${{ inputs.tag }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/release-before.json
+          if-no-files-found: error
+          retention-days: 90
+          overwrite: false
+      - name: Link release repair backup
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          BACKUP_URL: ${{ steps.release-backup-artifact.outputs.artifact-url }}
+          BACKUP_NAME: release-notes-backup-${{ inputs.tag }}-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          if [[ -z "$BACKUP_URL" ]]; then
+            echo "Release repair backup artifact URL is missing" >&2
+            exit 1
+          fi
+          printf -- '- Saved the prior title and notes for %s for 90 days: [%s](%s)\n' \
+            "$RELEASE_TAG" "$BACKUP_NAME" "$BACKUP_URL" >> "$GITHUB_STEP_SUMMARY"
+      - name: Refuse automatic resume of an existing release
+        if: github.event_name == 'push'
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          releases=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 1000 --json tagName,name)
+          if jq -e --arg tag "$RELEASE_TAG" 'any(.[]; .tagName == $tag)' <<<"$releases" >/dev/null; then
+            echo "Release $RELEASE_TAG already exists; verify its identity and use the notes-only repair workflow." >&2
+            exit 1
+          fi
       - name: Build target-native distributions
+        if: github.event_name == 'push'
         run: agbun build --root .
+      - name: Check generated release manifests
+        if: github.event_name == 'push'
+        run: agbun check --root .
       - name: Package target-native distributions
+        if: github.event_name == 'push'
         run: agbun package --root . --out "$RUNNER_TEMP/release-artifacts"
       - name: Generate release notes
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+          IS_REPAIR: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
+          changelog=CHANGELOG.md
+          packages_dir=src/.agentbundler/packages
+          if [[ "$IS_REPAIR" == "true" ]]; then
+            changelog=notes-source/CHANGELOG.md
+            packages_dir=release-target/src/.agentbundler/packages
+          fi
           uv run scripts/release/generate-release-notes.py \
-            --tag "${{ github.ref_name }}" \
-            --repository "${{ github.repository }}" \
-            --changelog CHANGELOG.md \
-            --packages-dir src/.agentbundler/packages \
+            --tag "$RELEASE_TAG" \
+            --repository "$GITHUB_REPOSITORY" \
+            --changelog "$changelog" \
+            --packages-dir "$packages_dir" \
             --output "$RUNNER_TEMP/release-notes.md"
-      - uses: softprops/action-gh-release@v3
+      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
         with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          name: ${{ inputs.tag || github.ref_name }}
           body_path: ${{ runner.temp }}/release-notes.md
-          files: ${{ runner.temp }}/release-artifacts/*
-          fail_on_unmatched_files: true
+          files: ${{ github.event_name == 'push' && format('{0}/release-artifacts/*', runner.temp) || '' }}
+          fail_on_unmatched_files: ${{ github.event_name == 'push' }}
+          overwrite_files: false
           generate_release_notes: false
+      - name: Verify repaired release title, notes, and assets
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --json tagName,name,body,isDraft,isPrerelease,assets > "$RUNNER_TEMP/release-after.json"
+          uv run python src/skills/releasing-code/scripts/release_notes.py \
+            check-release-identity \
+            --identity "$RUNNER_TEMP/release-after.json" \
+            --tag "$RELEASE_TAG" \
+            --title "$RELEASE_TAG" \
+            --expected-asset "alexei-led-cc-thingz-claude.tar.gz" \
+            --expected-asset "alexei-led-cc-thingz-codex.tar.gz" \
+            --expected-asset "alexei-led-cc-thingz-pi.tgz" \
+            --expected-asset "alexei-led-cc-thingz-copilot.tar.gz" \
+            --expected-asset "alexei-led-cc-thingz-cursor.tar.gz" \
+            --expected-asset "alexei-led-cc-thingz-grok.tar.gz"
+          python3 - "$RUNNER_TEMP/release-notes.md" "$RUNNER_TEMP/release-after.json" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          expected = Path(sys.argv[1]).read_text(encoding="utf-8").rstrip("\n")
+          actual = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))["body"].rstrip("\n")
+          if actual != expected:
+              raise SystemExit("published release notes do not match the reviewed notes file")
+          PY

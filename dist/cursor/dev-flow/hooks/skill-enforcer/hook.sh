@@ -20,11 +20,18 @@ allow_exit() {
 [[ "${HOOK_SKILL_ENFORCER:-1}" == "0" ]] && allow_exit
 [[ -n "$PROMPT" ]] || allow_exit
 PROMPT_LOWER=$(echo "$PROMPT" | tr '[:upper:]' '[:lower:]')
+RELEASE_INTENT_RE='\b(prepare|cut|create|finalize|tag|ship|publish|release|bump)\b.{0,50}\b(software[[:space:]]+)?(release|v[0-9]+\.[0-9]+\.[0-9]+)\b|\b(write|draft|prepare|review|repair|edit|rewrite|update|improve|revise|fix)\b.{0,35}\b(release notes|release-note|changelog section)\b|\b(release notes|release-note|changelog section)\b.{0,35}\b(write|draft|prepare|review|repair|edit|rewrite|update|improve|revise|fix)\b|(подготов|выпусти|выпустить|опубликуй|опубликовать|создай|создать|тегируй|подготовь|Подготов|Выпусти|Выпустить|Опубликуй|Опубликовать|Создай|Создать|Тегируй).{0,55}(релиз|Релиз|v[0-9]+\.[0-9]+\.[0-9]+)|(напис|подготов|проверь|исправ|состав|отредактир|обнов|перепиш|Напиш|Подготов|Проверь|Исправ|Состав|Отредактир|Обнов|Перепиш).{0,45}(заметк.{0,10}(релиз|Релиз)|release notes|changelog)'
+IS_RELEASE_INTENT=0
+if echo "$PROMPT_LOWER" | grep -qE "$RELEASE_INTENT_RE"; then
+	if ! echo "$PROMPT_LOWER" | grep -qE '\b(publish|post)\b.{0,40}\b(article|blog post|newsletter|news story|press release)\b'; then
+		IS_RELEASE_INTENT=1
+	fi
+fi
 
 # Writing or restructuring project docs (English and Russian). Shared by documenting-code and looking-up-docs:
 # a doc-writing prompt must not route to the external docs lookup. GNU tr lowercases bytes only, so the Russian
 # words list both capitalizations instead of relying on PROMPT_LOWER.
-DOC_WRITE_RE='\b(write|rewrite|update|improve|restructure|reorganize|edit|polish|revise|refresh|draft|clean[[:space:]]*up|make)\b.{0,40}\b(readme|docs|documentation|user[[:space:]-]?guide|architecture[[:space:]]+doc(ument)?s?|release[[:space:]]+notes|front[[:space:]-]?page|changelog)\b|(обнови|Обнови|перепиши|Перепиши|улучши|Улучши|напиши|Напиши|исправь|Исправь|сделай|Сделай|переделай|Переделай).{0,80}(документац|Документац|readme|ридми|Ридми|гайд|Гайд|руководств|Руководств|release notes|релиз|Релиз)'
+DOC_WRITE_RE='\b(write|rewrite|update|improve|restructure|reorganize|edit|polish|revise|refresh|draft|clean[[:space:]]*up|make)\b.{0,40}\b(readme|docs|documentation|user[[:space:]-]?guide|architecture[[:space:]]+doc(ument)?s?|front[[:space:]-]?page|changelog)\b|(обнови|Обнови|перепиши|Перепиши|улучши|Улучши|напиши|Напиши|исправь|Исправь|сделай|Сделай|переделай|Переделай).{0,80}(документац|Документац|readme|ридми|Ридми|гайд|Гайд|руководств|Руководств)'
 
 # Skip if prompt too short (likely greeting/command)
 [[ ${#PROMPT_LOWER} -lt 10 ]] && allow_exit
@@ -36,6 +43,11 @@ DOC_WRITE_RE='\b(write|rewrite|update|improve|restructure|reorganize|edit|polish
 [[ "$PROMPT_LOWER" =~ ^(yes|no|ok|okay|sure|thanks|continue|proceed|go\ ahead|do\ it|looks\ good|lgtm)$ ]] && allow_exit
 
 skills=""
+
+# releasing-code: prepare/publish software releases and write or repair their notes
+if [[ "$IS_RELEASE_INTENT" == "1" ]]; then
+	skills+="releasing-code "
+fi
 
 # writing-go: Idiomatic Go development
 # Triggers: .go files, go commands, Go-specific terms
@@ -144,11 +156,13 @@ if echo "$PROMPT_LOWER" | grep -qE '\bfix\s*(all|the|my|these|this|any)?\s*(issu
 	skills+="fixing-code "
 fi
 
-# documenting-code: write, rewrite, or update project docs, release notes, and code comments
+# documenting-code: write project docs and code comments; release notes belong to releasing-code
 # Triggers: DOC_WRITE_RE, document this code, add documentation, docstrings
 if echo "$PROMPT_LOWER" | grep -qE "$DOC_WRITE_RE" ||
 	echo "$PROMPT_LOWER" | grep -qE '\bdocument\s+(this|the|my|these)\s+(code|changes|function|api|module)\b|\badd\s*(some|more)?\s*documentation\b|\bdocstrings?\b|\bjsdoc\b|\bgodoc\b'; then
-	skills+="documenting-code "
+	if [[ "$IS_RELEASE_INTENT" != "1" ]]; then
+		skills+="documenting-code "
+	fi
 fi
 
 # deploying-infra: Validate and deploy K8s, Terraform, Helm, GitHub Actions, Docker configs

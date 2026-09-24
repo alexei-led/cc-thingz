@@ -7,6 +7,9 @@
       "path": "skills/documenting-code"
     },
     {
+      "path": "skills/releasing-code"
+    },
+    {
       "path": "skills/fixing-code"
     },
     {
@@ -55,6 +58,17 @@
     },
     {
       "path": "hooks/skill-enforcer",
+      "targets": [
+        "claude",
+        "codex",
+        "pi",
+        "copilot",
+        "cursor",
+        "grok"
+      ]
+    },
+    {
+      "path": "hooks/release-guard",
       "targets": [
         "claude",
         "codex",
@@ -114,7 +128,7 @@
     "author": {
       "name": "Alexei Ledenev"
     },
-    "description": "Code review, fixes, commits, and linting for development workflows",
+    "description": "Code review, fixes, commits, release flows, and linting for development workflows",
     "homepage": "https://github.com/alexei-led/cc-thingz",
     "keywords": [
       "development",

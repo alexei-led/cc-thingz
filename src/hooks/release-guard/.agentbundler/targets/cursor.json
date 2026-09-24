@@ -1,0 +1,1 @@
+{"acknowledgments":[{"asset":"hook/release-guard","target":"cursor","key":"hook.command.exec","reason":"Cursor renders the portable Python exec handler through its documented command string."}]}

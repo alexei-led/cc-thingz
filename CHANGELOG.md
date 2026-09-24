@@ -8,6 +8,12 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+### Added
+
+- Added `releasing-code` with shared release-note validation and a
+  prepare/review/finalize flow that creates a tag only after reviewed notes are
+  committed.
+
 ## [6.12.0] - 2026-09-24
 
 

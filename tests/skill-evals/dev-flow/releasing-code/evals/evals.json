@@ -1,0 +1,33 @@
+{
+  "skill_name": "releasing-code",
+  "evals": [
+    {
+      "id": "package-only-tag-workflow-is-not-release-owner",
+      "name": "package-only tag workflow is not the GitHub release owner",
+      "prompt": "The repository has a tag-triggered workflow that builds and uploads package archives but does not create GitHub releases. Prepare v1.2.3 and explain the release path. The changelog has a breaking-change note.",
+      "expected_output": "The response checks the actual workflow operation rather than treating its tag trigger as GitHub-release ownership. It uses one committed notes source, includes a required Upgrade action for the declared breaking change, validates the notes, and reviews the release commit before tagging. Because no workflow creates GitHub releases, the CLI fallback is considered only after explicit authorization; it uses the exact tag as title, an explicit repository, --verify-tag, and the same reviewed notes file.",
+      "assertions": [
+        "The response says a workflow that only uploads package artifacts does not own GitHub release creation.",
+        "The response requires one committed notes source and meaningful validated release notes.",
+        "The response includes an Upgrade action for the declared breaking change.",
+        "The response requires explicit user authorization before external publication.",
+        "The CLI fallback uses an explicit repository, --verify-tag, an exact tag title, and the same notes file."
+      ]
+    },
+    {
+      "id": "notes-only-repair-uses-explicit-source-and-backup",
+      "name": "notes-only repair uses an explicit source and backup",
+      "prompt": "The v1.2.3 release already exists with the right tag and assets, but its title is wrong and a corrected changelog section was committed afterward at SHA 0123456789abcdef0123456789abcdef01234567. Explain the safe cc-thingz repair path.",
+      "expected_output": "The response requires explicit authorization and dispatches the default-branch release workflow with the existing tag and the full notes-source commit SHA. It reads only CHANGELOG.md from that commit, validates its version section against the target tag and tagged package metadata, rejects draft and prerelease targets, verifies tag and asset identity without requiring the old title to be correct, preserves the old title/body and state in a linked durable artifact before mutation, then corrects the title/notes without changing assets and verifies the result.",
+      "assertions": [
+        "The response uses the explicit full notes-source commit SHA rather than reading notes from the immutable release tag.",
+        "The response says only the changelog is read from the notes-source commit and tagged package metadata remains the identity baseline.",
+        "The response does not require the existing title to match before a title correction.",
+        "The response refuses to repair a draft or prerelease release.",
+        "The response backs up the prior title, body, and publication state durably before updating the release.",
+        "The response preserves the tag and assets, sets the exact tag title, and verifies the updated body/title/assets.",
+        "The response requires explicit authorization before the external repair."
+      ]
+    }
+  ]
+}

@@ -144,6 +144,12 @@ def test_release_archives_have_native_install_roots(release_artifacts: Path) -> 
         assert all(not name.startswith(("/", "../")) for name in members)
         assert all("/__pycache__/" not in f"/{name}" for name in members)
         assert all(not name.endswith(".pyc") for name in members)
+        assert any(name.endswith("skills/releasing-code/SKILL.md") for name in members)
+        assert any(
+            name.endswith("skills/releasing-code/scripts/release_notes.py")
+            for name in members
+        )
+        assert any(name.endswith("release-guard/hook.py") for name in members)
         if target != "pi":
             archive_packages = {
                 name.split("/", 1)[0] for name in members if "/" in name
@@ -345,7 +351,8 @@ def test_generated_target_inventory_matches_supported_contract() -> None:
     source_skills = {
         path.parent.name for path in (REPO_ROOT / "src/skills").glob("*/SKILL.md")
     }
-    assert len(source_skills) == 30
+    assert len(source_skills) == 31
+    assert f"skills-{len(source_skills)}-green" in (REPO_ROOT / "README.md").read_text()
 
     for target in TARGETS:
         assert _agent_names(target) == EXPECTED_AGENTS[target]
@@ -596,9 +603,31 @@ def test_make_check_is_non_mutating_and_release_packages_artifacts() -> None:
         'agbun package --root . --out "$RUNNER_TEMP/release-artifacts"'
         in release_workflow
     )
-    assert "files: ${{ runner.temp }}/release-artifacts/*" in release_workflow
-    assert '            --tag "${{ github.ref_name }}"' in release_workflow
-    assert '            --repository "${{ github.repository }}"' in release_workflow
+    assert "format('{0}/release-artifacts/*', runner.temp)" in release_workflow
+    assert '            --tag "$RELEASE_TAG"' in release_workflow
+    assert '            --repository "$GITHUB_REPOSITORY"' in release_workflow
+    assert "          name: ${{ inputs.tag || github.ref_name }}" in release_workflow
+    assert "workflow_dispatch:" in release_workflow
+    assert "notes_source_sha:" in release_workflow
+    assert "Validate release version contract and notes" in release_workflow
+    assert "Preserve existing release title and notes" in release_workflow
+    assert "Refuse automatic resume of an existing release" in release_workflow
+    assert "Verify repaired release title, notes, and assets" in release_workflow
+    assert "overwrite_files: false" in release_workflow
+    assert "generate_release_notes: false" in release_workflow
+    assert (
+        release_workflow.count(
+            "softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3"
+        )
+        == 1
+    )
+    assert "gh release create" not in release_workflow
+    assert "gh release edit" not in release_workflow
+    assert '--expected-asset "alexei-led-cc-thingz-pi.tgz"' in release_workflow
+    assert release_workflow.count("--expected-asset") == 12
+    assert release_workflow.index("Generate release notes") < release_workflow.index(
+        "softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64"
+    )
     assert "            --version" not in release_workflow
     assert "previous_tag=" not in release_workflow
     assert release_workflow.count("- run: uv sync --all-groups --extra test") == 2
@@ -609,8 +638,24 @@ def test_make_check_is_non_mutating_and_release_packages_artifacts() -> None:
         dependency.startswith("ruff")
         for dependency in project["dependency-groups"]["dev"]
     )
-    assert "- uses: oven-sh/setup-bun@v2" in release_workflow
-    assert "- run: bun install --frozen-lockfile" in release_workflow
+    assert (
+        "oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2"
+        in release_workflow
+    )
+    assert "no-cache: true" in release_workflow
+    assert release_workflow.count("persist-credentials: false") == 4
+    assert release_workflow.count("\n          cache: false\n") == 2
+    assert release_workflow.count("enable-cache: false") == 2
+    assert "run: bun install --frozen-lockfile" in release_workflow
+    for revision in (
+        "d23441a48e516b6c34aea4fa41551a30e30af803",
+        "ece7cb06caefa5fff74198d8649806c4678c61a1",
+        "924ae3a1cded613372ab5595356fb5720e22ba16",
+        "37802adc94f370d6bfd71619e3f0bf239e1f3b78",
+        "efb35369e0ad2afab669f228072c1b0d510eae64",
+        "ea165f8d65b6e75b540449e92b4886f43607fa02",
+    ):
+        assert revision in release_workflow
     node_package = json.loads((REPO_ROOT / "package.json").read_text())
     assert "markdownlint-cli2" in node_package["devDependencies"]
     assert "bunx --no-install markdownlint-cli2" in makefile
@@ -619,11 +664,68 @@ def test_make_check_is_non_mutating_and_release_packages_artifacts() -> None:
         assert "agentbundler/cmd/agbun@latest" not in workflow
 
 
-def test_release_tag_updates_agentbundle_versions(tmp_path: Path) -> None:
+def test_release_workflow_repair_uses_selected_source_and_preserves_prior_notes() -> (
+    None
+):
+    workflow = (REPO_ROOT / ".github/workflows/release.yml").read_text()
+    assert "notes_source_sha:" in workflow
+    assert "github.ref_name == github.event.repository.default_branch" in workflow
+    assert "ref: ${{ inputs.tag || github.ref }}" not in workflow
+    assert "ref: ${{ inputs.notes_source_sha }}" in workflow
+    assert "path: notes-source" in workflow
+    assert "sparse-checkout: CHANGELOG.md" in workflow
+    assert "ref: ${{ inputs.tag }}" in workflow
+    assert "path: release-target" in workflow
+    assert "release_notes.py check-release" in workflow
+    assert '--root "$RELEASE_ROOT"' in workflow
+    assert '--changelog "$NOTES_CHANGELOG"' in workflow
+    assert "notes-source/CHANGELOG.md" in workflow
+    assert "release-target/src/.agentbundler/packages" in workflow
+    version_check = workflow.index("Validate release version contract and notes")
+    build = workflow.index("Build target-native distributions")
+    generated_check = workflow.index("Check generated release manifests")
+    package = workflow.index("Package target-native distributions")
+    assert version_check < build < generated_check < package
+
+    backup_start = workflow.index("Preserve existing release title and notes")
+    backup_end = workflow.index("Upload release repair backup")
+    preflight = workflow[backup_start:backup_end]
+    assert "--json tagName,name,body,isDraft,isPrerelease,assets" in preflight
+    assert "check-release-identity" in preflight
+    assert "--title" not in preflight
+    assert (
+        "release-notes-backup-${{ inputs.tag }}-"
+        "${{ github.run_id }}-${{ github.run_attempt }}" in workflow
+    )
+    assert "retention-days: 90" in workflow
+    assert "overwrite: false" in workflow
+    assert "steps.release-backup-artifact.outputs.artifact-url" in workflow
+    assert workflow.index("Upload release repair backup") < workflow.index(
+        "softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64"
+    )
+    action = workflow.index(
+        "softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64"
+    )
+    verification = workflow.index("Verify repaired release title, notes, and assets")
+    assert action < verification
+    postflight = workflow[verification:]
+    assert "--json tagName,name,body,isDraft,isPrerelease,assets" in postflight
+    assert "check-release-identity" in postflight
+    assert '--title "$RELEASE_TAG"' in postflight
+    assert "actual != expected" in postflight
+
+
+def test_release_tag_prepare_and_finalize_require_reviewed_commit(
+    tmp_path: Path,
+) -> None:
     source_script = REPO_ROOT / "scripts/release/release-tag"
     script = tmp_path / "scripts/release/release-tag"
     script.parent.mkdir(parents=True)
     shutil.copy2(source_script, script)
+    checker_source = REPO_ROOT / "src/skills/releasing-code/scripts/release_notes.py"
+    checker = tmp_path / "src/skills/releasing-code/scripts/release_notes.py"
+    checker.parent.mkdir(parents=True)
+    shutil.copy2(checker_source, checker)
 
     files = {
         "agentbundle.json": {
@@ -648,7 +750,11 @@ def test_release_tag_updates_agentbundle_versions(tmp_path: Path) -> None:
         'version = "1.0.0"\n'
         'requires-python = ">=3.12"\n'
     )
-    (tmp_path / "uv.lock").write_text('version = "1.0.0"\n')
+    (tmp_path / "uv.lock").write_text(
+        'version = 1\nrevision = 3\nrequires-python = ">=3.12"\n\n'
+        '[[package]]\nname = "test-release"\nversion = "1.0.0"\n'
+        'source = { virtual = "." }\n'
+    )
     (tmp_path / "CHANGELOG.md").write_text("## [Unreleased]\n")
     compatibility_state = tmp_path / ".agentbundler/compatibility.json"
     compatibility_state.parent.mkdir()
@@ -671,9 +777,13 @@ def test_release_tag_updates_agentbundle_versions(tmp_path: Path) -> None:
     uv.write_text(
         """#!/usr/bin/env python3
 from pathlib import Path
-project = Path("pyproject.toml").read_text()
-version = project.split('version = "', 1)[1].split('"', 1)[0]
-Path("uv.lock").write_text(f'version = "{version}"\\n')
+import tomllib
+version = tomllib.loads(Path("pyproject.toml").read_text())["project"]["version"]
+Path("uv.lock").write_text(
+    'version = 1\\nrevision = 3\\nrequires-python = ">=3.12"\\n\\n'
+    '[[package]]\\nname = "test-release"\\nversion = "' + version + '"\\n'
+    'source = { virtual = "." }\\n'
+)
 """
     )
     uv.chmod(0o755)
@@ -682,6 +792,8 @@ Path("uv.lock").write_text(f'version = "{version}"\\n')
         "\t@mkdir -p dist .claude-plugin; "
         "echo generated > dist/build.txt; "
         "echo generated > .claude-plugin/marketplace.json\n"
+        "ci:\n"
+        "\t@echo fixture ci passed\n"
     )
 
     subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
@@ -695,26 +807,215 @@ Path("uv.lock").write_text(f'version = "{version}"\\n')
     )
     subprocess.run(["git", "add", "."], cwd=tmp_path, check=True)
     subprocess.run(["git", "commit", "-qm", "initial"], cwd=tmp_path, check=True)
-    environment = os.environ | {"PATH": f"{uv.parent}:{os.environ['PATH']}"}
-    subprocess.run(
-        ["bash", str(script), "v1.2.3"],
+    initial_head = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
         cwd=tmp_path,
+        capture_output=True,
         check=True,
+        text=True,
+    ).stdout.strip()
+    environment = os.environ | {"PATH": f"{uv.parent}:{os.environ['PATH']}"}
+    equal_version = subprocess.run(
+        ["bash", str(script), "prepare", "v1.0.0"],
+        cwd=tmp_path,
         env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert equal_version.returncode != 0
+    assert "must be greater than current project version" in equal_version.stderr
+    assert 'version = "1.0.0"' in (tmp_path / "pyproject.toml").read_text()
+    assert not subprocess.run(
+        ["git", "status", "--porcelain"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=True,
+        text=True,
+    ).stdout
+
+    prepared = subprocess.run(
+        ["bash", str(script), "prepare", "v1.2.3"],
+        cwd=tmp_path,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=True,
     )
 
     bundle = json.loads((tmp_path / "agentbundle.json").read_text())
     assert bundle["distribution"]["version"] == "1.2.3"
     assert bundle["composition"][0]["aggregate"]["metadata"]["version"] == "1.2.3"
-    assert (tmp_path / "uv.lock").read_text() == 'version = "1.2.3"\n'
-    committed = subprocess.run(
-        ["git", "show", "--format=", "--name-only", "HEAD"],
+    assert 'version = "1.2.3"' in (tmp_path / "uv.lock").read_text()
+    assert (
+        subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=True,
+            text=True,
+        ).stdout.strip()
+        == initial_head
+    )
+    assert not subprocess.run(
+        ["git", "tag", "--list", "v1.2.3"],
         cwd=tmp_path,
         capture_output=True,
         check=True,
         text=True,
-    ).stdout.splitlines()
-    assert ".claude-plugin/marketplace.json" in committed
+    ).stdout.strip()
+    assert subprocess.run(
+        ["git", "status", "--porcelain"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=True,
+        text=True,
+    ).stdout.strip()
+    assert (
+        ".claude-plugin/marketplace.json"
+        in subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=True,
+            text=True,
+        ).stdout
+    )
+    assert "Review CHANGELOG.md" in prepared.stdout
+
+    changelog = tmp_path / "CHANGELOG.md"
+    subprocess.run(["git", "add", "."], cwd=tmp_path, check=True)
+    subprocess.run(
+        ["git", "commit", "-qm", "release: v1.2.3"], cwd=tmp_path, check=True
+    )
+    placeholder_head = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=True,
+        text=True,
+    ).stdout.strip()
+    rejected = subprocess.run(
+        ["bash", str(script), "finalize", "v1.2.3"],
+        cwd=tmp_path,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert rejected.returncode != 0
+    assert "meaningful user-visible content" in rejected.stderr
+    assert not subprocess.run(
+        ["git", "tag", "--list", "v1.2.3"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=True,
+        text=True,
+    ).stdout.strip()
+    assert (
+        subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=True,
+            text=True,
+        ).stdout.strip()
+        == placeholder_head
+    )
+
+    changelog.write_text(
+        "## [Unreleased]\n\n"
+        "## [1.2.3] - 2026-06-08\n\n"
+        "- Adds deterministic release validation.\n"
+    )
+    subprocess.run(["git", "add", "CHANGELOG.md"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "commit", "--amend", "--no-edit"], cwd=tmp_path, check=True)
+    release_commit = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=True,
+        text=True,
+    ).stdout.strip()
+
+    finalized = subprocess.run(
+        ["bash", str(script), "finalize", "v1.2.3"],
+        cwd=tmp_path,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    assert "fixture ci passed" in finalized.stdout
+    assert (
+        subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=True,
+            text=True,
+        ).stdout.strip()
+        == release_commit
+    )
+    assert (
+        subprocess.run(
+            ["git", "rev-parse", "refs/tags/v1.2.3^{}"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=True,
+            text=True,
+        ).stdout.strip()
+        == release_commit
+    )
+    assert not subprocess.run(
+        ["git", "remote"], cwd=tmp_path, capture_output=True, check=True, text=True
+    ).stdout.strip()
+
+    remote = tmp_path.parent / f"{tmp_path.name}-origin.git"
+    subprocess.run(["git", "init", "--bare", "-q", str(remote)], check=True)
+    subprocess.run(
+        ["git", "remote", "add", "origin", str(remote)], cwd=tmp_path, check=True
+    )
+    subprocess.run(
+        ["git", "push", "origin", "refs/tags/v1.2.3"], cwd=tmp_path, check=True
+    )
+    subprocess.run(["git", "tag", "-d", "v1.2.3"], cwd=tmp_path, check=True)
+    remote_before = subprocess.run(
+        ["git", "ls-remote", "--refs", "origin", "refs/tags/v1.2.3"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=True,
+        text=True,
+    ).stdout
+    refused = subprocess.run(
+        ["bash", str(script), "prepare", "v1.2.3"],
+        cwd=tmp_path,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    remote_after = subprocess.run(
+        ["git", "ls-remote", "--refs", "origin", "refs/tags/v1.2.3"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=True,
+        text=True,
+    ).stdout
+    assert refused.returncode != 0
+    assert "already exists on remote 'origin'" in refused.stderr
+    assert remote_after == remote_before
+    assert (
+        subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=True,
+            text=True,
+        ).stdout
+        == ""
+    )
 
 
 @pytest.mark.parametrize("target", TARGETS)

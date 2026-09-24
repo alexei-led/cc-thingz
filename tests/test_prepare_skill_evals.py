@@ -107,8 +107,8 @@ def test_unregistered_archive_is_error(project):
 
 def test_repository_inventory_accounts_for_all_original_scenarios():
     report = prepare_skill_evals.inventory()
-    assert report["skills"] == 25
-    assert report["evals"] == 77
+    assert report["skills"] == 26
+    assert report["evals"] == 79
     assert sum(entry["evals"] for entry in report["archived"]) == 2
     assert report["uncovered_skills"] == [
         "discovery/installation-doctor",

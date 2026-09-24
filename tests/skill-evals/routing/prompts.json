@@ -300,12 +300,12 @@
     {
       "id": "docs-release-notes",
       "language": "en",
-      "prompt": "Write good release notes for every GitHub release: well structured, concise, informative.",
+      "prompt": "Write concise release notes for the next versioned software release.",
       "required": [
-        "documenting-code"
+        "releasing-code"
       ],
       "allowed": [
-        "documenting-code"
+        "releasing-code"
       ]
     },
     {

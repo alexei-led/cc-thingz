@@ -23,8 +23,8 @@ no copy of another file's facts.
 - **Contributing or develop**: build, test, and release commands. If the repo
   has no CONTRIBUTING file, a short section at the end of the architecture doc
   is enough.
-- **Changelog and release notes**: history, including replaced designs and
-  version-specific upgrade steps.
+- **Changelog**: versioned project history and user-visible changes. Use
+  `releasing-code` for release-note authoring and publication.
 
 ## Ownership map
 

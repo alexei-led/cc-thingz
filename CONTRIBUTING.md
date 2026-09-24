@@ -119,6 +119,34 @@ update them deliberately and rerun the isolated installation tests.
 
 ## Releases
 
-Release notes derive package descriptions from `src/.agentbundler/packages/`.
-The release workflow runs Agent Bundler before creating a release. There is no
-marketplace-generation step in this pipeline.
+The version section in `CHANGELOG.md` is the single authored source for release
+notes. Validate it with the packaged checker, for example:
+
+```bash
+python3 src/skills/releasing-code/scripts/release_notes.py check-release \
+  --root . --tag v6.13.0 --changelog CHANGELOG.md --budget minor
+```
+
+Prepare with `scripts/release/release-tag prepare vX.Y.Z` or
+`make release V=X.Y.Z`. Preparation updates version metadata, generated output,
+and a blank version section; it does not commit, tag, or push. Write and review the notes,
+then commit all release changes. Run
+`scripts/release/release-tag finalize vX.Y.Z` or
+`make release-finalize V=X.Y.Z` on that clean commit. Finalization validates the
+notes and version identity, runs `make ci`, and creates a local annotated tag; it
+does not push. It rejects an existing local or remote tag and never moves one.
+
+The tag-triggered `.github/workflows/release.yml` is the only GitHub release
+publisher for cc-thingz. It validates tag, package-version identity, and notes
+before packaging or publication. Its manual `workflow_dispatch` path requires
+the existing tag plus an explicit full `notes_source_sha` commit. It reads only
+`CHANGELOG.md` from that commit and uses manifests from the tagged release. It
+rejects draft and prerelease targets, verifies tag/version and six expected
+assets, stores the prior title/body and publication-state flags in a 90-day
+workflow artifact linked in the run summary, and permits correction of a wrong
+title before verifying the exact tag title, notes, and published state. It
+uploads no package files during repair. Do not use
+`gh release create` or `gh release edit` for cc-thingz. The optional `HOOK_RELEASE_GUARD=1` check covers only direct supported
+`gh release` forms; it is not authorization and does not parse general shell or
+release-policy configuration. External publication still requires explicit
+user authorization.
