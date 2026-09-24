@@ -1,0 +1,9 @@
+%% Pipeline: LR steps in one class.
+flowchart LR
+  TAG["Signed tag"] --> CHECK["Verify tag,<br/>version match"]
+  CHECK --> TEST["Lint and tests"]
+  TEST --> PUB["Publish package"]
+  PUB --> REL["GitHub release<br/>named by the tag"]
+
+  classDef step fill:#eef2ff,stroke:#6366f1,color:#1e1b4b
+  class TAG,CHECK,TEST,PUB,REL step

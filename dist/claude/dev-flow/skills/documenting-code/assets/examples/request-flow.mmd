@@ -1,0 +1,13 @@
+%% Request flow: internal steps as notes, not self-messages, so labels do not cross lifelines.
+sequenceDiagram
+  autonumber
+  participant C as Client
+  participant S as Service
+  participant P as Provider
+
+  C->>S: POST /jobs
+  Note over S: validate input, load session
+  S->>P: create job
+  P-->>S: job id
+  Note over S: store job, emit event
+  S-->>C: 202 Accepted (job id)

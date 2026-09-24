@@ -1,0 +1,14 @@
+%% System context: LR layout without subgraphs. Nodes that link out of a subgraph ignore its direction, so
+%% remote services are marked by class and label instead. Each edge from the service gets its own row.
+flowchart LR
+  CLI["CLI"] <-->|"requests"| APP["Service<br/>127.0.0.1:8080"]
+  APP -->|"tokens"| AUTH["Identity provider<br/>(remote)"]
+  APP <-->|"calls, responses"| API["Provider API<br/>(remote)"]
+  APP --> DB[("Local store")]
+
+  classDef core fill:#ecfdf5,stroke:#059669,color:#064e3b
+  classDef ext fill:#eef2ff,stroke:#6366f1,color:#1e1b4b
+  classDef store fill:#fff7ed,stroke:#ea580c,color:#431407
+  class APP core
+  class API,AUTH ext
+  class DB store

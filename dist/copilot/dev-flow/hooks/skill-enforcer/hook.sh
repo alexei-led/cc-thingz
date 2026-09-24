@@ -21,6 +21,11 @@ allow_exit() {
 [[ -n "$PROMPT" ]] || allow_exit
 PROMPT_LOWER=$(echo "$PROMPT" | tr '[:upper:]' '[:lower:]')
 
+# Writing or restructuring project docs (English and Russian). Shared by documenting-code and looking-up-docs:
+# a doc-writing prompt must not route to the external docs lookup. GNU tr lowercases bytes only, so the Russian
+# words list both capitalizations instead of relying on PROMPT_LOWER.
+DOC_WRITE_RE='\b(write|rewrite|update|improve|restructure|reorganize|edit|polish|revise|refresh|draft|clean[[:space:]]*up|make)\b.{0,40}\b(readme|docs|documentation|user[[:space:]-]?guide|architecture[[:space:]]+doc(ument)?s?|release[[:space:]]+notes|front[[:space:]-]?page|changelog)\b|(обнови|Обнови|перепиши|Перепиши|улучши|Улучши|напиши|Напиши|исправь|Исправь|сделай|Сделай|переделай|Переделай).{0,80}(документац|Документац|readme|ридми|Ридми|гайд|Гайд|руководств|Руководств|release notes|релиз|Релиз)'
+
 # Skip if prompt too short (likely greeting/command)
 [[ ${#PROMPT_LOWER} -lt 10 ]] && allow_exit
 
@@ -76,10 +81,11 @@ fi
 
 # looking-up-docs: docs lookup flow (Context7 → official sources → Perplexity/web → GitHub)
 # Triggers: ctx7/context7, library IDs, natural-language doc-seeking, API reference, or latest-behavior needs.
-# NOT for comparisons/best-practices (use researching-web).
-if echo "$PROMPT_LOWER" | grep -qE '\bctx7\b|\bcontext7\b|context7[[:space:]-]cli|/[a-z0-9._-]+/[a-z0-9._-]+\s+(library|docs|version)|\bdocs\b|\bdocumentation\b|api\s*(reference|docs)|look\s*up.*(docs|api|syntax|usage|reference|examples)|find.*(docs|documentation|reference)|check.*(docs|documentation)|man\s*page|reference.*(guide|manual)|official.*(docs|documentation)|library.*docs|version.*specific|syntax\s*for|examples\s*of|how\s*to\s*use\s*\w+'; then
-	# Exclude comparison/research patterns — those go to researching-web
-	if ! echo "$PROMPT_LOWER" | grep -qE '\bvs\b|\bcompare\b|\bbest\s*practice\b|\bpros\s*(and|&)\s*cons\b|\bwhich.*(better|should)\b'; then
+# NOT for comparisons/best-practices (use researching-web) or for writing project docs (use documenting-code).
+if echo "$PROMPT_LOWER" | grep -qE '\bctx7\b|\bcontext7\b|context7[[:space:]-]cli|/[a-z0-9._-]+/[a-z0-9._-]+\s+(library|docs|version)|\b(docs|documentation)\s+(for|of|on|about|say|says)\b|api\s*(reference|docs)|look\s*up.*(docs|api|syntax|usage|reference|examples)|find.*(docs|documentation|reference)|check.*(docs|documentation)|man\s*page|reference.*(guide|manual)|official.*(docs|documentation)|library.*docs|version.*specific|syntax\s*for|examples\s*of|how\s*to\s*use\s*\w+'; then
+	# Exclude comparison/research patterns (researching-web) and doc-writing prompts (documenting-code)
+	if ! echo "$PROMPT_LOWER" | grep -qE '\bvs\b|\bcompare\b|\bbest\s*practice\b|\bpros\s*(and|&)\s*cons\b|\bwhich.*(better|should)\b' &&
+		! echo "$PROMPT_LOWER" | grep -qE "$DOC_WRITE_RE"; then
 		skills+="looking-up-docs "
 	fi
 fi
@@ -138,9 +144,10 @@ if echo "$PROMPT_LOWER" | grep -qE '\bfix\s*(all|the|my|these|this|any)?\s*(issu
 	skills+="fixing-code "
 fi
 
-# documenting-code: Update documentation based on changes
-# Triggers: update docs, document, add documentation, update readme, write docs
-if echo "$PROMPT_LOWER" | grep -qE '\bupdate\s*(the|my)?\s*(docs|documentation|readme)\b|\bdocument\s*(this|the|my|these)?\s*(code|changes|function|api)?\b|\badd\s*(some|more)?\s*documentation\b|\bwrite\s*(the|some)?\s*docs\b|\bimprove\s*(the)?\s*documentation\b|\bdocstring|\bjsdoc\b|\bgodoc\b'; then
+# documenting-code: write, rewrite, or update project docs, release notes, and code comments
+# Triggers: DOC_WRITE_RE, document this code, add documentation, docstrings
+if echo "$PROMPT_LOWER" | grep -qE "$DOC_WRITE_RE" ||
+	echo "$PROMPT_LOWER" | grep -qE '\bdocument\s+(this|the|my|these)\s+(code|changes|function|api|module)\b|\badd\s*(some|more)?\s*documentation\b|\bdocstrings?\b|\bjsdoc\b|\bgodoc\b'; then
 	skills+="documenting-code "
 fi
 

@@ -8,6 +8,36 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+### Added
+
+- `documenting-code` has two modes: Update, for docs that a code change made
+  stale, and Overhaul, for a doc set that must become clear, visual, and
+  consistent with the code. Each mode has a clear finish line.
+- New references for human docs: `doc-set.md` (roles of each doc and a fact
+  ownership map), `claims.md` (checks against the source and fair baselines for
+  measured claims), `visuals.md` (diagram choice, named layout faults, render
+  checks, charts), `style.md` (plain-language rules), and `release-notes.md`.
+- Bundled gate scripts: `check-links.py` (relative links and GitHub anchors),
+  `render-mermaid.sh` (renders each Mermaid block for visual review), and
+  `prose-lint.py` (advisory plain-language lint), with example diagrams under
+  `assets/examples/`.
+- Routing fixtures, hook tests, and behavior evals for doc writing.
+
+### Changed
+
+- The Claude Code `documenting-code` skill runs in the main conversation. It
+  no longer runs in a forked context, so it keeps the discussion that shapes
+  the docs.
+
+### Fixed
+
+- Prompts about writing docs ("make all docs easier to read", "rewrite the
+  architecture document") no longer suggest `looking-up-docs`. The hook
+  suggests `documenting-code` for them, also in Russian.
+- The pre-push hook clears the git environment before it runs the tests. A
+  push from a linked worktree no longer fails the tests that create their own
+  git repositories.
+
 ## [6.11.2] - 2026-09-15
 
 

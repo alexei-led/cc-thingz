@@ -27,6 +27,69 @@
         "The output mentions verifying code examples or commands when practical.",
         "The output says to report clearly if no files actually changed."
       ]
+    },
+    {
+      "id": "readme-front-page-overhaul",
+      "name": "readme front page overhaul",
+      "prompt": "Rewrite this project's README as a front page. Today it has install steps, update steps, develop commands, the full configuration reference, and a line that says the tool is 'blazingly fast and saves a lot of money'. Describe the new structure and the rules you apply.",
+      "expected_output": "The README answers what it is, why use it, how it works, and how to install it. Update, develop, and configuration content moves to the user guide, contributing docs, and configuration reference, with links. The unmeasured speed and money claim is replaced by a measured number with a stated baseline, or removed.",
+      "assertions": [
+        "The output orders the README as: what it is, why use it, how it works, install.",
+        "The output moves update, develop, and configuration content to other docs and links to them instead of keeping copies.",
+        "The output removes or replaces 'blazingly fast and saves a lot of money' with a measured fact.",
+        "The output requires any savings or speed number to state its baseline and method.",
+        "The output proposes at most one diagram or chart for the main flow or main claim, and says it will render and check it."
+      ]
+    },
+    {
+      "id": "architecture-doc-no-history",
+      "name": "architecture doc keeps no history",
+      "prompt": "Our docs/architecture.md mixes the current design with sections like 'Agreed with Codex on 2026-09-22', 'Design review with the Pi team', and 'Why we changed our mind'. Rewrite plan?",
+      "expected_output": "The plan removes the history and discussion stories from the architecture doc, keeps only the current design, and moves history to git, the changelog, or release notes. It restructures the doc by topic with diagrams for flows and decisions.",
+      "assertions": [
+        "The output removes decision dates and discussion stories from the architecture doc.",
+        "The output says history belongs in git, the changelog, or release notes.",
+        "The output keeps the current design and checks it against the code.",
+        "The output structures the doc by topic, such as context, flow, decision logic, modules, and failure handling.",
+        "The output uses diagrams for flows or decisions rather than long prose."
+      ]
+    },
+    {
+      "id": "doc-claim-contradicts-code",
+      "name": "doc claim contradicts code",
+      "prompt": "docs/user-guide.md says the status line shows 'router: no turn yet'. lib/status.mjs returns `${status.alias}: no turn yet`, and the default alias is 'jev-router'. What do you do?",
+      "expected_output": "The response updates the guide to 'jev-router: no turn yet' because the code wins, searches other docs for the same stale string, and reports the corrected claim with its source file.",
+      "assertions": [
+        "The output treats the code as the source of truth and changes the doc to 'jev-router: no turn yet'.",
+        "The output cites lib/status.mjs as the source of the corrected text.",
+        "The output searches the other docs for the same stale text.",
+        "The output reports the correction in its summary instead of changing it silently."
+      ]
+    },
+    {
+      "id": "mermaid-render-check",
+      "name": "mermaid diagram is render-checked",
+      "prompt": "Add a Mermaid system-context diagram to the README: a CLI talks to a local service, which calls an identity provider and a provider API, and writes to a local store.",
+      "expected_output": "The response writes the diagram, renders it to an image, looks at the image for crossing edges, overlapping labels, and misleading arrows, and fixes them. It does not rely on color alone and does not claim the diagram is fine because it parses.",
+      "assertions": [
+        "The output renders the diagram to an image, for example with mmdc or a render script.",
+        "The output inspects the rendered image for layout faults such as crossing edges or overlapping labels.",
+        "The output says that a diagram that parses can still have a bad layout.",
+        "The output marks remote services by label or legend text, not by color alone."
+      ]
+    },
+    {
+      "id": "fair-savings-baseline",
+      "name": "savings claim needs a fair baseline",
+      "prompt": "Add a chart to the README: 'Router saves 18.8% vs always using the top model'. The baseline repriced the router's own traffic, including the cache misses that the router's model switches caused.",
+      "expected_output": "The response rejects the baseline because it charges the alternative for the router's own overhead, defines a fair baseline with the same inputs, fixes a data window and sample size, labels the result as a lower or upper bound where an assumption leans, and puts the method in an evaluation doc.",
+      "assertions": [
+        "The output identifies that the baseline pays for the router's own cache misses and inflates the saving.",
+        "The output defines a fair baseline that gives both sides the same inputs.",
+        "The output states a data window or cutoff and the sample size.",
+        "The output labels the result as a lower bound or upper bound when an assumption leans one way.",
+        "The output puts the method and the data tables in a separate evaluation doc and links to it from the README."
+      ]
     }
   ]
 }

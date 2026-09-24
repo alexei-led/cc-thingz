@@ -27,6 +27,10 @@ fi
 
 echo "=== Pre-push (full) ==="
 
+# Git runs hooks with GIT_DIR and related variables set. From a linked worktree they point at that worktree's
+# git dir, so tests that create their own repositories act on it instead. Clear them before the checks.
+while IFS= read -r var; do unset "$var"; done < <(git rev-parse --local-env-vars)
+
 # Full lint/type checks, including the fastest available JS tooling.
 make lint || {
 	echo "FAIL: make lint"

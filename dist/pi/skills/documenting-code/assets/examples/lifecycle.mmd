@@ -1,0 +1,8 @@
+%% Lifecycle: stateDiagram-v2 with short transition labels.
+stateDiagram-v2
+  direction LR
+  [*] --> Running: started by a hook
+  Running --> Draining: SIGTERM
+  Draining --> Stopped: open work done
+  Running --> Stopped: idle timeout
+  Stopped --> Running: next request
