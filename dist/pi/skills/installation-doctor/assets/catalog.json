@@ -39,7 +39,15 @@
         "scripts/commit-state.sh"
       ],
       "documenting-code": [
-        "SKILL.md"
+        "SKILL.md",
+        "scripts/check-links.py",
+        "scripts/prose-lint.py",
+        "scripts/render-mermaid.sh",
+        "assets/examples/decision-outcomes.mmd",
+        "assets/examples/lifecycle.mmd",
+        "assets/examples/pipeline.mmd",
+        "assets/examples/request-flow.mmd",
+        "assets/examples/system-context.mmd"
       ],
       "fixing-code": [
         "SKILL.md"

@@ -263,6 +263,85 @@
       "allowed": [
         "writing-rust"
       ]
+    },
+    {
+      "id": "docs-architecture-rewrite",
+      "language": "en",
+      "prompt": "Rewrite the architecture document: no stories about past discussions, structure it properly, keep it focused, use mermaid for visualization.",
+      "required": [
+        "documenting-code"
+      ],
+      "allowed": [
+        "documenting-code"
+      ]
+    },
+    {
+      "id": "docs-readme-front-page",
+      "language": "en",
+      "prompt": "Update the README too - make it the project front page, short and focused, and explain why to use it.",
+      "required": [
+        "documenting-code"
+      ],
+      "allowed": [
+        "documenting-code"
+      ]
+    },
+    {
+      "id": "docs-all-readable",
+      "language": "en",
+      "prompt": "Now make all docs easier to read, less wordy, avoid duplication, and keep them aligned with the code.",
+      "required": [
+        "documenting-code"
+      ],
+      "allowed": [
+        "documenting-code"
+      ]
+    },
+    {
+      "id": "docs-release-notes",
+      "language": "en",
+      "prompt": "Write good release notes for every GitHub release: well structured, concise, informative.",
+      "required": [
+        "documenting-code"
+      ],
+      "allowed": [
+        "documenting-code"
+      ]
+    },
+    {
+      "id": "ru-docs-rewrite",
+      "language": "ru",
+      "prompt": "Перепиши документацию проекта: сделай её понятнее и короче, добавь диаграммы.",
+      "required": [
+        "documenting-code"
+      ],
+      "allowed": [
+        "documenting-code"
+      ]
+    },
+    {
+      "id": "docs-lookup-still-routes",
+      "language": "en",
+      "prompt": "What do the docs for pydantic v2 say about model validators?",
+      "required": [
+        "looking-up-docs"
+      ],
+      "allowed": [
+        "looking-up-docs",
+        "writing-python"
+      ]
+    },
+    {
+      "id": "docs-lookup-documentation-say",
+      "language": "en",
+      "prompt": "What does the FastAPI documentation say about dependency overrides?",
+      "required": [
+        "looking-up-docs"
+      ],
+      "allowed": [
+        "looking-up-docs",
+        "writing-python"
+      ]
     }
   ]
 }

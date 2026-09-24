@@ -189,3 +189,29 @@ FIXTURES="$BATS_TEST_DIRNAME/fixtures"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"researching-web"* ]]
 }
+
+@test "skill-enforcer: writing project docs routes to documenting-code, not docs lookup" {
+	run bash "$HOOK" <<<'{"prompt":"Now make all docs easier to read, less wordy, and aligned with the code."}'
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"documenting-code"* ]]
+	[[ "$output" != *"looking-up-docs"* ]]
+}
+
+@test "skill-enforcer: rewriting the architecture document routes to documenting-code" {
+	run bash "$HOOK" <<<'{"prompt":"Rewrite the architecture document and use mermaid diagrams."}'
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"documenting-code"* ]]
+}
+
+@test "skill-enforcer: Russian doc rewrite routes to documenting-code" {
+	run bash "$HOOK" <<<'{"prompt":"Перепиши документацию проекта и сделай её понятнее."}'
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"documenting-code"* ]]
+}
+
+@test "skill-enforcer: reading library docs still routes to looking-up-docs" {
+	run bash "$HOOK" <<<'{"prompt":"What do the docs for pydantic v2 say about model validators?"}'
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"looking-up-docs"* ]]
+	[[ "$output" != *"documenting-code"* ]]
+}

@@ -1,0 +1,16 @@
+%% Decision logic: one box for each outcome, labeled with the reason code that users see.
+flowchart TD
+  S(["New request"]) --> Q{"Cache fresh?"}
+  Q -- yes --> R1["cache-hit"]
+  Q -- no --> L{"Rate limit<br/>reached?"}
+  L -- yes --> R2["throttled"]
+  L -- no --> F{"Upstream<br/>answers?"}
+  F -- yes --> R3["fetched"]
+  F -- no --> R4["stale-served"]
+
+  classDef stay fill:#f1f5f9,stroke:#64748b,color:#0f172a
+  classDef up fill:#fef3c7,stroke:#d97706,color:#451a03
+  classDef ok fill:#ecfdf5,stroke:#059669,color:#064e3b
+  class R1,R4 stay
+  class R2 up
+  class R3 ok

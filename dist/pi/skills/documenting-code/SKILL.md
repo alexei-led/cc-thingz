@@ -1,5 +1,5 @@
 ---
-{"description":"Create or update human-facing docs, agent-facing instructions, architecture docs, API docs, README content, and useful code comments from implementation facts. Use when docs are stale, missing, or must reflect code changes. NOT for code-quality review, prompt scoring, speculative docs, or ADRs unless explicitly requested.","name":"documenting-code"}
+{"description":"Write, rewrite, or update project docs from implementation facts - README front pages, user guides, configuration references, architecture docs, evaluations, release notes, agent instructions, and code comments. Use when docs are stale after a change, or when a doc set must become clear, visual, and consistent with the code. NOT for looking up external library docs (looking-up-docs), scoring instruction files (reviewing-instructions), or ADRs unless explicitly requested.","name":"documenting-code"}
 ---
 <!-- Pi platform guidance -->
 <!-- Use installed Pi tool names exactly. Installed extensions may add toolsets such as Task*, Monitor*, and Loop*; use the visible tool names exactly and do not translate them to Claude syntax. -->
@@ -11,105 +11,87 @@
 
 # Documenting Code
 
-Update only useful documentation. Start from code facts, identify the reader, and
-make the smallest doc change that helps that reader act correctly.
+Turn implementation facts into docs that a named reader can use. Every claim in
+the result matches the code, and every visual renders cleanly.
 
-## Role-gated action
+## Pick the mode
 
-Detect capability from tools, not prose:
+- **Update**: a code change made docs stale. Change the smallest set of docs.
+  Done when each changed behavior is documented where its reader looks, and
+  nothing unrelated changed.
+- **Overhaul**: the user asks to rewrite, restructure, or improve a doc set, for
+  example a README front page, guides, or an architecture doc. Done when:
+  - each doc has one reader and one job, and each fact has one owner
+  - every claim matches the code, and every visual passes its render check
+  - the gate passes
+- If the mode or the scope is unclear, ask one question with options:
+  auto-detect from recent changes, README, API docs, or the full doc set.
 
-- Write-capable role: edit docs and run validation.
-- Read-only role: apply nothing; emit proposed edits in the output contract.
+## Readers
 
-## Reader model
+Decide the reader before writing.
 
-Choose the reader before writing.
-
-Human reader:
-
-- Make docs scannable: clear title, short overview, focused sections, examples.
-- Keep docs short. Link to detail instead of creating long reads.
-- Use Mermaid diagrams only when they answer a real structure, flow, lifecycle,
-  ownership, or trade-off question.
-- Match the existing docs style. Do not invent fonts, colors, or custom visual
-  treatment unless the docs system already supports it.
-
-Agent reader:
-
-- Write terse operational instructions for LLMs.
-- Prefer headers, bullets, numbered steps, and exact contracts.
-- Remove generic knowledge, duplicate rules, pretty formatting, diagrams, tables,
-  long rationale, and advice the model already knows.
-- If the task is to review or score agent instructions, use `reviewing-instructions`.
-
-Code reader:
-
-- Comments and docstrings explain contracts, constraints, invariants, side
-  effects, error behavior, and non-obvious decisions.
-- Delete comments that paraphrase code.
-- Avoid comments in tests unless they explain non-obvious external behavior or
-  why an edge case matters.
-
-## Language references
-
-Load only references matching changed implementation files:
-
-- C# /.NET: `references/csharp.md`
-- Go: `references/go.md`
-- Java/Kotlin: `references/java-kotlin.md`
-- Python: `references/python.md`
-- Rust: `references/rust.md`
-- TypeScript: `references/typescript.md`
-- Web: `references/web.md`
-
-Mixed languages: load each matching reference. Unknown language: use this file
-only.
+- **Human**: short, scannable text. Use a diagram, table, or chart when it
+  answers a question faster than prose. Load `references/doc-set.md` for doc
+  roles and outlines, `references/style.md` for language, and
+  `references/visuals.md` for diagrams and charts.
+- **Agent** (AGENTS.md, CLAUDE.md, skills, prompts): terse operational text with
+  headers, bullets, numbered steps, and exact contracts. No tables, diagrams,
+  or rationale that a model already knows. To score or lint instruction files,
+  use `reviewing-instructions`.
+- **Code**: comments and docstrings state contracts, invariants, side effects,
+  errors, and non-obvious decisions. Delete comments that restate the code.
+  Load the reference for each changed language: `references/csharp.md`,
+  `references/go.md`, `references/java-kotlin.md`, `references/python.md`,
+  `references/rust.md`, `references/typescript.md`, `references/web.md`.
 
 ## Workflow
 
-1. Identify scope from the user request or changed files. Do not ask if scope is clear.
-2. Read relevant implementation, tests, and existing docs before writing.
-3. Decide reader type: human, agent, code reader, or mixed.
-4. Check docs against current behavior. Code wins unless the user says docs define the intended contract.
-5. Use `looking-up-docs` only when external API syntax or behavior is uncertain.
-6. Use one bounded read-only subagent only for large doc audits; verify its claims before editing.
-7. Update the smallest useful docs. Do not create speculative docs.
-8. Verify with the narrowest docs or repo checks available.
+1. Scope the work from the request or the changed files (`git diff --name-only`).
+2. List the doc files, the reader and the job of each, and the facts that more
+   than one doc states. In Overhaul mode, write the ownership map from
+   `references/doc-set.md` before editing.
+3. Read the code, tests, and configuration that each doc describes. Code wins,
+   unless the user says that the doc is the intended contract.
+4. Write. Keep each fact in one place and link to it from the others. Keep
+   history out of design docs. Replace adjectives with measured facts.
+5. Check every claim against its source with `references/claims.md`. Generate
+   sample output from the real code. Mark each claim that you cannot confirm,
+   and say where you looked.
+6. Render every new or changed diagram and chart, look at the images, and fix
+   the faults named in `references/visuals.md`.
+7. Run the gate once. Run it again only after further edits.
+8. Report with the output contract.
 
-## What to update
+For release notes, use `references/release-notes.md` in place of steps 2 and 6.
 
-- README usage, setup, or quick start when user-visible behavior changes.
-- API docs when parameters, outputs, errors, side effects, or examples change.
-- Architecture docs when boundaries, data flow, ownership, deployment units, or
-  major trade-offs change.
-- Agent instructions when skills, agents, hooks, commands, tools, routing, or
-  operating rules change.
-- Generated catalogs only through their source files and generator scripts.
-- Code comments/docstrings only when they add useful contract or reasoning value.
+## Gate
+
+Run the bundled scripts on the changed docs from the project root.
+`<skill-dir>` is the directory that contains this SKILL.md, as the host
+reports it. Do not use a `scripts/` directory of the project instead.
+
+```bash
+python3 <skill-dir>/scripts/check-links.py <files or dirs>   # relative links and #anchors
+bash <skill-dir>/scripts/render-mermaid.sh <files or dirs>   # renders each Mermaid block to PNG
+python3 <skill-dir>/scripts/prose-lint.py <files or dirs>    # advisory plain-language lint
+```
+
+- Open the rendered images. A diagram that parses can still have a bad layout.
+- Also run the repo's own docs checks, for example `markdownlint-cli2` or a
+  `make` docs target, when they exist.
+- Run documented commands and examples when practical.
+- If a tool is missing (`mmdc`, `python3`), report which check did not run.
 
 ## Rules
 
-- No promotional filler.
-- No dead, future, or speculative behavior.
+- No speculative, future, or dead behavior.
+- History (decision dates, "agreed with", replaced designs) belongs in git, the
+  changelog, or release notes, not in design docs.
+- No secrets, tokens, private paths, or internal hosts.
+- Generated docs: edit the source and run the generator.
 - No ADRs or `docs/adr/` changes unless explicitly requested.
-- Keep private paths, secrets, tokens, and internal credentials out of docs.
-- Prefer runnable examples. If an example cannot be run, state why.
-- For human docs, favor a compact diagram over paragraphs only when the diagram
-  improves understanding.
-- For agent docs, optimize for token efficiency over visual appeal.
-
-## Verification
-
-Run the narrowest relevant checks, for example:
-
-```bash
-markdownlint-cli2 '**/*.md'
-make lint-markdown
-make validate
-```
-
-Also run documented commands or examples when practical. If a check is missing or
-not practical, state the reason and run the closest available check.
+- Do not commit, push, or publish unless the user asks.
 
 ## Output
 
@@ -118,18 +100,26 @@ Write-capable role:
 ```markdown
 ## Documentation Update
 
+Mode: update | overhaul
+
 Updated:
 
-- `path` — <what changed and reader served>
+- `path` — <what changed> (reader: <human | agent | code>)
 
-Verified:
+Moved (overhaul only):
 
-- <check>: passed | skipped (<reason>)
+- <fact> → owned by `path`; other docs now link to it
+
+Checked:
+
+- claims: <n> checked against source; unconfirmed: none | <claim — where looked>
+- visuals: <n> rendered and inspected | none changed
+- gate: links <passed | failed>, diagrams <passed | skipped (reason)>, prose <n findings>
 
 Issues: none | <remaining issue>
 ```
 
-Read-only role:
+Read-only role: apply nothing and run nothing.
 
 ```markdown
 ## Proposed Changes
@@ -143,14 +133,17 @@ Reader: human | agent | code
 Code:
 <doc content or patch-sized replacement with enough context>
 
-Rationale: <code fact that makes this stale or missing>
+Rationale: <code fact that makes this stale, missing, or duplicated>
 ```
 
 ## Failure handling
 
-- Ambiguous scope: ask one scoped question.
-- Missing changed-file context: inspect `git diff --name-only`; if unavailable,
-  ask for paths.
-- No stale docs found: say so and report what was checked.
-- Docs/code conflict: report the conflict; update docs to code unless user says docs are intended contract.
-- Validation failure: report the exact failure and do not claim docs are current.
+- Unclear scope: ask the one question from "Pick the mode".
+- No stale docs found: say so and list what you checked.
+- Docs and code conflict: report the conflict. Update the docs to the code
+  unless the user says that the docs are the contract.
+- A claim cannot be checked: do not state it as fact. List it as unconfirmed.
+- Large audit: one bounded read-only helper can map docs against code. Do not
+  trust its report. Check its claims and the actual diff (`git diff --stat`)
+  before you report success.
+- A check fails: quote the failure and do not claim that the docs are current.
