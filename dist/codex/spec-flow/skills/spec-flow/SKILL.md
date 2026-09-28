@@ -7,16 +7,13 @@
 
 # Spec flow
 
-Lightweight spec loop for controlled task-by-task work.
+Lightweight loop for controlled work, one task at a time: plan one slice, execute
+one task, checkpoint or close, repeat.
 
-Loop: plan one slice → execute one task → checkpoint or close → repeat.
-
-`specctl` owns state. Do not edit task status or `.spec/SESSION.yaml` by hand.
-
-## Read first
-
-- `references/method.md` for artifact shapes, planning rules, task quality, and mini-interview guidance.
-- `references/specctl-commands.md` for CLI commands.
+`scripts/specctl` (written `specctl` below) owns state. Do not edit task status
+or `.spec/SESSION.yaml` by hand. `references/specctl-commands.md` lists every command.
+`references/method.md` covers task quality, templates, the planning output, and
+the mini-interview.
 
 ## State model
 
@@ -28,115 +25,76 @@ Loop: plan one slice → execute one task → checkpoint or close → repeat.
 
 Task states: `todo`, `in-progress`, `done`.
 
-## Common flows
-
-New project:
-
-```bash
-scripts/specctl init
-```
-
-Then plan the first executable slice. Do not build a full backlog unless the user asks.
-
-Existing project:
-
-1. Inspect current code and project instructions.
-2. Create the smallest task that can be verified.
-3. Link optional REQ/EPIC context only when it reduces ambiguity.
-
-Stop and resume:
-
-```bash
-scripts/specctl checkpoint --message "<where to resume>"
-scripts/specctl session handoff
-```
-
-Iterate:
-
-```bash
-scripts/specctl ready
-scripts/specctl start TASK-<id>
-# implement + verify
-scripts/specctl done TASK-<id> --summary "..." --tests "..."
-```
-
 ## Modes
 
 ### Orient
 
-Use when the user asks for status, next task, resume, health, or what to do next.
-
-```bash
-scripts/specctl status
-scripts/specctl ready
-scripts/specctl session handoff
-scripts/specctl validate
-```
-
-Report active session, next ready task, validation issues, and the smallest next action.
+For status, the next task, resume, or health: run `specctl status`, `ready`,
+`session handoff`, and `validate`. Report the active session, the next ready task,
+validation issues, and the smallest next action.
 
 ### Plan
 
-Use when the user has an idea, requirement, bug, or project gap and wants an executable plan.
+For an idea, requirement, bug, or project gap that needs an executable plan.
+Done when the smallest useful artifact set exists and passes `specctl validate`,
+and its first task appears in `specctl ready` (a REQ-only plan has no ready task
+yet). Create tasks and requirements with `specctl new task|req`, then fill in
+the details; write an `EPIC-*` file by hand. Pick the smallest set:
 
-1. Run `scripts/specctl init`.
-2. Check status/session before changing files.
-3. Ask 3-5 questions only if the slice is unclear.
-4. Optionally scan the codebase for relevant files and patterns.
-5. Draft the smallest useful artifact set:
-   - one clear slice → one `TASK-*`
-   - several slices → one `EPIC-*` plus tasks
-   - unclear WHY/WHAT → one `REQ-*` first
-6. Show the proposed plan; obtain approval if the user has not already authorized that scope.
-7. Write with `scripts/specctl new task <slug>` when possible, then edit details.
-8. Run `scripts/specctl validate` and `scripts/specctl ready`.
+- one clear slice: one `TASK-*`
+- several slices: one `EPIC-*` plus tasks
+- unclear WHY or WHAT: one `REQ-*` first
 
-Do not write implementation code in plan files.
+Run `specctl init` when `.spec/` is missing, and check status and session before
+changing files. In an existing project, read the code and project instructions
+first, and link REQ or EPIC context only when it reduces ambiguity. Ask
+questions only when the slice is unclear. Show the proposed plan before writing it
+unless the user already authorized that scope. Build a full backlog only on
+request, and keep implementation code out of plan files.
 
 ### Execute
 
-Use when the user wants to work, continue, or implement a task.
+For work, continue, or implement. Done when the relevant build/test/lint checks
+pass on what you changed, or you name each check that did not run and why. Before
+closing, confirm the acceptance criteria and show the scoped diff or
+`specctl session handoff`; if the task cannot finish, checkpoint it instead.
 
-1. Run `scripts/specctl status` and `scripts/specctl session show`.
-2. Resume an existing matching session when the user asks to continue. Ask before replacing a conflicting session.
-3. Select with `scripts/specctl ready` or verify the named task with `scripts/specctl show TASK-<id>`.
-4. Start with `scripts/specctl start TASK-<id>`.
-5. Make a short implementation plan; obtain approval if that implementation scope is not already approved.
-6. Implement only the approved task.
-7. Run project-appropriate checks from project instructions and changed files.
-8. Show scoped diff or `scripts/specctl session handoff` before close.
-9. Close with `scripts/specctl done ...` or checkpoint with `scripts/specctl checkpoint`.
+- Check `specctl status` and `specctl session show` first. Resume a matching
+  session when the user asks to continue; ask before replacing a conflicting one.
+- Pick the task from `specctl ready` or verify the named one with `specctl show`,
+  then `specctl start TASK-<id>`.
+- Share a short implementation plan unless that scope is already approved.
+  Implement only this task; file follow-up tasks instead of widening scope.
+- Take checks from the project instructions and the changed files; not every
+  project has `make`.
 
 ### Checkpoint or close
 
-Use when the user stops, switches context, or finishes.
-
-Checkpoint:
+Checkpoint before stopping or switching context:
 
 ```bash
 scripts/specctl checkpoint --message "<where to resume>"
 ```
 
-Close:
+Close a finished task:
 
 ```bash
 scripts/specctl done TASK-<id> \
   --summary "<what changed>" \
-  --tests "<checks passed or not run: reason>" \
+  --tests "<checks passed, or not run: reason>" \
   --files "<changed files or none>" \
   --commits "<sha or none>"
 ```
 
-`specctl done` needs `--summary` and `--tests` unless the user explicitly approves `--force`. These fields record the caller's evidence; the helper does not execute or certify checks. Name commands and results honestly, including skip reasons, and satisfy project gates before closing.
+`--summary` and `--tests` are required unless the user approves `--force`. They
+record your evidence; `specctl` does not run or certify checks. Name the commands
+and results, including skip reasons such as `--tests "not run: docs-only task"`.
 
-## Guardrails
+## Authorization
 
-- One task is the execution unit.
-- Checkpoint before stopping or switching.
-- Keep work inside the approved task.
-- File follow-up tasks instead of expanding scope.
-- Verification is adaptive; do not assume every project has `make`.
-- Authorization persists for the agreed plan and implementation scope; do not repeat approval at each mechanical step. Ask when scope changes or before forcing state or clearing a conflicting session.
+Approval covers the agreed plan and implementation scope; do not ask again at each
+mechanical step. Ask when scope changes, before using `--force`, or before
+clearing a conflicting session.
 
 ## Output
 
@@ -152,8 +110,7 @@ Next: <one command or action>
 
 ## Failure handling
 
-- No `.spec/`: run or offer `scripts/specctl init`.
-- Active session conflicts: show handoff and ask before switching.
-- No ready tasks: show blockers; plan new work or finish blockers.
+- No `.spec/`: run or offer `specctl init`.
+- No ready tasks: show blockers; plan new work or finish the blockers.
 - Validation fails: fix the smallest artifact issue before work.
 - Verification fails: fix within scope, checkpoint, or stop; do not mark done.

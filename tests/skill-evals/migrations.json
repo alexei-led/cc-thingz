@@ -10,9 +10,9 @@
     },
     {
       "source": "browser-automation/playwright-skill/evals/evals.json",
-      "destination": "browser/playwright-skill/evals/evals.json",
-      "status": "migrated",
-      "reason": "Canonical package identity; existing scenarios merged without dropping cases.",
+      "destination": "archive/browser/playwright-skill/evals/evals.json",
+      "status": "archived",
+      "reason": "Skill merged into browser-automation; runner-contract and screenshot-batch scenarios moved to browser/browser-automation.",
       "evals": 4
     },
     {
@@ -66,9 +66,9 @@
     },
     {
       "source": "dev-tools/sequential-thinking/evals/evals.json",
-      "destination": "discovery/sequential-thinking/evals/evals.json",
-      "status": "migrated",
-      "reason": "Canonical package identity; existing scenarios merged without dropping cases.",
+      "destination": "archive/discovery/sequential-thinking/evals/evals.json",
+      "status": "archived",
+      "reason": "Skill retired; models reason adaptively and no consumer used the structured Thought format.",
       "evals": 3
     },
     {

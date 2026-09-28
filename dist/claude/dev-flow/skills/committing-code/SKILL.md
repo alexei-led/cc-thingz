@@ -4,63 +4,58 @@
 
 # Commit Changes
 
-Scope: inspect changes, group them, and create normal commits only. Do not rewrite history, amend existing commits, force-push, or stage secrets. Ground the proposal in git status, diff, and recent log output.
+Group the working-tree changes by purpose and commit them as normal commits. Done
+when each intended change is in one logical commit and the final `git status` is
+shown.
 
-## Step 1: Gather State
+## Gather state
 
-Use `scripts/commit-state.sh gather` if present; otherwise gather status, diff stat, and recent commits.
+Run `scripts/commit-state.sh gather`. It is read-only and prints repo state,
+changed paths, diff stats, suspicious paths, and recent commits. Without it, run
+`git status`, `git diff --stat`, and `git log --oneline -8`. Read the full diff
+(`scripts/commit-state.sh full-diff`) when the stats do not make the grouping
+obvious. Treat the helper output as a hint, not proof.
 
-The helper is read-only. Treat helper output as a hint, not proof.
+Stop and report the state verbatim when there is nothing to commit, the directory
+is not a git repository, HEAD is detached, or a rebase or merge is in progress.
 
-If grouping is unclear, inspect the full diff.
+## Group
 
-- If no changes: say "Nothing to commit" and stop.
-- If not a git repository: report "Not a git repository" and stop.
-- If detached HEAD or rebase/merge is interrupted: report the git state verbatim and stop.
+- One purpose, a few files, and no suspicious paths: one commit. Do not invent a
+  split.
+- Mixed changes: group by purpose (feature, fix, refactor, docs, CI or config)
+  from diff evidence, not filenames. Keep a change and its tests together.
+- Match the message style of recent commits. Read
+  [conventions.md](references/conventions.md) when there is no history to match or
+  the user asks for a specific format.
 
-## Step 2: Choose Fast Path or Split Path
+## Propose and commit
 
-Use the fast path when all are true:
-
-- few changed files
-- small diff stat
-- one coherent purpose from gathered output
-- no suspicious paths
-- no obvious mix of code, docs, tests, CI, or config for different purposes
-
-Then propose one commit. No deep exploration. No invented split.
-
-If mixed or unclear, inspect the full diff and group by purpose: feature, fix, refactor, docs, config. Use diff evidence, not filenames alone.
-
-Match commit style from recent history.
-
-## Step 3: Present Proposed Commits
+Show the plan and the evidence it rests on:
 
 ```text
-Proposed commits:
+Based on: git status, diff stat, last 8 commits (style: conventional)
 
-1. feat: add user validation
-   - src/validate.ts
-   - src/validate_test.ts
-
-2. docs: update README
+1. fix(validation): reject empty email
+   - src/validation.ts
+   - tests/validation.test.ts
+2. docs: document the --dry-run flag
    - README.md
 ```
 
-If the user rejects the grouping, ask for revised grouping and do not proceed until approved.
+An explicit commit request authorizes staging and committing this plan. Proceed
+without a second approval, and do not ask again for each group. Ask first only
+when the user rejects the grouping, or when the scope, sensitive content, or a
+history-changing action differs from what was requested.
 
-## Step 4: Execute
+Hard rules:
 
-Never stage likely secrets: `.env`, keys, certificates, credentials, passwords, tokens, or files that appear to contain secrets. Flag them to the user if detected in changes. This check does not replace secret-scanning tools.
+- Never stage likely secrets: `.env` files, private keys, certificates, credential
+  or token files, or files whose content looks like a secret. Flag each one to
+  the user. This check does not replace a secret scanner.
+- If a pre-commit hook rejects a commit, report its error verbatim. Do not retry
+  with `--no-verify` and do not amend.
 
-An explicit request to commit authorizes staging and committing the reviewed scope. Present the grouping, then execute within that authorization. Approval of several commit groups covers all of them; do not ask again before each group. Ask only when scope, sensitive content, or a history-changing action differs from what was authorized.
+## Report
 
-If a pre-commit hook rejects, report the hook error verbatim. Do not retry with `--no-verify`.
-
-## Conditional References
-
-- [conventions.md](references/conventions.md) — read when the repo has no commit history to match, or when the user requests Conventional Commits format: type prefixes, scope rules, breaking-change notation, subject-line style.
-
-## Step 5: Summary
-
-Show final status, created commits, and remaining uncommitted files.
+Show the created commits, the final `git status`, and any files left uncommitted.

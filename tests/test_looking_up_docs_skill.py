@@ -28,10 +28,14 @@ def test_context7_reference_documents_required_commands():
 
     assert "ctx7 library <name>" in reference
     assert "ctx7 docs /org/project" in reference
-    assert "npx ctx7@latest library" in reference
-    assert "Do not include secrets" in reference
-    assert "Do not call `ctx7 library` more than 3 times" in reference
-    assert "Do not call `ctx7 docs` more than 3 times" in reference
+    assert "npx ctx7@latest" in reference
+    assert "At most 3 `ctx7 library` calls and 3 `ctx7 docs` calls" in reference
+
+
+def test_skill_forbids_secrets_in_external_queries():
+    skill = (LOOKING_UP_DOCS / "SKILL.md").read_text()
+
+    assert "Never put secrets, credentials" in skill
 
 
 def test_official_sources_reference_documents_ecosystem_sources():

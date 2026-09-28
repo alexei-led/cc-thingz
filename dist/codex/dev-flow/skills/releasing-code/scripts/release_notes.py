@@ -125,7 +125,7 @@ def collect_release_versions(root: Path) -> dict[str, str]:
             add(str(path.relative_to(root)), data["metadata"]["version"])
         for relative in (
             "package.json",
-            "src/skills/playwright-skill/scripts/package.json",
+            "src/skills/browser-automation/scripts/package.json",
         ):
             data = json.loads((root / relative).read_text(encoding="utf-8"))
             add(relative, data["version"])
