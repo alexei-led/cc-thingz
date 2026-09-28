@@ -351,7 +351,7 @@ def test_generated_target_inventory_matches_supported_contract() -> None:
     source_skills = {
         path.parent.name for path in (REPO_ROOT / "src/skills").glob("*/SKILL.md")
     }
-    assert len(source_skills) == 31
+    assert len(source_skills) == 29
     assert f"skills-{len(source_skills)}-green" in (REPO_ROOT / "README.md").read_text()
 
     for target in TARGETS:
@@ -492,7 +492,9 @@ def test_source_and_generated_versions_are_consistent() -> None:
             "project"
         ]["version"],
         "playwright package": json.loads(
-            (REPO_ROOT / "src/skills/playwright-skill/scripts/package.json").read_text()
+            (
+                REPO_ROOT / "src/skills/browser-automation/scripts/package.json"
+            ).read_text()
         )["version"],
         "dist/pi/package.json": json.loads(
             (REPO_ROOT / "dist/pi/package.json").read_text()
@@ -735,7 +737,7 @@ def test_release_tag_prepare_and_finalize_require_reviewed_commit(
             "composition": [{"aggregate": {"metadata": {"version": "1.0.0"}}}],
         },
         "package.json": {"version": "1.0.0"},
-        "src/skills/playwright-skill/scripts/package.json": {"version": "1.0.0"},
+        "src/skills/browser-automation/scripts/package.json": {"version": "1.0.0"},
         "src/.agentbundler/packages/test.json": {
             "id": "test",
             "metadata": {"version": "1.0.0"},

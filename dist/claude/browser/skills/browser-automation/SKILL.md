@@ -1,122 +1,92 @@
 ---
 {"argument-hint":"[explore|verify|screenshot|record|test \u003ctarget\u003e]","context":"fork","description":"Browser automation for rendered UI exploration, validation, screenshots, recordings, and end-to-end flows. Use when a task needs an actual browser or rendered DOM: inspect UI state, click/fill forms, debug frontend behavior, capture evidence, verify a feature, or run/generate browser tests. NOT for API checks or pure logic tests where curl, unit tests, or JSDOM is cheaper.","name":"browser-automation","user-invocable":true}
 ---
+
 # Browser Automation
 
-Use this for browser exploration, validation, screenshots, recordings, frontend
-debugging, accessibility checks, and E2E/user-flow testing. Do not delete,
-reset, or mutate non-test data without explicit user confirmation.
+Prove rendered behavior in a real browser and report pass, fail, or blocked with
+evidence. Keep automation temporary unless the user asks for permanent tests.
 
-If the app cannot be started, auth is missing, or fixtures are unavailable,
-report BLOCKED instead of inventing passing results.
+## Runtime
 
-## Runtime Order
+Use the cheapest runtime that proves the claim:
 
-1. Use built-in browser tools first when they are visible in the current Claude
-   Code session. If the user wants Claude in Chrome and no browser tools are
-   visible, tell them to enable `claude-in-chrome` with `/mcp`.
-2. Use the project's configured browser runner when it exists.
-3. Use `playwright-skill` only as the bundled fallback/runtime reference.
-4. If no runtime is available, report BLOCKED with the missing tool/package.
+1. Browser tools exposed in the current session. See
+   [`references/platform-browser-tools.md`](references/platform-browser-tools.md).
+2. The project's configured browser runner. Infer the package manager from the
+   lockfile; do not invent a runner.
+3. The bundled Playwright scripts in this skill's `scripts/` directory. Read
+   [`references/playwright.md`](references/playwright.md) for setup, the script
+   skeleton, helpers, and custom headers.
+4. None available: report blocked and name the missing tool or package.
 
-Use browser tools for rendered state: navigation, click/type/select, DOM or
-accessibility snapshots, screenshots, console logs, network inspection, and
-read-only page JavaScript. Use Bash for dev-server setup, project runners, and
-repeatable tests.
+## Rules
 
-## Arguments
+- Target: reuse a reachable dev server; start one only when its command is
+  known. Ask when no server or several servers are found.
+- Data: use seeded users, fixed dates, reset state, and mocked external
+  services. Credentials, production data, and destructive actions need explicit
+  user approval.
+- Locators: role, label, text, or test id first; CSS last.
+- Waiting: wait on observable state such as a selector, URL, network response,
+  or accessibility snapshot. Never add fixed sleeps. For SPA or HTMX pages,
+  assert the DOM after swaps and client-side route changes.
+- Headless: when the platform exposes no visible browser (Pi, CI, most CLIs),
+  use headless screenshots plus a manifest as visual evidence. Use headed mode
+  only when the user can see the browser.
+- Files: write generated scripts and artifacts to `/tmp/playwright-*`. Write to
+  the project only when the user asked for permanent tests, and never write into
+  the skill directory.
+- Failures: fix the app or tests only when that is in scope. After two failed
+  scoped attempts, save evidence, quote the failing line or UI state, and stop.
+- Permanent tests: done when the relevant build/test/lint checks pass on what
+  you changed, or you name each check that did not run and why.
 
-- `explore <url|feature>` → inspect rendered page state
-- `verify <feature>` → validate a feature in the browser
-- `screenshot <url|feature>` → capture visual evidence
-- `record <flow>` → record or script a manual browser session
-- `test [target]` → run or generate browser/E2E tests
-- empty → ask which browser task to run
+## Bundled Playwright scripts
 
-If no argument is provided, ask one question:
+Run them by absolute path from the caller's working directory, where
+`<skill-dir>` is the directory that contains this `SKILL.md`. Prefer the
+screenshot scripts over custom batch scripts:
 
-- Action: What browser task should I run? Options: Explore, Verify, Screenshot,
-  Record, Test.
+```bash
+node <skill-dir>/scripts/screenshot-url.js --url <url> --selector <ready-selector> \
+  --out /tmp/playwright-page.png --json
+node <skill-dir>/scripts/screenshot-sequence.js --url-template '<url/{n}>' --from 1 --to 10 \
+  --selector <ready-selector> --out-dir /tmp/playwright-shots --json
+node <skill-dir>/scripts/run.js --json /tmp/playwright-check.js
+```
 
-## Prepare App and Data
+- Manifests record URL, title, screenshot path, viewport, console errors,
+  network failures, and HTTP responses with status >=400.
+- `run.js` keeps the caller's working directory. `--json` or `--quiet` sends
+  runner logs to stderr, so stdout carries only the script's JSON. Playwright
+  globals such as `chromium` and `helpers` stay available when the script also
+  uses `require("fs")` or `require("path")`.
 
-Before any browser action, include dev-server detection/startup and safe test
-data setup.
+## Platform additions
 
-1. Detect the app start command from browser config, package scripts, Makefile,
-   README, or existing docs.
-2. If a running app is needed, check whether the configured `baseURL` or target
-   URL is reachable. Start it only when the command is known.
-3. Use deterministic fixtures: seeded users, fixed dates, stable IDs, reset
-   database state, and mocked external services when needed.
-4. Avoid production data, local user state, random order, wall-clock dependence,
-   and previous-run state.
+Read the action from `$ARGUMENTS`:
 
-## Execute
+- `explore <url|feature>`: inspect rendered page state.
+- `verify <feature>`: validate a feature in the browser.
+- `screenshot <url|feature>`: capture visual evidence.
+- `record <flow>`: script a manual browser session.
+- `test [target]`: run or generate browser tests.
+- Empty: ask which action with AskUserQuestion.
 
-### Built-in Browser Tools
-
-When browser tools are visible, use them directly:
-
-1. Navigate to the target URL.
-2. Inspect snapshot/rendered state before interacting.
-3. Click, type, select, or submit using accessible targets.
-4. Capture artifacts needed to support the result.
-5. Verify user-visible outcomes.
-
-Use read-only page inspection JavaScript only for diagnosis. Do not mutate app
-state through console scripts unless the user asked for that exact action.
-
-### Project Browser Runner
-
-Run the project's configured browser command. Infer the package manager from the
-lockfile. Do not invent a runner.
-
-### Playwright Helper Fallback
-
-Load `playwright-skill` for exact helper setup and invocation. Write temporary
-scripts to `/tmp/playwright-*.js`; never write generated files into the helper
-directory or project unless permanent tests were requested.
-
-## Browser Script Rules
-
-- Prefer semantic locators: role, label, text, test id, CSS last.
-- Never use fixed `waitForTimeout` delays.
-- Use waits/assertions on visible UI state, URL, selector, network state, or
-  accessibility snapshot.
-- Prefer visible/headed mode for exploration and screenshots. Use headless for
-  CI or when requested.
-- Keep temporary scripts under `/tmp`.
-- Keep permanent tests in the project's existing test layout only when the user
-  asked to add tests.
-
-## Debugging Failed Checks
-
-1. Read the browser or runner error output.
-2. Capture current rendered state with a snapshot or screenshot.
-3. Check console logs and failed network requests.
-4. Fix the test or app only if fixing is in scope.
-5. Re-run the narrow check once.
-6. If still failing after two attempts, save evidence and stop.
-
-## HTMX and SPA Notes
-
-- Verify DOM updates after swaps or client-side route changes.
-- Test triggers, form submissions, partial updates, and history behavior.
-- Assert user-visible changes rather than implementation internals.
-- Check relevant response headers and network calls when diagnosing.
-
+Use browser tools for rendered state and Bash for dev servers, project
+runners, and the bundled scripts.
 ## Output
 
 ```markdown
 ## Browser Automation Result
 
-Action: <explore | verify | screenshot | record | test>
-Result: <PASS | FAIL | BLOCKED>
-Runtime: <built-in browser | project runner | playwright-skill | unavailable>
-Dev server: <reused | started | not needed | blocked: reason>
-Fixtures/Auth: <deterministic setup summary or blocker>
-Artifacts: <screenshot/trace/video/report/log paths or none>
-Details: <key observations, commands, tool actions, or test results>
-Next Fix: <only when failing or blocked>
+Target: <page, feature, or flow>
+Runtime: <built-in browser | project runner | bundled Playwright | blocked>
+Actions: <commands or browser actions>
+Result: <pass | fail | blocked>
+Evidence: <screenshot, manifest, or trace paths, or the key observation>
+Next fix: <only when failing or blocked>
 ```
+
+Report blocked, not pass, when the check did not run.
