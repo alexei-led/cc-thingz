@@ -23,11 +23,11 @@ A branch or its worktree is a candidate when one of these holds:
 - `upstream gone`: the tracking branch was deleted.
 - `merged`: the branch is an ancestor of the base.
 
-It always skips the current worktree, the current branch, the base, and `main`/`master`/`trunk`/`develop`/`dev`. It keeps dirty worktrees. It keeps candidates with ahead commits, or an unknown ahead count, unless `--force` is passed. Without `gh`, only the git checks run, so squash-merged branches may show as kept.
+It always skips the current worktree, the current branch, the base, and `main`/`master`/`trunk`/`develop`/`dev`. It keeps dirty worktrees. It keeps candidates with ahead commits, or an unknown ahead count, unless `--force` is passed. A branch with none of these signals prints `skip ... (active)`; without `gh`, squash-merged branches land there.
 
 ## Workflow
 
-1. Run the preview and show it. Read each line literally: `remove <worktree>` and `delete <branch>` are candidates; `KEEP ... (dirty)`, `KEEP ... (N ahead — use --force)`, and `KEEP ... (ahead unknown — run git fetch ...)` need the user; `skip` lines are guarded.
+1. Run the preview and show it. Read each line literally: `remove <worktree>` and `delete <branch>` are candidates; `KEEP ... (dirty)`, `KEEP ... (N ahead — use --force)`, and `KEEP ... (ahead unknown — run git fetch ...)` need the user; `skip` lines for the current, base, or protected branch are guarded; mention `skip ... (active)` lines when `gh` is unavailable.
 2. Present every `KEEP` line as a decision for the user.
 3. Ask before `--apply`. Add `--force` only when the user confirms the ahead commits are throwaway.
 

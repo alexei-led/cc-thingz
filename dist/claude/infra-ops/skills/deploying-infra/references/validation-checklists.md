@@ -23,7 +23,7 @@ destination and frozen inputs. Mark each type READY or BLOCKED.
 - `helm template <release> <pinned-local-chart> --kube-context <context> --namespace <namespace> --values <reviewed-values-file>`
 - `helm diff upgrade <release> <pinned-local-chart> --kube-context <context> --namespace <namespace> --values <reviewed-values-file>` when `helm-diff` is installed; without it, diff the rendered output with `kubectl diff`.
 - The values file matches the target environment. Call out CRDs and hooks before confirmation.
-- Record the current revision (`helm history <release>`) as the rollback target.
+- Record the current revision (`helm history <release> --kube-context <context> --namespace <namespace>`) as the rollback target.
 
 ## Terraform
 
