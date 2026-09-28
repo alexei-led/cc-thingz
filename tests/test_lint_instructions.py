@@ -68,6 +68,7 @@ def _rule_ids(
         ("think step by step", "Think step by step.\n", {"F-NO-EMPHASIS"}),
         ("think carefully", "Please think carefully here.\n", {"F-NO-EMPHASIS"}),
         ("caps in inline code", "Match the `CRITICAL` label.\n", set()),
+        ("quoted mention", 'Drop "MANDATORY" and "think step by step".\n', set()),
         ("caps in backtick fence", "```\nIMPORTANT: x\n```\n", set()),
         ("caps in tilde fence", "~~~\nMUST do\n~~~\n", set()),
         ("mermaid diagram", "```mermaid\ngraph TD\n```\n", {"F-NO-DIAGRAM"}),

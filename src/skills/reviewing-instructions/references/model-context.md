@@ -37,8 +37,8 @@ medium.
 
 Anthropic:
 
-- Thinking is adaptive and effort is a setting. Flag "think carefully / hard /
-  step by step" and requests to write out internal reasoning.
+- Thinking is adaptive and effort is a setting. Flag think-harder exhortations
+  and requests to write out internal reasoning.
 - State the result and what done means rather than every intermediate step.
 - For research or analysis, ask it to mark what it could not confirm and where
   it looked.

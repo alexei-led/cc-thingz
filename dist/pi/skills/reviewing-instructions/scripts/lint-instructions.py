@@ -385,7 +385,7 @@ def check_progressive_disclosure(f: InstructionFile) -> Finding | None:
 
 
 _FENCE_MARKERS = ("```", "~~~")
-_INLINE_CODE_RE = re.compile(r"``.+?``|`[^`]+`")
+_INLINE_CODE_RE = re.compile(r"``.+?``|`[^`]+`|\"[^\"]+\"")
 
 
 def _iter_unfenced_lines(body: str):
@@ -403,7 +403,7 @@ def _iter_unfenced_lines(body: str):
 
 
 def _mask_inline_code(line: str) -> str:
-    """Blank inline code spans so quoted tokens are not read as prose."""
+    """Blank code spans and double-quoted mentions so cited tokens are not rules."""
     return _INLINE_CODE_RE.sub(" ", line)
 
 
