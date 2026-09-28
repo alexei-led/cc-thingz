@@ -12,18 +12,19 @@ applying them.
 
 ## Hard rules
 
-- No fix without a reproducible pass/fail signal. If you cannot reproduce, ask for the missing artifact (logs, payload, trace, repro steps, environment) instead of patching on a guess.
+- No fix without a reproducible pass/fail signal. If you cannot reproduce, ask for the missing artifact (logs, payload, trace, repro steps, environment) instead of patching on a guess. Ask before adding temporary instrumentation.
 - No destructive git (hard reset, clean, force push, checkout over local changes) and no `--no-verify`.
-- Never disable assertions, skip fast tests, lower lint severity, clear caches, or ignore files to make a check pass or run faster.
+- Never disable assertions, skip fast tests, lower lint severity, or ignore files to make a check pass or run faster. Clear caches only when a stale cache is the diagnosed cause.
 - Fix the requested failure first; ask before expanding to unrelated failures.
 
 ## Outcome
 
-- **Repro**: the fastest reliable failing signal, best a failing test at the behavior seam; otherwise a script, replayed payload, or small harness around the real path. Iterate on the narrowest command; keep coverage, race, browser, and end-to-end modes off the loop unless they are the failing signal.
+- **Repro**: the fastest reliable failing signal, best a failing test at the behavior seam; otherwise a script, replayed payload, or small harness around the real path. Iterate on the narrowest command and run the broader project gate before reporting; keep coverage, race, browser, and end-to-end modes off the loop unless they are the failing signal.
 - **Root cause**: traced from the failing boundary to the first bad state or contract mismatch, with evidence (`file:line`, symptom, tool). For intermittent or unclear bugs, rank 3–5 falsifiable hypotheses and test them one at a time.
 - **Patch**: the smallest change to the root cause, without adjacent cleanup. If it causes a new failure, diagnose that before touching anything else.
 - **Regression test** at the seam where the user saw the bug. If only a shallow seam exists, say so rather than adding a fake-confidence helper test.
 - **Cleanup**: temporary probes, tagged `[DEBUG-<id>]` while in use, are removed or promoted to real tests.
+- Browser-only symptoms go to browser-automation unless a cheaper CLI or unit signal exists.
 - If a code-graph tool (GitNexus, codegraph) is installed and fresh, use it to find callers or impact before changing widely used code.
 
 Done when the original repro passes, the regression test passes (or the missing

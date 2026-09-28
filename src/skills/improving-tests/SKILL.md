@@ -41,7 +41,7 @@ If the mode is missing, ask which one:
 ## Rules
 
 - Ask before adding a test framework, runner plugin, or tool. Learn the framework, helpers, and conventions from nearby tests and follow them first.
-- Change production code only inside an approved TDD slice.
+- Change production code only inside an approved TDD slice. If no safe behavior seam exists, stop and report what production change would create one.
 - Test through the contract users or adjacent modules rely on: public module, API, CLI, component, or service. Use an integration seam when behavior depends on real wiring (database, filesystem, HTTP, serialization, config); a unit seam when behavior is pure and cheap.
 - Mock only system boundaries (network, clock, randomness, filesystem, subprocesses, external services). Prefer real collaborators or in-memory fakes for domain code.
 - Assert behavior, not private helpers, call counts, or layout. Business-critical arguments get exact matches.

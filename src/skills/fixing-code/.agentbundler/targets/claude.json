@@ -3,8 +3,11 @@
     "mode": "sections",
     "sections": [
       {
-        "headingPath": ["Fix and Diagnose Code", "Platform additions"],
-        "body": "\n### Arguments\n\n`$ARGUMENTS` may include:\n\n- `diagnose` or `investigate`: write the ranked hypotheses before any edit.\n- `team`: spawn read-only `reviewer` agents to challenge the root cause before editing. Ask each for root cause, evidence, suggested fix, and confidence; verify their claims yourself.\n\n### Claude tools\n\n- Ask for missing logs, payloads, access, or instrumentation approval with `AskUserQuestion`.\n- Track fixes longer than two steps with `TaskCreate` and `TaskUpdate`.\n- Hand browser-only symptoms to `browser-automation` when no cheaper CLI or unit signal exists.\n"
+        "headingPath": [
+          "Fix and Diagnose Code",
+          "Platform additions"
+        ],
+        "body": "\n### Arguments\n\n`$ARGUMENTS` may include:\n\n- `diagnose` or `investigate`: write the ranked hypotheses before any edit.\n- `team`: spawn read-only `reviewer` agents to challenge the root cause before editing. Ask each for root cause, evidence, suggested fix, and confidence; verify their claims yourself.\n\n### Claude tools\n\n- Ask for missing artifacts, access, or instrumentation approval with `AskUserQuestion`.\n- Track fixes longer than two steps with `TaskCreate` and `TaskUpdate`.\n"
       }
     ]
   },

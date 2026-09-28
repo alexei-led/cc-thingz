@@ -48,7 +48,7 @@ Default is standard.
 - **Deep**: on request for a thorough, risk, or merge-safety review. All rubric dimensions, including boundary inputs and affected tests.
 - **Team**: on request for team, parallel, or multi-pass review, or offered for a large diff. Split by dimension or file group, then merge into one report: dedupe by `file:line` plus claim, keep the higher severity only when evidence supports it, and put disagreements under Needs review.
 - **External**: only when the user explicitly asks for an external, second-model, or second-opinion review. Keep private code local unless the bridge runs locally or the user approved sharing. Rate external output with the same rubric; claims you cannot verify go to Needs review. Report whether it completed, was unavailable, or was skipped and why.
-- **Simplify**: on request for an over-engineering or "what can we delete" review. Simplicity dimension only. One line per finding, `file:line — <tag> <what>. <replacement>.`, with tags `delete`, `stdlib`/`native` (name the replacement), `yagni`, `shrink`. End with `net: -N lines possible.` or `Lean already. Ship.`
+- **Simplify**: on request for an over-engineering or "what can we delete" review. Simplicity dimension only. Instead of the Output template, one line per finding: `file:line — <tag> <what>. <replacement>.`, with tags `delete`, `stdlib`/`native` (name the replacement), `yagni`, `shrink`. End with `net: -N lines possible.` or `Lean already. Ship.`
 
 ## Evidence
 
