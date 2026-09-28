@@ -20,6 +20,7 @@ Check the nearest `*.csproj`, `Directory.Build.props`, `global.json`, and CI for
 - Async end to end. Never block with `.Result`, `.Wait()`, or `GetAwaiter().GetResult()`. Pass `CancellationToken` through cancellable boundaries. `ValueTask` only when an existing API or a measurement calls for it.
 - Materialize LINQ once where it is needed; avoid repeated `ToList()` and multi-pass chains on hot paths.
 - Built-in DI unless the project chose another container. No interface per class. Never let a singleton capture a scoped service or request state.
+- Validate request DTOs and message payloads at the handler before mapping to domain types; model binding alone is not validation.
 - Bind and validate options at startup; inject typed options instead of reading config ad hoc.
 - Keep EF queries in repositories or adapters, project only needed fields on reads, and handle transactions and concurrency tokens at the persistence edge.
 - Background services honor the stopping token and keep retry and backoff in one place.

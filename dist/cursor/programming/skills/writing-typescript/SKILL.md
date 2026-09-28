@@ -8,7 +8,7 @@ Follow the repository's TypeScript version, tsconfig, package manager, framework
 
 ## Defaults
 
-- Never weaken compiler options to pass a check. New configs enable `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`, and `noFallthroughCasesInSwitch`.
+- Never weaken compiler options to pass a check. New configs enable `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `useUnknownInCatchVariables`, `noImplicitOverride`, and `noFallthroughCasesInSwitch`.
 - Treat HTTP responses, JSON, env, storage, form data, and SDK output as `unknown`. Narrow at the boundary with the project's schema library or a small type guard; never cast `await res.json()` to a domain type.
 - Avoid `any`, `as` casts, non-null `!`, and broad index signatures unless a runtime check or an external type gap justifies them.
 - Discriminated unions for variants and async state, with an exhaustive `never` check. Literal unions or `as const` arrays instead of new enums. `satisfies` for config maps.
