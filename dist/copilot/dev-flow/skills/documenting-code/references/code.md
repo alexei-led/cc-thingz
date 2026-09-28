@@ -18,15 +18,15 @@ examples.
 
 ## Per language
 
-Prefer the project's configured checks. Use these when they exist and the project
-has no docs target.
+Prefer the project's configured checks. Use these when the tools exist and the
+project has no docs target.
 
-| Language                | Doc convention worth checking                                                                                                         | Doc checks                                                                    |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Go                      | Comment starts with the symbol name; `Deprecated:` names the migration; package comment in `doc.go`                                   | `go doc <pkg>`, `golangci-lint run --enable=godot,godoclint,revive ./...`     |
-| Python                  | Docstrings follow the project style, else Google style; no types repeated from hints                                                  | `python -m pydoc <module>`, `sphinx-build -b html docs/ docs/_build/`         |
-| Rust                    | `# Errors`, `# Panics`, `# Safety` (required on every `unsafe fn` and `unsafe impl`), and a doc-tested `# Examples` in library crates | `cargo doc --no-deps`, `cargo test --doc`                                     |
-| TypeScript / JavaScript | TSDoc tags (`@throws`, `@deprecated`, `@example`) only when they add information                                                      | `tsc --noEmit`, `typedoc` when configured                                     |
-| C# / .NET               | XML `///` docs with `<exception>` and `<see cref>`; `[Obsolete]` carries a migration note                                             | `dotnet build` with `GenerateDocumentationFile` (missing docs warn as CS1591) |
-| Java / Kotlin           | Javadoc or KDoc covers nullability, threading or coroutines, blocking, and exceptions                                                 | `./gradlew javadoc`, `./mvnw javadoc:javadoc`, or the project's Dokka task    |
-| Web (HTML, CSS, HTMX)   | Keyboard, focus, ARIA, and reduced-motion behavior when it is part of the user contract                                               | `npx html-validate .`                                                         |
+| Language | Doc checks |
+| --- | --- |
+| Go | `go doc <pkg>`, `golangci-lint run --enable=godot,godoclint,revive ./...` |
+| Python | `python -m pydoc <module>`, `sphinx-build -b html docs/ docs/_build/` |
+| Rust | `cargo doc --no-deps`, `cargo test --doc` |
+| TypeScript / JavaScript | `tsc --noEmit`, `typedoc` when configured |
+| C# / .NET | `dotnet build` with `GenerateDocumentationFile` (missing docs warn as CS1591) |
+| Java / Kotlin | `./gradlew javadoc`, `./mvnw javadoc:javadoc`, or the project's Dokka task |
+| Web (HTML, CSS, HTMX) | `npx html-validate .` |

@@ -51,6 +51,12 @@ blocked-by: []
 - <excluded adjacent work>
 ```
 
+## Epic file
+
+`specctl new` has no epic kind. Write `.spec/epics/EPIC-<slug>.md` by hand with
+frontmatter `id: EPIC-<slug>` and a `tasks:` list of existing task IDs;
+`specctl validate` rejects an epic with no tasks or a missing task.
+
 ## Planning output
 
 Show this before writing files:
