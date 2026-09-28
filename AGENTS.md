@@ -75,7 +75,7 @@ Envelope enforcement differs by target:
 
 ## Releases
 
-- Prepare with `scripts/release/release-tag prepare vX.Y.Z`, write and commit the `CHANGELOG.md` section, then run `scripts/release/release-tag finalize vX.Y.Z` on the clean commit. Finalize runs `make ci` and creates a local annotated tag; it does not push.
+- Prepare with `scripts/release/release-tag prepare vX.Y.Z`, write the `CHANGELOG.md` section, and commit it together with everything `prepare` changed (version manifests, `uv.lock`, regenerated `dist/`) in one commit. Then run `scripts/release/release-tag finalize vX.Y.Z` on that commit. Finalize runs `make ci` and creates a local annotated tag; it does not push.
 - Pushing that tag is the only way to publish: `.github/workflows/release.yml` creates the GitHub release.
-- Notes-only repair uses the same workflow's manual run with the existing tag and a full `notes_source_sha`.
+- Notes-only repair uses the same workflow's manual run from the default branch (other refs no-op), with the existing tag and a full `notes_source_sha`.
 - Do not run `gh release create` or `gh release edit` here. Details: [CONTRIBUTING.md](CONTRIBUTING.md#releases).

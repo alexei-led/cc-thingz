@@ -36,8 +36,10 @@ validation issues, and the smallest next action.
 ### Plan
 
 For an idea, requirement, bug, or project gap that needs an executable plan.
-Done when the smallest useful artifact set is written with `specctl new`, passes
-`specctl validate`, and appears in `specctl ready`:
+Done when the smallest useful artifact set exists and passes `specctl validate`,
+and its first task appears in `specctl ready` (a REQ-only plan has no ready task
+yet). Create tasks and requirements with `specctl new task|req`, then fill in
+the details; write an `EPIC-*` file by hand. Pick the smallest set:
 
 - one clear slice: one `TASK-*`
 - several slices: one `EPIC-*` plus tasks

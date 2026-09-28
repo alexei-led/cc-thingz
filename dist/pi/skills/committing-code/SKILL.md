@@ -16,7 +16,7 @@ shown.
 
 Run `scripts/commit-state.sh gather`. It is read-only and prints repo state,
 changed paths, diff stats, suspicious paths, and recent commits. Without it, run
-`git status`, `git diff --stat`, and `git log --oneline -10`. Read the full diff
+`git status`, `git diff --stat`, and `git log --oneline -8`. Read the full diff
 (`scripts/commit-state.sh full-diff`) when the stats do not make the grouping
 obvious. Treat the helper output as a hint, not proof.
 
@@ -38,7 +38,7 @@ is not a git repository, HEAD is detached, or a rebase or merge is in progress.
 Show the plan and the evidence it rests on:
 
 ```text
-Based on: git status, diff stat, last 10 commits (style: conventional)
+Based on: git status, diff stat, last 8 commits (style: conventional)
 
 1. fix(validation): reject empty email
    - src/validation.ts
