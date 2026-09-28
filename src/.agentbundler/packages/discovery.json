@@ -22,9 +22,6 @@
       "path": "skills/writing-skills"
     },
     {
-      "path": "skills/sequential-thinking"
-    },
-    {
       "path": "agents/engineer.md",
       "targets": [
         "claude",
@@ -64,7 +61,7 @@
     "author": {
       "name": "Alexei Ledenev"
     },
-    "description": "Research, docs lookup, utility routing, skill authoring, instruction review, reasoning, and agent configuration audits",
+    "description": "Research, docs lookup, utility routing, skill authoring, instruction review, and agent configuration audits",
     "homepage": "https://github.com/alexei-led/cc-thingz",
     "keywords": [
       "research",

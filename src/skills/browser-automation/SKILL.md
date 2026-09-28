@@ -9,86 +9,81 @@ name: browser-automation
 
 # Browser Automation
 
-Use a real browser only when rendered behavior matters: UI state, navigation,
-forms, auth, screenshots, recordings, accessibility, visual checks, or
-end-to-end flows.
+Prove rendered behavior in a real browser and report pass, fail, or blocked with
+evidence. Keep automation temporary unless the user asks for permanent tests.
 
-Keep automation temporary unless the user asks for permanent tests. Do not use a
-browser for plain HTTP API checks or pure logic tests.
+## Runtime
 
-## Runtime Selection
+Use the cheapest runtime that proves the claim:
 
-1. Prefer a platform built-in browser tool when available in the active tool
-   list. See [`references/platform-browser-tools.md`](references/platform-browser-tools.md).
-2. Use the project's configured browser runner when it exists.
-3. Use `playwright-skill` only as the bundled fallback/runtime reference.
-4. If no runtime is available, report blocked with the missing tool/package.
+1. Browser tools exposed in the current session. See
+   [`references/platform-browser-tools.md`](references/platform-browser-tools.md).
+2. The project's configured browser runner. Infer the package manager from the
+   lockfile; do not invent a runner.
+3. The bundled Playwright scripts in this skill's `scripts/` directory. Read
+   [`references/playwright.md`](references/playwright.md) for setup, the script
+   skeleton, helpers, and custom headers.
+4. None available: report blocked and name the missing tool or package.
 
-Use the cheapest runtime that proves the claim.
+## Rules
 
-## Workflow
+- Target: reuse a reachable dev server; start one only when its command is
+  known. Ask when no server or several servers are found.
+- Data: use seeded users, fixed dates, reset state, and mocked external
+  services. Credentials, production data, and destructive actions need explicit
+  user approval.
+- Locators: role, label, text, or test id first; CSS last.
+- Waiting: wait on observable state such as a selector, URL, network response,
+  or accessibility snapshot. Never add fixed sleeps. For SPA or HTMX pages,
+  assert the DOM after swaps and client-side route changes.
+- Headless: when the platform exposes no visible browser (Pi, CI, most CLIs),
+  use headless screenshots plus a manifest as visual evidence. Use headed mode
+  only when the user can see the browser.
+- Files: write generated scripts and artifacts to `/tmp/playwright-*`. Write to
+  the project only when the user asked for permanent tests, and never write into
+  the skill directory.
+- Failures: fix the app or tests only when that is in scope. After two failed
+  scoped attempts, save evidence, quote the failing line or UI state, and stop.
+- Permanent tests: done when the relevant build/test/lint checks pass on what
+  you changed, or you name each check that did not run and why.
 
-1. Define the goal: explore, validate, screenshot, record, debug, or test.
-2. Read needed local context: start scripts, browser config, routes, fixtures,
-   seed/reset docs, and auth notes.
-3. Detect or start the dev server. Reuse a reachable server.
-4. Use deterministic data: seeded users, fixed dates, stable IDs, reset state,
-   and mocked external services.
-5. Drive with semantic targets first: role, label, text, test id; CSS last.
-6. Capture artifacts needed to support the result: screenshot, trace, console
-   errors, network failures, accessibility snapshot, manifest, or report.
-7. Prefer screenshot/manifest evidence for visual checks in headless harnesses.
-8. Report pass, fail, or blocked. Do not imply success if the check did not run.
+## Bundled Playwright scripts
 
-## Playwright Fallback
-
-Use Playwright when no built-in browser tool exists, the project already uses
-Playwright, or a repeatable script/test is the best artifact.
-
-If using the bundled helper, load `playwright-skill` for exact setup and
-invocation. Use its turnkey screenshot helpers before writing custom batch
-scripts:
+Run them by absolute path from the caller's working directory, where
+`<skill-dir>` is the directory that contains this `SKILL.md`. Prefer the
+screenshot scripts over custom batch scripts:
 
 ```bash
-node scripts/screenshot-url.js --url <url> --selector <ready-selector> --json
-node scripts/screenshot-sequence.js --url-template '<url/{n}>' --from 1 --to 10 --json
+node <skill-dir>/scripts/screenshot-url.js --url <url> --selector <ready-selector> \
+  --out /tmp/playwright-page.png --json
+node <skill-dir>/scripts/screenshot-sequence.js --url-template '<url/{n}>' --from 1 --to 10 \
+  --selector <ready-selector> --out-dir /tmp/playwright-shots --json
+node <skill-dir>/scripts/run.js --json /tmp/playwright-check.js
 ```
 
-Do not write generated files into the helper directory or project unless
-creating permanent tests was requested.
+- Manifests record URL, title, screenshot path, viewport, console errors,
+  network failures, and HTTP responses with status >=400.
+- `run.js` keeps the caller's working directory and writes its status logs to
+  stderr. Pass `--json` or `--quiet` whenever stdout must carry only the
+  script's JSON: without them, a first-run Playwright install also writes to
+  stdout. Playwright globals such as `chromium` and `helpers` stay available when the script also
+  uses `require("fs")` or `require("path")`.
 
-## Script and Test Rules
+## Platform additions
 
-- Write temporary scripts to `/tmp/playwright-<name>.js` or
-  `/tmp/playwright-<name>.spec.ts` when using the Playwright fallback.
-- Never use fixed sleep delays.
-- Wait or assert on visible state, URL, selector, network state, or
-  accessibility snapshot.
-- Prefer headed mode only when the platform exposes a usable visible browser.
-  In Pi or other headless harnesses, use headless screenshots plus manifests as
-  visual evidence.
-- Keep credentials, production data, and destructive actions out of browser
-  automation unless the user explicitly approves.
+No target-specific additions.
 
-## Failure Handling
-
-- No target URL: detect a local dev server; ask if none is found.
-- Multiple reachable servers: ask which target to use.
-- Missing auth or fixture data: ask for safe test credentials or report blocked.
-- Runtime unavailable: report the missing tool/package and required enablement.
-- Fix or re-run only when fixing is in scope.
-- Failure after two scoped attempts: save evidence, quote the failing line or UI
-  state, and stop.
-
-## Output Contract
+## Output
 
 ```markdown
 ## Browser Automation Result
 
 Target: <page, feature, or flow>
-Runtime: <built-in browser | project runner | playwright-skill | blocked>
-Actions: <commands or browser action summary>
+Runtime: <built-in browser | project runner | bundled Playwright | blocked>
+Actions: <commands or browser actions>
 Result: <pass | fail | blocked>
-Evidence: <screenshot/trace/output path or key observation>
-Next Fix: <only when failing or blocked>
+Evidence: <screenshot, manifest, or trace paths, or the key observation>
+Next fix: <only when failing or blocked>
 ```
+
+Report blocked, not pass, when the check did not run.

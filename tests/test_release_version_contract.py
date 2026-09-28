@@ -13,7 +13,7 @@ TAG = "v6.13.0"
 
 def _write_release_fixture(root: Path, package_version: str) -> Path:
     (root / "src/.agentbundler/packages").mkdir(parents=True)
-    (root / "src/skills/playwright-skill/scripts").mkdir(parents=True)
+    (root / "src/skills/browser-automation/scripts").mkdir(parents=True)
     (root / "pyproject.toml").write_text(
         '[project]\nname = "cc-thingz"\n'
         f'version = "{package_version}"\n'
@@ -36,7 +36,7 @@ def _write_release_fixture(root: Path, package_version: str) -> Path:
         )
     )
     (root / "package.json").write_text(json.dumps({"version": package_version}))
-    (root / "src/skills/playwright-skill/scripts/package.json").write_text(
+    (root / "src/skills/browser-automation/scripts/package.json").write_text(
         json.dumps({"version": package_version})
     )
     (root / "src/.agentbundler/packages/dev-flow.json").write_text(

@@ -7,167 +7,39 @@
 
 # Fix and Diagnose Code
 
-Fix the requested defect or failing gate one verified issue at a time. Do not
-patch from guesses. Do not expand to unrelated failures without asking.
+Fix the requested defect or failing gate, one verified root cause at a time.
+Use the matching `writing-<lang>` skill for toolchain commands.
 
-Never use destructive git commands such as hard reset, clean, force push, or
-checkout-overwrites as a fix.
+Without write access, return proposed changes (file, change, reason) instead of
+applying them.
 
-## Role-gated action
+## Hard rules
 
-Detect capability from tools:
+- No fix without a reproducible pass/fail signal. If you cannot reproduce, ask for the missing artifact (logs, payload, trace, repro steps, environment) instead of patching on a guess. Ask before adding temporary instrumentation.
+- No destructive git (hard reset, clean, force push, checkout over local changes) and no `--no-verify`.
+- Never disable assertions, skip fast tests, lower lint severity, or ignore files to make a check pass or run faster. Clear caches only when a stale cache is the diagnosed cause.
+- Fix the requested failure first; ask before expanding to unrelated failures.
 
-- Write-capable role: reproduce, diagnose, patch, test, and clean up.
-- Read-only role: diagnose from files and supplied output, then emit the fix in the Proposed Changes contract. Apply nothing; run nothing.
-- Missing key tool or permission: stop with Blocked and ask for the exact artifact, access, or approval needed.
+## Outcome
 
-Use an interactive question tool when available for missing logs, payloads,
-repro steps, environment details, access, or permission for temporary instrumentation.
+- **Repro**: the fastest reliable failing signal, best a failing test at the behavior seam; otherwise a script, replayed payload, or small harness around the real path. Iterate on the narrowest command and run the broader project gate before reporting; keep coverage, race, browser, and end-to-end modes off the loop unless they are the failing signal.
+- **Root cause**: traced from the failing boundary to the first bad state or contract mismatch, with evidence (`file:line`, symptom, tool). For intermittent or unclear bugs, rank 3–5 falsifiable hypotheses and test them one at a time.
+- **Patch**: the smallest change to the root cause, without adjacent cleanup. If it causes a new failure, diagnose that before touching anything else.
+- **Regression test** at the seam where the user saw the bug. If only a shallow seam exists, say so rather than adding a fake-confidence helper test.
+- **Cleanup**: temporary probes, tagged `[DEBUG-<id>]` while in use, are removed or promoted to real tests.
+- Browser-only symptoms go to browser-automation unless a cheaper CLI or unit signal exists.
+- If a code-graph tool (GitNexus, codegraph) is installed and fresh, use it to find callers or impact before changing widely used code.
 
-## Route elsewhere
+Done when the original repro passes, the regression test passes (or the missing
+seam is reported), and the relevant build/test/lint checks pass on what you
+changed, or you name each check that did not run and why.
 
-Do not use this for:
+## Report
 
-- pure refactors with unchanged behavior → `refactoring-code`
-- test-only improvement or coverage work → `improving-tests`
-- review-only findings → `reviewing-code`
-- broad architecture redesign → architecture skills
-- browser-only UI investigation without a cheaper signal → `browser-automation`
+Root cause with evidence, changes (`path:line — fix`), and each check with
+pass, fail, or skipped and why. If blocked, name the missing artifact, access,
+or approval.
 
-## Language references
+## Platform additions
 
-Load the matching reference for the language under repair:
-
-- C# /.NET: `references/csharp.md`
-- Go: `references/go.md`
-- Java/Kotlin: `references/java-kotlin.md`
-- Python: `references/python.md`
-- Rust: `references/rust.md`
-- TypeScript/JavaScript: `references/typescript.md`
-
-Unsupported language: use the general workflow in this file only.
-
-## Reproduce first
-
-For lint/build/test failures, run the fastest reliable failing signal first.
-Prefer a focused test, package, or file command while editing; use `make lint`,
-`make test`, or the broader project gate before final output. Use configured
-language tools from the nearest project root.
-
-For reported bugs, build the fastest reliable pass/fail signal:
-
-1. Existing failing test or new regression test at the behavior seam.
-2. CLI, HTTP, or browser script with fixture input.
-3. Replay captured payload, log, trace, or production-like case.
-4. Small harness around the real code path.
-5. Property, fuzz, race, or bisect harness when supported and safe.
-
-If no repro is possible, stop and ask for the missing artifact. Do not proceed to
-a speculative fix.
-
-## Fast feedback gates
-
-Tests, lint, typecheck, format, vet, and build commands are feedback loops. Every
-second is paid on each agent iteration.
-
-- Use the narrowest reliable command while editing: one test, package, file,
-  workspace, or changed-file lint when supported.
-- Run the broader relevant gate before final output.
-- Keep coverage, race, mutation, browser, end-to-end, live-service, and deep
-  static-analysis modes off the hot path unless they are the failing signal.
-- Preserve caches and incremental state. Do not clear caches as a routine fix.
-- If a gate is unexpectedly slow, measure enough to name the bottleneck and either
-  fix it in scope or report it as performance debt.
-- Never disable assertions, skip important fast tests, lower lint severity, or
-  ignore files only to make a command faster.
-
-## Diagnose with evidence
-
-Record each issue as `file:line`, exact symptom, reporting tool, and priority.
-Trace from the failing boundary toward the first bad state, contract mismatch, or
-missing side effect.
-
-For hard bugs, write 3-5 ranked falsifiable hypotheses:
-
-```text
-If <cause> is true, then <probe/change> will make <specific symptom> change in <specific way>.
-```
-
-Use graph tools only when available and when they reduce search space:
-
-- GitNexus: query the error text or symptom; use context for suspect symbols; use impact before changing widely called code; use detect-changes after a fix to see affected flows.
-- codegraph: check freshness first; if fresh, inspect callers, callees, references, and blast radius.
-- Stale graph indexes are not evidence. Refresh if allowed; otherwise report the gap and use search, source reads, LSP, and tests.
-
-## Patch narrowly
-
-For each issue:
-
-1. Read the exact code path.
-2. Change the smallest root cause, not adjacent style or structure.
-3. Add or update a regression test when a real seam exists.
-4. Run the narrow repro.
-5. Run broader lint/test before moving to another issue.
-
-For test or lint fixes, prefer targeted fast commands in the edit loop. Keep
-expensive reporting commands for coverage-specific work or final gate parity, not
-every patch attempt.
-
-Do not write helper-level tests that miss the user-visible bug path. If the only
-available seam is too shallow, report the risk.
-
-If a fix causes new failures, diagnose that failure before touching the next issue.
-
-## Cleanup and verify
-
-Before done:
-
-- Original repro no longer fails.
-- Regression test passes, or the missing seam is reported.
-- Full relevant validation passes, or skipped checks have exact reasons.
-- Temporary logs, probes, harnesses, and debug flags are removed or promoted to real tests.
-- New failures are diagnosed before any second patch.
-
-## Output
-
-Engineer:
-
-```text
-FIX COMPLETE
-============
-Mode: standard | diagnose | team | diagnose+team
-Issues found: X
-Fixed: Y
-Remaining: Z
-Status: CLEAN | NEEDS ATTENTION
-
-Root cause:
-- <verified cause and evidence>
-
-Changes:
-- path:line — fix
-
-Verification:
-- <command> — pass/fail/skipped with reason
-```
-
-Reviewer or blocked:
-
-```text
-## Proposed Changes | BLOCKED
-
-Root cause:
-- <verified cause and evidence, or unknown because blocked>
-
-Blocker:
-- <missing artifact, access, tool, or permission>
-
-### Change 1: <brief description>
-
-File: `path/to/file`
-Action: CREATE | MODIFY | DELETE
-Code: <complete code block or changed region with enough context>
-Rationale: <why this fixes the root cause>
-```
-
-Do not claim clean without a clean check or an explicit skipped-check reason.
+No target-specific additions.

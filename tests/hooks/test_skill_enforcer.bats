@@ -122,16 +122,16 @@ FIXTURES="$BATS_TEST_DIRNAME/fixtures"
 	[[ "$output" == *"writing-python"* ]]
 }
 
-@test "skill-enforcer: ordinary planning and procedural steps do not request reasoning format" {
-	run bash "$HOOK" <<<'{"prompt":"Plan this out: write a step-by-step installation guide."}'
+@test "skill-enforcer: any 20xx year routes to research" {
+	run bash "$HOOK" <<<'{"prompt":"What changed in the Node.js release schedule for 2031?"}'
 	[ "$status" -eq 0 ]
-	[[ "$output" != *"sequential-thinking"* ]]
+	[[ "$output" == *"researching-web"* ]]
 }
 
-@test "skill-enforcer: explicit stepwise thinking request routes" {
+@test "skill-enforcer: stepwise thinking request routes no reasoning skill" {
 	run bash "$HOOK" <<<'{"prompt":"Think step by step about the competing constraints."}'
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"sequential-thinking"* ]]
+	[[ "$output" != *"sequential-thinking"* ]]
 }
 
 @test "skill-enforcer: disabled native hook is silent" {

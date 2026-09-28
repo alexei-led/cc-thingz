@@ -129,17 +129,6 @@
       ]
     },
     {
-      "id": "explicit-reasoning",
-      "language": "en",
-      "prompt": "Use sequential thinking to reason through this algorithm.",
-      "required": [
-        "sequential-thinking"
-      ],
-      "allowed": [
-        "sequential-thinking"
-      ]
-    },
-    {
       "id": "plan-exploration",
       "language": "en",
       "prompt": "Brainstorm design options for this feature and plan this out.",
