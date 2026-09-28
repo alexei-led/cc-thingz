@@ -1,31 +1,8 @@
-# TypeScript refactoring reference
+# TypeScript Refactoring Caveats
 
-Use for TypeScript/JavaScript behavior-preserving refactors. The host skill owns the scope-mapping workflow and output contract; this file adds language-specific mapping tools, safety gates, and caveats.
-
-## Scope mapping
-
-Before editing:
-
-- Use `tsc` language services (via IDE rename or `tsserver`) for symbol renames — they follow `import`/`export` chains across the workspace.
-- Use `rg` for string-based references: route strings, dynamic `require()`, `import()` with template literals, string-keyed event names, Redux action types, and serialized JSON keys.
-- For file or module moves, update all relative import paths and check `tsconfig.json` `paths`, `baseUrl`, and `references` (project references).
-- For exported identifier renames in public packages, check consuming packages in the monorepo.
-
-## Verification gate
-
-```bash
-bun x tsc --noEmit
-bun test
-oxlint path/to/changed/
-# Fall back to biome lint or eslint when the project does not use Oxlint.
-```
-
-Run `tsc --noEmit` before each batch to catch type errors. Run the full test suite before final output.
-
-## Key caveats
-
-- Renaming an exported identifier is a breaking API change for external consumers; add a deprecated re-export alias when the package is published.
-- Moving a file changes its import path; update all relative `import` statements and check `tsconfig.json` `paths` aliases that map to the old location.
-- Renaming a React component changes its display name in DevTools and any string-based snapshot tests; update snapshots after the rename.
-- Class or interface property renames break serialized JSON keys unless an explicit `toJSON`/`fromJSON` or schema decorator maps the old name.
-- Barrel (`index.ts`) file changes affect tree-shaking and circular dependency detection; run `madge` or `dependency-cruiser` when barrel patterns change significantly.
+- Language-service rename follows import/export chains; it misses dynamic `import()`/`require()` with template strings, string-keyed events, action types, and serialized keys.
+- Moving a file breaks relative imports and `tsconfig` `paths`/`baseUrl` aliases and project references.
+- Renaming a published export breaks consumers; add a deprecated re-export. Check sibling packages in a monorepo.
+- Renaming a React component changes its display name and string-based snapshots.
+- Property renames change serialized JSON keys unless a schema or `toJSON` maps them.
+- Barrel (`index.ts`) changes affect tree-shaking and cycles; run the project's cycle checker (madge, dependency-cruiser) when barrels change.

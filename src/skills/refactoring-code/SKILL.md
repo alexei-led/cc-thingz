@@ -10,126 +10,50 @@ name: refactoring-code
 
 # Batch Refactoring
 
-Use this when many edits must preserve externally observable behavior. Stop if you
-cannot name the maintenance value and the behavior that must stay unchanged.
+Make many edits that preserve externally observable behavior. Before editing,
+name the maintenance value, the behavior that must not change, and the check
+that proves it; if you cannot, stop and ask.
 
-## Role-gated action
+Without write access, return proposed changes (file, change, reason) instead of
+applying them. For multi-file renames, list every mapped site and mark ambiguous
+ones.
 
-Detect capability from tools:
+Read the reference for the language being refactored; it lists that language's
+caveats. Use the matching `writing-<lang>` skill for toolchain commands.
 
-- Write-capable role: map scope, apply one batch, run verification.
-- Read-only role: map scope and emit the refactor in the Proposed Changes contract. Apply nothing; run nothing.
-
-## Route elsewhere
-
-Do not use this for:
-
-- one small edit that normal coding tools can handle
-- behavior changes, bug fixes, or failing checks → `fixing-code`
-- test-only cleanup, coverage, or TDD → `improving-tests`
-- review findings without edits → `reviewing-code`
-- target architecture design or repo-wide structural audit → architecture skills
-- cosmetic churn with no maintenance value
-
-## Language references
-
-Load the matching reference for the language being refactored:
-
-- C# /.NET: `references/csharp.md`
+- C#: `references/csharp.md`
 - Go: `references/go.md`
 - Java/Kotlin: `references/java-kotlin.md`
 - Python: `references/python.md`
 - Rust: `references/rust.md`
 - TypeScript/JavaScript: `references/typescript.md`
 
-Unsupported language: use the general workflow in this file only.
-
-## Evidence first
-
-Before editing:
-
-1. Define goal, non-goals, preservation target, and safety gate.
-2. Map every affected site with text search and language-aware tools.
-3. For renames, moves, extracts, splits, or broad restructures, use graph tools when available:
-   - GitNexus dry-run rename for renames; GitNexus context, impact, and query for callers, callees, execution flows, and string/dynamic refs.
-   - codegraph status first; if fresh, use codegraph context or affected to size dependency/call blast radius.
-4. Treat stale graph indexes as no evidence. Refresh if allowed; otherwise fall back to search/LSP and report the gap.
-5. Check non-code references when names or paths change: config, routes, DI wiring, serialization keys, CLI entries, generated sources, scripts, and docs.
-6. Read representative implementation files and tests.
-7. Add characterization tests at the public boundary when behavior is under-specified and risk is not low.
+## Map before editing
 
 No mapped site, no edit.
 
-## Batch rules
+- Find every affected site with text search and language-aware rename or reference tools.
+- Check non-code references when names or paths change: config, routes, DI wiring, serialization keys, CLI entries, reflection, scripts, docs.
+- For renames, moves, and splits, use a code-graph tool (GitNexus, codegraph) when installed and fresh; a stale index is a gap to report, not evidence.
+- If behavior is under-specified and risk is not low, add characterization tests at the public boundary first, or ask to shrink the refactor.
 
-Good batches are small, reversible, and single-purpose:
+## Batches
 
-- rename one symbol/concept and all callers
-- move one module/function and its tests
-- extract one cohesive responsibility behind the same public behavior
-- remove one duplicate implementation after tests prove equivalence
-- update one repeated pattern across mapped sites
+- One purpose per batch: rename one concept, move one module, extract one responsibility, remove one proven duplicate, or update one repeated pattern.
+- Keep mechanical changes separate from logic changes. If a behavior change turns out to be needed, stop and split it into its own fix or feature.
+- Put all edits to one file in a single edit operation; preview high-stakes batches before applying.
+- Keep compatibility shims or deprecations on public APIs unless the user approved a break.
+- Run the safety gate after each batch. If it fails, fix or revert that batch before starting the next.
+- Delete dead code the refactor exposes. Change generated or vendored files only by regenerating from source.
 
-Rules:
+Done when the relevant build/test/lint checks pass on what you changed, or you
+name each check that did not run and why.
 
-- Separate mechanical structure changes from logic changes.
-- Do not rename many concepts while changing APIs or control flow.
-- Prefer semantic refactoring tools; use precise text edits only for mapped sites.
-- For public APIs, keep compatibility shims or deprecations unless the user approved a breaking change.
-- Run narrow tests after each batch; run broader lint/type/test checks before the next batch or final report.
-- Delete dead code exposed by the refactor. Do not hand-edit generated or vendored files unless the project regenerates them from source.
+## Report
 
-## Output
+Preservation target, safety gate, mapping (tool or search, and any gaps),
+changes (`path:line — change`), and each check with pass, fail, or skipped and why.
 
-Engineer:
+## Platform additions
 
-```text
-REFACTOR COMPLETE
-=================
-Preservation target: <behavior that must not change>
-Safety gate: <tests/checks used>
-Files changed: N
-Status: CLEAN | NEEDS ATTENTION
-
-Mapping:
-- <tool/search> — <key affected sites or graph gap>
-
-Changes:
-- path:line — change
-
-Verification:
-- <command> — pass/fail
-```
-
-Reviewer:
-
-```text
-## Proposed Changes
-
-Preservation target: <behavior that must not change>
-Safety gate: <tests/checks the applier should run>
-
-Mapping:
-- <tool/search> — <affected sites or graph gap>
-
-### Change 1: <brief description>
-
-File: `path/to/file`
-Action: CREATE | MODIFY | DELETE
-
-Code:
-<changed regions with enough context to locate them>
-
-Rationale: <why this preserves behavior while improving structure>
-```
-
-For multi-file renames, list every mapped occurrence or explicitly mark ambiguous/unmapped references.
-
-## Failure handling
-
-- Scope unclear: ask which files/concept and what behavior to preserve.
-- Tests/checks missing for risky code: ask to add characterization tests or shrink/defer the refactor.
-- Tests fail after a batch: inspect or revert that batch before continuing.
-- Required behavior change appears: stop and split into refactor first, then feature/fix.
-- Graph tool missing or stale: report the gap and use search/LSP evidence instead.
-- Generated or vendored occurrence: skip it unless regeneration is part of the verified workflow.
+No target-specific additions.
