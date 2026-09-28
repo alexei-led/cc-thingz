@@ -8,6 +8,37 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.14.0] - 2026-09-28
+
+Skills, agents, and hooks are rewritten for current frontier models: about half
+the instruction text, with outcomes and done criteria instead of step scripts.
+
+### Upgrade
+
+- `sequential-thinking` is removed. Current models reason natively; ask for a
+  structured comparison directly, or use `brainstorming-ideas`.
+- `playwright-skill` is merged into `browser-automation`. Its scripts moved to
+  `browser-automation/scripts/`. Playwright is now 1.63.0 and needs Node 22+.
+
+### Fixed
+
+- On Claude, `reviewing-code`, `fixing-code`, `improving-tests`,
+  `brainstorming-ideas`, `reviewing-instructions`, `researching-web`,
+  `evolving-config`, and `browser-automation` again ship their full workflow and
+  reference links. Pi `refactoring-code` does too.
+
+### Changed
+
+- `git-guardrails` lets agents delete branches and force-remove worktrees whose
+  work is already merged into origin's default branch, squash merges included.
+  Unmerged, dirty, locked, or unverifiable cleanup stays blocked.
+- Claude `engineer` and `reviewer` inherit the session model.
+- `reviewing-instructions` and `writing-skills` score and teach outcome-first,
+  portable instructions.
+- `operating-infra` owns infrastructure review gates. GitHub Actions guidance
+  requires SHA-pinned external actions and remote reusable workflows.
+- Skill evals default to `gpt-6-luna`.
+
 ## [6.13.0] - 2026-09-24
 
 Release preparation, notes, and publication now follow one reviewed process.
@@ -857,8 +888,8 @@ Release preparation, notes, and publication now follow one reviewed process.
   (`spec-work`, `spec-plan`, `spec-interview`, `deploying-infra`,
   `using-cloud-cli`, `analyzing-usage`, the four `writing-*`,
   `reviewing-code`, `reviewing-cc-config`). ~6 routing boundaries tightened.
-  No capability dropped. See `docs/skills-audit-2026-05-17.md` and the
-  executed plan in `docs/plans/`.
+  No capability dropped. See `docs/plans/completed/20260517-skills-audit.md`
+  and the executed plan in `docs/plans/`.
 - **Gemini CLI agents**: all three role agents now compile to Gemini CLI
   format with a hard `tools:` allowlist in frontmatter; `reviewer` is
   enforced read-only, `advisor` restricted to read + `run_shell_command`.
