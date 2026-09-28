@@ -79,6 +79,107 @@ for i, token in enumerate(tokens):
 }
 NORMALIZED_COMMAND=$(normalize_git_options "${UNWRAPPED_COMMAND:-$COMMAND}" || true)
 
+# `git branch -D` is allowed when every named branch is already merged into the
+# remote default branch and is not checked out in any worktree. Agents clean up
+# after squash-merged PRs this way, and `git branch -d` refuses those branches.
+# Squash merges are detected offline by patch-id (git cherry), so the caller
+# must fetch first; anything unverifiable stays blocked.
+HOOK_CWD=""
+if command -v jq >/dev/null 2>&1; then
+	HOOK_CWD=$(echo "$INPUT" | jq -r '.cwd // .piEvent.cwd // empty' 2>/dev/null || true)
+fi
+HOOK_CWD=${HOOK_CWD:-$PWD}
+
+# Prints "<dir>\x1f<branch>..." per `git [-C dir] branch -D <names>` invocation,
+# or "UNSAFE" when the form is anything the checks below cannot vouch for.
+branch_force_delete_targets() {
+	command -v python3 >/dev/null 2>&1 || {
+		echo UNSAFE
+		return 0
+	}
+	python3 -c 'import shlex,sys
+try:
+    lexer=shlex.shlex(sys.stdin.read(), posix=True, punctuation_chars=";&|\n")
+    lexer.whitespace_split=True
+    lexer.whitespace=" \t\r"
+    tokens=list(lexer)
+except ValueError:
+    print("UNSAFE"); sys.exit(0)
+separators={";", "&&", "||", "|", "&", "\n"}
+starts=[t for i, t in enumerate(tokens) if i == 0 or tokens[i-1] in separators]
+if any(t in ("cd", "pushd", "popd") for t in starts):
+    print("UNSAFE"); sys.exit(0)
+for i, token in enumerate(tokens):
+    if token.rsplit("/",1)[-1] != "git" or (i and tokens[i-1] not in separators):
+        continue
+    j=i+1; cwd=""; unsafe=False
+    while j < len(tokens) and tokens[j].startswith("-"):
+        if tokens[j] == "-C" and j+1 < len(tokens):
+            cwd=tokens[j+1]; j+=2
+        elif tokens[j] in ("--no-pager", "-P"):
+            j+=1
+        else:
+            unsafe=True; break
+    end=j
+    while end < len(tokens) and tokens[end] not in separators:
+        end+=1
+    args=tokens[j:end]
+    if not args or args[0] != "branch" or "-D" not in args:
+        continue
+    names=[a for a in args[1:] if a != "-D"]
+    if unsafe or not names or any(a.startswith("-") for a in names):
+        print("UNSAFE")
+    else:
+        print(cwd + "\x1f" + " ".join(names))
+' <<<"$1"
+}
+
+remote_default_branch() {
+	local dir=$1 ref
+	if ref=$(git -C "$dir" symbolic-ref -q refs/remotes/origin/HEAD 2>/dev/null); then
+		echo "$ref"
+		return 0
+	fi
+	for ref in refs/remotes/origin/main refs/remotes/origin/master; do
+		if git -C "$dir" rev-parse --verify -q "$ref" >/dev/null; then
+			echo "$ref"
+			return 0
+		fi
+	done
+	return 1
+}
+
+branch_is_merged() {
+	local dir=$1 branch=$2 base merge_base probe worktrees
+	git -C "$dir" rev-parse --verify -q "refs/heads/$branch" >/dev/null || return 1
+	worktrees=$(git -C "$dir" worktree list --porcelain) || return 1
+	[[ $'\n'"$worktrees"$'\n' == *$'\n'"branch refs/heads/$branch"$'\n'* ]] && return 1
+	base=$(remote_default_branch "$dir") || return 1
+	git -C "$dir" merge-base --is-ancestor "refs/heads/$branch" "$base" && return 0
+	merge_base=$(git -C "$dir" merge-base "$base" "refs/heads/$branch") || return 1
+	probe=$(git -C "$dir" commit-tree "refs/heads/$branch^{tree}" -p "$merge_base" -m guardrails-squash-probe) || return 1
+	[[ $(git -C "$dir" cherry "$base" "$probe") == "-"* ]]
+}
+
+BRANCH_DELETE_VERIFIED=0
+BRANCH_DELETE_TARGETS=$(branch_force_delete_targets "${UNWRAPPED_COMMAND:-$COMMAND}" || echo UNSAFE)
+if [[ -n "$BRANCH_DELETE_TARGETS" && "$BRANCH_DELETE_TARGETS" != *UNSAFE* ]]; then
+	# \x1f, not a tab: read collapses leading whitespace separators, which would
+	# shift an empty dir column into the branch names.
+	checked=0 failed=0
+	while IFS=$'\x1f' read -r dir names; do
+		[[ -z "$dir" ]] && dir=$HOOK_CWD
+		[[ "$dir" != /* ]] && dir="$HOOK_CWD/$dir"
+		for name in $names; do
+			checked=$((checked + 1))
+			branch_is_merged "$dir" "$name" 2>/dev/null || failed=1
+		done
+	done <<<"$BRANCH_DELETE_TARGETS"
+	if [[ "$checked" -gt 0 && "$failed" -eq 0 ]]; then
+		BRANCH_DELETE_VERIFIED=1
+	fi
+fi
+
 DEFAULT_BLOCK_PATTERNS=$(
 	cat <<'PATTERNS'
 (^|[;&|[:space:]])git[[:space:]]+reset[[:space:]]+--hard([[:space:]]|$)
@@ -127,6 +228,9 @@ while IFS= read -r pattern; do
 	if [[ "$ALLOW_FORCE_PUSH" == "1" && "$pattern" == *"push"* ]]; then
 		continue
 	fi
+	if [[ "$BRANCH_DELETE_VERIFIED" == "1" && "$pattern" == *"branch"*"-D"* ]]; then
+		continue
+	fi
 	if [[ "$NORMALIZED_COMMAND" =~ $pattern ]] || [[ "$COMMAND" =~ $pattern ]] || { [[ -n "$UNWRAPPED_COMMAND" ]] && [[ "$UNWRAPPED_COMMAND" =~ $pattern ]]; }; then
 		message="dangerous git command: $COMMAND"
 		if [[ "$PI_RUNTIME" == "1" ]]; then
@@ -136,6 +240,9 @@ while IFS= read -r pattern; do
 		echo "BLOCKED: $message" >&2
 		echo "Pattern: $pattern" >&2
 		echo "Normal git push is allowed. Force/destructive git actions require explicit human execution." >&2
+		if [[ "$pattern" == *"branch"*"-D"* ]]; then
+			echo "git branch -D is allowed for branches merged into origin's default branch (squash merges included) that no worktree has checked out; run git fetch first." >&2
+		fi
 		exit 2
 	fi
 done < <(load_patterns)
