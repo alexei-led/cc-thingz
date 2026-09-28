@@ -72,4 +72,10 @@ Envelope enforcement differs by target:
 - Instruction files: follow the `writing-skills` skill. `make lint-instructions` is an advisory check.
 - Deleting, renaming, or merging a skill also updates `tests/skill-evals/**`, package JSONs, tests, and README mentions.
 - Python tooling runs through `uv`.
-- Publish releases only by pushing an annotated tag; `.github/workflows/release.yml` creates the GitHub release. Do not run `gh release create` or `gh release edit`. See [CONTRIBUTING.md](CONTRIBUTING.md#releases).
+
+## Releases
+
+- Prepare with `scripts/release/release-tag prepare vX.Y.Z`, write and commit the `CHANGELOG.md` section, then run `scripts/release/release-tag finalize vX.Y.Z` on the clean commit. Finalize runs `make ci` and creates a local annotated tag; it does not push.
+- Pushing that tag is the only way to publish: `.github/workflows/release.yml` creates the GitHub release.
+- Notes-only repair uses the same workflow's manual run with the existing tag and a full `notes_source_sha`.
+- Do not run `gh release create` or `gh release edit` here. Details: [CONTRIBUTING.md](CONTRIBUTING.md#releases).
