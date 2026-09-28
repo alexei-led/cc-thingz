@@ -10,153 +10,89 @@ name: writing-skills
 
 # Writing Skills
 
-Create or reshape a skill so it triggers at the right time, stays lean, and
-matches this repo's source and build rules.
+Create or reshape a skill so it loads at the right time, gives the model the
+result and the finish line, and ships intact to every target. The same rules
+apply to agent bodies and other AI-facing instruction files; the
+reviewing-instructions skill scores against them.
 
-## Read first
+Done when the skill meets the shape and writing rules below, the rendered Claude
+skill still holds the base body and its reference links, and the relevant
+build/test/lint checks pass on what you changed, or you name each check that did
+not run and why.
 
-- `AGENTS.md` section `## Writing Agent/Skill Instructions` for markdown signal rules.
-- `references/skill-principles.md` for invocation, description, disclosure, split,
-  and pruning rules.
-- `references/repo-conventions.md` for `src/skills/`, plugin manifests, overlays,
-  generated outputs, and verification.
-- `src/skills/reviewing-instructions/references/scoring-rubric.md` only after the
-  draft exists and quality needs a final check.
+Without write access, return proposed changes (file, change, reason) instead of
+applying them.
 
-## Use this skill for
+## References
 
-- creating a new skill
-- rewriting a skill body or description
-- splitting one skill into a skill plus references
-- splitting one skill into two skills when the trigger or workflow boundary is real
-- merging or extending overlapping skills after checking the neighboring skills
-- pruning bloated skill prose, duplicate rules, or weak trigger phrasing
-- adding target overlays or support files to a skill
+- `references/skill-principles.md` — read when choosing invocation mode,
+  splitting or merging skills, or pruning a long skill.
+- `references/repo-conventions.md` — read before touching package JSON,
+  overlays, target-only tokens, generated output, or evals in this repo.
 
-## Do not use this skill for
+## Shape
 
-- scoring or linting prompt files without editing them; use `reviewing-instructions`
-- broad agent, hook, extension, MCP, or package audits outside skill authoring;
-  use `evolving-config`
-- ordinary docs, READMEs, or code comments; use `documenting-code`
-- external library or API lookup; use `looking-up-docs`
-- broad design debate before a concrete skill change exists; use
-  `brainstorming-ideas`
+These follow the agentskills.io specification:
 
-## Workflow
-
-1. Find the source of truth under `src/skills/<name>/`. Read the owning
-   `src/.agentbundler/packages/*.json` and the closest neighboring skills before
-   editing. Treat `dist/` as generated.
-2. State the smallest correct shape:
-   - edit the current skill
-   - move conditional detail to `references/`
-   - add a `.agentbundler/targets/<target>.json` overlay
-   - split into two skills
-   - merge or fold into a neighboring skill
-3. Decide invocation mode and trigger surface.
-   - Model-invoked: use when the agent or another skill must discover it on its
-     own.
-   - User-invoked: use when it is mostly a manual expert tool or reference.
-   - Keep one trigger per branch. Name real neighboring skills when overlap is
-     possible. Put the NOT-clause in the description, not as an afterthought.
-4. Split content per the information hierarchy in
-   `references/skill-principles.md`. Keep only common-path rules in the main
-   body. Move conditional detail to `references/`. Use Agent Bundler JSON
-   overlays only when the base cannot stay vendor-neutral: `frontmatterPatch`,
-   `bodyPatch`, `files`, and `deletedFiles`.
-5. Tighten wording until each line changes behavior. Delete generic agent advice,
-   duplicated rules, and pretty prose.
-6. When adding or removing a public skill, update the owning package JSON in
-   `src/.agentbundler/packages/`. Update `AGENTS.md` and `README.md` when they
-   expose the public skill surface or counts.
-7. Before claiming done, run the narrowest verification that proves the new skill
-   compiles and reads well.
-8. If quality is still uncertain, run `reviewing-instructions` on the new or
-   changed skill and apply the highest-value fixes.
+- `name`: lowercase kebab-case, at most 64 characters, matching the directory.
+- `description`: at most 1024 characters, saying what the skill does, when to
+  use it, and what it is NOT for, naming the neighbor skill to use instead. One
+  trigger per branch; no synonym piles.
+- `SKILL.md` body at most 500 lines (about 5k tokens); most skills need far less.
+- Conditional detail lives in `references/`, linked directly from `SKILL.md`
+  with when to read it. No reference chains.
+- Deterministic operations live in `scripts/`, not in prose.
+- The skill is self-contained: name another skill when handing off, but do not
+  link into its files.
 
 ## Writing rules
 
-- Bias toward predictability over style.
-- Prefer headers, bullets, numbered steps, and short imperative lines.
-- Keep each meaning in one place.
-- Inline only what every trigger path needs.
-- Use references for detail that only some branches need.
-- Add an output contract when the skill produces findings, plans, edits, or
-  artifacts.
-- Add failure handling for ambiguous scope, missing inputs, generated files,
-  unavailable tools, and verification gaps.
-- Do not create a new skill just to rename an existing trigger.
-- Do not add a target overlay when a vendor-neutral base already works.
+- State the result, the constraints, and what done means. Number steps only
+  where order is a real constraint: safety gates, deterministic tooling, apply
+  flows.
+- Cut what the model already knows: language idioms, textbook debugging, what a
+  commit or test is, "read the code first".
+- Keep what is local, non-obvious, opinionated, version-gated, or costly to
+  rediscover.
+- Hard constraints are short and explicit and may be negative: secrets,
+  destructive commands, prod apply, release publishing, external actions. Write
+  preferences as positive statements.
+- Use plain statements. Skip ALL-CAPS emphasis, "MANDATORY", and "think step by
+  step / carefully"; reasoning effort is a runtime setting.
+- State each rule once. The body does not restate the description's NOT-for
+  list. Required checks appear once; after they pass, repeat them only after a
+  change or failure.
+- Name no specific model versions. Put a tier alias (`inherit`, `sonnet`,
+  `haiku`) in a sidecar only where the harness needs a value.
+- Headers, lists, and code blocks carry structure. Use a table when it is the
+  clearest form.
+- Specify an output shape only when another tool or agent parses it.
+- A skill that changes code ends with the done line below instead of long
+  verification or final-response sections. A skill that may run in a read-only
+  role carries the read-only line.
+
+```text
+Done when the relevant build/test/lint checks pass on what you changed, or you name each check that did not run and why.
+Without write access, return proposed changes (file, change, reason) instead of applying them.
+```
+
+## Overlays
+
+Keep the base `SKILL.md` vendor-neutral. For target-only content, end the base
+with a short neutral heading such as `## Platform additions` and one generic
+sentence, then patch that heading from `.agentbundler/targets/<target>.json`
+with `bodyPatch.mode: "sections"`. Use `mode: "replace"` only for a deliberate
+full fork: it discards the whole base body, including its reference links.
+`references/repo-conventions.md` has the patch mechanics.
 
 ## Output
 
-Write-capable role:
-
 ```markdown
-## Skill Update
+## Skill Change
 
-Updated:
+- `path` — created | changed | proposed: <what and why>
 
-- `path` — <created or changed>
-
-Plugin:
-
-- <plugin name or unchanged>
-
-Routing:
-
-- Invocation: model-invoked | user-invoked
-- Trigger surface: <main trigger terms>
-- Excludes: <neighbor skills or none>
-
-Verified:
-
-- <check>: passed | skipped (<reason>)
-
-Follow-up:
-
-- <reviewing-instructions run, docs update, or none>
+Routing: model-invoked | user-invoked; triggers <terms>; NOT for <neighbors or none>
+Checks: <check>: passed | failed | not run (<reason>)
+Follow-up: <scoring run, docs update, or none>
 ```
-
-Read-only role:
-
-```markdown
-## Proposed Skill Change
-
-Files:
-
-- `path`
-
-Why:
-
-- <routing, disclosure, or repo-convention reason>
-
-Proposed shape:
-
-- Invocation: model-invoked | user-invoked
-- Plugin: <plugin>
-- References or overlays: <list or none>
-
-Patch summary:
-
-- <small bullet list of edits>
-
-Verification:
-
-- <checks the applier should run, or not run — read-only role>
-```
-
-## Failure handling
-
-- Ambiguous request between new skill and neighbor-skill edit: ask one scoped
-  question before editing.
-- Existing skill already covers the job: prefer tightening or extending it over
-  adding a duplicate.
-- Plugin ownership is unclear: list the plausible plugins and ask which public
-  surface the user wants.
-- Generated files differ from source: edit `src/` first, then regenerate.
-- Build or compile check is unavailable: report the exact gap and do not claim
-  generated outputs are current.
-- A target needs unique behavior everywhere: add an overlay only after the
-  vendor-neutral base fails.
