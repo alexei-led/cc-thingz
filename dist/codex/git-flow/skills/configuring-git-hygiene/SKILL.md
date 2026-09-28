@@ -1,10 +1,8 @@
 ---
 {"description":"Configure safe git workflow hygiene: pre-commit/pre-push hooks, Gitleaks secret scanning, .gitignore rules, local git config, and guardrails. Use when setting up git hooks, gitleaks/git leaks, staged pre-commit checks, pre-push validation, core.hooksPath, .gitignore, or git config best practices. NOT for creating commits (use committing-code), cleaning branches/worktrees (use cleanup-git), or creating worktrees (use using-git-worktrees).","name":"configuring-git-hygiene"}
 ---
-<!-- Platform guidance for Codex -->
-<!-- Use this platform's installed tool names exactly; do not translate capability references into Claude Code tool syntax. -->
-<!-- When this skill references shell execution, file reads, or search, use the platform's native shell, read, and search tools. -->
-<!-- If a referenced helper command or optional tool is unavailable, report the gap and continue with the platform's built-in tools. -->
+<!-- Codex platform guidance -->
+<!-- Use this platform's installed tool names exactly for shell, file reads, and search. If a referenced helper or optional tool is unavailable, say so and continue with built-in tools. -->
 
 
 # Configure Git Hygiene

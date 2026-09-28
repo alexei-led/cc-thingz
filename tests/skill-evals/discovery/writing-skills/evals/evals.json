@@ -4,12 +4,12 @@
     {
       "id": "readonly-proposal-includes-verification",
       "name": "readonly proposal includes verification",
-      "prompt": "A read-only reviewer proposes a small SKILL.md routing fix and cannot run commands. Describe the required writing-skills output template.",
-      "expected_output": "The response uses Proposed Skill Change with files, why, proposed shape, patch summary, and a Verification field that lists recommended checks or says not run because the role is read-only.",
+      "prompt": "A read-only reviewer proposes a small SKILL.md routing fix and cannot run commands. Describe the required writing-skills output.",
+      "expected_output": "The response returns proposed changes (file, change, reason) instead of applying them, using the Skill Change output with each path marked proposed, the routing line, and a Checks line that marks checks as not run with the read-only reason.",
       "assertions": [
-        "The output uses the read-only Proposed Skill Change structure.",
-        "The output includes a Verification section or field.",
-        "The output lists checks the applier should run or states not run because the role is read-only.",
+        "The output returns proposed changes with file, change, and reason instead of applying them.",
+        "The output uses the Skill Change structure with the path marked as proposed.",
+        "The output includes a Checks field that lists checks as not run and gives the read-only reason, or names checks the applier should run.",
         "The output does not claim verification passed when no commands were run."
       ]
     }

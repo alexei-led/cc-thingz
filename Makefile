@@ -4,8 +4,8 @@ NODE_VERSION ?= $(shell cat .node-version 2>/dev/null || echo 24)
 SKILL_EVAL_ROOT ?= /tmp/cc-thingz-skill-eval-root
 SKILL_EVAL_WORKSPACE ?= /tmp/cc-thingz-skill-eval-workspace
 SKILL_EVAL_INCLUDE ?= **
-SKILL_EVAL_TARGET ?= gpt-5.4-mini
-SKILL_EVAL_JUDGE ?= gpt-5.4-mini
+SKILL_EVAL_TARGET ?= gpt-6-luna
+SKILL_EVAL_JUDGE ?= gpt-6-luna
 SKILL_EVAL_LOG_FORMAT ?= jsonl
 SKILL_EVAL_LOG_FILE ?= $(SKILL_EVAL_WORKSPACE)/events.jsonl
 SKILL_EVAL_REPORT ?= $(SKILL_EVAL_WORKSPACE)/summary.md
@@ -42,7 +42,7 @@ lint-typescript: ## Lint and type-check Pi extension TypeScript
 
 # --- Test ---
 
-.PHONY: test test-ts skill-evals-prepare skill-evals skill-evals-fast skill-evals-both skill-evals-summary
+.PHONY: test test-ts skill-evals-prepare skill-evals skill-evals-fast skill-evals-summary
 test: ## Run pytest suite
 	uv run --extra test python -m pytest tests/ -v
 
@@ -82,9 +82,6 @@ skill-evals: skill-evals-prepare ## Run paid Agent Skills evals and print fix-fo
 
 skill-evals-fast: ## Fast paid skill eval loop: no baseline, no HTML, higher concurrency, advisory
 	$(MAKE) skill-evals SKILL_EVAL_BASELINE=0 SKILL_EVAL_HTML_REPORT=0 SKILL_EVAL_CONCURRENCY=8 SKILL_EVAL_STRICT=0
-
-skill-evals-both: ## Run the Agent Bundler Claude package evals
-	$(MAKE) skill-evals SKILL_EVAL_ROOT=/tmp/cc-thingz-skill-eval-root SKILL_EVAL_WORKSPACE=/tmp/cc-thingz-skill-eval-workspace
 
 skill-evals-summary: ## Print summary for latest skill eval workspace
 	uv run python scripts/evals/summarize-skill-evals.py $(SKILL_EVAL_WORKSPACE) --markdown $(SKILL_EVAL_REPORT)

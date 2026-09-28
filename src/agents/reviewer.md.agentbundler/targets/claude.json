@@ -1,7 +1,7 @@
 {
   "frontmatterPatch": {
     "tools": ["Read", "Grep", "Glob", "LS"],
-    "model": "sonnet",
+    "model": "inherit",
     "color": "cyan"
   }
 }

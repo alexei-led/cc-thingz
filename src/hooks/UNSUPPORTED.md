@@ -1,10 +1,9 @@
 # Portable hook boundaries
 
-These source hooks are not emitted because the current target adapters lack a
-lossless portable lifecycle event:
-
-- `worktree-create` — Claude worktree creation lifecycle.
-- `worktree-remove` — Claude worktree removal lifecycle.
+Every source hook renders to at least one target; package JSON `targets` lists
+decide where. `smart-lint` is excluded from Cursor, which lacks a lossless edit
+matcher. The notify and smart-lint target matrix is in
+`docs/agentbundler-gaps.md`.
 
 `revdiff-plan-review` is not a Claude-only loss. Pi ships it as a native
 compatibility-runner command for plan-mode's synthetic `ExitPlanMode` review.

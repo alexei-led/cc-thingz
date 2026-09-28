@@ -8,7 +8,6 @@ model-profiles.json
 settings.local.json
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
-scripts/.env
 
 # === Settings with permissions (contains allowed URLs/domains) ===
 settings.json

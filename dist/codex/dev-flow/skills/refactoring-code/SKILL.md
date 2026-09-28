@@ -1,10 +1,8 @@
 ---
 {"description":"Batch behavior-preserving refactors for multi-file, repeated-pattern, large-file, rename, move, extract, split, or restructure work. Use for \"refactor across files\", \"batch rename\", \"update pattern everywhere\", large files (500+ lines), or 5+ coordinated edits in one file. NOT for single targeted edits, behavior changes or bug fixes (use fixing-code), test-only refactors (use improving-tests), code review (use reviewing-code), or architecture redesign (use architecture-design/review).","name":"refactoring-code"}
 ---
-<!-- Platform guidance for Codex -->
-<!-- Use this platform's installed tool names exactly; do not translate capability references into Claude Code tool syntax. -->
-<!-- When this skill references shell execution, file reads, or search, use the platform's native shell, read, and search tools. -->
-<!-- If a referenced helper command or optional tool is unavailable, report the gap and continue with the platform's built-in tools. -->
+<!-- Codex platform guidance -->
+<!-- Use this platform's installed tool names exactly for shell, file reads, and search. If a referenced helper or optional tool is unavailable, say so and continue with built-in tools. -->
 
 
 # Batch Refactoring

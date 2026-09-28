@@ -267,24 +267,8 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 				message: {
 					customType: "plan-mode-context",
 					content: `[PLAN MODE ACTIVE]
-You are in plan mode - a read-only exploration mode for safe code analysis.
-
-Restrictions:
-- You can only use: read, bash, ask_user_question
-- You CANNOT use: edit, write (file modifications are disabled)
-- Bash is restricted to an allowlist of read-only commands
-
-Ask clarifying questions using the ask_user_question tool.
-Use bash only for read-only project inspection.
-
-Create a detailed numbered plan under a "Plan:" header:
-
-Plan:
-1. First step description
-2. Second step description
-...
-
-Do NOT attempt to make changes - just describe what you would do.`,
+Explore with read and read-only bash, and ask clarifying questions with ask_user_question; changes happen after the plan is approved.
+End with a "Plan:" line followed by numbered steps (1., 2., ...) describing what you would change.`,
 					display: false,
 				},
 			};
