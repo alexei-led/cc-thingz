@@ -80,6 +80,8 @@ def run_hook(command: str, cwd: Path) -> subprocess.CompletedProcess[str]:
         ("git branch -D fast-forwarded", True),
         ("git branch -D squashed fast-forwarded", True),
         ("git -C {work} branch -D squashed", True),
+        ("git -C {parent} -C work branch -D squashed", True),
+        ("git -C {parent} -C decoy branch -D squashed", False),
         ("git fetch origin && git branch -D squashed", True),
         ("git branch -D unmerged", False),
         ("git branch -D squashed unmerged", False),
@@ -88,10 +90,12 @@ def run_hook(command: str, cwd: Path) -> subprocess.CompletedProcess[str]:
         ("cd /tmp && git branch -D squashed", False),
         ("git --git-dir=/tmp/x.git branch -D squashed", False),
         ("git branch -D squashed && git reset --hard", False),
+        ("git branch -D squashed; sudo git branch -D unmerged", False),
+        ("git branch -D squashed; xargs git branch -D < names", False),
     ],
 )
 def test_branch_force_delete(clone: Path, command: str, allowed: bool) -> None:
-    result = run_hook(command.format(work=clone), clone)
+    result = run_hook(command.format(work=clone, parent=clone.parent), clone)
     assert (result.returncode == 0) is allowed, result.stderr
 
 
@@ -101,7 +105,41 @@ def test_branch_checked_out_in_worktree_is_blocked(clone: Path) -> None:
     assert run_hook("git branch -D squashed-in-use", clone).returncode == 2
 
 
+def add_worktree(clone: Path, name: str, start: str) -> Path:
+    path = clone.parent / f"wt-{name}"
+    git(clone, "worktree", "add", "-q", "-b", name, str(path), start)
+    return path
+
+
+@pytest.mark.parametrize(
+    ("start", "dirty_tracked", "untracked", "allowed"),
+    [
+        ("origin/squashed", False, False, True),
+        ("origin/fast-forwarded", False, True, True),
+        ("origin/squashed", True, False, False),
+        ("origin/unmerged", False, False, False),
+    ],
+)
+def test_worktree_force_remove(
+    clone: Path, start: str, dirty_tracked: bool, untracked: bool, allowed: bool
+) -> None:
+    name = f"wt{abs(hash((start, dirty_tracked, untracked)))}"
+    path = add_worktree(clone, name, start)
+    if dirty_tracked:
+        (path / "base.txt").write_text("edited\n")
+    if untracked:
+        (path / "scratch.log").write_text("junk\n")
+    result = run_hook(f"git worktree remove --force {path}", clone)
+    assert (result.returncode == 0) is allowed, result.stderr
+
+
+def test_worktree_force_remove_needs_one_existing_path(clone: Path) -> None:
+    assert run_hook("git worktree remove --force", clone).returncode == 2
+    missing = clone.parent / "no-such-worktree"
+    assert run_hook(f"git worktree remove -f {missing}", clone).returncode == 2
+
+
 def test_blocked_delete_explains_the_allowed_case(clone: Path) -> None:
     result = run_hook("git branch -D unmerged", clone)
     assert result.returncode == 2
-    assert "run git fetch first" in result.stderr
+    assert "git fetch first" in result.stderr
