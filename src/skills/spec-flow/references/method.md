@@ -1,14 +1,6 @@
 # Spec-flow method
 
-## Artifact choice
-
-Use the smallest artifact set that keeps work safe:
-
-- one obvious change → one `TASK-*`
-- related multi-step change → one `EPIC-*` with several `TASK-*`
-- unclear product intent → one `REQ-*`, then plan tasks later
-
-Do not create ceremony just because the folders exist.
+Create only the artifacts the work needs, not ceremony because the folders exist.
 
 ## Artifact quality
 
@@ -59,6 +51,12 @@ blocked-by: []
 - <excluded adjacent work>
 ```
 
+## Epic file
+
+`specctl new` has no epic kind. Write `.spec/epics/EPIC-<slug>.md` by hand with
+frontmatter `id: EPIC-<slug>` and a `tasks:` list of existing task IDs;
+`specctl validate` rejects an epic with no tasks or a missing task.
+
 ## Planning output
 
 Show this before writing files:
@@ -84,17 +82,10 @@ Artifact set: <TASK only | EPIC + TASKs | REQ + EPIC + TASKs>
 
 ## Mini-interview
 
-Ask only what blocks a useful plan. Prefer 3-5 questions.
-
-Good questions:
-
-- What user-visible outcome should this slice deliver?
-- What is explicitly out of scope?
-- What existing behavior must stay unchanged?
-- What data, API, or permission boundary matters?
-- How should we verify success?
-
-If the user needs deep product discovery, keep notes in a `REQ-*` first and plan later.
+Ask only what blocks a useful plan, at most 3-5 questions: the user-visible
+outcome, what is out of scope, what must stay unchanged, which data, API, or
+permission boundary matters, and how to verify success. For deep product
+discovery, keep notes in a `REQ-*` and plan later.
 
 ## Validation expectations
 
@@ -110,29 +101,3 @@ A task is ready when:
 - every `blocked-by` task is `done`
 - validation passes
 - no active session blocks switching
-
-## Definition of done
-
-A task is done when:
-
-- acceptance criteria were checked
-- verification evidence is recorded in `--tests`
-- changed files or `none` are recorded
-- follow-up work is separate
-- the active session is cleared by `specctl done`
-
-## Execution checklist
-
-Before edits:
-
-- active session checked
-- task context read
-- blockers resolved
-- short implementation plan approved
-
-Before done:
-
-- scoped diff reviewed or offered
-- acceptance criteria checked
-- tests/lint/build/manual check recorded
-- follow-up work captured separately

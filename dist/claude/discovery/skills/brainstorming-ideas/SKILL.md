@@ -1,95 +1,89 @@
 ---
 {"allowed-tools":["AskUserQuestion","Task","TaskCreate","TaskUpdate","TaskList","Read","Grep","Glob","Write","Edit","mcp__perplexity-ask__perplexity_ask","WebFetch","Bash(git status *)","Bash(git log *)","Bash(git diff *)","Bash(git show *)"],"argument-hint":"[idea|plan|grill|debate] \u003ctopic-or-plan\u003e","context":"fork","description":"Brainstorm ideas and stress-test draft plans before coding. Use when brainstorming, exploring approaches, designing a feature/API/flow, grilling or debating a bounded plan, challenging assumptions, or resolving design-blocking terminology. NOT for implementation task breakdown. NOT for generic technology comparisons or best-practice research; use researching-web. NOT for docs updates; use documenting-code.","name":"brainstorming-ideas","user-invocable":true}
 ---
+
 # Brainstorming Ideas
 
-Follow the base skill. This Claude overlay only defines tool use and platform-specific behavior.
+Turn a vague idea or draft plan into a chosen design before coding. Done when the
+user has picked or deferred an approach knowing its trade-offs, the key decisions
+and open questions are written down, and no implementation task list was produced.
 
-## Claude tool rules
+## Session rules
 
-- Use `AskUserQuestion` for every choice point. Do not write numbered menus and ask the user to type `1`, `2`, or `3`.
-- Ask one question per `AskUserQuestion` call.
-- Use single-select for one path, multi-select for multiple risks/constraints/goals, and `allowOther` for custom answers.
-- Use `TaskCreate` and `TaskUpdate` to track phases when the session has more than two steps.
-- Use `Read`, `Grep`, and `Glob` before asking questions that the repo can answer.
-- Use `Write` or `Edit` only after the user approves the exact design note, CONTEXT entry, or ADR target.
-- Use external research tools only after the user chooses research or asks for it.
+- Ask one question at a time. Use the runtime's interactive question tool when one
+  exists (single-select, multi-select, or free text) and always allow an Other
+  answer. Without a tool, offer short labeled options plus Other.
+- Read code and docs before asking what they can answer. Cite the paths that shape
+  a recommendation.
+- Give your recommendation with every question and every set of options.
+- Cut speculative features at every step.
 
-## Suggested interactive questions
+## Domain context
 
-Initial question:
+Before design questions, read whichever exist: `CONTEXT.md`, `CONTEXT-MAP.md`,
+`docs/adr/`, and the nearest `*/CONTEXT.md` or `*/docs/adr/`. Use their terms.
+Create or change them only with user approval, and only for a resolved term or
+decision.
 
-- Header: `Idea type`
-- Question: `What would you like to brainstorm?`
-- Options: New feature, Modification, Integration, Plan grill/debate, Exploration
-- Allow Other: yes
+## Modes
 
-Assumptions check:
+- **Explore an idea.** If no topic was given, ask for one. Narrow until the problem
+  fits one sentence: trigger, actor, what it builds on or replaces, non-goals, and
+  the strongest constraint. State your assumptions and ask which are wrong. As soon
+  as the problem is stated, propose 2-3 approaches, each with what it is, its
+  trade-offs and risks, and when it wins; name the decision criteria that separate
+  them and mark one recommendation. Refine the chosen design only as far as the
+  problem needs (architecture, data flow, interface, error handling, testing),
+  confirming with the user as you go.
+- **Grill or debate.** A draft plan, a named trade-off such as "X vs Y", or a set
+  of assumptions is already bounded. Lead with a side-by-side comparison and your
+  take, grounded in the project's code, then walk the open decision branches with
+  `references/grill-protocol.md`. Ask for a plan only when nothing concrete was
+  named; do not invent opposing positions.
 
-- Header: `Assumptions`
-- Question: `Which assumptions are wrong or risky?`
-- Options: All correct, Some wrong, Not sure, Defer this
-- Allow Other: yes
+Research external solutions only when the user asks for it.
 
-Next-step checkpoint:
+If the idea conflicts with domain docs, quote the conflicting terms and resolve
+them first. If a constraint blocks every approach, name the blocker and ask which
+constraint to relax.
 
-- Header: `Next step`
-- Question: `How should we proceed?`
-- Options: Explore codebase, Research solutions, Explore then research, Skip to approaches
-- Allow Other: yes
+## Capture the outcome
 
-Approach choice:
+When the result is more than a short answer, offer a design note at
+`docs/plans/YYYY-MM-DD-<topic>-design.md` with only Problem, Chosen approach,
+Trade-offs, Open questions, and Testing strategy.
 
-- Header: `Approach`
-- Question: `Which approach fits best?`
-- Options: Recommended option, alternative option, minimal/YAGNI option
-- Allow Other: yes
+If a domain term crystallized, propose a `CONTEXT.md` entry and write it only with
+user approval:
 
-Design validation:
-
-- Header: `Validate design`
-- Question: `Does this section look right?`
-- Options: Yes continue, Needs changes, Go back, Stop here
-- Allow Other: yes
-
-Implementation handoff:
-
-- Header: `Next steps`
-- Question: `What should happen next?`
-- Options: Create worktree, Create plan, Save design note, Done for now
-- Allow Other: yes
-
-## Optional exploration
-
-If the user chooses codebase exploration, run a bounded read-only scan. Prefer direct `Read`/`Grep`/`Glob`; use a subagent only for broad scans.
-
-Prompt shape for a broad scan:
-
-```text
-Quick scan only. Find project structure, relevant flows, conventions, integration points, and tests for: <idea>. Return 5 bullets with file paths. Do not edit.
+```markdown
+Term:
+One-sentence definition.
+Avoid: overloaded synonym
 ```
 
-If no relevant code appears, say `no prior implementation found`; do not fabricate patterns.
+Offer an ADR only for a decision that is hard to reverse, surprising without
+context, and the result of a real trade-off.
 
-## Optional research
+## Output
 
-If the user chooses research, use Perplexity or WebFetch with a scoped query. Summarize sourced patterns before proposing approaches. If live retrieval is unavailable, say so and continue from local context only.
+```text
+BRAINSTORM COMPLETE | BRAINSTORM PAUSED
+Topic: <topic>
+Approach chosen: <name or none>
+Key decisions: <bullets>
+Open questions: <bullets or none>
+Design note: <path or none>
+Domain docs: <updates or none>
+```
 
-## Capture rules
+## Platform additions
 
-- For `CONTEXT.md` entries, ask for approval of the exact one-sentence definition before editing.
-- For ADRs, require all three: hard to reverse, surprising without context, and a real trade-off.
-- For design notes, write only concise Problem, Chosen approach, Trade-offs, Open questions, and Testing strategy.
+### Claude tools
 
-## Failure handling
-
-- Idea conflicts with domain docs: quote the conflicting terms and resolve with the user before designing.
-- A constraint blocks every approach: state the blocker, what would unblock it, and ask what to relax.
-- Idea is too vague: stay in understanding mode; ask one narrowing question at a time.
-- No bounded plan exists for grill/debate: ask for one; do not invent opposing positions.
-- If the user asks for task sequencing, state that it is outside this skill's scope.
-- If the user asks for generic technology research, route to `researching-web`.
-- If the user asks for docs-only work, route to `documenting-code`.
-- If the user stops mid-session, offer `BRAINSTORM PAUSED` or a short design note.
-
-### Execute this collaborative brainstorming workflow now
+- Ask each question in its own `AskUserQuestion` call: single-select for one path, multi-select for several risks, constraints, or goals, and `allowOther` for custom answers.
+- Track sessions longer than two steps with `TaskCreate` and `TaskUpdate`.
+- Search small scopes with `Read`, `Grep`, and `Glob`. For a broad scan, spawn one read-only subagent: "Quick scan only. Find structure, relevant flows, conventions, integration points, and tests for: <idea>. Return 5 bullets with file paths. Do not edit."
+- For research the user asked for, use `mcp__perplexity-ask__perplexity_ask` or `WebFetch` with a scoped query. If neither works, say so and continue from local context.
+- Use `Write` or `Edit` only after the user approves the exact design note, `CONTEXT.md` entry, or ADR.
+- At the end, offer the next step: create a worktree, create a plan, save the design note, or stop.
