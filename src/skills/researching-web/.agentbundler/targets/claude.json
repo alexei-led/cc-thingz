@@ -7,7 +7,7 @@
           "Web Research",
           "Platform additions"
         ],
-        "body": "\nThe research question is `$ARGUMENTS`.\n\nPrefer tools in this order when they are available:\n\n1. `mcp__perplexity-ask__perplexity_ask` for broad questions, comparisons, and\n   source discovery.\n2. `WebSearch` for source discovery when Perplexity is unavailable or too\n   coarse.\n3. `WebFetch` to read the primary sources you cite.\n\nUse `Task` only for broad background research that can run independently; ask\nit for cited facts, not a final recommendation.\n"
+        "body": "\nThe research question is `$ARGUMENTS`.\n\nPrefer tools in this order when they are available:\n\n1. `mcp__perplexity-ask__perplexity_ask` for broad questions, comparisons, and\n   source discovery.\n2. `WebSearch` for source discovery when Perplexity is unavailable or too\n   coarse.\n3. `WebFetch` to read the primary sources you cite.\n\nUse `Task` only for broad background research that can run independently; ask\nit for cited facts, not a final recommendation.\n\n"
       }
     ]
   },

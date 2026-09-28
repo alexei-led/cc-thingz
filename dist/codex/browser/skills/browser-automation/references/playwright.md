@@ -49,8 +49,9 @@ on stdin:
 
 - Keeps the caller's working directory and resolves input paths before running.
 - Wraps code so top-level `await` works.
-- Sends runner logs to stderr; `--quiet` and `--json` keep stdout clean. The
-  script must keep its own logs off stdout too.
+- Writes status logs to stderr. `--quiet` and `--json` also silence the
+  first-run Playwright install, which otherwise writes to stdout. The script
+  must keep its own logs off stdout too.
 - Exposes `chromium`, `firefox`, `webkit`, `devices`, `helpers`, and
   `getContextOptionsWithHeaders(opts)` as globals, alongside normal
   `require("fs")`, `require("path")`, or `require("playwright")`.

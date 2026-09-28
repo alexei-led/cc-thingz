@@ -50,6 +50,7 @@ Prefer tools in this order when they are available:
 
 Use `Task` only for broad background research that can run independently; ask
 it for cited facts, not a final recommendation.
+
 ## Output
 
 ```markdown

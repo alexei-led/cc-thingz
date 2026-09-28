@@ -7,7 +7,7 @@
           "Browser Automation",
           "Platform additions"
         ],
-        "body": "\nRead the action from `$ARGUMENTS`:\n\n- `explore <url|feature>`: inspect rendered page state.\n- `verify <feature>`: validate a feature in the browser.\n- `screenshot <url|feature>`: capture visual evidence.\n- `record <flow>`: script a manual browser session.\n- `test [target]`: run or generate browser tests.\n- Empty: ask which action with AskUserQuestion.\n\nUse browser tools for rendered state and Bash for dev servers, project\nrunners, and the bundled scripts.\n"
+        "body": "\nRead the action from `$ARGUMENTS`:\n\n- `explore <url|feature>`: inspect rendered page state.\n- `verify <feature>`: validate a feature in the browser.\n- `screenshot <url|feature>`: capture visual evidence.\n- `record <flow>`: script a manual browser session.\n- `test [target]`: run or generate browser tests.\n- Empty: ask which action with AskUserQuestion.\n\nUse browser tools for rendered state and Bash for dev servers, project\nrunners, and the bundled scripts.\n\n"
       }
     ]
   },

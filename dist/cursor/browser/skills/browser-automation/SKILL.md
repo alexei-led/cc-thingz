@@ -58,9 +58,10 @@ node <skill-dir>/scripts/run.js --json /tmp/playwright-check.js
 
 - Manifests record URL, title, screenshot path, viewport, console errors,
   network failures, and HTTP responses with status >=400.
-- `run.js` keeps the caller's working directory. `--json` or `--quiet` sends
-  runner logs to stderr, so stdout carries only the script's JSON. Playwright
-  globals such as `chromium` and `helpers` stay available when the script also
+- `run.js` keeps the caller's working directory and writes its status logs to
+  stderr. Pass `--json` or `--quiet` whenever stdout must carry only the
+  script's JSON: without them, a first-run Playwright install also writes to
+  stdout. Playwright globals such as `chromium` and `helpers` stay available when the script also
   uses `require("fs")` or `require("path")`.
 
 ## Platform additions
