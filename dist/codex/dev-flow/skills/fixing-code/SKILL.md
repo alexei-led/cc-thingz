@@ -1,10 +1,8 @@
 ---
 {"description":"Fix code defects with a reproducible feedback loop, root-cause diagnosis, minimal patch, regression test, and clean verification. Use when debugging, diagnosing, or resolving lint/test/build failures. NOT for behavior-preserving refactors (use refactoring-code), test-suite cleanup without a production bug (use improving-tests), or code review findings without fixes (use reviewing-code).","name":"fixing-code"}
 ---
-<!-- Platform guidance for Codex -->
-<!-- Use this platform's installed tool names exactly; do not translate capability references into Claude Code tool syntax. -->
-<!-- When this skill references shell execution, file reads, or search, use the platform's native shell, read, and search tools. -->
-<!-- If a referenced helper command or optional tool is unavailable, report the gap and continue with the platform's built-in tools. -->
+<!-- Codex platform guidance -->
+<!-- Use this platform's installed tool names exactly for shell, file reads, and search. If a referenced helper or optional tool is unavailable, say so and continue with built-in tools. -->
 
 
 # Fix and Diagnose Code

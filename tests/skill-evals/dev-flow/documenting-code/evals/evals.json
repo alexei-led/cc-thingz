@@ -17,7 +17,7 @@
     {
       "id": "verify-docs-agent-output",
       "name": "verify docs agent output",
-      "prompt": "A docs-keeper agent claims it updated the README after a recent API change. Describe what the parent workflow must do before reporting success to the user.",
+      "prompt": "An engineer agent claims it updated the README after a recent API change. Describe what the parent workflow must do before reporting success to the user.",
       "expected_output": "The response independently verifies the agent's work by checking git diff/stat, reading the changed docs, ensuring no placeholders or broken links, verifying examples when possible, and reporting if no files changed instead of trusting the agent.",
       "assertions": [
         "The output says not to trust the docs agent's self-report without independent verification.",

@@ -1,10 +1,8 @@
 ---
 {"description":"Improve test design, speed, and coverage with behavior-focused tests, useful seams, characterization tests, TDD, and test refactoring. Use when improving tests, optimizing slow suites, adding coverage, refactoring brittle tests, removing test waste, or working test-first. NOT for fixing production bugs (use fixing-code), production-code refactors (use refactoring-code), or reviewing non-test code quality (use reviewing-code).","name":"improving-tests"}
 ---
-<!-- Platform guidance for Codex -->
-<!-- Use this platform's installed tool names exactly; do not translate capability references into Claude Code tool syntax. -->
-<!-- When this skill references shell execution, file reads, or search, use the platform's native shell, read, and search tools. -->
-<!-- If a referenced helper command or optional tool is unavailable, report the gap and continue with the platform's built-in tools. -->
+<!-- Codex platform guidance -->
+<!-- Use this platform's installed tool names exactly for shell, file reads, and search. If a referenced helper or optional tool is unavailable, say so and continue with built-in tools. -->
 
 
 # Test Improvement

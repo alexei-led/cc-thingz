@@ -1,123 +1,75 @@
 # cc-thingz — Coding Companion
 
-Portable skills, agents, and typed hooks for Pi, Claude Code, Codex CLI, Copilot, Cursor, and Grok — code review, language tooling, infrastructure, testing, and developer utilities. Gemini is retired.
+Portable skills, agents, and typed hooks for Pi, Claude Code, Codex CLI, Copilot, Cursor, and Grok. Agent Bundler (`agbun`) renders them from `src/` into per-target packages under `dist/`.
 
-## Build
+## Build and check
 
 ```bash
-make build    # render package targets and typed hooks with Agent Bundler
-make fmt      # auto-fix Ruff + configured JS formatter (Oxfmt/Biome/Prettier) + shfmt
-make check    # fail on generated drift without rewriting dist
+make build    # render dist/ and root manifests with Agent Bundler
+make fmt      # auto-fix Ruff, the configured JS formatter, and shfmt
+make check    # fail on generated drift without rewriting dist/
 make ci       # lint + validate + check + test + test-ts
 ```
 
-`make build` requires an installed `agbun` with `package`, flat per-agent sidecars, declared hook environments, bundled Pi dependencies, native Pi resources, and Codex project-agent profiles. Builds need sandbox disabled because the uv cache at `~/.cache/uv` is restricted in the CC sandbox.
+- `make build`, `make check`, and `make ci` need the sandbox disabled: the uv cache at `~/.cache/uv` is restricted in the Claude Code sandbox.
+- `make build` needs the `agbun` version pinned in `.agentbundler-version`; `scripts/setup/install-agbun.sh` installs it.
+- Commit regenerated `dist/` and root manifests together with the `src/` change.
+- Done means `make fmt` leaves no diff and `make ci` passes.
 
-## Writing Agent/Skill Instructions
+## Where things live
 
-LLM signal hierarchy (MDEval benchmark + Perplexity research):
+- `src/skills/<name>/SKILL.md` — vendor-neutral skill body, with `references/` and `scripts/` beside it.
+- `src/agents/<name>.md` — vendor-neutral role bodies.
+- `src/hooks/<name>/` — typed hook assets; `src/hooks/UNSUPPORTED.md` records per-target boundaries.
+- `src/plugins/pi/` — Pi-native extension trees and the Pi compatibility runner.
+- `src/.agentbundler/packages/*.json` — package membership and metadata.
+- `agentbundle.json` — targets, composition, and per-target `skillPreamble`.
+- `dist/` — generated output; never edit it by hand.
+- `docs/` — contributor docs: [Agent Bundler gaps](docs/agentbundler-gaps.md), [Pi package](docs/pi-extensions.md), [skill evals](docs/skill-evals.md).
+- `tests/` — pytest, Bats, Pi extension tests, and `tests/skill-evals/` eval suites.
 
-- HIGH: `#` headers, bullet/numbered lists, code blocks — always use
-- MEDIUM: `**bold**` — ≤15% of prose lines; use for bullet labels (`- **Label**: desc`) and critical keywords only
-- LOW/zero: `_italic_`, `---` horizontal rules, markdown tables, mermaid/ASCII diagrams — never use
+Compiled output paths and overlay mechanics are in [CONTRIBUTING.md](CONTRIBUTING.md#overlays).
 
-Specific rules:
+## Targets and overlays
 
-- `**Label:**` on its own line → `### Label` (real header, not bold pseudo-header)
-- `**Sentence.** followed by prose` → strip bold, keep as plain sentence
-- `---` before `##` or `**bold` → remove (redundant section break)
-- `---` before ` ```` ` fence → keep (it's template content showing proposal format)
+Skills and hooks render to all six targets unless a `targets:` key or a package JSON `targets` list restricts them. Target differences live in JSON sidecars beside the asset:
 
-Run format lint: `make lint-instructions` or use the `/reviewing-instructions` skill for full scoring.
+- `src/skills/<name>/.agentbundler/targets/<target>.json`
+- `src/agents/<name>.md.agentbundler/targets/<target>.json`
+- `src/hooks/<name>/.agentbundler/targets/<target>.json`
+
+A skill with no sidecar, such as `releasing-code`, renders the same body everywhere.
+
+`bodyPatch.mode` is `replace` (whole body) or `sections` (replace one existing, unique heading path; a missing path fails the build). To add target-only text, give the base body a short neutral heading and patch it with `sections`. Use `replace` only for a deliberate full fork, and after `make build` confirm the rendered `dist/<target>/<package>/skills/<name>/SKILL.md` still has the base workflow and reference links.
+
+Base `SKILL.md` and `src/agents/*.md` stay vendor-neutral; `make validate` rejects Claude-only tokens there. Put `$ARGUMENTS`, `AskUserQuestion`, `TaskCreate`, and `mcp__*` names in `.agentbundler/targets/claude.json`.
 
 ## Agents
 
-Three role agents plus one utility agent. A role is a capability envelope plus a reasoning stance no skill can supply. Domain procedure and output format live in skills; language specifics live in each skill's `references/<lang>.md`. Role × skill × references compose — language is not a routing key. Consolidated 39 → 3 roles (see `docs/agent-audit-2026-05-16.md` and the executed plan in `docs/plans/completed/`). `runner` is the cheap utility lane for simple bounded tasks, not a fourth role.
+Three roles plus a utility lane. A role is a capability envelope plus a reasoning stance; skills supply domain procedure and output format, and each skill's `references/<lang>.md` supplies language detail.
 
-Envelope enforcement is per-target: Claude grants a hard `tools:` allowlist; Codex blocks writes via `sandbox_mode: read-only`; Pi has no tool-allowlist primitive, so the envelope there is a system-prompt directive. Copilot and Cursor are portable artifact targets without a cc-thingz-owned runtime envelope yet. The role descriptions omit "use proactively" deliberately — roles are picked by the orchestrator to compose with a skill, not auto-delegated. `runner` is the exception: it is a utility lane and can opt into proactive routing.
+- `engineer` — read, write, execute. The only mutator; applies changes and verifies them. Claude, Pi, and Grok.
+- `reviewer` — read-only adversarial evaluator for review, audit, code location, and planning. Claude, Codex, Pi, Copilot, Cursor, and Grok.
+- `runner` — read-only utility lane for bounded lookups. Same targets as reviewer.
+- `advisor` — read-only verdict, ranked risks, next actions. Codex and Pi only; Claude Code has a built-in advisor.
 
-- **engineer** — read + write + execute. The only mutator: applies changes and runs the build/test/lint verification on what it changed. Fork target for `writing-{csharp,go,java-kotlin,python,rust,shell,typescript,web}` and `operating-infra`. Claude preloads `looking-up-docs`; `sequential-thinking` stays Skill-discoverable to keep spawn context lean.
-- **reviewer** — read, search, and diff inspection through native tools. Adversarial evaluator (assume bugs exist); emits structured findings/proposals, applies nothing. Non-mutating: tool-enforced on Claude, write-blocked on Codex, directive on Pi. Absorbs the review family, code search, and planning (via `spec-flow`).
-- **runner** — fast utility lane: file lookup, grep/glob, `git status/log/show/diff`, file reads, log summaries, and focused shell inspection. Read-only across targets. Use proactively for simple bounded tasks; escalate to `engineer`, `reviewer`, or `advisor` when the task stops being cheap or obvious.
-- **advisor** — strategic escalation: verdict, ranked risks, next actions. Ships to Codex and Pi; excluded from Claude, which has a built-in advisor. Codex enforces read-only via sandbox; Pi uses xhigh thinking with read-only Bash and transcript-forwarding invocation.
+Envelope enforcement differs by target:
 
-### Platform Coverage
+- Claude: hard `tools:` allowlist. `engineer` and `reviewer` use `model: inherit`; `runner` uses `haiku`.
+- Codex: `sandbox_mode: read-only` on every shipped profile. Profiles carry no model or effort because Agent Bundler does not render those fields; `engineer` is excluded by package policy.
+- Pi: sidecar `tools` lists plus body directives; `advisor` and `runner` rely on the directive to keep `bash` read-only.
+- Copilot, Cursor, Grok: portable artifacts without a cc-thingz runtime envelope.
 
-Agent × target coverage. Every gap is intentional and documented below.
+## Routing rules
 
-- **engineer**: claude (full Edit/Write/Bash) and pi (full Bash/Edit/Write). Excluded from this bundle's Codex profile set; the shipped Codex roles deliberately use `sandbox_mode: read-only`. This is a package policy, not a universal Codex limitation.
-- **reviewer** and **runner**: Claude, Codex, Pi, Copilot, Cursor, and Grok portable outputs. Read-only enforcement is native on Claude and Codex, directive-based on Pi; new-target runtime policy remains vendor-owned.
-- **advisor**: Codex and Pi. Excluded from Claude — Claude Code has a built-in advisor; adding a custom one would duplicate or conflict with the native capability.
+- Keep `engineer` the sole mutator. Override the model for one call instead of adding a cheaper engineer role.
+- Role descriptions omit "Use proactively" because the orchestrator selects them to pair with a skill. `runner` opts in because it is a utility lane.
+- Keep Pi agent frontmatter model-agnostic: no `model` or `thinking` keys. Users set model policy in `~/.pi/agent/settings.json` or `.pi/settings.json`. Retry and model-switch policy is in [docs/pi-extensions.md](docs/pi-extensions.md#models-and-retries).
+- Cross-tool routing policy belongs in the chezmoi-managed top-level `CLAUDE.md`; repo role boundaries and package rules belong here.
 
-Skills and typed hooks render to all six enabled Agent Bundler targets by default. A `targets:` key restricts source eligibility. `.agentbundler/targets/*.json` contains explicit sidecars and `agentbundle.json` contains target-wide composition. `sequential-thinking` is the canonical no-overlay example.
+## Repository rules
 
-For the compiled output paths and overlay mechanics, see [Compiler Pipeline](CONTRIBUTING.md#compiler-pipeline).
-
-### Routing and model tiers
-
-Routing lives in the orchestrator instructions (`CLAUDE.md`, `AGENTS.md`, parent prompt), not in the role file alone.
-
-- For automatic cheap-task routing, add a dedicated utility/read-only agent such as `runner` and tell the orchestrator to use it proactively for simple bounded tasks: file listing, grep/glob, `git status/log/show/diff`, file reads, log summaries, and focused shell inspection.
-- Keep `engineer` as the sole normal mutator. Do not create weaker duplicates such as `junior-engineer` just to swap model tiers.
-- If a small explicit write task should use a cheaper model, override the model for that one call instead of adding a second general-purpose engineer role.
-- For Pi package agents, keep repo frontmatter model-agnostic. Do not pin `model` or `thinking` in cc-thingz; put user/project model policy in `~/.pi/agent/settings.json` or `.pi/settings.json` with `subagents.agentOverrides` or router profiles.
-- With current pi-subagents, use one model per launch, not `fallbackModels`. A provider/quota retry on another model is an explicit new run through the owning workflow/controller after checking the failed run and partial work. See `docs/pi-extensions.md#models-and-retries`.
-- Agent Bundler is required for builds. It renders package assets, typed hooks, target manifests, deterministic archives, the Pi aggregate hook runtime, declared Pi-native extension trees, and Codex project-agent profiles. Pi's native compatibility runner is part of the extension tree; only documented lifecycle and target-contract gaps remain. See `docs/agentbundler-gaps.md` and `src/hooks/UNSUPPORTED.md`.
-- Do not auto-route architecture, ambiguous debugging, broad refactors, deep review, security-sensitive reasoning, or product decisions to a light model.
-- Put cross-tool shared routing policy in the chezmoi-managed top-level `CLAUDE.md`. Keep repo-local role boundaries and package rules here in `AGENTS.md`.
-- On Claude Code, a dedicated utility agent can opt into automatic delegation via its `description` with `Use proactively ...`. The role agents intentionally omit that phrase because they are orchestrator-selected, not auto-delegated.
-
-## Development Workflow
-
-- **committing-code** — Smart git commits with logical grouping
-- **documenting-code** — Write, rewrite, or update project docs and code comments; checks claims, renders diagrams, and links
-- **fixing-code** — Reproduce, diagnose, patch, regression-test, and verify code defects
-- **improving-tests** — Improve test design and coverage with behavior seams, characterization tests, TDD, and refactoring
-- **refactoring-code** — Behavior-preserving batch refactors with mapped sites and optional graph-backed impact checks
-- **releasing-code** — Prepare, publish, or repair software releases and write validated release notes; explicit authorization is required for external mutation
-- **reviewing-code** — Evidence-backed code review with severity/confidence rubric, depth modes, and optional team/external review
-- **spec-init** — Bootstrap a new `.spec/` project or import requirements from a design doc
-- **spec-interview** — Capture PRD-quality requirements via structured Q&A
-- **spec-plan** — Turn a requirement into an EPIC with vertical-slice TASKs
-- **spec-new** — Create a single TASK or REQ file from a template
-- **spec-work** — Implement the next ready task with approval at each step
-- **spec-status** — Report spec progress; quality audit for orphans and cycles
-- **spec-done** — Mark a task complete with evidence and quality gates
-
-## Language Tooling
-
-- **writing-csharp** — Idiomatic C# /.NET development
-- **writing-go** — Idiomatic Go development
-- **writing-java-kotlin** — Modern Java and Kotlin JVM development
-- **writing-python** — Idiomatic Python 3.12+ development
-- **writing-rust** — Idiomatic Rust development
-- **writing-shell** — Portable shell scripting with POSIX sh, Bash, Zsh, Fish, CI `run:` bodies, ShellCheck, shfmt, Bats, and ShellSpec
-- **writing-typescript** — Idiomatic TypeScript development
-- **writing-web** — Simple web development with HTML, CSS, JS, and HTMX
-
-## Infrastructure & Operations
-
-- **deploying-infra** — Validate infrastructure changes and, after explicit confirmation, apply Terraform, Helm, Kustomize, or Kubernetes deployments; Dockerfiles and GitHub Actions are validate-only
-- **operating-infra** — Author, inspect, troubleshoot, and review infrastructure across IaC, Kubernetes, cloud resources, containers, GitHub Actions workflow semantics, and Linux hosts
-
-## Git Workflow
-
-- **cleanup-git** — Remove merged local branches and stale git worktrees
-- **configuring-git-hygiene** — Configure git hooks, Gitleaks, `.gitignore`, git config, and guardrails
-- **using-git-worktrees** — Creates isolated git worktrees for parallel development
-
-## Developer Tools
-
-- **brainstorming-ideas** — Brainstorm ideas and stress-test draft plans or trade-offs before coding
-- **installation-doctor** — Read-only installed-plugin diagnostics, versions, duplicate resources, and migration suggestions; bundled with discovery
-- **evolving-config** — Audit AI coding-agent configuration and plugin/package manifests; review-only by default, explicit approval for fixes
-- **looking-up-docs** — Find exact API/config syntax and versioned docs via Context7, official registries/docs, and GitHub fallback
-- **researching-web** — Web research for comparisons, current-state, and release-behavior questions with grounded source selection and stale-source reporting
-- **reviewing-instructions** — Review and score AI-facing markdown/prompt instruction files with scoped lint, model resolution, scoring caps, confidence, and evidence
-- **writing-skills** — Create, split, slim, and route repository skills, references, overlays, and plugin placement
-- **sequential-thinking** — Structured stepwise reasoning with explicit revisions and branches
-
-## Browser Automation
-
-- **browser-automation** — Rendered UI exploration, validation, screenshots, recordings, and browser-flow tests
-- **playwright-skill** — Support-only Playwright runtime/reference for `browser-automation`
+- Instruction files: follow the `writing-skills` skill. `make lint-instructions` is an advisory check.
+- Deleting, renaming, or merging a skill also updates `tests/skill-evals/**`, package JSONs, tests, and README mentions.
+- Python tooling runs through `uv`.
+- Publish releases only by pushing an annotated tag; `.github/workflows/release.yml` creates the GitHub release. Do not run `gh release create` or `gh release edit`. See [CONTRIBUTING.md](CONTRIBUTING.md#releases).
