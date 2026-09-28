@@ -9,72 +9,50 @@ name: researching-web
 
 # Web Research
 
-Use web tools for grounded external research. Prefer primary sources, official docs,
-and current evidence. Do not answer from memory when the user asked for research.
+Answer with current, cited evidence and keep sourced facts apart from your
+recommendation. Research questions get web evidence, not answers from memory.
 
-## Scope
+Never put private code, secrets, credentials, or proprietary data into a web
+query; answer those from local context and say what that limits.
 
-Use this for:
+## Tools
 
-- comparisons and trade-offs
-- recent facts, current-state questions, and release behavior
-- standards and external best practices
-- ecosystem, licensing, or market facts
-- vendor docs as evidence for non-syntax claims
+Match the tool to the question with whatever web tools the runtime provides:
 
-Do not use this for:
+- Simple fact: one focused search or answer query.
+- Source selection: search, then fetch the best primary sources.
+- Broad investigation: a deep or asynchronous research tool when available;
+  otherwise chain searches with targeted fetches and note the fallback.
+- Detail on a source already found: fetch that URL instead of searching again.
 
-- exact API syntax, config keys, or code examples → `looking-up-docs`
-- repo-specific questions that local files can answer
-- private code, secrets, credentials, or proprietary data
+Fetch enough sources to support each claim; fetch every citation only when
+the risk or ambiguity justifies it. For source ranking, stale-source signals,
+and Pi web tools, read [references/sources.md](references/sources.md).
 
-## Tool selection
+## Judgment
 
-Choose tools by question type:
+- Prefer specifications, official docs, maintainer release notes, and primary
+  announcements. Treat blogs and forum answers as supporting evidence.
+- Check sourced facts against the local project's constraints before
+  recommending a change.
+- When sources conflict, cite both sides and lower confidence unless one is
+  clearly more authoritative or current.
+- Flag stale-source risk when recency matters.
+- When live web access is unavailable, say so and label the answer as limited
+  instead of presenting an uncited recommendation as fact.
 
-- Simple factual question: use the platform's focused answer or search tool.
-- Source selection: search first, then fetch or read the best official or primary sources.
-- Broad investigation: use deep or asynchronous research when available.
-- Follow-up detail on a cited source: fetch the relevant source directly.
+## Platform additions
 
-Do not hardcode one provider as the answer for every question. Use the tool that
-best matches the question and the available runtime.
+No target-specific additions.
 
-## Workflow
-
-1. Restate the research question and the decision it should inform.
-2. Decide whether the question is simple, source-selection, or broad investigation.
-3. Gather sources with the matching tool.
-4. Prefer primary or official sources when they can answer the question.
-5. Compare sourced facts against local project constraints before recommending changes.
-6. Separate sourced facts from recommendation or judgment.
-7. Report unknowns, stale-source risk, and gaps directly.
-
-If the user asks for the workflow itself, describe the source-gathering plan and
-output structure; do not present an uncited recommendation as fact.
-
-## Conditional References
-
-- [sources.md](references/sources.md) — read when choosing between web tools or evaluating source quality: tier ranking, stale-source detection, platform-specific tool guidance (Pi `web_search`/`web_answer`/`web_research`), source caching.
-
-## Failure handling
-
-- No useful results: report the gap directly; do not fabricate sources.
-- Live web unavailable: say so explicitly and report that the answer is limited.
-- Question requires private code or credentials: refuse the web query and answer only from local context.
-- Deep research unavailable: fall back to search plus focused answer queries and note the fallback.
-- Sources conflict: describe the conflict, cite both sides, and avoid a confident recommendation unless one source is more authoritative or current.
-- Only secondary sources found: say that primary-source confidence is limited.
-- Source looks stale and recency matters: flag stale-source risk explicitly.
-
-## Output contract
+## Output
 
 ```markdown
 ## Research Result
 
 ### Research Question
 
-<question and decision it informs>
+<question and the decision it informs>
 
 ### Answer
 
@@ -92,11 +70,7 @@ output structure; do not present an uncited recommendation as fact.
 
 <what changes because of local constraints>
 
-### Unknowns and Stale-Source Risk
+### Unknowns and Gaps
 
-<unknowns, conflicting sources, or recency risk>
-
-### Gaps
-
-<any missing evidence or blocked retrieval>
+<conflicts, stale-source risk, missing evidence, or blocked retrieval>
 ```

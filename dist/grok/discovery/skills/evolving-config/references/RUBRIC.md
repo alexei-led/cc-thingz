@@ -32,7 +32,6 @@ Suggested:
 
 - Identify user, project, package, and generated config separately.
 - Prefer source files over generated exports.
-- Ask before touching private, global, or managed config.
 - Keep platform-specific rules scoped to that platform.
 
 ### Context efficiency
@@ -52,8 +51,6 @@ Suggested:
 - Adjacent skills or agents should not share the same trigger phrases unless one delegates to the other.
 - Keep one trigger surface per branch; synonym piles are duplication, not breadth.
 - A component that mostly delegates to another one needs distinct trigger vocabulary or should fold into the owner.
-- Prose-quality review or score-only prompt lint belongs to `reviewing-instructions`, not this rubric.
-- Do not route app config, git hygiene, or ordinary docs into this skill.
 
 ### Safety
 
@@ -75,4 +72,3 @@ A fix is ready only when:
 - the change is small and reversible
 - risky effects are named
 - validation is available or the gap is reported
-- user approval exists for fix mode

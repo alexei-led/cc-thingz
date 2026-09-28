@@ -73,7 +73,7 @@ PROJECT_VERSION_FILES=(
 	pyproject.toml
 	uv.lock
 	package.json
-	src/skills/playwright-skill/scripts/package.json
+	src/skills/browser-automation/scripts/package.json
 )
 if [ ! -f "${PACKAGE_JSONS[0]}" ]; then
 	echo "ERROR: no src/.agentbundler/packages/*.json files found" >&2
@@ -196,7 +196,7 @@ parent=$(git rev-parse --verify --quiet HEAD^) || {
 	exit 1
 }
 changed_files=$(git diff-tree --no-commit-id --name-only -r HEAD)
-for required_file in CHANGELOG.md agentbundle.json pyproject.toml uv.lock package.json src/skills/playwright-skill/scripts/package.json; do
+for required_file in CHANGELOG.md agentbundle.json pyproject.toml uv.lock package.json src/skills/browser-automation/scripts/package.json; do
 	if ! grep -Fxq "$required_file" <<<"$changed_files"; then
 		echo "ERROR: HEAD is not the release commit; missing committed change: $required_file" >&2
 		exit 1

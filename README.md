@@ -3,7 +3,7 @@
 [![CI](https://github.com/alexei-led/cc-thingz/actions/workflows/ci.yml/badge.svg)](https://github.com/alexei-led/cc-thingz/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Targets](https://img.shields.io/badge/targets-6-00897B)](agentbundle.json)
-[![Skills](https://img.shields.io/badge/skills-31-green)](src/skills/)
+[![Skills](https://img.shields.io/badge/skills-29-green)](src/skills/)
 [![Agent Bundler](https://img.shields.io/badge/Agent_Bundler-required-00897B)](https://github.com/alexei-led/agentbundler)
 
 Portable skills, agents, hooks, and Pi-native extensions for Claude Code, Codex

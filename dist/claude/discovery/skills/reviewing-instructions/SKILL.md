@@ -1,59 +1,122 @@
 ---
 {"allowed-tools":["Read","Grep","Glob","Task","Bash(uv run python src/skills/reviewing-instructions/scripts/lint-instructions.py *)"],"context":"fork","description":"Use when asked to lint, audit, review, or score AI-facing instruction files such as SKILL.md, AGENT.md, AGENTS.md, CLAUDE.md, platform body.md files, prompt files, rules, policies, and agent-facing references. NOT for plugin manifests, application code review, harness configuration review, ordinary docs, tests, or generated build output.\n","name":"reviewing-instructions","user-invocable":true}
 ---
+
 # Instruction Review
 
-## Claude platform additions
+Score AI-facing instruction files and report findings an author can act on. The
+target style: outcome and done criteria up front, each rule stated once, hard
+constraints explicit, nothing the model already knows, portable across agent
+targets. The writing-skills skill teaches the same style to authors.
 
-The host SKILL.md is canonical. This overlay only adds Claude-specific argument,
-task, and aggregation behavior.
+Done when every in-scope file has a score, a cited reason per dimension, caps
+applied, and a confidence level, and every finding quotes or locates its
+evidence.
 
-## Argument parsing
+## References
 
-From `$ARGUMENTS`:
+- `references/scoring-rubric.md` — dimensions, bands, caps, confidence, and
+  defect labels. Read for every review.
+- `references/model-context.md` — read when the target names a model family or
+  the user passes `--model`. Default context is generic.
+- `references/calibration.md` — read when a score is borderline, confidence is
+  low, or you are comparing two versions.
 
-- first non-flag token: file path, directory path, plugin name, or omitted scope
-- `--model <name>`: override model resolution
-- `--team`: use parallel review agents for large scopes
-- `--rerank`: use calibration anchors and pairwise comparison when comparing versions
+## Scope
 
-## Task use
+- Input is a file, a directory, or a skill or agent name. A bare name expands to
+  `src/skills/<name>` or `src/agents/<name>.md`.
+- For one file, review that file unless the user asks for linked files. For a
+  directory, review its entrypoint plus the support files it links or contains.
+- With no scope, list likely entrypoints (SKILL.md, AGENT.md, AGENTS.md,
+  CLAUDE.md, body.md, prompt and rules files) and ask one question before
+  reviewing more than one skill, agent, or package.
+- Package JSON is routing evidence only; manifest review belongs to
+  evolving-config.
+- Put ambiguous candidates under Candidates Not Reviewed with the reason.
 
-Use direct review for one file or one small skill folder.
+## Pre-pass
 
-Use parallel tasks only when scope contains multiple independent files or plugins.
-Launch at most 3 review tasks at once. Batch deterministically by sorted path, not
-by estimated difficulty.
+When a shell is available, run the advisory linter on the scope:
 
-Each task prompt must include:
+```bash
+uv run python src/skills/reviewing-instructions/scripts/lint-instructions.py <scope>
+```
 
-- exact file list
-- resolved model context or instruction to resolve it
-- path to `references/scoring-rubric.md`
-- path to `references/model-resolution.md`
-- path to `references/skill-architecture.md` when the scope includes `SKILL.md`, `AGENT.md`, `body.md`, or agent-facing references
-- requirement to cite evidence for every score
-- requirement to apply gates and caps before final score
+Confirm or dismiss each warning during review; the rubric decides. If the script
+cannot run, record `Structural pre-pass: skipped (<reason>)` and continue.
 
-## Aggregation
+## Review
 
-When task results return:
+Judge each file against its own job: a read-only reviewer needs different limits
+than an apply flow, and a reference file needs no routing description. Pick the
+band first, apply caps, and name the top one to three improvements by impact.
+Local project rules win over vendor guidance; report the conflict. For repeated
+scoring or reranking, keep the scope, model context, and rubric version fixed.
 
-1. Verify each reviewed file was in scope.
-2. Recompute caps when a task forgot them.
-3. Deduplicate findings by file plus rule or dimension.
-4. If two scores differ by more than 1 point, compare gates and caps first.
-5. Use the lower-confidence score only as a signal; do not average incompatible scopes.
-6. Put unresolved disagreements in the report as low-confidence notes.
+## Output
 
-## Rerank mode
+```markdown
+## Instruction Review Report
 
-When `$ARGUMENTS` contains `--rerank`, read `references/calibration.md`.
-For two versions of a file, compare gates first, then dimensions, then final score.
-If the difference is less than 0.5, report a tie.
+Model context: <family or generic> — source <source>
+Rubric version: <date>
+Review confidence: high | medium | low
 
-## Web and model docs
+### Summary
 
-Use web lookup for model docs only when local references are missing or the user asks
-for current vendor guidance. If web access fails, use local references or generic
-context and report the gap.
+- Files reviewed: N
+- Candidates not reviewed: N
+- Structural pre-pass: <confirmed and dismissed warnings, or skipped reason>
+- Score range: X-Y / 10
+- Main risk: <one sentence>
+
+### Scores
+
+path/to/file.md — overall X / 10, confidence <high|medium|low>
+
+- Caps: none | capped at N because <reason>
+- Outcome and Done: X — <evidence>
+- Routing: X — <evidence>
+- Consistency: X — <evidence>
+- Hard Constraints: X — <evidence>
+- Concision: X — <evidence>
+- Progressive Disclosure: X — <evidence>
+- Portability: X — <evidence>
+
+### Findings
+
+1. path:line — <high|medium|low> <dimension[/label]>: <issue>. Evidence: <quote>. Fix: <change>.
+
+### Top Improvements
+
+1. <highest-impact change>
+
+### Candidates Not Reviewed
+
+- path — <reason>
+```
+
+Omit empty optional sections. When no findings survive the evidence check,
+`No confirmed findings.` replaces only the Findings section; Summary and the
+per-file Scores with evidence stay.
+
+## Platform additions
+
+### Arguments
+
+From `$ARGUMENTS`: the first non-flag token is the scope; `--model <name>`
+overrides model context; `--team` fans out review tasks for large scopes;
+`--rerank` compares two versions per `references/calibration.md`.
+
+### Parallel review
+
+Review one file or one small skill folder directly. For several independent
+files or packages, run at most 3 Task reviewers at once, batched by sorted path.
+Give each the exact file list, the resolved model context, the path to
+`references/scoring-rubric.md`, and the evidence rule.
+
+When results return, drop out-of-scope files, recompute caps a task skipped, and
+deduplicate findings by file plus dimension. If two scores differ by more than 1
+point, compare caps first; report unresolved disagreements as low-confidence
+notes instead of averaging.

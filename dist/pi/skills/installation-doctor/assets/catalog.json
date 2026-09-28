@@ -1,15 +1,11 @@
 {
   "browser": {
     "skills": [
-      "browser-automation",
-      "playwright-skill"
+      "browser-automation"
     ],
     "skill_targets": {},
     "resources": {
       "browser-automation": [
-        "SKILL.md"
-      ],
-      "playwright-skill": [
         "SKILL.md",
         "scripts/.gitignore",
         "scripts/lib/helpers.js",
@@ -76,8 +72,7 @@
       "looking-up-docs",
       "researching-web",
       "reviewing-instructions",
-      "writing-skills",
-      "sequential-thinking"
+      "writing-skills"
     ],
     "skill_targets": {},
     "resources": {
@@ -103,9 +98,6 @@
         "scripts/lint-instructions.py"
       ],
       "writing-skills": [
-        "SKILL.md"
-      ],
-      "sequential-thinking": [
         "SKILL.md"
       ]
     }

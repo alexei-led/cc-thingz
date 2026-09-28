@@ -1,29 +1,20 @@
 # Apply Fixes
 
-Load this file only when the user explicitly asks for fixes or passes `--fix`.
-Review-only requests must stop after the audit report.
+Read only in fix mode: the user asked for changes or passed `--fix`.
 
-## Approval gate
+## Approval
 
-If fixes were not already approved, ask one question:
+If fixes were not already approved, ask one question: apply which fixes —
+critical only, critical and important, selected items, show diffs only, or skip.
 
-- Action: apply which fixes? Options: critical only, critical and important, selected items, show diffs only, skip.
+Before any risky change listed under Limits in `SKILL.md`, confirm again and
+name the files and the risk.
 
-Ask a second confirmation before risky changes. Name the files and risk. Risky
-changes include permissions, sandbox policy, hooks, MCP servers, model routing,
-package installs, deletes, moves, broad rewrites, private config, and managed
-settings.
+## Applying
 
-## Fix rules
-
-- Edit source files, not generated exports.
-- Apply only approved findings. Do not include opportunistic cleanup.
-- Prefer small `edit` changes over rewrites.
-- Keep secrets redacted.
-- Show a concise diff summary.
-- Run the closest validation command for touched config.
-
-## If validation fails
-
-Revert the fix unless the user asks to keep it. Quote the failing line or command
-output and state the next safe action.
+- Apply only approved findings; leave opportunistic cleanup for a later audit.
+- Prefer small edits over rewrites, and keep secrets redacted.
+- Show a short diff summary and run the closest validation for the touched
+  config.
+- If validation fails, revert the change unless the user asks to keep it, quote
+  the failing line, and state the next safe action.

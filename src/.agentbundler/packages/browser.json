@@ -4,9 +4,6 @@
       "path": "skills/browser-automation"
     },
     {
-      "path": "skills/playwright-skill"
-    },
-    {
       "path": "agents/engineer.md",
       "targets": [
         "claude",
