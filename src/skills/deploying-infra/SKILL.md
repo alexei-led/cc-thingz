@@ -60,7 +60,9 @@ Write deployment logs only where the repo already has that convention.
 
 ## Output
 
-Start with one header, then its fields:
+When asked how to proceed or to describe the workflow, answer with the workflow for this change: confirm the destination, validate, review the plan or diff and its blast radius, ask for approval, apply, watch the rollout or verify state, and name the rollback path. Unknown details become the questions to ask, not a blocked report.
+
+After an actual run, start with one header, then its fields:
 
 ```text
 DRY RUN COMPLETE: Status; Environment; Types; Validation; Plan/Diff; Blockers; Skipped
