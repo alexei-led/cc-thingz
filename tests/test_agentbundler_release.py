@@ -393,10 +393,11 @@ def test_generated_agent_frontmatter_preserves_target_envelopes() -> None:
     assert _metadata("dist/claude/dev-flow/agents/reviewer.md") == {
         "color": "cyan",
         "description": source_description,
-        "model": "sonnet",
+        "model": "inherit",
         "name": "reviewer",
         "tools": ["Read", "Grep", "Glob", "LS"],
     }
+    assert _metadata("dist/claude/dev-flow/agents/engineer.md")["model"] == "inherit"
     assert _metadata("dist/claude/discovery/agents/runner.md")["model"] == "haiku"
     assert _metadata("dist/claude/discovery/agents/runner.md")["tools"] == [
         "Read",

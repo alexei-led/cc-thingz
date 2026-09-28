@@ -1,10 +1,8 @@
 ---
 {"description":"Idiomatic shell development for POSIX sh, Bash, Zsh, Fish, hooks, CI shell steps, and scriptable CLI glue. Use when writing or changing `.sh`, `.bash`, `.zsh`, `.fish`, `.bats`, shell functions, shell pipelines, CI `run:` shell bodies, or command-runner recipes. Emphasizes portability, quoting, safe filesystem/process handling, non-TUI CLI tools, ShellCheck, shfmt, Bats, and ShellSpec. NOT for Python, Rust, TypeScript, Go, web code, or GitHub Actions workflow/job/permissions semantics; use operating-infra.","name":"writing-shell"}
 ---
-<!-- Platform guidance for Codex -->
-<!-- Use this platform's installed tool names exactly; do not translate capability references into Claude Code tool syntax. -->
-<!-- When this skill references shell execution, file reads, or search, use the platform's native shell, read, and search tools. -->
-<!-- If a referenced helper command or optional tool is unavailable, report the gap and continue with the platform's built-in tools. -->
+<!-- Codex platform guidance -->
+<!-- Use this platform's installed tool names exactly for shell, file reads, and search. If a referenced helper or optional tool is unavailable, say so and continue with built-in tools. -->
 
 
 # Shell Development
