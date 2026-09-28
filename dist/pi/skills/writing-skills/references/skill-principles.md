@@ -51,4 +51,3 @@ For each line ask: does it change behavior, does it belong here rather than in
 a reference, and does another line already own this meaning? Delete generic
 agent advice, repeated constraints, prose without operational effect, and stale
 references to removed tools, paths, or models.
-
