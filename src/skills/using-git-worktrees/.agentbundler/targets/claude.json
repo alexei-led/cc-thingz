@@ -12,7 +12,8 @@
       "Bash(mkdir *)",
       "Bash(rmdir *)",
       "Bash(scripts/setup-worktree.sh *)",
-      "Bash(scripts/cleanup-worktree.sh *)"
+      "Bash(scripts/cleanup-worktree.sh *)",
+      "Bash(git switch *)"
     ],
     "context": "fork",
     "user-invocable": true

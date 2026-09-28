@@ -27,7 +27,7 @@ destination and frozen inputs. Mark each type READY or BLOCKED.
 
 ## Terraform
 
-- `terraform fmt -check`, `terraform validate`; `terraform init -backend=false` only when provider setup is needed and safe.
+- `terraform fmt -check`, then `terraform init -backend=false` when provider setup is needed and safe, then `terraform validate`.
 - `terraform plan -out=tfplan`, then `terraform show -no-color tfplan`.
 - Workspace, backend, and var files match the target environment; shared environments use a locked remote backend.
 - List every destroy and replace before confirmation. Keep sensitive values out of output.

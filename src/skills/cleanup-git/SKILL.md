@@ -31,7 +31,7 @@ It always skips the current worktree, the current branch, the base, and `main`/`
 
 ## Workflow
 
-1. Run the preview and show it. Read each line literally: `remove ... (PR merged)`, `KEEP ... (dirty)`, `KEEP ... (PR merged, N ahead — use --force)`.
+1. Run the preview and show it. Read each line literally: `remove <worktree>` and `delete <branch>` are candidates; `KEEP ... (dirty)`, `KEEP ... (N ahead — use --force)`, and `KEEP ... (ahead unknown — run git fetch ...)` need the user; `skip` lines are guarded.
 2. Present every `KEEP` line as a decision for the user.
 3. Ask before `--apply`. Add `--force` only when the user confirms the ahead commits are throwaway.
 

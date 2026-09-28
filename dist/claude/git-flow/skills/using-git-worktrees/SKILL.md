@@ -1,5 +1,5 @@
 ---
-{"allowed-tools":["Read","AskUserQuestion","Bash(git status *)","Bash(git branch *)","Bash(git worktree *)","Bash(git rev-parse *)","Bash(git symbolic-ref *)","Bash(git fetch *)","Bash(mkdir *)","Bash(rmdir *)","Bash(scripts/setup-worktree.sh *)","Bash(scripts/cleanup-worktree.sh *)"],"context":"fork","description":"Creates isolated git worktrees for parallel development. Use when starting feature work needing isolation or working on multiple branches simultaneously. NOT for simple branch switching, bulk branch cleanup (use cleanup-git), or git hook/config setup (use configuring-git-hygiene).","name":"using-git-worktrees","user-invocable":true}
+{"allowed-tools":["Read","AskUserQuestion","Bash(git status *)","Bash(git branch *)","Bash(git worktree *)","Bash(git rev-parse *)","Bash(git symbolic-ref *)","Bash(git fetch *)","Bash(mkdir *)","Bash(rmdir *)","Bash(scripts/setup-worktree.sh *)","Bash(scripts/cleanup-worktree.sh *)","Bash(git switch *)"],"context":"fork","description":"Creates isolated git worktrees for parallel development. Use when starting feature work needing isolation or working on multiple branches simultaneously. NOT for simple branch switching, bulk branch cleanup (use cleanup-git), or git hook/config setup (use configuring-git-hygiene).","name":"using-git-worktrees","user-invocable":true}
 ---
 
 # Git Worktrees
@@ -28,7 +28,7 @@ The script runs `git worktree add` from the main worktree root. It checks out an
 scripts/cleanup-worktree.sh [branch]
 ```
 
-It removes the worktree and deletes the branch only when `gh` confirms the PR is `MERGED`. Pass `--force` only after the user confirms the merge or abandons the branch; `--force` can remove a dirty worktree and force-delete the branch. For bulk or stale cleanup, use cleanup-git. Leave `git pull` out of cleanup; the user pulls the main worktree once it is clean on the integration branch.
+It removes the worktree and deletes the branch only when `gh` confirms the PR is `MERGED`. It also refuses when the branch has commits past the merged PR head. Pass `--force` only after the user confirms the merge without `gh`, confirms those extra commits are throwaway, or abandons the branch; `--force` can remove a dirty worktree and force-delete the branch. For bulk or stale cleanup, use cleanup-git. Leave `git pull` out of cleanup; the user pulls the main worktree once it is clean on the integration branch.
 
 For cases the scripts refuse or don't cover, read [workflow.md](references/workflow.md).
 

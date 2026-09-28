@@ -1,5 +1,5 @@
 ---
-{"allowed-tools":["Task","TaskOutput","TaskCreate","TaskUpdate","TaskList","Bash(command -v *)","Bash(kubectl *)","Bash(helm *)","Bash(kustomize *)","Bash(terraform *)","Bash(git *)","Bash(make *)","Read","Grep","Glob","AskUserQuestion"],"argument-hint":"[--dry-run | --apply] [environment] [scope]","context":"fork","description":"Validate infrastructure changes and, after explicit confirmation, apply Terraform, Helm, Kustomize, or Kubernetes deployments. Use when the user says \"deploy\", \"deploy to staging\", \"terraform apply\", \"helm upgrade\", \"kubectl apply\", \"rollout\", \"deploy check\", \"validate deployment\", or \"validate infrastructure\". NOT for Dockerfile or GitHub Actions review, service troubleshooting, cloud inspection, rollback investigation, or authoring infra; use operating-infra for those.","name":"deploying-infra","user-invocable":true}
+{"allowed-tools":["Task","TaskOutput","TaskCreate","TaskUpdate","TaskList","Bash(command -v *)","Bash(kubectl *)","Bash(helm *)","Bash(kustomize *)","Bash(terraform *)","Bash(git *)","Bash(make *)","Bash(tflint *)","Bash(checkov *)","Bash(trivy *)","Bash(kubeconform *)","Bash(kube-linter *)","Bash(kubescape *)","Bash(conftest *)","Bash(kyverno *)","Read","Grep","Glob","AskUserQuestion"],"argument-hint":"[--dry-run | --apply] [environment] [scope]","context":"fork","description":"Validate infrastructure changes and, after explicit confirmation, apply Terraform, Helm, Kustomize, or Kubernetes deployments. Use when the user says \"deploy\", \"deploy to staging\", \"terraform apply\", \"helm upgrade\", \"kubectl apply\", \"rollout\", \"deploy check\", \"validate deployment\", or \"validate infrastructure\". NOT for Dockerfile or GitHub Actions review, service troubleshooting, cloud inspection, rollback investigation, or authoring infra; use operating-infra for those.","name":"deploying-infra","user-invocable":true}
 ---
 
 # Deploy Infrastructure
@@ -7,7 +7,7 @@
 Validate first and apply only what the user approved. Hard rules:
 
 - Never invent deploy paths, release names, workspaces, namespaces, accounts, or environments. If one is unclear, ask one question.
-- Authorization binds to the reviewed artifact (saved plan or rendered file) and its exact destination: account, context, namespace, workspace, chart/version, release, and values. Production authorization names the exact environment.
+- Authorization binds to the reviewed artifact (saved plan or rendered file) and its exact destination: account, context, namespace, workspace, chart/version, release, and values. Production authorization names the exact environment. Ambiguous, partial, or mismatched authorization means stop and ask again.
 - Blocked validation, missing plan/diff evidence, or an unshown destructive change: stop before confirmation.
 - Apply failure: stop with `DEPLOYMENT FAILED` and ask before any rollback.
 - Rollout timeout or degraded health: show investigation and rollback options, then ask.
@@ -24,9 +24,9 @@ Validate first and apply only what the user approved. Hard rules:
 Order is the safety gate:
 
 1. Detect infra types and target details from repo files.
-2. Run the evidence commands for each detected type from [validation-checklists.md](references/validation-checklists.md). Run operating-infra's review gates (lint, schema, policy) on the same rendered artifact.
+2. Run the evidence commands for each detected type from [validation-checklists.md](references/validation-checklists.md). Run the lint, schema, and policy gates that operating-infra lists on the same rendered artifact; record each unavailable tool as a skipped check with its reason.
 3. Show the pre-flight report below. Stop here on `--dry-run`.
-4. Ask for confirmation of the exact artifact and destination unless already authorized.
+4. Record the artifact and input hashes, then ask for confirmation of the exact artifact and destination unless already authorized.
 5. Immediately before apply, verify the artifact and input hashes still match. Changed inputs need revalidation and renewed authorization.
 6. Apply with one of the allowed commands.
 7. Verify the changed resources: rollout status, pod health, Terraform outputs or state.
