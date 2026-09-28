@@ -1,60 +1,102 @@
 ---
-{"allowed-tools":["Task","TaskOutput","TaskCreate","TaskUpdate","TaskList","AskUserQuestion","Read","Grep","Glob","LS","Bash(git *)","Bash(gh pr *)","Bash(gh api *)"],"argument-hint":"[deep] [team] [external]","context":"fork","description":"Use when reviewing changed code, PRs, diffs, or specific files. Finds evidence-backed defects in security, correctness, tests, reliability, performance, maintainability, and docs. Supports quick, standard, deep, team, and external-review modes. NOT for repo-wide architecture review, general codebase exploration, fixing issues (use fixing-code), improving tests without a code review (use improving-tests), or applying refactors (use refactoring-code).","name":"reviewing-code","user-invocable":true}
+{"allowed-tools":["Task","TaskOutput","TaskCreate","TaskUpdate","TaskList","AskUserQuestion","Read","Grep","Glob","LS","Bash(git *)","Bash(gh pr *)","Bash(gh api *)"],"argument-hint":"[quick|deep|team|external]","context":"fork","description":"Use when reviewing changed code, PRs, diffs, or specific files. Finds evidence-backed defects in security, correctness, tests, reliability, performance, maintainability, and docs. Supports quick, standard, deep, team, and external-review modes. NOT for repo-wide architecture review, general codebase exploration, fixing issues (use fixing-code), improving tests without a code review (use improving-tests), or applying refactors (use refactoring-code).","name":"reviewing-code","user-invocable":true}
 ---
+
 # Code Review
 
-## Platform workflow additions
+Produce findings, not edits, for the requested diff, PR, changed files, or file
+list. Read `references/severity-rubric.md` before scoring or reporting: it owns
+the dimensions, severity, confidence, and score rules.
 
-Track phases with `TaskCreate` and `TaskUpdate` when available:
+Load a language reference only for languages in scope:
 
-1. Scope resolved.
-2. References loaded.
-3. Evidence gathered.
-4. Findings consolidated.
-5. Report emitted.
+- C#: `references/csharp.md`
+- Go: `references/go.md`
+- Java/Kotlin: `references/java-kotlin.md`
+- Python: `references/python.md`
+- Rust: `references/rust.md`
+- TypeScript: `references/typescript.md`
+- Web, HTML, CSS, JS, HTMX: `references/web.md`
 
-## Arguments
+Other languages: use the rubric alone and report reduced coverage.
 
-If `$ARGUMENTS` is passed, interpret these keywords:
+## Scope
 
-- `quick`: changed lines plus direct context; security and correctness only.
-- `deep`: all dimensions from the host skill.
-- `team`: parallel reviewer sub-tasks, then one consolidated report.
-- `external`: second-model or external-AI review; only when explicitly requested.
+Use the scope the user named. Otherwise ask one question offering:
 
-Default is standard. Never run `external` implicitly.
+- uncommitted changes
+- branch compared to the default branch
+- specific files or a PR diff
 
-## Scope prompt
+Use one git or PR command for the whole review. Without command access, work
+from the supplied diff and files, and ask for them if absent. No changes in
+scope: report `Nothing to review.`
 
-When scope is missing, use `AskUserQuestion` with header `Review scope` and these options:
+## Modes
 
-- Uncommitted changes.
-- Branch compared to default branch.
-- Specific files or PR diff supplied by the user.
+Default is standard.
 
-## Team mode
+- **Quick**: small, low-risk diffs. Security and correctness; changed lines plus direct context.
+- **Standard**: security, correctness, and tests; follow callers or callees when a finding needs them.
+- **Deep**: on request for a thorough, risk, or merge-safety review. All rubric dimensions, including boundary inputs and affected tests.
+- **Team**: on request for team, parallel, or multi-pass review, or offered for a large diff. Split by dimension or file group, then merge into one report: dedupe by `file:line` plus claim, keep the higher severity only when evidence supports it, and put disagreements under Needs review.
+- **External**: only when the user explicitly asks for an external, second-model, or second-opinion review. Keep private code local unless the bridge runs locally or the user approved sharing. Rate external output with the same rubric; claims you cannot verify go to Needs review. Report whether it completed, was unavailable, or was skipped and why.
+- **Simplify**: on request for an over-engineering or "what can we delete" review. Simplicity dimension only. One line per finding, `file:line — <tag> <what>. <replacement>.`, with tags `delete`, `stdlib`/`native` (name the replacement), `yagni`, `shrink`. End with `net: -N lines possible.` or `Lean already. Ship.`
 
-Run sub-tasks as the read-only `reviewer` role. Split by review dimension or file group. Each sub-task must use the host skill's severity rubric and return only evidence-backed findings.
+## Evidence
 
-Consolidate before reporting:
+- Read enough surrounding code to prove each claim. Run the project's checks when you can; a failing check in scope is evidence.
+- If a code-graph tool (GitNexus, codegraph) is installed, use it for caller, impact, and test-coverage questions on broad or public-API changes; a stale index is a coverage gap, not evidence.
+- Web research is for public facts only (CVEs, official docs). Never send private code or diffs to web tools.
+- Skip style that project tooling already enforces. List suspicious code outside scope as out of scope instead of widening the review.
+- Review generated or vendored files only when source generation is in scope.
 
-- Deduplicate by `file:line` plus claim.
-- Keep the highest severity only when the evidence matches the rubric.
-- Move unsupported or disputed claims to Needs review.
-- Prefix confirmed findings with `[Flagged by: <dimension or file group>]` only when it helps explain coverage.
+## Output
 
-## External mode
+```markdown
+## Code Review Summary
 
-When `external` is requested, spawn configured external reviewer bridges in parallel if available. Do not depend on a specific bridge or model.
+Scope: <description>
+Depth: quick | standard | deep | team | external
+Languages: <list>
+Coverage: complete | partial — <reason>
+Graph evidence: none | <tool> — <freshness/gaps>
+External review: not requested | completed | unavailable | skipped — <reason>
+Score: <N/10 if requested> — confidence <high|medium|low>
 
-Report the result explicitly:
+### Critical
 
-- `External review: completed` when it ran.
-- `External review: unavailable` when no bridge exists.
-- `External review: skipped` when privacy, missing scope, or tooling prevents it.
+- `file:line` — <category>, confidence <level>. <issue> Scenario: <how it fails>. Fix: <concrete fix>.
 
-Apply the host severity rubric to external output. Do not include external claims as confirmed findings unless the local review can verify the evidence.
+### Warnings
 
-## Historical context
+- (same shape)
 
-If memory search is available, query past observations for files in scope. Use it only to avoid repeating already-litigated findings. Do not treat memory as evidence for a new finding.
+### Suggestions
+
+- `file:line` — <category>, confidence <level>. <improvement>. Fix: <concrete fix>.
+
+### Needs review
+
+- `file:line or tool/context gap` — <missing context and why it matters>.
+
+### Summary
+
+<2-3 sentences: merge risk and next actions, or "No confirmed findings".>
+```
+
+Omit empty sections, except Needs review when it explains partial coverage.
+
+## Platform additions
+
+### Arguments
+
+`$ARGUMENTS` may name a mode: `quick`, `deep`, `team`, or `external`. Default is standard; never run `external` unless it is named.
+
+### Claude tools
+
+- Missing scope: ask with `AskUserQuestion`, header `Review scope`, offering the three scope options above.
+- Track phases with `TaskCreate` and `TaskUpdate` on reviews longer than a few steps.
+- Team mode: run each sub-task as the read-only `reviewer` agent with the rubric and its dimension or file group.
+- External mode: run configured external reviewer bridges in parallel; depend on no specific bridge or model.
+- If memory search is available, check past observations for files in scope only to avoid re-raising settled findings; memory is never evidence for a new finding.
