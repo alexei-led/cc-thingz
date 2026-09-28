@@ -2,68 +2,35 @@
 {"description":"Idiomatic C# /.NET development. Use when writing C# code, changing `.csproj` or `.sln`, or working on ASP.NET Core apps, libraries, CLIs, workers, and xUnit/NUnit/MSTest suites. Emphasizes nullable references, async/await, LINQ discipline, boundary validation, focused `dotnet` feedback, and minimal dependencies. NOT for Go, Python, TypeScript, shell scripts, or infra-only work.","name":"writing-csharp"}
 ---
 <!-- Pi platform guidance -->
-<!-- Use installed Pi tool names exactly. Installed extensions may add toolsets such as Task*, Monitor*, and Loop*; use the visible tool names exactly and do not translate them to Claude syntax. -->
-<!-- Prefer Task* over `todo` when task-tracking tools are available; `todo` is the cc-thingz fallback. Prefer MonitorCreate for long-running or background commands and LoopCreate for scheduled or event-driven follow-up instead of Bash sleep/poll loops. -->
-<!-- Use subagent for authorized delegation. Ordinary async subagents notify the parent natively; yield instead of polling or calling bg_wait merely because a child is active. Use blocking bg_wait only for provider, detached, or other background work without a native notification when a required same-turn result is needed. -->
-<!-- Current pi-subagents uses one model per launch; do not configure fallbackModels. A different model requires an explicit new launch after inspecting the failed run and partial work. Use the owning workflow/controller for retries. -->
-<!-- Use ctx7 or npx ctx7@latest through bash when Context7 documentation lookup is required. -->
+<!-- Use installed Pi tool names exactly, including extension toolsets such as Task*, Monitor*, and Loop*. -->
+<!-- When available, track work with Task* (`todo` is the fallback), run long or background commands with MonitorCreate, and schedule follow-up with LoopCreate instead of sleep/poll loops. -->
 
 
 # C# /.NET Development
 
-Use only for C# and .NET code. Follow the project's SDK, target frameworks,
-nullable settings, analyzer config, test stack, and local conventions.
+Check the nearest `*.csproj`, `Directory.Build.props`, `global.json`, and CI for `TargetFramework(s)`, `LangVersion`, nullable context, and analyzer policy before using newer APIs or syntax. Project conventions win over these defaults.
 
-## Read First
+## Defaults
 
-Read [principles.md](references/principles.md) before writing, changing, or reviewing C# code. Read conditional references only when the change touches that area.
+- BCL and existing NuGet packages first. Keep the app's existing choices: controllers vs minimal APIs, MediatR or none, EF vs Dapper vs raw SQL, the configured test framework.
+- Keep nullable reference types on. Model absence with `?`; do not scatter `!` or suppress warnings.
+- Async end to end. Never block with `.Result`, `.Wait()`, or `GetAwaiter().GetResult()`. Pass `CancellationToken` through cancellable boundaries. `ValueTask` only when an existing API or a measurement calls for it.
+- Materialize LINQ once where it is needed; avoid repeated `ToList()` and multi-pass chains on hot paths.
+- Built-in DI unless the project chose another container. No interface per class. Never let a singleton capture a scoped service or request state.
+- Validate request DTOs and message payloads at the handler before mapping to domain types; model binding alone is not validation.
+- Bind and validate options at startup; inject typed options instead of reading config ad hoc.
+- Keep EF queries in repositories or adapters, project only needed fields on reads, and handle transactions and concurrency tokens at the persistence edge.
+- Background services honor the stopping token and keep retry and backoff in one place.
+- XML docs on public APIs when the project emits docs or enforces CS1591.
 
-## Conditional References
+## CLIs
 
-- [patterns.md](references/patterns.md) — solution layout, ASP.NET Core boundaries, DI, EF access, config, and worker patterns.
-- [testing.md](references/testing.md) — adding or reshaping xUnit, NUnit, or MSTest coverage; keep the local `dotnet test` loop fast.
-- [linting.md](references/linting.md) — changing `dotnet format`, analyzers, warning policy, or slow verification flow.
-- [cli.md](references/cli.md) — writing or changing .NET CLIs.
+- Existing CLI stack first; the BCL is enough for small tools. Add `System.CommandLine` or Spectre.Console only when the command surface justifies it.
+- Keep `Program.cs` thin. Test the handler or a `Run(args, stdout, stderr)` seam and assert exit code and output.
 
-## Project Baseline
+## References
 
-- Inspect the nearest `*.csproj`, `Directory.Build.props`, `global.json`, solution file, CI, and nearby code before using SDK- or framework-specific APIs.
-- Keep nullable reference types enabled. Fix the warning or model, not the warning level.
-- Prefer the BCL and existing NuGet packages before adding a dependency.
-- Use the existing app style: ASP.NET Core controllers vs minimal APIs, records vs classes, MediatR or no mediator, EF or raw SQL, and the configured test framework.
+- [testing.md](references/testing.md): read when adding or reshaping tests, or when `dotnet test` is slow.
+- [linting.md](references/linting.md): read when changing `dotnet format`, analyzers, or warning policy.
 
-## Comments and XML Docs
-
-- Use XML documentation comments for public APIs when the project emits API docs or enforces CS1591.
-- Summarize contracts, invariants, edge cases, and effects. Do not restate member names or signatures.
-- Use `//` for brief implementation notes; avoid long `/* */` explanations.
-- Keep comments short. Move longer rationale to docs, issue links, or design notes.
-- Do not comment obvious code.
-- Keep tests readable without comments; add one only for unobvious fixtures, timing, concurrency, external services, or regression context.
-
-## Verification
-
-Run focused `dotnet` checks while editing, then the project-configured build,
-tests, analyzers, and formatting checks before final output. Prefer the
-narrowest useful project or solution target for the hot loop, then the broader
-configured command before final output.
-
-If a check is unavailable, state that and run the closest configured gate. If a
-check fails, quote the failure, diagnose the cause, fix one issue, and rerun the
-relevant check.
-
-## Failure Cases
-
-- No clear .NET root: locate the nearest `*.csproj` or containing `*.sln` before choosing files or commands.
-- Unknown SDK or language level: inspect `TargetFramework`, `TargetFrameworks`, `LangVersion`, `global.json`, CI, and lockfiles before using newer APIs or syntax.
-- New package requested: confirm the BCL or existing packages cannot meet the requirement.
-- Broad or risky edit: state the risk and ask before acting. Do not run destructive commands.
-
-## Final Response
-
-Include:
-
-- changed files
-- checks run and results
-- checks skipped with reasons
-- remaining risks or follow-ups
+Done when the relevant build/test/lint checks pass on what you changed, or you name each check that did not run and why.

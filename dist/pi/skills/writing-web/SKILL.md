@@ -2,61 +2,36 @@
 {"description":"Simple web development with HTML, CSS, JS, and HTMX. Use when working with .html, .css, or .htmx files, web templates, stylesheets, or vanilla JS scripts. NOT for React/Vue/Angular (use writing-typescript) or Node.js backends.","name":"writing-web"}
 ---
 <!-- Pi platform guidance -->
-<!-- Use installed Pi tool names exactly. Installed extensions may add toolsets such as Task*, Monitor*, and Loop*; use the visible tool names exactly and do not translate them to Claude syntax. -->
-<!-- Prefer Task* over `todo` when task-tracking tools are available; `todo` is the cc-thingz fallback. Prefer MonitorCreate for long-running or background commands and LoopCreate for scheduled or event-driven follow-up instead of Bash sleep/poll loops. -->
-<!-- Use subagent for authorized delegation. Ordinary async subagents notify the parent natively; yield instead of polling or calling bg_wait merely because a child is active. Use blocking bg_wait only for provider, detached, or other background work without a native notification when a required same-turn result is needed. -->
-<!-- Current pi-subagents uses one model per launch; do not configure fallbackModels. A different model requires an explicit new launch after inspecting the failed run and partial work. Use the owning workflow/controller for retries. -->
-<!-- Use ctx7 or npx ctx7@latest through bash when Context7 documentation lookup is required. -->
+<!-- Use installed Pi tool names exactly, including extension toolsets such as Task*, Monitor*, and Loop*. -->
+<!-- When available, track work with Task* (`todo` is the fallback), run long or background commands with MonitorCreate, and schedule follow-up with LoopCreate instead of sleep/poll loops. -->
 
 
 # Web Development
 
-## Scope
+Follow the existing template language, asset pipeline, and conventions. Add a dependency, build step, or framework only when the project already uses it or the user approves; requests that need a SPA framework belong to writing-typescript.
 
-- Use for HTML, CSS, HTMX, vanilla JS, and server-rendered templates.
-- Do not use for React, Vue, Angular, TypeScript, Node.js backends, or app architecture.
-- Follow existing template language, asset pipeline, framework, accessibility, and security conventions.
-- Do not add a dependency, build step, or framework unless the project already uses it or the user approves.
+## HTML and CSS
 
-## Reference Reads
+- Semantic HTML first; HTMX or JS only where native behavior falls short. `button` for actions, `a` for navigation, `details`/`summary` and `dialog` before custom widgets.
+- Label every control; group with `fieldset`/`legend`; use native input types, validation, and `autocomplete`. Add ARIA only when HTML cannot express the state.
+- Mobile-first, fluid CSS: `gap`, logical properties, `rem`/`clamp`. Design tokens in custom properties; one-off values stay local.
+- `:focus-visible` styles, and animations respect `prefers-reduced-motion`. `!important` only at integration boundaries.
 
-- Read `references/patterns.md` before layout, behavior, accessibility, or security changes; skip for copy-only edits.
+## HTMX
 
-## Defaults
+- Use HTMX when the server owns the state or the fragment. Set explicit `hx-target` and `hx-swap`, and return fragments shaped for that target.
+- Keep the form's `action` and `method` so it still works without JS.
+- Send CSRF and auth headers through the project's existing mechanism.
+- Request not firing: check trigger, target, swap, response status, and CSRF/auth headers before adding a JS fallback.
 
-- Prefer semantic HTML and CSS; add HTMX or JS only when native browser behavior is insufficient.
-- Use mobile-first, fluid CSS. Put repeated design tokens in custom properties; keep one-off values local.
-- Preserve usable links and forms when practical.
-- Treat accessibility, responsive behavior, and safe rendering as required behavior.
-- Escape untrusted output; avoid `innerHTML` unless project sanitizer marks content trusted.
+## JavaScript
 
-## Comments
+- Small scoped modules, event delegation for dynamic content, no new globals.
+- Render untrusted data with `textContent`, never `innerHTML`, unless the project sanitizer marks it trusted.
+- Clean up timers, observers, and listeners on elements that can be swapped out.
 
-- Use HTML comments only for template boundaries, generated blocks, or security assumptions that are not obvious from markup.
-- Use CSS comments for non-obvious hacks, browser constraints, or integration boundaries.
-- Use JS comments only for non-obvious constraints, invariants, side effects, tradeoffs, or browser quirks.
-- Keep comments short. Move longer rationale to docs, issue links, or design notes.
-- Do not comment obvious markup, selectors, declarations, or event handlers.
-- Keep UI tests readable without comments; add one only for unobvious fixtures, browser setup, timing, or regression context.
+## Checks
 
-## Verification
+UI changes need a look at mobile and desktop widths and keyboard navigation. Use browser-automation for rendered checks, screenshots, and interaction tests.
 
-- Run project-configured format, lint, validation, tests, and browser checks for the changed files.
-- For UI changes, check mobile and desktop widths plus keyboard navigation.
-- For changed interactive behavior, run a browser test or state why it was skipped.
-- If a check is unavailable, state the gap and run the closest configured gate.
-- For rendered-browser verification (screenshots, live interaction, cross-viewport checks), use `browser-automation`.
-
-## Failure Handling
-
-- HTML or accessibility validation fails: fix the markup; do not suppress configured checks.
-- HTMX request does not fire: check trigger, target, swap, response status, and CSRF/auth headers before adding JS fallback.
-- Project conventions or checks are unclear: inspect config first; if still unclear, state the assumption and smallest safe gate.
-- Broad, risky, or destructive change: state the risk and ask before acting. Do not run destructive commands.
-
-## Final Response
-
-- Files changed:
-- Checks:
-- Skipped checks:
-- Risks/follow-ups:
+Done when the relevant build/test/lint checks pass on what you changed, or you name each check that did not run and why.

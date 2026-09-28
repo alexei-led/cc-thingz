@@ -1,4 +1,4 @@
-# Runtime reliability and upgrading to 6.11
+# Runtime defaults
 
 ## Automatic checks
 

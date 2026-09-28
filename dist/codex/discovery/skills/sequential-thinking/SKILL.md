@@ -1,10 +1,8 @@
 ---
 {"description":"Structured decision summaries with revisions and branches. Use only when the user explicitly requests sequential thinking, step-by-step reasoning, or a structured comparison of decision branches. NOT an automatic trigger for difficult tasks, ordinary planning, or debugging. For open-ended ideas use brainstorming-ideas.","name":"sequential-thinking"}
 ---
-<!-- Platform guidance for Codex -->
-<!-- Use this platform's installed tool names exactly; do not translate capability references into Claude Code tool syntax. -->
-<!-- When this skill references shell execution, file reads, or search, use the platform's native shell, read, and search tools. -->
-<!-- If a referenced helper command or optional tool is unavailable, report the gap and continue with the platform's built-in tools. -->
+<!-- Codex platform guidance -->
+<!-- Use this platform's installed tool names exactly for shell, file reads, and search. If a referenced helper or optional tool is unavailable, say so and continue with built-in tools. -->
 
 
 # Sequential Thinking

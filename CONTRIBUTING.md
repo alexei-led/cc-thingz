@@ -94,14 +94,12 @@ The current compatible Agent Bundler tree renders typed hooks, per-agent
 sidecars, bundled Pi dependencies, target catalogs, and deterministic release
 archives. It does not yet render:
 
-- Claude lifecycle hooks for worktree creation/removal;
 - Codex agent model and reasoning-effort fields;
 - a lossless Cursor edit matcher;
 - portable Pi notification mapping;
 - complete vendor runtime smoke tests.
 
-`src/hooks/UNSUPPORTED.md` lists source-only lifecycle hooks excluded from all
-packages. Pi-native extension trees live under `src/plugins/pi/<asset>/` and
+`src/hooks/UNSUPPORTED.md` records per-target hook boundaries. Pi-native extension trees live under `src/plugins/pi/<asset>/` and
 need an `.agentbundler/asset.json` that explicitly lists registered
 `piExtensions`. The extension tree also contains unregistered support modules,
 Pi-specific compatibility hooks, and revdiff's wrapper. Do not add a custom

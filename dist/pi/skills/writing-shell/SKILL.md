@@ -2,76 +2,42 @@
 {"description":"Idiomatic shell development for POSIX sh, Bash, Zsh, Fish, hooks, CI shell steps, and scriptable CLI glue. Use when writing or changing `.sh`, `.bash`, `.zsh`, `.fish`, `.bats`, shell functions, shell pipelines, CI `run:` shell bodies, or command-runner recipes. Emphasizes portability, quoting, safe filesystem/process handling, non-TUI CLI tools, ShellCheck, shfmt, Bats, and ShellSpec. NOT for Python, Rust, TypeScript, Go, web code, or GitHub Actions workflow/job/permissions semantics; use operating-infra.","name":"writing-shell"}
 ---
 <!-- Pi platform guidance -->
-<!-- Use installed Pi tool names exactly. Installed extensions may add toolsets such as Task*, Monitor*, and Loop*; use the visible tool names exactly and do not translate them to Claude syntax. -->
-<!-- Prefer Task* over `todo` when task-tracking tools are available; `todo` is the cc-thingz fallback. Prefer MonitorCreate for long-running or background commands and LoopCreate for scheduled or event-driven follow-up instead of Bash sleep/poll loops. -->
-<!-- Use subagent for authorized delegation. Ordinary async subagents notify the parent natively; yield instead of polling or calling bg_wait merely because a child is active. Use blocking bg_wait only for provider, detached, or other background work without a native notification when a required same-turn result is needed. -->
-<!-- Current pi-subagents uses one model per launch; do not configure fallbackModels. A different model requires an explicit new launch after inspecting the failed run and partial work. Use the owning workflow/controller for retries. -->
-<!-- Use ctx7 or npx ctx7@latest through bash when Context7 documentation lookup is required. -->
+<!-- Use installed Pi tool names exactly, including extension toolsets such as Task*, Monitor*, and Loop*. -->
+<!-- When available, track work with Task* (`todo` is the fallback), run long or background commands with MonitorCreate, and schedule follow-up with LoopCreate instead of sleep/poll loops. -->
 
 
 # Shell Development
 
-## Scope
+In GitHub Actions, this skill owns the shell inside `run:` blocks; operating-infra owns the workflow YAML around it (jobs, permissions, actions, secrets, caching). Mixed changes use both.
 
-- Use for shell scripts, hooks, CI shell blocks, command pipelines, and local automation glue.
-- In GitHub Actions, own the shell code inside `run:` blocks. Use
-  `operating-infra` for workflow YAML structure, jobs, permissions, runners,
-  actions, secrets, caching, concurrency, and policy. Mixed changes compose both
-  skills.
-- Do not use for cloud, Kubernetes, Terraform, host, or network operations; use `operating-infra`.
-- Do not use for application logic that belongs in Python, Rust, Go, TypeScript, or another project language.
+## Shell Choice
 
-## Read references
+- Follow the existing shebang and tooling. New portable scripts: POSIX `sh` for simple logic; Bash when you need arrays, `pipefail`, `[[ ]]`, or regex.
+- Zsh and Fish only for existing files, interactive config, or explicit requests.
+- Never rely on the agent's own shell. Name the shell in the shebang, and invoke it explicitly in tests.
+- Shell is glue. Move data modeling, business logic, or CPU-heavy work to the project's real language.
 
-- Read [patterns.md](references/patterns.md) before non-trivial scripts or pipelines.
-- Read [tools.md](references/tools.md) when choosing external CLI tools or parsing structured data.
-- Read [testing.md](references/testing.md) before adding or changing shell tests or quality gates.
+## Safety and Portability
 
-## Defaults
+- Bash: `set -euo pipefail`, knowing it does not fire inside conditionals or `&&`/`||` lists. POSIX sh: `set -eu` and explicit pipeline checks.
+- Build commands with arrays, never strings plus `eval`. Put `--` before user-controlled operands.
+- NUL- or newline-safe loops for filenames; never parse `ls` or use `for x in $(cmd)`.
+- `mktemp` plus a cleanup `trap` for temp files, locks, and partial outputs.
+- No `curl | sh`: download, verify, then run.
+- Destructive actions list their targets first and require confirmation unless the script runs non-interactively with explicit inputs.
+- macOS/BSD vs GNU: avoid `sed -i`, `date -d`, `readlink -f`, and GNU-only `grep` flags unless the dependency is documented. Prefer `printf` to `echo`.
+- Every `shellcheck disable` carries a short reason.
 
-- Follow the existing shebang, shell, style, and project tooling first.
-- For new portable scripts, use POSIX `sh` when the logic is simple; use Bash when arrays, `pipefail`, regex, or richer functions are needed.
-- Use Zsh or Fish only for existing files or explicit user intent. Keep Fish/Zsh config separate from portable scripts.
-- Do not rely on the agent's current shell. Put the intended shell in the shebang or invoke it explicitly in tests.
-- Prefer small shell scripts that call stable tools. Move complex data modeling or business logic to a real language.
+## CLI Tools
 
-## Core rules
+- Use non-interactive, pipe-friendly tools with stable stdout and exit codes: no TUI, pager, color, or prompts when output is consumed.
+- Parse structured data with `jq`, `yq`, `mlr`, or `dasel`, not `grep`/`sed` scraping. Search with `rg` and `fd`.
+- Preview replacements before applying them (`sd -p`, `rg --replace`).
+- Check for non-standard tools and fail with a clear message. Never install them silently.
+- Look up exact flags with looking-up-docs instead of guessing.
 
-- Quote expansions unless word splitting is intentional and documented by structure.
-- Avoid `eval`, `curl | sh`, parsing `ls`, unguarded globbing, and unsafe `rm`/`mv`/`cp` paths.
-- Use arrays for arguments in Bash; use newline/NUL-safe loops for filenames.
-- Use `mktemp` plus cleanup traps for temporary files and directories.
-- Check required external commands when a script depends on them. Do not install tools silently.
-- Account for macOS/BSD versus GNU flag differences when writing portable scripts.
-- Prefer machine-readable output from tools, then parse it with structured parsers.
-- Use `looking-up-docs` for exact external CLI flags, syntax, or version behavior; do not guess from memory.
+## References
 
-## Comments
+- [testing.md](references/testing.md): gate commands (shfmt, ShellCheck, checkbashisms, Bats, ShellSpec) and test design; read when adding tests or choosing checks.
 
-- Comment only tricky, non-obvious, important, or unusual shell behavior.
-- Use file and function comments for reusable scripts or functions when the contract is not obvious from names and usage.
-- Add a short reason after any `shellcheck disable` directive.
-- Keep comments short. Move longer rationale to docs, issue links, or design notes.
-- Do not comment obvious commands or narrate each pipeline stage.
-- Keep shell tests readable without comments; add one only for unobvious fixtures, environment setup, portability constraints, or regression context.
-
-## Verification
-
-Run the project-configured shell gates. Prefer:
-
-- formatting: `shfmt`
-- linting: `shellcheck`; `checkbashisms` for POSIX `sh`
-- tests: Bats for Bash-heavy projects; ShellSpec for POSIX or multi-shell behavior
-- security/policy: Semgrep shell rules when the script handles secrets, downloads, deletion, or user-controlled input
-
-If a tool is unavailable or unconfigured, state the gap and run the closest available check. If a check fails, quote the diagnostic, fix the cause, and rerun the relevant check.
-
-## Final response
-
-Include:
-
-- changed files
-- shell target used: POSIX sh, Bash, Zsh, or Fish
-- checks run and results
-- checks skipped with reasons
-- remaining portability or safety risks
+Done when the relevant build/test/lint checks pass on what you changed, or you name each check that did not run and why.

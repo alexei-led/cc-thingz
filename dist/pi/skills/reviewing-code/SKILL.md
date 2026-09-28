@@ -2,11 +2,8 @@
 {"description":"Use when reviewing changed code, PRs, diffs, or specific files. Finds evidence-backed defects in security, correctness, tests, reliability, performance, maintainability, and docs. Supports quick, standard, deep, team, and external-review modes, plus a simplify mode for over-engineering and \"what can we delete\" reviews. NOT for repo-wide architecture review, general codebase exploration, fixing issues (use fixing-code), improving tests without a code review (use improving-tests), or applying refactors (use refactoring-code).","name":"reviewing-code"}
 ---
 <!-- Pi platform guidance -->
-<!-- Use installed Pi tool names exactly. Installed extensions may add toolsets such as Task*, Monitor*, and Loop*; use the visible tool names exactly and do not translate them to Claude syntax. -->
-<!-- Prefer Task* over `todo` when task-tracking tools are available; `todo` is the cc-thingz fallback. Prefer MonitorCreate for long-running or background commands and LoopCreate for scheduled or event-driven follow-up instead of Bash sleep/poll loops. -->
-<!-- Use subagent for authorized delegation. Ordinary async subagents notify the parent natively; yield instead of polling or calling bg_wait merely because a child is active. Use blocking bg_wait only for provider, detached, or other background work without a native notification when a required same-turn result is needed. -->
-<!-- Current pi-subagents uses one model per launch; do not configure fallbackModels. A different model requires an explicit new launch after inspecting the failed run and partial work. Use the owning workflow/controller for retries. -->
-<!-- Use ctx7 or npx ctx7@latest through bash when Context7 documentation lookup is required. -->
+<!-- Use installed Pi tool names exactly, including extension toolsets such as Task*, Monitor*, and Loop*. -->
+<!-- When available, track work with Task* (`todo` is the fallback), run long or background commands with MonitorCreate, and schedule follow-up with LoopCreate instead of sleep/poll loops. -->
 
 
 # Code Review

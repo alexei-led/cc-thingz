@@ -2,75 +2,38 @@
 {"description":"Idiomatic TypeScript development. Use when writing TypeScript code, Node.js services, React apps, or TypeScript design advice. Emphasizes strict typing, boundary validation, composition, fast feedback, behavior tests, and project-configured tooling. NOT for Go, Python, Rust, plain HTML/CSS/JS, or server-rendered templates (use writing-web).","name":"writing-typescript"}
 ---
 <!-- Pi platform guidance -->
-<!-- Use installed Pi tool names exactly. Installed extensions may add toolsets such as Task*, Monitor*, and Loop*; use the visible tool names exactly and do not translate them to Claude syntax. -->
-<!-- Prefer Task* over `todo` when task-tracking tools are available; `todo` is the cc-thingz fallback. Prefer MonitorCreate for long-running or background commands and LoopCreate for scheduled or event-driven follow-up instead of Bash sleep/poll loops. -->
-<!-- Use subagent for authorized delegation. Ordinary async subagents notify the parent natively; yield instead of polling or calling bg_wait merely because a child is active. Use blocking bg_wait only for provider, detached, or other background work without a native notification when a required same-turn result is needed. -->
-<!-- Current pi-subagents uses one model per launch; do not configure fallbackModels. A different model requires an explicit new launch after inspecting the failed run and partial work. Use the owning workflow/controller for retries. -->
-<!-- Use ctx7 or npx ctx7@latest through bash when Context7 documentation lookup is required. -->
+<!-- Use installed Pi tool names exactly, including extension toolsets such as Task*, Monitor*, and Loop*. -->
+<!-- When available, track work with Task* (`todo` is the fallback), run long or background commands with MonitorCreate, and schedule follow-up with LoopCreate instead of sleep/poll loops. -->
 
 
 # TypeScript Development
 
-## Scope
-
-- Use for `.ts` and `.tsx`, Node.js services, React apps, typed APIs, and TypeScript design advice.
-- Do not use for Go, Python, Rust, plain HTML/CSS/JS, or server-rendered templates.
-- Follow the repository's TypeScript version, tsconfig, package manager, framework, test runner, and lint rules.
-- Prefer the project's configured Oxfmt or Biome formatter and Oxlint linter
-  when present. If no project choice exists, use available Oxfmt/Biome/Oxlint
-  before falling back to Prettier/ESLint.
-- Do not run overlapping formatter or linter passes; use one formatter and one linter for a file.
-- Do not add dependencies or switch frameworks unless the project already uses them or the user approves.
-
-## Reference Reads
-
-- Read only the references needed for the task.
-- Read `references/principles.md` for non-trivial TypeScript changes or reviews.
-- Read `references/patterns.md` for data models, validation, async flow, or module boundaries.
-- Read `references/react.md` for `.tsx`, hooks, component state, forms, performance, or React tests.
-- Read `references/testing.md` before adding or changing TypeScript tests.
-- Read `references/linting.md` before changing lint config, lint commands, or slow lint workflows.
+Follow the repository's TypeScript version, tsconfig, package manager, framework, and test runner. In a monorepo, work from the nearest `package.json` and `tsconfig.json` and name the package you chose.
 
 ## Defaults
 
-- Preserve strict typing; do not weaken compiler options to pass checks.
-- Use `unknown` for untrusted input. Avoid `any`; isolate it only for unavoidable interop.
-- Keep formatter selection deterministic: project config or package declarations win; machine availability is only the fallback.
-- Validate API, JSON, env, storage, and form data at the boundary before typed use.
-- Use discriminated unions for variants, async state, and domain states.
-- Use guard clauses and focused helpers. Avoid deep nesting, global state, and mixed concerns.
-- Use the project's error conventions; prefer unions or `Result` for recoverable failures.
-- Pass dependencies explicitly; avoid inheritance, singletons, and hidden module state.
-- Avoid unsafe casts, non-null assertions, broad index signatures, boolean-flag state, and new app enums where literal unions fit.
+- Never weaken compiler options to pass a check. New configs enable `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `useUnknownInCatchVariables`, `noImplicitOverride`, and `noFallthroughCasesInSwitch`.
+- Treat HTTP responses, JSON, env, storage, form data, and SDK output as `unknown`. Narrow at the boundary with the project's schema library or a small type guard; never cast `await res.json()` to a domain type.
+- Avoid `any`, `as` casts, non-null `!`, and broad index signatures unless a runtime check or an external type gap justifies them.
+- Discriminated unions for variants and async state, with an exhaustive `never` check. Literal unions or `as const` arrays instead of new enums. `satisfies` for config maps.
+- Result unions for recoverable failures callers must branch on; throw `Error` instances otherwise.
+- Pass dependencies as parameters; no singletons or hidden module state. Thread `AbortSignal` through work that can outlive its caller.
+- Ask before adding a schema, form, query, or state library the project does not already use.
 
-## Comments and JSDoc
+## React
 
-- Use JSDoc or TSDoc for exported APIs and non-obvious public properties or methods.
-- Avoid merely restating property, parameter, or type names.
-- Add implementation comments only for non-obvious constraints, invariants, side effects, tradeoffs, or interoperability quirks.
-- Keep comments short. Move longer rationale to docs, issue links, or design notes.
-- Do not comment obvious code.
-- Keep tests readable without comments; add one only for unobvious fixtures, timers, concurrency, browser setup, or regression context.
+- Plain function components, not `React.FC`. Type `children` as `ReactNode`.
+- Derive state during render. Fix stale closures instead of suppressing exhaustive-deps.
+- Add `memo`, `useMemo`, or `useCallback` only for measured cost or a real identity need.
+- Validate fetched data in the fetcher, not in render. Custom hooks throw when their provider is missing.
 
-## Testing and Verification
+## Tooling
 
-- For behavior changes, include success and failure tests. For React, cover affected user-visible states.
-- Use focused test, typecheck, and lint commands for the changed file, package, or workspace while editing.
-- Run the project's configured typecheck, tests, lint, and format checks for the changed package or workspace before final output.
-- Keep coverage, end-to-end tests, and expensive debug diagnostics off the hot path unless they are the task.
-- Report checks run, failures, and unchecked risks. Do not claim success without a clean check or an explicit reason it was skipped.
+Typecheck with the project script or `tsc --noEmit`. Use one formatter and one linter per file; the selection order is in linting.md.
 
-## Failure Handling
+## References
 
-- If project root is unclear, identify the nearest `package.json` and `tsconfig.json`; in monorepos, state the selected package.
-- If strict compiler options are absent, do not silently weaken new code. State the gap and keep the change locally type-safe.
-- If validation needs a schema/form library not already used, ask before adding it; otherwise use a narrow type guard.
-- If typecheck or tests fail, quote the exact diagnostic or failing assertion, state the cause, and fix the type/model boundary before widening types.
-- Do not run destructive shell commands. For broad or risky changes, state the risk and ask before acting.
+- [testing.md](references/testing.md): read when adding or changing tests, including React component tests.
+- [linting.md](references/linting.md): read when choosing a formatter or linter, changing lint config, or diagnosing slow lint.
 
-## Final Response
-
-- Files changed:
-- Checks:
-- Skipped checks:
-- Risks/follow-ups:
+Done when the relevant build/test/lint checks pass on what you changed, or you name each check that did not run and why.

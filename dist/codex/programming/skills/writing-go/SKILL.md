@@ -1,66 +1,41 @@
 ---
-{"description":"Idiomatic Go development. Use when writing Go code, designing APIs, reviewing Go implementations, or changing Go tests. Follow the module's target Go version. Prefer stdlib, concrete types, explicit errors, context propagation, fast feedback, and behavior tests. NOT for Python, Rust, TypeScript, shell scripts, or infra-only work.","name":"writing-go"}
+{"description":"Idiomatic Go development. Use when writing Go code, designing APIs, reviewing Go implementations, or changing Go tests. Follow the module's target Go version. Prefer stdlib, concrete types, explicit errors, goroutine ownership, fast feedback, and behavior tests. NOT for Python, Rust, TypeScript, shell scripts, or infra-only work.","name":"writing-go"}
 ---
-<!-- Platform guidance for Codex -->
-<!-- Use this platform's installed tool names exactly; do not translate capability references into Claude Code tool syntax. -->
-<!-- When this skill references shell execution, file reads, or search, use the platform's native shell, read, and search tools. -->
-<!-- If a referenced helper command or optional tool is unavailable, report the gap and continue with the platform's built-in tools. -->
+<!-- Codex platform guidance -->
+<!-- Use this platform's installed tool names exactly for shell, file reads, and search. If a referenced helper or optional tool is unavailable, say so and continue with built-in tools. -->
 
 
 # Go Development
 
-Use only for Go modules. Follow the module's target Go version.
+Check `go.mod` (`go` and `toolchain` lines) and CI before using version-gated APIs. Project conventions win over these defaults.
 
-## Read First
+## Defaults
 
-Read [principles.md](references/principles.md) before writing, changing, or reviewing Go code. Read conditional references only when the change touches that area.
+- Stdlib first: `net/http`, `testing`, `flag`, `log/slog`. Add a module only for a concrete requirement.
+- Concrete types in domain code. Consumers own small private interfaces; producers return concrete types.
+- Keep HTTP, CLI, database, and vendor SDK types out of domain packages. Map errors to status, exit code, or retry at the edge.
+- New binaries: `cmd/<name>` plus `internal/`. Use `pkg/` only for code meant for external import.
+- Avoid package stutter: `user.Store`, not `user.UserStore`.
+- Doc comments on exported names start with the identifier and end with a period.
+- Every goroutine has an owner, a cancellation path, and a completion path. Use `errgroup` for errors or shared cancellation when the module already has it.
 
-## Conditional References
+## Version-Gated
 
-- [patterns.md](references/patterns.md) — package layout, interfaces, errors, HTTP/service boundaries, concurrency, comments.
-- [testing.md](references/testing.md) — adding or reshaping Go tests; keep the local test loop fast.
-- [linting.md](references/linting.md) — changing lint config, lint commands, or slow lint workflows.
-- [cli.md](references/cli.md) — writing or changing Go CLIs.
+- 1.24+: `t.Context()`, `t.Chdir()`, and `b.Loop()` in tests.
+- 1.25+: `sync.WaitGroup.Go` when no error propagation is needed.
+- 1.26+: stdlib `crypto/hpke`; `new(expr)` only when clearer than a local variable or composite literal; self-referential generic constraints belong in generic libraries, not business logic.
+- 1.26+: `testing/cryptotest.SetGlobalRandom` swaps process-wide randomness, so never use it in parallel tests.
+- `encoding/json/v2` is experimental and exists only under `GOEXPERIMENT=jsonv2`; use it only when the project already builds that way.
 
-## Comments
+## CLIs
 
-- Use doc comments for exported declarations. Start with the identifier and end with a period.
-- Comment non-trivial unexported declarations only when their contract is not obvious.
-- Add implementation comments only for non-obvious constraints, invariants, side effects, tradeoffs, or tuning decisions.
-- Keep comments short. Move longer rationale to docs, issue links, or design notes.
-- Do not comment obvious code or restate names and types.
-- Keep tests readable without comments; add one only for unobvious fixtures, timing, concurrency, or regression context.
+- Use the existing framework. Otherwise `flag` for single-command tools, Cobra for large command trees with completions, urfave/cli for small multi-command tools. Skip Viper unless already used.
+- Keep `main` thin: it calls `run(ctx, args, stdin, stdout, stderr) error` and maps the result to an exit code. Tests call `run`. Avoid `log.Fatal`; it skips deferred cleanup.
+- Config precedence: flag, env, config file, default.
 
-## Version-Gated APIs
+## References
 
-- Confirm `go.mod`, `toolchain`, CI, and nearby code before using version-specific APIs.
-- Go 1.25+: use `sync.WaitGroup.Go` when no error propagation is needed.
-- Use existing `errgroup` for goroutine errors or shared cancellation; add it only when the dependency is justified.
-- Go 1.25+: use `testing/synctest` for deterministic concurrent tests when available.
-- Go 1.26+: prefer stdlib `crypto/hpke` when HPKE is needed ([release notes](https://go.dev/doc/go1.26#crypto-hpke)).
-- Go 1.26+: use `testing/cryptotest.SetGlobalRandom` only for deterministic crypto tests; it changes process-wide randomness and cannot run in parallel tests ([release notes](https://go.dev/doc/go1.26#testingcryptotest), [API](https://pkg.go.dev/testing/cryptotest)).
-- Treat `encoding/json/v2` as experimental unless the project opts into `GOEXPERIMENT=jsonv2`.
-- Go 1.26+: use `new(expr)` only when clearer than a local variable, composite literal, or address expression.
-- Go 1.26+: keep recursive type constraints in generic libraries; keep business logic concrete.
+- [testing.md](references/testing.md): read when adding or reshaping tests, or when the test loop is slow.
+- [linting.md](references/linting.md): read when changing lint commands or golangci-lint config.
 
-## Verification
-
-Run focused package tests and lint while editing, then the project-configured build, tests, lint, vet, and formatting checks before final output. Add race or concurrency-specific checks when the change touches goroutines, shared state, timers, or channels.
-
-If a check is unavailable, state that and run the closest configured gate. If a check fails, quote the failure, diagnose the cause, fix one issue, and rerun the relevant check.
-
-## Failure Cases
-
-- No clear Go root: locate `go.mod` before choosing files, commands, or import paths.
-- Unknown Go target: inspect `go.mod`, `toolchain`, CI, and lockfiles before using version-specific APIs.
-- New dependency requested: confirm stdlib or existing dependencies cannot meet the requirement.
-- Broad or risky edit: state the risk and ask before acting. Do not run destructive commands.
-
-## Final Response
-
-Include:
-
-- changed files
-- checks run and results
-- checks skipped with reasons
-- remaining risks or follow-ups
+Done when the relevant build/test/lint checks pass on what you changed, or you name each check that did not run and why.
