@@ -15,7 +15,7 @@ Set up project-local hygiene that stays fast enough to keep enabled. Stop if the
 Propose the plan (current facts, files and config to change, verification, risks) and get approval before you:
 
 - write, replace, or merge into a hook file;
-- run `git config` (local or global) or `chmod`;
+- set a `git config` value (local or global) or run `chmod`;
 - run `git rm --cached`;
 - install a tool, or choose whether a hook fails or skips when a tool is missing.
 

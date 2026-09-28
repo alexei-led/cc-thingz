@@ -4,7 +4,7 @@
 
 - Separate CI, release, deploy, and security-scan workflows when their triggers or permissions differ.
 - Set workflow and job permissions explicitly; default to `contents: read`.
-- Pin every external action, including `actions/*`, by full commit SHA with a version comment (`uses: actions/checkout@<sha> # v6`). Local `./` actions and reusable workflows are exempt.
+- Pin every external action, including `actions/*`, by full commit SHA with a version comment (`uses: actions/checkout@<sha> # v6`). Only local `./` actions and local reusable workflows are exempt; pin remote reusable workflows by SHA like actions.
 - Use OIDC for cloud auth instead of long-lived cloud keys in secrets.
 - Add concurrency to deployments and workflows that must not overlap.
 - Cache only dependency and build caches that are safe to restore across branches.

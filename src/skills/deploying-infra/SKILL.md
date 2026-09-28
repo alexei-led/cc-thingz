@@ -47,7 +47,7 @@ Every validation claim cites exact command output, `file:line`, or a skipped-che
 - Evidence: `<command>` — <summary>
 - Resources: create <n>, modify <n>, delete/replace <n>
 - Risks: <destructive changes, CRDs/hooks, missing evidence, or none>
-- Rollback: <helm rollback <release> <rev> | kubectl rollout undo | apply prior plan>
+- Rollback: <helm rollback <release> <rev> | kubectl rollout undo | revert the commit, re-plan, and confirm again>
 ```
 
 ## Allowed apply commands

@@ -7,7 +7,7 @@
 Work from files, plans, logs, and read-only commands. Edit repo files as the task needs; touch live resources only under these rules:
 
 - Before any cloud command, confirm identity: `aws sts get-caller-identity --profile <profile>`, `gcloud auth list` and `gcloud config list`. Pass profile, project, region, and zone explicitly instead of relying on CLI defaults.
-- Before apply, delete, destroy, stop, IAM, bucket, network, or rollback work, show the identity, exact resources (ARNs or names), blast radius, irreversibility, and the plan/diff/inventory behind them, then wait for the user to confirm.
+- Before any live change that is destructive, costly, or externally visible (apply, delete, destroy, stop, resize, scale, IAM, bucket, network, DDL/DML, rollback), show the identity, exact resources (ARNs or names), blast radius, irreversibility, and the plan/diff/inventory behind them, then wait for the user to confirm.
 - Deployment, rollout, rollback, and production apply belong to deploying-infra where it is installed. Otherwise stop at the reviewed plan or diff and give the user the exact apply command.
 - Without write access, return proposed changes (file, change, reason) instead of applying them.
 
