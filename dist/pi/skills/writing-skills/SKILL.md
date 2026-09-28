@@ -39,7 +39,7 @@ These follow the agentskills.io specification:
 - `description`: at most 1024 characters, saying what the skill does, when to
   use it, and what it is NOT for, naming the neighbor skill to use instead. One
   trigger per branch; no synonym piles.
-- `SKILL.md` body under 500 lines (about 5k tokens); most skills need far less.
+- `SKILL.md` body at most 500 lines (about 5k tokens); most skills need far less.
 - Conditional detail lives in `references/`, linked directly from `SKILL.md`
   with when to read it. No reference chains.
 - Deterministic operations live in `scripts/`, not in prose.

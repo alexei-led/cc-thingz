@@ -59,9 +59,8 @@ make check   # generated drift
 make ci      # lint + validate + check + test + test-ts
 ```
 
-`uv run python src/skills/reviewing-instructions/scripts/lint-instructions.py src/skills/<name>`
-is an advisory structural pass; the reviewing-instructions skill makes the
-quality call.
+`make lint-instructions` is an advisory structural pass over the repo; the
+reviewing-instructions skill makes the quality call.
 
 ## Neighbor skills
 

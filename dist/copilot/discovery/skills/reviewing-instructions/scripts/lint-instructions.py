@@ -422,7 +422,7 @@ def check_f_no_diagram(f: InstructionFile) -> Finding | None:
 
 EMPHASIS_RE = re.compile(
     r"\b(?:MANDATORY|CRITICAL|IMPORTANT|MUST|NEVER|ALWAYS)\b"
-    r"|(?i:\bthink\s+(?:step[\s-]+by[\s-]+step|carefully|hard)\b)"
+    r"|(?i:\bthink\s+(?:step[\s-]+by[\s-]+step|carefully|hard(?:er)?)\b)"
 )
 
 

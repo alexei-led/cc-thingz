@@ -37,7 +37,8 @@ first and continue here for broader review or authorized changes.
   detected config surfaces and ask which to audit.
 - Fix: only approved changes are applied. Done when the relevant
   build/test/lint checks pass on what you changed, or you name each check that
-  did not run and why.
+  did not run and why. Without write access, return proposed changes (file,
+  change, reason) instead of applying them.
 
 ## References
 
