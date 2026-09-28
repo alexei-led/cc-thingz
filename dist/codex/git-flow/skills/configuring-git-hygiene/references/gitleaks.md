@@ -1,30 +1,13 @@
-# Gitleaks Rules
+# Gitleaks
 
-## Defaults
-
-- Pre-commit: scan staged changes.
-- Pre-push: scan pushed history or the full repo when the repo accepts the cost.
-- Always redact findings.
-- Never send secret values to external tools.
+- Pre-commit: `gitleaks git --pre-commit --redact --staged --verbose`.
+- Pre-push: scan the pushed commits, or the full repo when the repo accepts the cost.
 - Preserve existing `.gitleaks.toml` rules.
 
-Preferred staged scan when supported:
+## Missing tool
 
-```bash
-gitleaks git --pre-commit --redact --staged --verbose
-```
+Before writing hooks, ask which policy the user wants: fail closed with an install message, or skip with a warning for local-only convenience.
 
-## Missing Tool
+## False positives
 
-If `gitleaks` is unavailable, ask for the desired policy before writing hooks:
-
-- fail closed with a clear install message
-- skip with a warning for local-only convenience
-
-Do not silently weaken security.
-
-## False Positives
-
-Tune allowlists in `.gitleaks.toml`. Do not remove the scanner to unblock work.
-
-Use narrow allowlist entries tied to stable paths or test fixtures. Do not allowlist broad secret-like patterns globally.
+Tune `.gitleaks.toml` with narrow allowlist entries tied to stable paths or test fixtures. Never allowlist broad secret-like patterns globally or remove the scanner to unblock work.
