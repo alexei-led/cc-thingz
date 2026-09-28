@@ -1,10 +1,8 @@
 ---
 {"description":"Use when asked to lint, audit, review, or score AI-facing instruction files such as SKILL.md, AGENT.md, AGENTS.md, CLAUDE.md, platform body.md files, prompt files, rules, policies, and agent-facing references. NOT for plugin manifests, application code review, harness configuration review, ordinary docs, tests, or generated build output.\n","name":"reviewing-instructions"}
 ---
-<!-- Platform guidance for Codex -->
-<!-- Use this platform's installed tool names exactly; do not translate capability references into Claude Code tool syntax. -->
-<!-- When this skill references shell execution, file reads, or search, use the platform's native shell, read, and search tools. -->
-<!-- If a referenced helper command or optional tool is unavailable, report the gap and continue with the platform's built-in tools. -->
+<!-- Codex platform guidance -->
+<!-- Use this platform's installed tool names exactly for shell, file reads, and search. If a referenced helper or optional tool is unavailable, say so and continue with built-in tools. -->
 
 
 # Instruction Review

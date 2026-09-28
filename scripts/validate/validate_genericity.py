@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Detect Claude-only tokens in vendor-neutral base SKILL.md / AGENT.md files.
+"""Detect Claude-only tokens in vendor-neutral base skill and agent files.
 
 Base files under `src/skills/<name>/SKILL.md` and `src/agents/<name>.md`
-are expected to be runtime-agnostic; target-specific skill syntax belongs in
-`.agentbundler/targets/<target>.json` overlays.
+are expected to be runtime-agnostic; Claude-only syntax belongs in the
+asset's `.agentbundler/targets/claude.json` sidecar.
 
 Forbidden token patterns:
 
@@ -30,7 +30,7 @@ from pathlib import Path
 try:
     import frontmatter
 except ImportError:
-    print("ERROR: pip install python-frontmatter", file=sys.stderr)
+    print("ERROR: run `uv sync` to install python-frontmatter", file=sys.stderr)
     sys.exit(1)
 
 ROOT = next(
@@ -110,19 +110,14 @@ def scan_file(path: Path) -> list[str]:
             token = match.group(0)
             violations.append(
                 f'ERROR: {rel}:{line_number}: token "{token}" not allowed '
-                f"in vendor-neutral base; move to claude/body.md or restrict "
-                f"to targets: [claude]"
+                f"in vendor-neutral base; move it to "
+                f".agentbundler/targets/claude.json or restrict to targets: [claude]"
             )
     return violations
 
 
 def discover_base_files(root: Path = ROOT) -> list[Path]:
-    """Return sorted vendor-neutral source files under src/.
-
-    Includes base SKILL.md / AGENT.md plus non-Claude active overlay bodies
-    (`<target>/body.md` for codex and pi). The `claude/body.md` overlay is
-    intentionally excluded — it is allowed to use Claude syntax.
-    """
+    """Return sorted vendor-neutral source files: base skills and agents."""
     src = root / "src"
     if not src.is_dir():
         return []

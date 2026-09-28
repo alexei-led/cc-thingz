@@ -190,32 +190,19 @@ Fast fix loop, no baseline and no HTML report:
 make skill-evals-fast SKILL_EVAL_INCLUDE='discovery/skills/researching-web'
 ```
 
-Run the legacy alias for the same Claude package evaluation:
-
-```bash
-make skill-evals-both SKILL_EVAL_STRICT=0
-```
-
 Speed knobs:
 
 - `SKILL_EVAL_BASELINE=0` halves target/judge work by skipping `without_skill` mode.
 - `SKILL_EVAL_HTML_REPORT=0` skips static report generation; JSONL and Markdown summary remain.
 - `SKILL_EVAL_CONCURRENCY=8` roughly doubles parallel eval calls versus the default 4, subject to provider rate limits.
 - `SKILL_EVAL_INCLUDE='plugin/skills/skill-name'` runs one skill instead of the full suite.
-- `SKILL_EVAL_JUDGE=gpt-5.4-nano` can make judging cheaper/faster for iteration; use the default judge before trusting final numbers.
 
 Use `SKILL_EVAL_LOG_FORMAT=pretty` only for small one-skill runs. The upstream `silent` mode still emits pretty logs because the SDK installs a default reporter when no reporter is passed. Naturally.
 
-Use a cheaper judge:
-
-```bash
-make skill-evals SKILL_EVAL_JUDGE=gpt-5.4-nano
-```
-
 Defaults:
 
-- target: `gpt-5.4-mini`
-- judge: `gpt-5.4-mini`
+- target: `gpt-6-luna`
+- judge: `gpt-6-luna`
 - workspace: `/tmp/cc-thingz-skill-eval-workspace`
 - prepared root: `/tmp/cc-thingz-skill-eval-root`
 - skill source: Agent Bundler's Claude package output; Pi uses local validation

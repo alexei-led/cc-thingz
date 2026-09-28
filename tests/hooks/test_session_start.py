@@ -1,15 +1,9 @@
-"""SessionStart hook tests.
-
-Replaces the old bats test, which only covered "exit 0 on valid/empty input".
-Adds coverage for git context, .spec/, feature_list.json, and project-hint
-branches that the bats test left untouched.
-"""
+"""SessionStart hook tests."""
 
 from __future__ import annotations
 
 import json
 import os
-import re
 import subprocess
 import sys
 import time
@@ -24,12 +18,6 @@ HOOK = (
     / "session-start"
     / "hook.py"
 )
-
-ANSI = re.compile(r"\x1b\[[0-9;]*m")
-
-
-def _strip(s: str) -> str:
-    return ANSI.sub("", s)
 
 
 def _run(payload: dict | None, cwd: Path | None = None) -> tuple[int, str, str]:
@@ -62,61 +50,63 @@ def test_invalid_cwd_exits_zero(tmp_path: Path) -> None:
     assert code == 0
 
 
-def test_git_context_displayed(tmp_path: Path) -> None:
+def test_omits_git_context_and_instruction_file_hints(tmp_path: Path) -> None:
     subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
-    subprocess.run(
-        [
-            "git",
-            "-c",
-            "user.email=t@t",
-            "-c",
-            "user.name=t",
-            "commit",
-            "--allow-empty",
-            "-m",
-            "init",
-        ],
-        cwd=tmp_path,
-        check=True,
-    )
-    code, out, _ = _run({"cwd": str(tmp_path)})
-    assert code == 0
-    plain = _strip(out)
-    assert "Branch:" in plain
-    assert "Last:" in plain
-
-
-def test_feature_list_branch_used_when_present(tmp_path: Path) -> None:
-    (tmp_path / "feature_list.json").write_text(
-        json.dumps([{"name": "a", "passes": True}, {"name": "b", "passes": False}])
-    )
-    code, out, _ = _run({"cwd": str(tmp_path)})
-    assert code == 0
-    plain = _strip(out)
-    assert "Spec-Driven Project" in plain
-    assert "Features: 1/2 passing" in plain
-
-
-def test_progress_notes_when_feature_list_present(tmp_path: Path) -> None:
-    (tmp_path / "feature_list.json").write_text("[]")
-    (tmp_path / "claude-progress.txt").write_text(
-        "## Current Status: green\nfoo\n## Session 1\nbar\n"
-    )
-    code, out, _ = _run({"cwd": str(tmp_path)})
-    assert code == 0
-    plain = _strip(out)
-    assert "Progress Notes:" in plain
-    assert "## Current Status: green" in plain
-
-
-def test_project_hints_when_no_feature_list(tmp_path: Path) -> None:
-    (tmp_path / "go.mod").write_text("module x\n")
     (tmp_path / "README.md").write_text("# x\n")
+    (tmp_path / "CLAUDE.md").write_text("# x\n")
     code, out, _ = _run({"cwd": str(tmp_path)})
     assert code == 0
-    plain = _strip(out)
-    assert "Go project" in plain
-    assert "README.md available" in plain
+    assert out == ""
+
+
+def test_project_hints_are_plain_text(tmp_path: Path) -> None:
+    (tmp_path / "go.mod").write_text("module x\n")
+    (tmp_path / "pyproject.toml").write_text("[project]\n")
+    code, out, _ = _run({"cwd": str(tmp_path)})
+    assert code == 0
+    assert out.splitlines() == ["Go project", "Python project"]
+    assert out.isascii()
+
+
+def test_ignores_legacy_feature_list(tmp_path: Path) -> None:
+    (tmp_path / "feature_list.json").write_text('[{"passes": true}]')
+    (tmp_path / "claude-progress.txt").write_text("## Current Status: green\n")
+    code, out, _ = _run({"cwd": str(tmp_path)})
+    assert code == 0
+    assert out == ""
+
+
+def test_spec_project_reports_status_and_ready_tasks(tmp_path: Path) -> None:
+    (tmp_path / ".spec").mkdir()
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    specctl = bin_dir / "specctl"
+    specctl.write_text(
+        "#!/bin/sh\n"
+        'case "$1" in\n'
+        """status) echo '{"done": 1, "total": 3, "in_progress": 1}' ;;\n"""
+        "session) echo '{}' ;;\n"
+        """ready) echo '[{"id": "T-2", "priority": "p1", "title": "Add x"}]' ;;\n"""
+        "esac\n"
+    )
+    specctl.chmod(0o755)
+    env = os.environ.copy()
+    env["PATH"] = f"{bin_dir}:/usr/bin:/bin"
+    proc = subprocess.run(
+        [sys.executable, str(HOOK)],
+        input=json.dumps({"cwd": str(tmp_path)}),
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=5,
+    )
+    assert proc.returncode == 0
+    assert proc.stdout.splitlines() == [
+        "Spec-driven project (.spec/)",
+        "Tasks: 1/3 done, 1 in progress",
+        "Ready:",
+        "  T-2 [p1] Add x",
+    ]
 
 
 def test_spec_branch_skipped_without_specctl(tmp_path: Path) -> None:

@@ -9,9 +9,12 @@ release archives. Do not add a custom compiler or post-build copier.
 The current source restores behavior that belongs to this package rather than to
 a portable hook schema:
 
-- Codex receives `smart-lint` through its native `PostToolUse` matcher.
-- Grok receives the synchronous `notify-grok` hook. Pi notifications are handled
-  by the native compatibility runner.
+- `smart-lint` ships to Claude, Codex, Copilot, Grok, and Pi. Codex receives it
+  through its native `PostToolUse` matcher. Cursor is excluded because its edit
+  matcher would lose semantics.
+- Notifications: Claude and Copilot receive portable `notify`; Grok receives the
+  synchronous `notify-grok`; Pi uses the native compatibility runner. Codex and
+  Cursor receive no notification hook.
 - Pi receives `ccgram hook` at session start, stop, and session end.
 - Pi native assets register ask-user-question, hook-runner, permission-gate,
   plan-mode, and todo. The structured-output demonstration is available as an
@@ -28,14 +31,13 @@ a portable hook schema:
 These are generator or vendor-contract gaps, not reasons to restore custom
 build scripts:
 
-1. Claude `WorktreeCreate` and `WorktreeRemove` lifecycle events.
-2. Codex agent `model` and `model_reasoning_effort` fields. cc-thingz sidecars
-   retain the intended values, but current generated profiles support only the
-   documented name, description, sandbox, and instructions fields.
-3. Cursor lossless `edit` matcher translation. File protection remains excluded
-   there; command-only git guards are supported.
-4. Portable Pi `Notification` mapping. Pi uses its native compatibility runner.
-5. Full vendor CLI runtime smoke coverage. Archive/install tests run where a
+1. Codex agent `model` and `model_reasoning_effort` fields. Generated profiles
+   support only the name, description, sandbox, and instructions fields, so
+   cc-thingz Codex sidecars set only `sandbox_mode`; users pick the model.
+2. Cursor lossless `edit` matcher translation. File protection and smart-lint
+   remain excluded there; command-only git guards are supported.
+3. Portable Pi `Notification` mapping. Pi uses its native compatibility runner.
+4. Full vendor CLI runtime smoke coverage. Archive/install tests run where a
    vendor CLI is available; Cursor needs `CURSOR_API_KEY` and vendor state.
 
 ## Intentional target differences
@@ -45,8 +47,8 @@ build scripts:
 - Gemini is retired.
 - Pi has native extensions and its own permission/plan compatibility layer;
   those are not forced into portable hook descriptors.
-- `file-protector` is absent from Cursor because an edit matcher would lose
-  semantics. `git-guardrails` uses Cursor's command matcher.
+- `file-protector` and `smart-lint` are absent from Cursor because an edit
+  matcher would lose semantics. `git-guardrails` uses Cursor's command matcher.
 
 ## Runtime validation status
 

@@ -1,10 +1,8 @@
 ---
 {"description":"Write, rewrite, or update project docs from implementation facts - README front pages, user guides, configuration references, architecture docs, evaluations, agent instructions, and code comments. Use when docs are stale after a change, or when a doc set must become clear, visual, and consistent with the code. NOT for release preparation or release notes (use releasing-code), external library docs (looking-up-docs), scoring instruction files (reviewing-instructions), or ADRs unless explicitly requested.","name":"documenting-code"}
 ---
-<!-- Platform guidance for Codex -->
-<!-- Use this platform's installed tool names exactly; do not translate capability references into Claude Code tool syntax. -->
-<!-- When this skill references shell execution, file reads, or search, use the platform's native shell, read, and search tools. -->
-<!-- If a referenced helper command or optional tool is unavailable, report the gap and continue with the platform's built-in tools. -->
+<!-- Codex platform guidance -->
+<!-- Use this platform's installed tool names exactly for shell, file reads, and search. If a referenced helper or optional tool is unavailable, say so and continue with built-in tools. -->
 
 
 # Documenting Code

@@ -9,17 +9,6 @@ paths = [
     '''\.gitleaks\.toml''',
 ]
 
-# Scripts that reference token field names (not actual secrets)
-[[rules]]
-id = "cliproxy-false-positive"
-description = "OAuth token field names in import script"
-path = '''scripts/cliproxy-import-gemini\.py'''
-[rules.allowlist]
-regexTarget = "match"
-regexes = [
-    '''(access_token|refresh_token|id_token|token_type|token_uri|token)''',
-]
-
 # Belt-and-suspenders: block files that .gitignore should already exclude
 [[rules]]
 id = "claude-secrets-file"
@@ -73,10 +62,4 @@ entropy = 0
 id = "claude-backups"
 description = "Backup files contain full settings with secrets"
 path = '''backups/'''
-entropy = 0
-
-[[rules]]
-id = "claude-scripts-env"
-description = "Scripts .env file with OAuth credentials"
-path = '''scripts/\.env'''
 entropy = 0
