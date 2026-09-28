@@ -1,5 +1,5 @@
 ---
-{"allowed-tools":["Task","TaskOutput","TaskCreate","TaskUpdate","TaskList","AskUserQuestion","Read","Grep","Glob","LS","Bash(git *)","Bash(gh pr *)","Bash(gh api *)"],"argument-hint":"[quick|deep|team|external]","context":"fork","description":"Use when reviewing changed code, PRs, diffs, or specific files. Finds evidence-backed defects in security, correctness, tests, reliability, performance, maintainability, and docs. Supports quick, standard, deep, team, and external-review modes. NOT for repo-wide architecture review, general codebase exploration, fixing issues (use fixing-code), improving tests without a code review (use improving-tests), or applying refactors (use refactoring-code).","name":"reviewing-code","user-invocable":true}
+{"allowed-tools":["Task","TaskOutput","TaskCreate","TaskUpdate","TaskList","AskUserQuestion","Read","Grep","Glob","LS","Bash(git *)","Bash(gh pr *)","Bash(gh api *)"],"argument-hint":"[quick|deep] [team] [external]","context":"fork","description":"Use when reviewing changed code, PRs, diffs, or specific files. Finds evidence-backed defects in security, correctness, tests, reliability, performance, maintainability, and docs. Supports quick, standard, deep, team, and external-review modes. NOT for repo-wide architecture review, general codebase exploration, fixing issues (use fixing-code), improving tests without a code review (use improving-tests), or applying refactors (use refactoring-code).","name":"reviewing-code","user-invocable":true}
 ---
 
 # Code Review
@@ -70,7 +70,7 @@ Score: <N/10 if requested> — confidence <high|medium|low>
 
 ### Warnings
 
-- (same shape)
+- `file:line` — <category>, confidence <level>. <issue> Scenario: <how it fails>. Fix: <concrete fix>.
 
 ### Suggestions
 
@@ -91,7 +91,7 @@ Omit empty sections, except Needs review when it explains partial coverage.
 
 ### Arguments
 
-`$ARGUMENTS` may name a mode: `quick`, `deep`, `team`, or `external`. Default is standard; never run `external` unless it is named.
+`$ARGUMENTS` may combine a depth (`quick` or `deep`) with `team` and `external`. Default is standard; never run `external` unless it is named.
 
 ### Claude tools
 

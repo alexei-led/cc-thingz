@@ -3,8 +3,11 @@
     "mode": "sections",
     "sections": [
       {
-        "headingPath": ["Code Review", "Platform additions"],
-        "body": "\n### Arguments\n\n`$ARGUMENTS` may name a mode: `quick`, `deep`, `team`, or `external`. Default is standard; never run `external` unless it is named.\n\n### Claude tools\n\n- Missing scope: ask with `AskUserQuestion`, header `Review scope`, offering the three scope options above.\n- Track phases with `TaskCreate` and `TaskUpdate` on reviews longer than a few steps.\n- Team mode: run each sub-task as the read-only `reviewer` agent with the rubric and its dimension or file group.\n- External mode: run configured external reviewer bridges in parallel; depend on no specific bridge or model.\n- If memory search is available, check past observations for files in scope only to avoid re-raising settled findings; memory is never evidence for a new finding.\n"
+        "headingPath": [
+          "Code Review",
+          "Platform additions"
+        ],
+        "body": "\n### Arguments\n\n`$ARGUMENTS` may combine a depth (`quick` or `deep`) with `team` and `external`. Default is standard; never run `external` unless it is named.\n\n### Claude tools\n\n- Missing scope: ask with `AskUserQuestion`, header `Review scope`, offering the three scope options above.\n- Track phases with `TaskCreate` and `TaskUpdate` on reviews longer than a few steps.\n- Team mode: run each sub-task as the read-only `reviewer` agent with the rubric and its dimension or file group.\n- External mode: run configured external reviewer bridges in parallel; depend on no specific bridge or model.\n- If memory search is available, check past observations for files in scope only to avoid re-raising settled findings; memory is never evidence for a new finding.\n"
       }
     ]
   },
@@ -24,7 +27,7 @@
       "Bash(gh pr *)",
       "Bash(gh api *)"
     ],
-    "argument-hint": "[quick|deep|team|external]",
+    "argument-hint": "[quick|deep] [team] [external]",
     "context": "fork",
     "user-invocable": true
   }

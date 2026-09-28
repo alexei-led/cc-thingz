@@ -42,7 +42,7 @@ No mapped site, no edit.
 - Keep mechanical changes separate from logic changes. If a behavior change turns out to be needed, stop and split it into its own fix or feature.
 - Put all edits to one file in a single edit operation; preview high-stakes batches before applying.
 - Keep compatibility shims or deprecations on public APIs unless the user approved a break.
-- If checks fail after a batch, fix or revert that batch before starting the next.
+- Run the safety gate after each batch. If it fails, fix or revert that batch before starting the next.
 - Delete dead code the refactor exposes. Change generated or vendored files only by regenerating from source.
 
 Done when the relevant build/test/lint checks pass on what you changed, or you

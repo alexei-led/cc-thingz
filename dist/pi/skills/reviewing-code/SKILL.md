@@ -77,7 +77,7 @@ Score: <N/10 if requested> — confidence <high|medium|low>
 
 ### Warnings
 
-- (same shape)
+- `file:line` — <category>, confidence <level>. <issue> Scenario: <how it fails>. Fix: <concrete fix>.
 
 ### Suggestions
 
