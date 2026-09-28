@@ -91,7 +91,7 @@ if echo "$PROMPT_LOWER" | grep -qE '\.tf\b|\.tfvars|dockerfile|docker-compose|ch
 	skills+="operating-infra "
 fi
 
-# looking-up-docs: docs lookup flow (Context7 → official sources → Perplexity/web → GitHub)
+# looking-up-docs: docs lookup flow (Context7 → official sources → GitHub)
 # Triggers: ctx7/context7, library IDs, natural-language doc-seeking, API reference, or latest-behavior needs.
 # NOT for comparisons/best-practices (use researching-web) or for writing project docs (use documenting-code).
 if echo "$PROMPT_LOWER" | grep -qE '\bctx7\b|\bcontext7\b|context7[[:space:]-]cli|/[a-z0-9._-]+/[a-z0-9._-]+\s+(library|docs|version)|\b(docs|documentation)\s+(for|of|on|about|say|says)\b|api\s*(reference|docs)|look\s*up.*(docs|api|syntax|usage|reference|examples)|find.*(docs|documentation|reference)|check.*(docs|documentation)|man\s*page|reference.*(guide|manual)|official.*(docs|documentation)|library.*docs|version.*specific|syntax\s*for|examples\s*of|how\s*to\s*use\s*\w+'; then
@@ -102,10 +102,10 @@ if echo "$PROMPT_LOWER" | grep -qE '\bctx7\b|\bcontext7\b|context7[[:space:]-]cl
 	fi
 fi
 
-# researching-web: Web research via Perplexity AI (comparisons, best practices, standards)
+# researching-web: Web research (comparisons, current state, best practices, standards)
 # Triggers: Research language, comparisons, best practices, industry standards
 # NOT for API references or library docs (use looking-up-docs)
-if echo "$PROMPT_LOWER" | grep -qE '\bresearch\b|search.*(web|online)|look\s*up.*online|find\s*out.*(about|if|whether)|compare.*(tool|lib|framework|approach|option|technolog)|(\w+)\s+vs\s+(\w+)|pros\s*(and|&)\s*cons|trade[[:space:]-]?off|which.*(tool|lib(rary)?|framework|approach|option|technolog(y|ies)|database|language|runtime|package|service).*(better|should|recommend)|latest.*(version|release|update)|current.*(version|best)|what.?s\s*new\s*in|best\s*practice|up[[:space:]-]?to[[:space:]-]?date|2024|2025|2026|industry\s*standard|owasp|recommended\s*(practice|approach|pattern)|perplexity'; then
+if echo "$PROMPT_LOWER" | grep -qE '\bresearch\b|search.*(web|online)|look\s*up.*online|find\s*out.*(about|if|whether)|compare.*(tool|lib|framework|approach|option|technolog)|(\w+)\s+vs\s+(\w+)|pros\s*(and|&)\s*cons|trade[[:space:]-]?off|which.*(tool|lib(rary)?|framework|approach|option|technolog(y|ies)|database|language|runtime|package|service).*(better|should|recommend)|latest.*(version|release|update)|current.*(version|best)|what.?s\s*new\s*in|best\s*practice|up[[:space:]-]?to[[:space:]-]?date|\b20[0-9]{2}\b|industry\s*standard|owasp|recommended\s*(practice|approach|pattern)|perplexity'; then
 	skills+="researching-web "
 fi
 
@@ -221,11 +221,6 @@ if echo "$PROMPT_LOWER" | grep -qE '\bspec[[:space:]-]?flow\b|\bspec[[:space:]-]
 	if ! echo "$PROMPT_LOWER" | grep -qE '\b(grill|stress[[:space:]-]?test|challenge|review)\b.*\bplan\b|\bplan\b.*\b(grill|stress[[:space:]-]?test|challenge|review)\b'; then
 		skills+="spec-flow "
 	fi
-fi
-
-# sequential-thinking: Explicit requests for structured reasoning summaries
-if echo "$PROMPT_LOWER" | grep -qE '\bsequential[[:space:]-]?thinking\b|\b(think|reason)[[:space:]]+step[[:space:]-]+by[[:space:]-]+step\b|\bwalk[[:space:]]+(me[[:space:]]+)?through[[:space:]]+(this[[:space:]]+|the[[:space:]]+|your[[:space:]]+)?reasoning\b|\bstructured[[:space:]]+comparison[[:space:]]+of[[:space:]]+decision[[:space:]]+branches\b'; then
-	skills+="sequential-thinking "
 fi
 
 # evolving-config: Audit Claude Code config against latest features

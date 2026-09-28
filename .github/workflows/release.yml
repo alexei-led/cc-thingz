@@ -106,7 +106,7 @@ jobs:
             uv.lock
             package.json
             src/.agentbundler/packages
-            src/skills/playwright-skill/scripts/package.json
+            src/skills/browser-automation/scripts/package.json
           sparse-checkout-cone-mode: false
       - name: Checkout corrected notes source commit
         if: github.event_name == 'workflow_dispatch'

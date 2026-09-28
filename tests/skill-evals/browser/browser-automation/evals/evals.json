@@ -44,13 +44,39 @@
       "id": "headless-pi-screenshot-evidence",
       "name": "headless Pi screenshot evidence",
       "prompt": "In Pi, no visible browser tool is exposed. A user wants visual verification of a rendered page. Describe the workflow.",
-      "expected_output": "The response uses browser-automation with project tooling or playwright-skill fallback, prefers headless screenshots and manifests as evidence, waits for rendered state, and avoids insisting on headed mode.",
+      "expected_output": "The response uses browser-automation with project tooling or the bundled Playwright scripts, prefers headless screenshots and manifests as evidence, waits for rendered state, and avoids insisting on headed mode.",
       "assertions": [
         "The output does not require headed mode when no visible browser is exposed.",
         "The output uses headless screenshots or manifests as visual evidence.",
         "The output waits for a rendered selector, URL, accessibility snapshot, or other observable browser state.",
         "The output reports artifact paths and pass/fail/blocked status.",
-        "The output uses playwright-skill only as a fallback/runtime rather than as the user-facing skill."
+        "The output uses the bundled Playwright scripts only as a fallback when no built-in browser tool or project runner is available."
+      ]
+    },
+    {
+      "id": "reliable-runner-contract",
+      "name": "reliable runner contract",
+      "prompt": "A generated Playwright script needs fs/path imports, clean JSON stdout, and relative screenshot paths from the caller workspace. Describe how to run it with the bundled browser-automation runner.",
+      "expected_output": "The response says to use run.js with --quiet or --json, keep runner logs on stderr, preserve the caller cwd, expose Playwright globals even when the script uses require(), and keep generated temp/artifacts out of the skill directory.",
+      "assertions": [
+        "The output says --quiet or --json keeps runner/status logs away from script stdout.",
+        "The output says the runner preserves the caller working directory or avoids chdir surprises.",
+        "The output says Playwright globals remain available even when the script uses require('fs') or similar imports.",
+        "The output says generated temporary scripts or artifacts should live under /tmp/playwright-* rather than the skill directory.",
+        "The output does not recommend tailing stdout or redirecting runner noise to recover JSON."
+      ]
+    },
+    {
+      "id": "turnkey-screenshot-batch",
+      "name": "turnkey screenshot batch",
+      "prompt": "A user needs screenshots for http://localhost:3030/{slide}?clicks=20 from slides 1 through 17, waiting for .slidev-page and collecting titles. Describe the browser-automation approach when no built-in browser tool is available.",
+      "expected_output": "The response recommends screenshot-sequence before custom scripting, uses the URL template with {n}, waits for .slidev-page, writes screenshots and a manifest under /tmp, and mentions the manifest includes titles and diagnostics.",
+      "assertions": [
+        "The output recommends scripts/screenshot-sequence.js or an equivalent turnkey screenshot helper before a custom one-off script.",
+        "The output uses a URL template containing {n} and a from/to range.",
+        "The output waits for the rendered selector .slidev-page or equivalent rendered state.",
+        "The output writes screenshots and manifests under /tmp/playwright-* or another explicit safe temp location.",
+        "The output mentions manifest data such as title, URL, screenshot path, console errors, or network failures."
       ]
     }
   ]
