@@ -1,74 +1,11 @@
-# Git Worktree Workflow
+# Worktree Edge Cases
 
-## Root and Path
+Cases the scripts refuse or leave to you.
 
-Derive the root from the main worktree, not the current directory. This keeps paths stable when invoked from another worktree.
-
-```bash
-main_wt=$(git worktree list --porcelain | awk '/^worktree /{print $2; exit}')
-project=$(basename "$main_wt")
-root="$(dirname "$main_wt")/$project.worktrees"
-slug=$(printf '%s' "$BRANCH_NAME" | tr '/' '-')
-path="$root/$slug"
-```
-
-Check conflicts before creation:
-
-```bash
-[ -e "$path" ] && echo "worktree path exists: $path" && exit 1
-git worktree list --porcelain | grep -Fxq "branch refs/heads/$BRANCH_NAME" && echo "branch already checked out" && exit 1
-```
-
-## Create
-
-New branch:
-
-```bash
-mkdir -p "$root"
-git worktree add "$path" -b "$BRANCH_NAME" "$BASE_REF"
-```
-
-Existing local branch:
-
-```bash
-git worktree add "$path" "$BRANCH_NAME"
-```
-
-Existing remote branch:
-
-```bash
-git worktree add --track -b "$BRANCH_NAME" "$path" "origin/$BRANCH_NAME"
-```
-
-After creation, run dependency setup and baseline tests when already authorized by the development task. State the commands and use the project package manager and lockfile. Ask only when setup requires a new system dependency or changes scope.
-
-## Cleanup After PR Merge
-
-Confirm what will be removed before running destructive commands. Do not remove the current shell's working directory.
-
-The merge check needs `gh`, which this skill does not grant directly — use
-`scripts/cleanup-worktree.sh` (it wraps the `gh pr view` check) or ask the user
-to confirm the PR merged before running the manual steps below.
-
-```bash
-branch=feature/auth
-main_wt=$(git worktree list --porcelain | awk '/^worktree /{print $2; exit}')
-wt=$(git worktree list --porcelain | awk -v b="refs/heads/$branch" '
-  /^worktree /{p=$2} $0=="branch "b{print p; exit}')
-
-cd "$main_wt"
-git worktree remove "$wt"
-git branch -d "$branch" 2>/dev/null || git branch -D "$branch"
-git fetch --prune
-rmdir "$(dirname "$wt")" 2>/dev/null || true
-```
-
-Use `git branch -D` only after the PR is confirmed merged or the user confirms abandonment. Squash and rebase merges often make `git branch -d` refuse even after the PR merged.
-
-## Edge Cases
-
-- Simple branch switch: do not create a worktree; check dirty state and use normal branch switching.
-- Path exists: choose a new branch or remove the stale path after user confirmation.
-- Branch checked out elsewhere: reuse that worktree or choose another branch.
-- Dirty worktree: ask before force removal.
-- Unmanaged path: do not remove it through this workflow.
+- Path exists: pick another branch name, or remove the leftover directory after the user confirms. Remove only paths under `<project>.worktrees/`.
+- Branch checked out in another worktree: work there, or pick another branch. If that worktree's directory is gone, `git worktree prune` clears the stale registration.
+- Base ref not found: fetch or pass `--base <ref>`.
+- Setup refused (no lockfile, conflicting lockfiles or manager): run the project's documented install command, and ask if none exists.
+- Cleanup when `gh` is missing or cannot see the PR: ask the user to confirm the merge and check `git status` in the worktree, since `--force` also discards dirty files; then run `scripts/cleanup-worktree.sh --force <branch>`.
+- `git branch -d` refuses after a squash or rebase merge: that is expected; use `-D` once the PR is confirmed merged.
+- The shell was inside the removed worktree: `cd` to the main worktree before running further commands.

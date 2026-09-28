@@ -1,10 +1,6 @@
-# Gitignore Rules
+# Gitignore
 
-## Discovery
-
-Derive ignore rules from actual generated files and local artifacts.
-
-Useful checks:
+Find what to ignore from real artifacts:
 
 ```bash
 git status --ignored --short
@@ -12,26 +8,10 @@ git check-ignore -v <path>
 git ls-files <path>
 ```
 
-## Safe Patterns
+- Ignore build outputs, caches, local env files, editor files, and generated logs.
+- Keep source files, lockfiles, CI config, security config, and release artifacts tracked unless the repo already ignores them.
+- Use directory-specific patterns when a broad pattern would hide real source.
 
-Ignore:
+## Tracked files
 
-- build outputs
-- caches
-- local env files
-- editor files
-- generated logs
-
-Do not ignore source files, lockfiles, CI config, security config, or release artifacts unless the repo already does.
-
-Prefer directory-specific patterns when a broad pattern would hide real source.
-
-## Tracked Files
-
-If a now-ignored file is tracked, ask before removing it from the index:
-
-```bash
-git rm --cached <path>
-```
-
-This must not delete the working file. Verify with `git status --short` after.
+To stop tracking a newly ignored file, run `git rm --cached <path>` after approval. It keeps the working file; confirm with `git status --short`.

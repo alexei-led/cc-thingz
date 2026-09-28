@@ -8,99 +8,41 @@ name: using-git-worktrees
 
 # Git Worktrees
 
-Use one sibling worktree root per project: `<project>.worktrees/<branch-slug>`. Keep the main worktree clean on the integration branch by default. Trivial solo one-liners may stay in the main worktree when a worktree would add pointless ceremony.
+A worktree gives parallel work its own folder and branch while the main worktree stays clean on the integration branch. Each project gets one sibling root, `<project>.worktrees/`, with one directory per branch named by its slug (`/` → `-`, so `feature/auth` → `feature-auth`). Remove the worktree and branch after the PR merges.
 
-Treat a worktree as a disposable branch folder. Remove it and its branch after the PR merges.
+A plain branch switch with no parallel work needs no worktree: check `git status --short`, then `git switch <branch>`. Trivial solo one-liners may also stay in the main worktree.
 
-## Scope
+## Create
 
-Use this skill when:
-
-- starting a feature, fix, or experiment that should not disturb current work
-- working on multiple branches at once
-- trying competing approaches
-- the current worktree has uncommitted changes and the user wants to start something else
-
-Do not use this skill for:
-
-- simple branch switching with no parallel work
-- bulk branch or stale worktree cleanup — use `cleanup-git`
-- git hook, Gitleaks, `.gitignore`, or config setup — use `configuring-git-hygiene`
-
-## Create Workflow
-
-Check state before any `git worktree add`:
+Check `git status --short` and `git worktree list` first. Leave uncommitted changes where they are and never stash them silently; pass `--allow-dirty` only when the user has authorized isolating new work while keeping them.
 
 ```bash
-git status --short
-git branch --show-current
-git worktree list
+scripts/setup-worktree.sh <branch> [--base <ref>] [--allow-dirty] [--setup] [--test]
 ```
 
-If the current worktree is dirty, leave those changes intact. Use `--allow-dirty` when the user has authorized creating an isolated worktree while preserving them; otherwise ask before proceeding. Do not stash silently.
+The script runs `git worktree add` from the main worktree root. It checks out an existing local or `origin` branch instead of recreating it, and refuses an existing path, a branch checked out in another worktree, or a dirty tree without `--allow-dirty`. It reports base divergence from local refs without fetching.
 
-Use the helper when available:
+- `--setup` does a frozen install with the declared package manager and lockfile (uv for Python). Conflicting lockfiles or manager declarations stop it. A setup failure exits non-zero but still prints the path.
+- `--test` runs the detected baseline tests. Failures only warn.
+- A skipped setup or test is not a pass.
 
-```bash
-scripts/setup-worktree.sh <branch> [--base <ref>] [--setup] [--test]
-```
-
-The helper creates `<project>.worktrees/<branch-slug>` from the main worktree root, handles existing local/remote branches, refuses path conflicts, and refuses dirty state unless `--allow-dirty` is passed after user approval.
-
-`--setup` selects the declared package manager and lockfile, uses frozen installs,
-and uses uv for Python. Conflicting lockfiles or manager declarations stop setup.
-`--test` runs the detected baseline command. A skipped setup or test is not a pass.
-Existing branch divergence is reported from local refs without fetching or merging.
-
-Manual fallback lives in [workflow.md](references/workflow.md).
-
-## Naming
-
-- Root: sibling `<project>.worktrees/` directory.
-- Directory: branch slug only; replace `/` with `-`.
-- Examples: `fix-cron`, `feature-auth`, `bugfix-issue-123`.
-
-## Cleanup Workflow
-
-For one named worktree after PR merge:
+## Clean up one worktree
 
 ```bash
 scripts/cleanup-worktree.sh [branch]
 ```
 
-The helper refuses unless `gh` confirms the PR is `MERGED`. Pass `--force` only after the user confirms the merge without `gh` or confirms the branch should be abandoned.
+It removes the worktree and deletes the branch only when `gh` confirms the PR is `MERGED`. Pass `--force` only after the user confirms the merge or abandons the branch; `--force` can remove a dirty worktree and force-delete the branch. For bulk or stale cleanup, use cleanup-git. Leave `git pull` out of cleanup; the user pulls the main worktree once it is clean on the integration branch.
 
-For bulk cleanup, stale worktrees, gone upstreams, or merged local branches, use `cleanup-git`.
-
-Do not run `git pull` as part of cleanup. Pull the integration branch only after confirming the main worktree is checked out and clean.
-
-## Failure Handling
-
-- Worktree path exists: pick a different branch/slug; never overwrite.
-- Branch already exists remotely: check it out without `-b` or use the helper.
-- Dirty current worktree: preserve changes; existing authorization to isolate work permits `--allow-dirty`. Ask if the intended treatment is unclear.
-- `git worktree remove` fails because the worktree is dirty: confirm before `--force`.
-- `git branch -d` fails after squash/rebase PR merge: confirm the PR is `MERGED`, then use `-D`.
-- Invoked from inside the worktree being removed: change to the main worktree before removing it.
+For cases the scripts refuse or don't cover, read [workflow.md](references/workflow.md).
 
 ## Output
 
 ```text
-WORKTREE READY
-==============
-Action: CREATE | CLEANUP
+WORKTREE READY | WORKTREE REMOVED | BLOCKED
 Branch: <branch>
 Path: <project>.worktrees/<slug>
-Status: DONE | BLOCKED
-
-Next:
-- cd <path> and open the editor there, or
-- pull the integration branch yourself after confirmed cleanup
+Next: cd <path>, or the script's refusal reason
 ```
 
-For cleanup, report `DONE` only when the PR is confirmed `MERGED` or `--force` was used deliberately. Otherwise report `BLOCKED` with the script's reason.
-
-## References
-
-- [workflow.md](references/workflow.md) — manual fallback and edge cases
-- [scripts/](scripts/) — `setup-worktree.sh` and `cleanup-worktree.sh`
+Report a cleanup as done only when the PR is confirmed `MERGED` or `--force` was deliberate.

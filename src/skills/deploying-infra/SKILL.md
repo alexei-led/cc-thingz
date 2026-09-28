@@ -2,150 +2,70 @@
 description: Validate infrastructure changes and, after explicit confirmation, apply
   Terraform, Helm, Kustomize, or Kubernetes deployments. Use when the user says "deploy",
   "deploy to staging", "terraform apply", "helm upgrade", "kubectl apply", "rollout",
-  "deploy check", "validate deployment", or "validate infrastructure". Dockerfiles
-  and GitHub Actions are validate-only here. NOT for ongoing service troubleshooting,
-  cloud inspection, rollback investigation, or authoring infra from scratch; use operating-infra
-  for those.
+  "deploy check", "validate deployment", or "validate infrastructure". NOT for Dockerfile
+  or GitHub Actions review, service troubleshooting, cloud inspection, rollback investigation,
+  or authoring infra; use operating-infra for those.
 name: deploying-infra
 ---
 
 # Deploy Infrastructure
 
-Validate first. Apply only after explicit confirmation. Never invent deploy paths,
-release names, workspaces, namespaces, accounts, or environments.
+Validate first and apply only what the user approved. Hard rules:
 
-## Scope
+- Never invent deploy paths, release names, workspaces, namespaces, accounts, or environments. If one is unclear, ask one question.
+- Authorization binds to the reviewed artifact (saved plan or rendered file) and its exact destination: account, context, namespace, workspace, chart/version, release, and values. Production authorization names the exact environment.
+- Blocked validation, missing plan/diff evidence, or an unshown destructive change: stop before confirmation.
+- Apply failure: stop with `DEPLOYMENT FAILED` and ask before any rollback.
+- Rollout timeout or degraded health: show investigation and rollback options, then ask.
+- Push no images and trigger no CI workflows here.
 
-Use for dry-run validation, Terraform/Helm/Kustomize/Kubernetes apply after
-confirmation, and rollout verification after apply.
+## Modes
 
-Do not use for live troubleshooting, rollback investigation, cloud inspection,
-authoring infra, pushing Docker images, triggering GitHub Actions workflows, or
-applying without plan/diff evidence. Use `operating-infra` for inspection and
-troubleshooting.
-
-Dockerfiles and GitHub Actions are validate-only in this skill.
-
-## Usage
-
-`/deploying-infra --dry-run [environment] [scope]` validates only. `/deploying-infra --apply <environment> [scope]` validates, asks, applies, then verifies. `/deploying-infra --background --dry-run [environment] [scope]` starts background validation.
-
-Rules:
-
-- Default mode is `--dry-run`.
-- `--background` is valid only with `--dry-run`.
-- `--apply` requires authorization covering the reviewed artifact and exact destination. Reuse existing explicit authorization when those inputs are unchanged.
-- Production confirmation must include the exact environment name.
-- If environment, context, namespace, workspace, chart, release, path, or account is unclear, ask one question.
+- `--dry-run [environment] [scope]` (default): validate and report.
+- `--apply <environment> [scope]`: validate, confirm, apply, verify. Reuse an existing explicit authorization when the artifact and destination are unchanged.
+- `--background --dry-run ...`: validation in a background agent, which never applies.
 
 ## Workflow
 
-1. Parse mode, environment, and optional scope.
-2. Detect infra with `Glob`, `Grep`, and `Read` before shell commands.
-3. Classify detected types: apply-capable Terraform/Helm/Kustomize/Kubernetes; validate-only Dockerfile/GitHub Actions.
-4. Check required CLIs with safe version or discovery commands.
-5. Read `references/validation-checklists.md` and use only detected sections.
-6. Run validation and inspect source-backed policy checks.
-7. For apply-capable types, show plan/diff evidence.
-8. Stop on `--dry-run`; on `--apply`, confirm any unapproved artifact/destination and apply.
-9. Verify changed resources after apply.
+Order is the safety gate:
 
-Use a background or delegated validation agent only for large scans or explicit
-`--background`. The agent validates only; it must not apply changes.
+1. Detect infra types and target details from repo files.
+2. Run the evidence commands for each detected type from [validation-checklists.md](references/validation-checklists.md). Run operating-infra's review gates (lint, schema, policy) on the same rendered artifact.
+3. Show the pre-flight report below. Stop here on `--dry-run`.
+4. Ask for confirmation of the exact artifact and destination unless already authorized.
+5. Immediately before apply, verify the artifact and input hashes still match. Changed inputs need revalidation and renewed authorization.
+6. Apply with one of the allowed commands.
+7. Verify the changed resources: rollout status, pod health, Terraform outputs or state.
 
-## Validation and evidence
-
-Every validation claim needs exact command output, `file:line`, or a skipped-check
-reason. For apply-capable types, plan/diff evidence is mandatory before confirmation.
-Use the reference checklist for commands. Do not run commands with unresolved
-placeholders; ask first.
-
-Before confirmation, show:
+Every validation claim cites exact command output, `file:line`, or a skipped-check reason. Never run a command with an unresolved placeholder. Keep secrets out of evidence and hashes.
 
 ```markdown
 ## Pre-flight: READY | BLOCKED
 
-### Scope
-
-- Environment: <env>
-- Type: <terraform|helm|kustomize|kubernetes>
-- Context/account/namespace/workspace: <value>
-
-### Plan or Diff Evidence
-
-- `<command>` — <summary>
-
-### Resources Affected
-
-- Create: <count or unknown>
-- Modify: <count or unknown>
-- Delete: <count or unknown>
-
-### Risks
-
-- <destructive changes, security concerns, missing evidence, or none>
+- Environment / type: <env> / <terraform|helm|kustomize|kubernetes>
+- Destination: <account/context/namespace/workspace/release>
+- Evidence: `<command>` — <summary>
+- Resources: create <n>, modify <n>, delete/replace <n>
+- Risks: <destructive changes, CRDs/hooks, missing evidence, or none>
+- Rollback: <helm rollback <release> <rev> | kubectl rollout undo | apply prior plan>
 ```
 
-If validation is blocked, stop. Do not continue to confirmation.
-
-## Confirmation and apply
-
-Bind authorization to the shown plan or rendered artifact and the exact account,
-context, namespace, workspace, chart/version, release, and values as applicable.
-Record artifact and input hashes locally without exposing secrets. Immediately
-before apply, verify they still match. Revalidate changed inputs and obtain renewed
-authorization for the change; do not ask again for an unchanged approved apply.
-For production, authorization must name the exact environment. Stop on ambiguous
-or mismatched authorization.
-
-Allowed apply patterns only:
+## Allowed apply commands
 
 - `terraform apply tfplan`
 - `helm upgrade --install <release> <pinned-local-chart> --kube-context <context> --namespace <namespace> --values <reviewed-values-file>`
 - `kubectl --context <context> --namespace <namespace> apply -f <reviewed-rendered-file>`
 
-Render Kustomize or Kubernetes inputs once into a local artifact, review and dry-run
-that file, then apply the same file. For Helm, freeze the chart package/dependencies
-and every values/flag input; use the same context, namespace and release in validation
-and upgrade. Bind Terraform to the reviewed saved plan and its workspace/backend.
+Write deployment logs only where the repo already has that convention.
 
-Use only commands already matched to the repo layout. Do not write deployment logs
-unless the repo already documents that convention.
+## Output
 
-If apply fails, stop with `DEPLOYMENT FAILED`. Do not rollback without separate
-confirmation.
-
-## Verification
-
-After apply, verify the changed resources with the relevant checklist command or
-repo convention. If rollout times out or health is degraded, show investigation
-and rollback options, then ask what to do next.
-
-## Output contracts
-
-Use the matching header, then the listed fields.
+Start with one header, then its fields:
 
 ```text
-DRY RUN COMPLETE
-Status; Environment; Types; Validation; Plan/Diff; Blockers; Skipped
-
-AWAITING CONFIRMATION
-Environment; Type; Command; Destructive changes; Confirmation needed
-
-BACKGROUND VALIDATION STARTED
-Agent ID; Mode; Scope
-
-DEPLOYMENT COMPLETE
-Environment; Type; Status; Applied; Verification; Rollback option
-
-DEPLOYMENT BLOCKED | DEPLOYMENT FAILED
-Environment; Type; Reason; Evidence; Next step
+DRY RUN COMPLETE: Status; Environment; Types; Validation; Plan/Diff; Blockers; Skipped
+AWAITING CONFIRMATION: Environment; Type; Command; Destructive changes; Confirmation needed
+BACKGROUND VALIDATION STARTED: Agent ID; Mode; Scope
+DEPLOYMENT COMPLETE: Environment; Type; Status; Applied; Verification; Rollback option
+DEPLOYMENT BLOCKED | DEPLOYMENT FAILED: Environment; Type; Reason; Evidence; Next step
 ```
-
-## Failure handling
-
-- Unknown target detail: ask one question.
-- Missing tool, missing plan/diff evidence, unshown destructive change, or blocked validation: stop.
-- Apply failure or partial deployment: report exact evidence and ask before rollback.
-- Rollout timeout or degraded health: show rollback and investigation options, then ask.
-- User cancels or gives ambiguous confirmation: stop cleanly.

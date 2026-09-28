@@ -1,50 +1,22 @@
-# Git Hook Rules
+# Git Hook Scripts
 
-## Strategy
+## Existing hooks
 
-Prefer, in order:
+Read any hook at the target path and merge its behavior into the new one. Plain `.git/hooks/*` files suit local experiments only; shared setups belong in `pre-commit` or a committed hooks directory.
 
-1. Existing project hook framework.
-2. `pre-commit` when the repo already uses it or the team wants a multi-language framework.
-3. Project-local hooks directory with `core.hooksPath`.
-4. Manual `.git/hooks/*` only for local experiments.
+## Pre-commit
 
-Preserve existing hooks. If a target hook already exists, read it and merge behavior instead of replacing it.
-
-## Pre-Commit
-
-Pre-commit should be fast and local to staged or affected files.
-
-Use it for:
-
-- format/lint staged files
-- validate touched manifests or config
-- staged Gitleaks scan
-- generated-artifact drift checks when source files changed
-
-Do not use it for:
-
-- full test suites
-- full builds
-- network calls
-- package installs
-
-When writing shell hooks, prefer NUL-safe staged-file discovery:
+Discover staged files NUL-safely:
 
 ```bash
 git diff --cached --name-only -z
 ```
 
-## Pre-Push
+A generated-artifact drift check belongs here when source files changed.
 
-Pre-push catches CI-style failures before code leaves the machine:
+## Pre-push
 
-- full build or generated-artifact check
-- full test suite
-- type checks and lint too slow for pre-commit
-- broader secret scan when practical
-
-Read pre-push stdin as ref updates. Skip validation only for deletion-only pushes.
+Read stdin as ref updates, and skip validation only for deletion-only pushes:
 
 ```bash
 while read -r local_ref local_sha remote_ref remote_sha; do
@@ -54,20 +26,16 @@ while read -r local_ref local_sha remote_ref remote_sha; do
 done
 ```
 
-## Tool Selection
+## Tool selection
 
-- Prefer tools declared by project config or package dependencies.
-- If no project tool is declared, use the fastest available compatible tool, then
-  the established fallback (for example, Oxfmt → Biome → Prettier and Oxlint → Biome → ESLint).
-- Do not add one environment variable per tool. Keep the fallback order in the
-  hook implementation and report the selected tool.
-- Do not run overlapping formatter or linter passes.
+- Use the tools the project config or package dependencies declare.
+- Otherwise use the fastest compatible tool with an established fallback, for example Oxfmt → Biome → Prettier and Oxlint → Biome → ESLint. Keep the order in the hook, not in one environment variable per tool, and report the selected tool.
+- Run one formatter and one linter per file type, not overlapping passes.
 
-## Script Discipline
+## Script discipline
 
-- Use `#!/usr/bin/env bash` with `set -euo pipefail` for Bash hooks.
-- Quote paths and pass `--` before user-controlled operands when supported.
-- Send diagnostics to stderr when stdout is consumed by another tool.
-- Exit non-zero to block; exit zero to allow.
-- Make committed hook scripts executable.
-- Do not auto-commit or mutate staged files unless the repo already does that explicitly.
+- Bash hooks start with `#!/usr/bin/env bash` and `set -euo pipefail`.
+- Quote paths and pass `--` before user-controlled operands.
+- Send diagnostics to stderr when another tool consumes stdout.
+- Exit non-zero to block and zero to allow.
+- Commit hook scripts as executable.

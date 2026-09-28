@@ -8,76 +8,54 @@
 
 # Operate Infrastructure
 
-## Boundary
+Work from files, plans, logs, and read-only commands. Edit repo files as the task needs; touch live resources only under these rules:
 
-- Work from files, plans, logs, and read-only commands before changing anything.
-- Do not run apply, delete, destroy, or rollback until identity, exact resources, blast radius, and plan/diff/inventory are shown and the user confirms.
-- If the task is deployment, rollout, rollback, or production apply, use `deploying-infra`.
-- If the task is only shell scripts, generic command pipelines, or the shell body
-  inside a GitHub Actions `run:` step, use `writing-shell`.
-- For GitHub Actions, workflow structure, triggers, jobs, permissions, runners,
-  actions, environments, secrets, caching, concurrency, and policy stay here.
-  Mixed workflow and shell-body changes compose with `writing-shell`.
+- Before any cloud command, confirm identity: `aws sts get-caller-identity --profile <profile>`, `gcloud auth list` and `gcloud config list`. Pass profile, project, region, and zone explicitly instead of relying on CLI defaults.
+- Before apply, delete, destroy, stop, IAM, bucket, network, or rollback work, show the identity, exact resources (ARNs or names), blast radius, irreversibility, and the plan/diff/inventory behind them, then wait for the user to confirm.
+- Deployment, rollout, rollback, and production apply belong to deploying-infra where it is installed. Otherwise stop at the reviewed plan or diff and give the user the exact apply command.
+- Without write access, return proposed changes (file, change, reason) instead of applying them.
 
-## Role behavior
+For troubleshooting, rank likely causes, gather one safe signal at a time, and propose the next step. For authoring, pick the smallest pattern that keeps ownership, state boundaries, and least privilege.
 
-- Write-capable: make minimal file changes and run safe validation. Stop before live mutation unless the user confirmed exact resources.
-- Read-only: apply nothing; return proposed file changes, evidence, and validation commands.
+In GitHub Actions, this skill owns workflow structure, triggers, permissions, runners, actions, environments, secrets, caching, and concurrency. The shell body of a `run:` step belongs to writing-shell; mixed changes use both.
 
-## Load references
+## References
 
-Load every matching reference:
+Load every reference that matches the stack:
 
 - Terraform/OpenTofu files, modules, state, or plans → [terraform.md](references/terraform.md)
 - Kubernetes manifests or `kustomization.yaml` → [kubernetes.md](references/kubernetes.md)
 - `Chart.yaml`, Helm values, or chart templates → [helm.md](references/helm.md)
-- GitHub workflow YAML outside pure `run:` shell bodies → [github-actions.md](references/github-actions.md)
-- `Dockerfile` or container image build/release concerns → [dockerfile.md](references/dockerfile.md)
-- AWS CLI, EC2, ECS, Lambda, S3, RDS, IAM, or CloudWatch → [aws.md](references/aws.md)
-- GCP CLI, GCS, Compute Engine, IAM, quotas, or Cloud Logging → [gcp.md](references/gcp.md)
+- GitHub workflow YAML → [github-actions.md](references/github-actions.md)
+- `Dockerfile` or image build/release → [dockerfile.md](references/dockerfile.md)
+- AWS: EC2, ECS, Lambda, S3, RDS, IAM, CloudWatch → [aws.md](references/aws.md)
+- GCP: GCS, Compute Engine, IAM, Pub/Sub, Cloud SQL, quotas, Cloud Logging → [gcp.md](references/gcp.md)
 - Cloud Run services, revisions, traffic, or logs → [cloud-run.md](references/cloud-run.md)
-- BigQuery queries, tables, datasets, or cost checks → [bigquery.md](references/bigquery.md)
+- BigQuery queries, tables, datasets, or cost → [bigquery.md](references/bigquery.md)
 - Linux services, hosts, processes, disks, or networks → [linux.md](references/linux.md)
-
-Mixed stacks: load all matching references. Unknown stack: use the workflow below only.
-
-## Workflow
-
-1. Identify scope: files, resources, environment, account/project, region/zone, and owner.
-2. Verify cloud identity before cloud work; prefer explicit profile/project/region over defaults.
-3. Inspect current state with read-only evidence: files, plan/diff, list/describe/status, logs, metrics, and recent events.
-4. For authoring/design: choose the smallest pattern that preserves ownership, state boundaries, and least privilege.
-5. For troubleshooting: rank likely causes, gather one safe signal, then propose the next step.
-6. For validation: run relevant gates when tools exist; state skipped gates and why.
-7. For destructive, costly, or externally visible work: show exact resources and blast radius, then stop for confirmation or hand off to `deploying-infra`.
 
 ## Validation gates
 
-- Terraform/OpenTofu: format, init without backend when possible, validate, plan, `tflint`, `checkov` or `trivy config`; use plan JSON for policy checks when needed.
-- Kubernetes/Kustomize: render first, schema-check with `kubeconform`, then policy/security-check with `kube-linter`, `kubescape`, `conftest`, or `kyverno`.
-- Helm: lint chart, render templates, use `helm diff` before upgrade planning, validate rendered YAML.
-- Docker/images: lint Dockerfile with `hadolint`; scan images/config with `trivy`; use `syft`, `grype`, and `cosign` where SBOM, vulnerability, or signature proof matters.
-- GitHub Actions: run `actionlint` and `zizmor`; require SHA-pinned actions and least-permission jobs.
-- Cloud CLI: verify identity, inventory resources, estimate cost or dry-run when available, and check IAM/quota before mutation.
+Run the gates for changed types when the tools exist; report each skipped gate and why.
+
+- Terraform/OpenTofu: `fmt`, `init -backend=false` when possible, `validate`, `plan`, `tflint`, `checkov` or `trivy config`; Conftest on plan JSON when policy depends on planned values. Use the `tofu` equivalents for OpenTofu.
+- Kubernetes/Kustomize: render first, then `kubeconform` against the target version, then `kube-linter`, `kubescape`, `conftest`, or `kyverno`.
+- Helm: `helm lint`, `helm template` for every relevant values file, the Kubernetes gates on the output, and `helm diff` before an upgrade counts as safe. Add chart-testing for reusable charts and helm-unittest for complex conditionals.
+- Dockerfile/images: `hadolint`, `trivy`; `syft`, `grype`, and `cosign` when SBOM, vulnerability, or provenance evidence matters.
+- GitHub Actions: `actionlint`, `zizmor`; `checkov` when scanned with other IaC.
+- Cloud CLI: inventory, cost estimate or dry-run when available, and IAM/quota checks before mutation.
+
+Done when the relevant build/test/lint checks pass on what you changed, or you name each check that did not run and why.
 
 ## Output
 
 ```text
 INFRA RESULT
-============
 Scope: <files/resources/environment>
 Identity: <account/project/profile/region or not applicable>
 Status: DONE | NEEDS CONFIRMATION | BLOCKED
-
-Evidence:
-- <file:line, plan/log/status summary, or command result>
-
-Changes or proposal:
-- <minimal change or proposed next step>
-
-Validation:
-- <gate> — pass/fail/skipped
-
-Next:
-- <safe next action, confirmation request, or none>
+Evidence: <file:line, plan/log/status summary, command result>
+Changes or proposal: <minimal change or next step>
+Validation: <gate — pass/fail/skipped>
+Next: <safe next action, confirmation request, or none>
 ```
