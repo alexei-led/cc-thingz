@@ -17,6 +17,8 @@ Propose the plan (current facts, files and config to change, verification, risks
 
 If the repo is dirty, show `git status --short` and ask before hook or config edits.
 
+When asked for a plan, give the whole plan in one answer. If you have not inspected the repo yet, make the inspection commands below its first step, mark current state as unverified, and still lay out the hook, Gitleaks, or `.gitignore` changes from the policy and how you will verify them.
+
 ## Inspect
 
 ```bash

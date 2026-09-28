@@ -21,7 +21,7 @@ Covers crates, workspaces, and Rust CLIs. Check `Cargo.toml`, `rust-toolchain.to
 - Stdlib and existing crates first. `thiserror` for library error enums and `anyhow` for application glue only when the crate already uses them or boilerplate justifies it.
 - Newtypes for IDs, tokens, and validated values; enums for states. Private first, then `pub(crate)`, then `pub`.
 - Implement `From`, `TryFrom`, `AsRef`, `FromStr`, and `Display` before ad hoc conversion methods.
-- `unwrap`/`expect` in production code only with a named local invariant.
+- Parsing and validation return `Result` with a typed error. `unwrap`/`expect` in production code only with a named local invariant.
 - When the borrow checker objects, fix the data flow before reaching for `clone()`. Use lifetimes in APIs only for real zero-copy needs.
 - Async only where the runtime or I/O boundary requires it. Never hold a blocking mutex guard across `.await`. Bound channels, queues, and retries.
 - Keep secrets out of `Debug` output, logs, errors, and snapshots.
@@ -29,14 +29,16 @@ Covers crates, workspaces, and Rust CLIs. Check `Cargo.toml`, `rust-toolchain.to
 
 ## Checks
 
+Use the project's configured Cargo commands first. While editing, run focused checks (`cargo check -p <crate>`, `cargo test -p <crate> <name>`); before finishing, run the full gates:
+
 ```bash
 cargo fmt --check
 cargo clippy --all-targets -- -D warnings
-cargo test --all-targets
-cargo test --doc    # --all-targets and nextest both skip doctests
+cargo test --all-targets   # or cargo nextest run, when the project uses nextest
+cargo test --doc           # --all-targets and nextest both skip doctests
 ```
 
-Never run `cargo clean` as a routine fix; it throws away the incremental cache.
+Test behavior through the public API with valid, invalid, and boundary cases, not private helpers. Never run `cargo clean` as a routine fix; it throws away the incremental cache.
 
 ## References
 
