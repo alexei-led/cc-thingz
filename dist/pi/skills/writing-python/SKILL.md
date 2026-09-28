@@ -11,52 +11,34 @@
 
 # Python Development
 
-Use this only for Python 3.12+ code. Keep language-agnostic rules out of this skill.
+`pyproject.toml` is the source of truth for the Python target, tools, scripts, and dependencies. Check it, `.python-version`, and CI before using 3.12-only syntax. Project conventions win over these defaults.
 
-## Read First
+## Toolchain
 
-Read [principles.md](references/principles.md) before generating or changing Python code.
+- uv for environments and commands (`uv run`, `uv add`); never call `pip` directly. Match the lockfile already in use.
+- Ruff for lint and format. Pyright for types, or `ty` only when the project has adopted it.
+- pytest for tests.
 
-## Core Rules
+## Defaults
 
-- Prefer existing project patterns over these defaults.
-- Inspect the project Python target before using 3.12-only syntax.
-- Prefer stdlib and existing dependencies before adding packages.
-- Validate untyped boundary input before it spreads.
+- Stdlib before packages: `argparse`, `dataclasses`, `pathlib`, `json`, `urllib`, `logging`. Do not add Click, Typer, Rich, pydantic, or dotenv only for polish.
+- 3.12+ typing: `X | Y`, builtin generics, PEP 695 generics and `type` aliases. Keep legacy `TypeVar` style when editing pre-3.12 modules.
+- `@dataclass(frozen=True, slots=True)` for small values; `TypedDict` with `NotRequired` at recurring JSON boundaries; `Protocol` owned by the consumer. Keep `dict[str, Any]` at the boundary only.
+- Import collection ABCs from `collections.abc`. Take `Sequence[T]` for read-only inputs.
+- Wrap errors with `raise DomainError(...) from exc`. Catch broad exceptions only where they become an exit code, response, log entry, or re-raise.
+- Async: `asyncio.TaskGroup` for sibling tasks, `asyncio.timeout` around external waits. Keep references to background tasks so their exceptions surface.
+- Text I/O takes an explicit `encoding`. Sort glob results when order reaches output or tests.
+- Libraries log through `logging`; they never print diagnostics.
 
-## Comments and Docstrings
+## CLIs
 
-- Prefer clear names and small functions over explanatory comments.
-- Add comments only for non-obvious constraints, invariants, side effects, tradeoffs, or public contracts.
-- Keep comments short. Move longer rationale to docs, issue links, or design notes.
-- Do not comment obvious code or restate the syntax.
-- Keep tests readable without comments; add one only for unobvious fixtures, timing, concurrency, or regression context.
-- Use docstrings for public or non-obvious modules, classes, functions, and methods. Do not restate the signature.
+- `argparse` for small tools; Click or Typer only when the project already uses them.
+- `main(argv: Sequence[str] | None = None) -> int`; call `asyncio.run` only there. Expose it via `[project.scripts]` and keep `python -m pkg` working.
+- Config precedence: flag, env, config file, default.
 
-## Conditional References
+## References
 
-- [patterns.md](references/patterns.md) — read for module design, typing, async, config, file I/O, and error patterns.
-- [cli.md](references/cli.md) — read before writing or changing Python CLIs.
-- [testing.md](references/testing.md) — read before adding or reshaping Python tests; treat slow tests as feedback-loop defects.
-- [linting.md](references/linting.md) — read before changing ruff or pyright config, or the lint/format/type-check flow.
+- [testing.md](references/testing.md): read when adding or reshaping tests, or when the suite is slow.
+- [linting.md](references/linting.md): read when changing Ruff or type-checker config, or the lint/type-check commands.
 
-## Verification
-
-Run project-configured tests, lint, format, and type checks. Prefer focused pytest commands for the edit loop, then the broader project command before final output. Prefer pytest and Ruff when present. Use project-adopted `ty` for type checks when configured; otherwise use Pyright or the project's configured checker.
-
-If a tool is not configured, say so and run the closest available gate. If a check fails, diagnose the cause, make a targeted fix, and rerun the relevant check.
-
-## Python-Specific Failure Cases
-
-- No clear project root: locate `pyproject.toml` before editing or choosing commands.
-- Unknown Python target: inspect `pyproject.toml`, `.python-version`, CI, or lockfiles before using 3.12-only syntax.
-- Type checker reports missing attributes: check imports, package exports, and runtime shape before loosening types.
-
-## Final Response
-
-Include:
-
-- changed files
-- checks run and results
-- checks skipped with reasons
-- remaining risks or follow-ups
+Done when the relevant build/test/lint checks pass on what you changed, or you name each check that did not run and why.

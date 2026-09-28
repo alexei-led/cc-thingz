@@ -9,65 +9,39 @@
 
 # Rust Development
 
-Use only for Rust crates and Cargo workspaces. Follow the crate's edition, MSRV,
-toolchain file, CI, and local style. Rust CLI development (clap, argument
-parsing, subcommands) is in scope; apply `patterns.md` and `testing.md` — there
-is no dedicated CLI reference.
+Covers crates, workspaces, and Rust CLIs. Check `Cargo.toml`, `rust-toolchain.toml`, and CI before using newer syntax or APIs. Project conventions win over these defaults.
 
-## Read First
+## Version and Features
 
-Read [principles.md](references/principles.md) before writing, changing, or reviewing Rust code. Read conditional references only when the change touches that area.
+- Stay within `package.rust-version` (MSRV) and the pinned toolchain unless the task is an upgrade.
+- Use Edition 2024 syntax only when the crate sets `edition = "2024"`.
+- Keep features additive. Do not assume `--all-features` compiles when the crate documents mutually exclusive features.
 
-## Conditional References
+## Defaults
 
-- [patterns.md](references/patterns.md) — crate layout, modules, ownership, traits, errors, async, unsafe, and public APIs.
-- [testing.md](references/testing.md) — adding or reshaping Rust tests; keep the local test loop fast.
-- [linting.md](references/linting.md) — changing rustfmt, Clippy, cargo check, CI gates, or slow lint workflows.
+- Stdlib and existing crates first. `thiserror` for library error enums and `anyhow` for application glue only when the crate already uses them or boilerplate justifies it.
+- Newtypes for IDs, tokens, and validated values; enums for states. Private first, then `pub(crate)`, then `pub`.
+- Implement `From`, `TryFrom`, `AsRef`, `FromStr`, and `Display` before ad hoc conversion methods.
+- `unwrap`/`expect` in production code only with a named local invariant.
+- When the borrow checker objects, fix the data flow before reaching for `clone()`. Use lifetimes in APIs only for real zero-copy needs.
+- Async only where the runtime or I/O boundary requires it. Never hold a blocking mutex guard across `.await`. Bound channels, queues, and retries.
+- Keep secrets out of `Debug` output, logs, errors, and snapshots.
+- `unsafe`: small blocks behind a safe API, a `// SAFETY:` comment stating the invariant, and focused tests or configured Miri.
 
-## Comments and Rustdoc
-
-- Use `///` or `//!` rustdoc for public APIs when users need contracts, edge cases, examples, or safety notes.
-- Add implementation comments only for non-obvious constraints, invariants, side effects, tradeoffs, or unsafe assumptions.
-- Keep comments short. Move longer rationale to docs, issue links, or design notes.
-- Do not comment obvious code or restate names and types.
-- Keep tests readable without comments; add one only for unobvious fixtures, timing, concurrency, unsafe invariants, or regression context.
-- Document safety invariants next to `unsafe` blocks.
-
-## Edition and MSRV
-
-- Inspect `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, CI, and nearby code before using edition- or version-specific APIs.
-- Do not use APIs newer than `package.rust-version` or the pinned toolchain unless the task is an upgrade.
-- Use Edition 2024 syntax only when the crate already opts into `edition = "2024"`.
-- Respect feature flags. Do not enable `--all-features` assumptions in code unless incompatible feature combinations are ruled out.
-
-## Verification
-
-Run focused Cargo checks while editing, then the project-configured build, tests,
-format, and lint before final output. Prefer:
+## Checks
 
 ```bash
 cargo fmt --check
 cargo clippy --all-targets -- -D warnings
 cargo test --all-targets
+cargo test --doc    # separately when nextest is the runner; nextest skips doctests
 ```
 
-Use `cargo nextest run` when the project already uses nextest. Run `cargo test --doc` separately when doctests matter because nextest does not run doctests.
+Never run `cargo clean` as a routine fix; it throws away the incremental cache.
 
-If a check is unavailable, state that and run the closest configured gate. If a check fails, quote the failure, diagnose the cause, fix one issue, and rerun the relevant check.
+## References
 
-## Failure Cases
+- [testing.md](references/testing.md): read when adding or reshaping tests, or when the test loop is slow.
+- [linting.md](references/linting.md): read when changing rustfmt, Clippy, or workspace/feature check flags.
 
-- No clear Rust root: locate `Cargo.toml` before choosing files, package names, or commands.
-- Unknown MSRV or edition: inspect manifests, toolchain files, CI, and lockfiles before using newer syntax or APIs.
-- New crate requested: confirm stdlib or existing crates cannot meet the requirement.
-- `unsafe` needed: isolate it, document the safety invariant, and add focused tests or run configured Miri checks.
-- Broad or risky edit: state the risk and ask before acting. Do not run destructive commands.
-
-## Final Response
-
-Include:
-
-- changed files
-- checks run and results
-- checks skipped with reasons
-- remaining risks or follow-ups
+Done when the relevant build/test/lint checks pass on what you changed, or you name each check that did not run and why.
