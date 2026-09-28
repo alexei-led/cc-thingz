@@ -1,9 +1,4 @@
-"""Tests for src/skills/reviewing-instructions/scripts/lint-instructions.py.
-
-Covers the F-NO-ITALIC/F-NO-HR/F-NO-TABLE fence and inline-code-span bugs:
-underscores inside code spans, the 3-tilde fence minimum, and fence-blind
-table detection.
-"""
+"""Tests for src/skills/reviewing-instructions/scripts/lint-instructions.py."""
 
 from __future__ import annotations
 
@@ -23,6 +18,7 @@ SCRIPT = (
     / "scripts"
     / "lint-instructions.py"
 )
+GOOD_DESCRIPTION = "Do X. Use when Y. NOT for Z."
 
 
 def _load_lint_instructions() -> ModuleType:
@@ -39,69 +35,81 @@ def lint() -> ModuleType:
     return _load_lint_instructions()
 
 
-def _file(lint: ModuleType, body: str):
-    return lint.InstructionFile(
-        path=Path("dummy.md"),
-        rel="dummy.md",
-        model="sonnet",
-        kind="instruction",
-        body=body,
-    )
-
-
-def test_underscore_in_code_span_not_flagged_as_italic(lint: ModuleType) -> None:
-    body = (
-        "- Use `assert_ne!` and `test_name` in examples.\n"
-        "- Also see ``a_b`` for a double-backtick span.\n"
-    )
-    assert lint.check_f_no_italic(_file(lint, body)) is None
-
-
-def test_real_italic_outside_code_still_flagged(lint: ModuleType) -> None:
-    body = "This has _real italic_ text outside code.\n"
-    finding = lint.check_f_no_italic(_file(lint, body))
-    assert finding is not None
-    assert finding.rule_id == "F-NO-ITALIC"
-
-
-@pytest.mark.parametrize("body", ["_Note:_ this matters.\n", "*Note:* this matters.\n"])
-def test_label_style_italic_ending_in_punctuation_flagged(
-    lint: ModuleType, body: str
-) -> None:
-    """Regression: the closing boundary required a word char adjacent to the
-    delimiter, so label-style italics ending in punctuation (`_Note:_`,
-    `*e.g.:*`) were silently missed.
-    """
-    finding = lint.check_f_no_italic(_file(lint, body))
-    assert finding is not None
-    assert finding.rule_id == "F-NO-ITALIC"
-
-
-def test_snake_case_identifier_in_code_span_not_flagged_as_italic(
+def _rule_ids(
     lint: ModuleType,
-) -> None:
-    body = "Rename `snake_case_name` to camelCase.\n"
-    assert lint.check_f_no_italic(_file(lint, body)) is None
-
-
-def test_three_tilde_fence_recognized_hr_inside_not_flagged(lint: ModuleType) -> None:
-    body = "~~~\n---\n~~~\n"
-    assert lint.check_f_no_hr(_file(lint, body)) is None
-
-
-def test_piped_command_in_fenced_block_not_flagged_as_table(lint: ModuleType) -> None:
-    body = (
-        "```sh\n"
-        "kubectl get pods | column -t\n"
-        "| pod-a | Running | 3/3 |\n"
-        "| pod-b | Pending | 0/3 |\n"
-        "```\n"
+    body: str,
+    *,
+    kind: str = "skill",
+    description: str = GOOD_DESCRIPTION,
+    name: str = "writing-things",
+) -> set[str]:
+    item = lint.InstructionFile(
+        path=Path(name) / "SKILL.md",
+        rel=f"{name}/SKILL.md",
+        kind=kind,
+        body=body,
+        description=description,
+        metadata={"name": name},
     )
-    assert lint.check_f_no_table(_file(lint, body)) is None
+    return {finding.rule_id for check in lint.ALL_CHECKS if (finding := check(item))}
 
 
-def test_real_table_outside_fence_still_flagged(lint: ModuleType) -> None:
-    body = "| Col A | Col B |\n| --- | --- |\n| 1 | 2 |\n"
-    finding = lint.check_f_no_table(_file(lint, body))
-    assert finding is not None
-    assert finding.rule_id == "F-NO-TABLE"
+@pytest.mark.parametrize(
+    ("case", "body", "expected"),
+    [
+        ("clean body", "# Skill\n\nDo the thing.\n", set()),
+        ("markdown table", "| A | B |\n| --- | --- |\n| 1 | 2 |\n", set()),
+        ("italic and rule", "_Note:_ this.\n\n---\n\n*also* fine.\n", set()),
+        ("bold-heavy", "**One**\n**Two**\n**Three**\n", set()),
+        ("negative-free body", "Ship small changes.\n", set()),
+        ("caps MANDATORY", "Run tests (MANDATORY).\n", {"F-NO-EMPHASIS"}),
+        ("caps NEVER", "NEVER push to main.\n", {"F-NO-EMPHASIS"}),
+        ("plain never", "Never push to main.\n", set()),
+        ("think step by step", "Think step by step.\n", {"F-NO-EMPHASIS"}),
+        ("think carefully", "Please think carefully here.\n", {"F-NO-EMPHASIS"}),
+        ("caps in inline code", "Match the `CRITICAL` label.\n", set()),
+        ("caps in backtick fence", "```\nIMPORTANT: x\n```\n", set()),
+        ("caps in tilde fence", "~~~\nMUST do\n~~~\n", set()),
+        ("mermaid diagram", "```mermaid\ngraph TD\n```\n", {"F-NO-DIAGRAM"}),
+        ("500-line skill", "line\n" * 500, set()),
+        ("501-line skill", "line\n" * 501, {"K-PROGRESSIVE"}),
+    ],
+)
+def test_body_rules(lint: ModuleType, case: str, body: str, expected: set[str]) -> None:
+    assert _rule_ids(lint, body) == expected, case
+
+
+@pytest.mark.parametrize(
+    ("kind", "description", "name", "expected"),
+    [
+        ("skill", GOOD_DESCRIPTION, "writing-things", set()),
+        ("skill", "Helps with things.", "writing-things", {"K-DESC"}),
+        ("skill", GOOD_DESCRIPTION, "Writing_Things", {"K-NAME"}),
+        ("skill", GOOD_DESCRIPTION, "a-b", {"K-NAME"}),
+        ("instruction", "Helps with things.", "Writing_Things", set()),
+    ],
+)
+def test_frontmatter_rules(
+    lint: ModuleType, kind: str, description: str, name: str, expected: set[str]
+) -> None:
+    body = "Do the thing.\n"
+    assert _rule_ids(lint, body, kind=kind, description=description, name=name) == (
+        expected
+    )
+
+
+def test_long_non_skill_file_is_not_budgeted(lint: ModuleType) -> None:
+    assert _rule_ids(lint, "line\n" * 900, kind="instruction") == set()
+
+
+def test_frontmatter_model_and_tools_do_not_change_findings(
+    lint: ModuleType, tmp_path: Path
+) -> None:
+    skill = tmp_path / "SKILL.md"
+    skill.write_text(
+        "---\nname: writing-things\ndescription: Use when X.\n"
+        "model: sonnet\nallowed-tools: [Bash, Edit]\n---\n\nShip it.\n"
+    )
+    item = lint._load(skill, kind="skill", entrypoint=True, origin="test")
+    assert item is not None
+    assert [check(item) for check in lint.ALL_CHECKS] == [None] * len(lint.ALL_CHECKS)
