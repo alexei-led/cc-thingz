@@ -139,6 +139,21 @@ def test_worktree_force_remove_needs_one_existing_path(clone: Path) -> None:
     assert run_hook(f"git worktree remove -f {missing}", clone).returncode == 2
 
 
+def test_worktree_lock_override_is_blocked(clone: Path) -> None:
+    path = add_worktree(clone, "locked", "origin/squashed")
+    git(clone, "worktree", "lock", str(path))
+    assert run_hook(f"git worktree remove -f -f {path}", clone).returncode == 2
+
+
+def test_mixed_branch_and_worktree_cleanup_needs_both_verified(clone: Path) -> None:
+    merged = add_worktree(clone, "mixed-merged", "origin/squashed")
+    unmerged = add_worktree(clone, "mixed-unmerged", "origin/unmerged")
+    ok = f"git branch -D fast-forwarded && git worktree remove --force {merged}"
+    bad = f"git branch -D fast-forwarded && git worktree remove --force {unmerged}"
+    assert run_hook(ok, clone).returncode == 0
+    assert run_hook(bad, clone).returncode == 2
+
+
 def test_blocked_delete_explains_the_allowed_case(clone: Path) -> None:
     result = run_hook("git branch -D unmerged", clone)
     assert result.returncode == 2

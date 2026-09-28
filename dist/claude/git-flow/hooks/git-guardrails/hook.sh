@@ -141,8 +141,11 @@ for i, token in enumerate(tokens):
         ok=names and not any(a.startswith("-") for a in names)
         print(sep.join(["B", cwd, " ".join(names)]) if ok and not unsafe else "UNSAFE")
     elif args[:2] == ["worktree", "remove"] and any(a in ("-f", "--force") for a in args[2:]):
+        # One force only: a second one overrides a worktree lock, and a lock
+        # means someone asked for the worktree to stay.
+        forces=[a for a in args[2:] if a in ("-f", "--force")]
         paths=[a for a in args[2:] if a not in ("-f", "--force")]
-        ok=len(paths) == 1 and not paths[0].startswith("-")
+        ok=len(forces) == 1 and len(paths) == 1 and not paths[0].startswith("-")
         print(sep.join(["W", cwd, paths[0]]) if ok and not unsafe else "UNSAFE")
 ' <<<"$1"
 }
