@@ -13,7 +13,7 @@
 cargo test -p crate_name test_name
 cargo test --manifest-path path/to/Cargo.toml test_name
 cargo nextest run -p crate_name        # only when the project uses nextest
-cargo test --doc                        # nextest does not run doctests
+cargo test --doc                        # --all-targets and nextest skip doctests
 ```
 
 - Keep full-workspace runs, coverage (`cargo llvm-cov`, tarpaulin), Miri, and benchmarks off the hot path unless they are the task.

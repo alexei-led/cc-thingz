@@ -3,7 +3,7 @@
 ## Tools
 
 - Stdlib `testing` by default. Keep testify, mockery, or other helpers only where the project already uses them.
-- testify: `require` for prerequisites, `assert` for independent checks. Never call either from a spawned goroutine; `FailNow` must run on the test goroutine.
+- testify: `require` for prerequisites, `assert` for independent checks. Never call either from a spawned goroutine; `require` calls `FailNow`, which must run on the test goroutine.
 - Prefer hand-written fakes for private consumer interfaces over generated mocks.
 - Mock matchers: match business-critical arguments exactly. Wildcard `context.Context` only when cancellation, deadline, and values are irrelevant. Use predicate matchers for partial structs, SQL, JSON, timestamps, or IDs.
 - HTTP handlers: `httptest` at the request/response boundary.

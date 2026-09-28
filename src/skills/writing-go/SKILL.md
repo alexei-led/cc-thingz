@@ -24,10 +24,10 @@ Check `go.mod` (`go` and `toolchain` lines) and CI before using version-gated AP
 ## Version-Gated
 
 - 1.24+: `t.Context()`, `t.Chdir()`, and `b.Loop()` in tests.
-- 1.25+: `sync.WaitGroup.Go` when no error propagation is needed; `testing/synctest` for deterministic goroutine and timer tests.
+- 1.25+: `sync.WaitGroup.Go` when no error propagation is needed.
 - 1.26+: stdlib `crypto/hpke`; `new(expr)` only when clearer than a local variable or composite literal; self-referential generic constraints belong in generic libraries, not business logic.
 - 1.26+: `testing/cryptotest.SetGlobalRandom` swaps process-wide randomness, so never use it in parallel tests.
-- `encoding/json/v2` is experimental unless the project builds with `GOEXPERIMENT=jsonv2`.
+- `encoding/json/v2` is experimental and exists only under `GOEXPERIMENT=jsonv2`; use it only when the project already builds that way.
 
 ## CLIs
 

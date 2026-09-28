@@ -34,7 +34,7 @@ Covers crates, workspaces, and Rust CLIs. Check `Cargo.toml`, `rust-toolchain.to
 cargo fmt --check
 cargo clippy --all-targets -- -D warnings
 cargo test --all-targets
-cargo test --doc    # separately when nextest is the runner; nextest skips doctests
+cargo test --doc    # --all-targets and nextest both skip doctests
 ```
 
 Never run `cargo clean` as a routine fix; it throws away the incremental cache.

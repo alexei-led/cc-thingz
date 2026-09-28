@@ -12,9 +12,9 @@
 ## Build Baseline
 
 - Read the wrapper properties, `settings.gradle*`, `build.gradle*` or `pom.xml`, `gradle.properties`, and CI before using version-specific Java, Kotlin, or plugin behavior.
-- Use `./gradlew` and `./mvnw`, not global `gradle` or `mvn`.
+- Use `./gradlew` and `./mvnw` when the repo has them, not global `gradle` or `mvn`.
 - The compile target is the configured Java toolchain and Kotlin `jvmToolchain`, not the shell's `JAVA_HOME`.
-- Java 21+ features (records, sealed types, pattern matching, virtual threads) and Java 25 APIs only when toolchains and CI target that version. Kotlin 2.x features only when the configured language version enables them. Preview features need explicit approval and a visible compiler flag.
+- Use a Java or Kotlin language feature only when the configured toolchain, language version, and CI target support it. Preview features need explicit approval and a visible compiler flag.
 - Shared build policy lives in convention plugins, version catalogs, BOMs, or parent POMs; do not copy plugin or version blocks into modules.
 
 ## Defaults

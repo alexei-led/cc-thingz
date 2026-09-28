@@ -19,7 +19,7 @@
 
 ## Defaults
 
-- Stdlib before packages: `argparse`, `dataclasses`, `pathlib`, `json`, `urllib`, `logging`. Do not add Click, Typer, Rich, pydantic, or dotenv only for polish.
+- Stdlib before packages: `argparse`, `dataclasses`, `pathlib`, `json`, `urllib`, `logging`. Do not add Rich, pydantic, or dotenv only for polish.
 - 3.12+ typing: `X | Y`, builtin generics, PEP 695 generics and `type` aliases. Keep legacy `TypeVar` style when editing pre-3.12 modules.
 - `@dataclass(frozen=True, slots=True)` for small values; `TypedDict` with `NotRequired` at recurring JSON boundaries; `Protocol` owned by the consumer. Keep `dict[str, Any]` at the boundary only.
 - Import collection ABCs from `collections.abc`. Take `Sequence[T]` for read-only inputs.
