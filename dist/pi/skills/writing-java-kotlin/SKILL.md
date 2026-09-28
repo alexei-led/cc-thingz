@@ -8,67 +8,32 @@
 
 # Java and Kotlin Development
 
-Use only for Java/Kotlin JVM code and JVM build files. Follow the project's JDK,
-Kotlin, Gradle/Maven, framework, test stack, formatter, static-analysis config,
-and local conventions.
+## Build Baseline
 
-## Read First
+- Read the wrapper properties, `settings.gradle*`, `build.gradle*` or `pom.xml`, `gradle.properties`, and CI before using version-specific Java, Kotlin, or plugin behavior.
+- Use `./gradlew` and `./mvnw` when the repo has them, not global `gradle` or `mvn`.
+- The compile target is the configured Java toolchain and Kotlin `jvmToolchain`, not the shell's `JAVA_HOME`.
+- Use a Java or Kotlin language feature only when the configured toolchain, language version, and CI target support it. Preview features need explicit approval and a visible compiler flag.
+- Shared build policy lives in convention plugins, version catalogs, BOMs, or parent POMs; do not copy plugin or version blocks into modules.
 
-Read [principles.md](references/principles.md) before writing, changing, or reviewing Java/Kotlin code. Read conditional references only when the change touches that area.
+## Defaults
 
-## Conditional References
+- JDK, Kotlin stdlib, and existing dependencies first. Avoid new reflection-heavy or bytecode-weaving tools.
+- Kotlin: structured coroutines only, never `GlobalScope`; pass scopes or suspend through the chain.
+- Kotlin: handle Java platform types at the boundary instead of not-null assertions (`!!`).
+- Java: virtual threads for blocking I/O only, not CPU-bound work. Never swallow `InterruptedException`; restore the flag or propagate.
+- Keep blocking calls off event-loop and coroutine dispatcher threads unless the framework allows it.
+- Constructor injection. No static state for config, clocks, clients, executors, or scopes.
+- Do not leak JPA entities, ORM sessions, or generated API models through domain interfaces. Keep transactions explicit and near the use case; watch lazy loading across API boundaries.
+- Kotlin APIs called from Java: explicit nullability, and `@JvmStatic`/`@JvmOverloads` only where call sites benefit.
 
-- [patterns.md](references/patterns.md) — package/module layout, Spring/Ktor/service boundaries, nullability, concurrency, persistence, and build seams.
-- [testing.md](references/testing.md) — adding or reshaping JUnit, Kotest, Mockito/MockK, Spring, or Gradle/Maven tests; keep the local loop fast.
-- [linting.md](references/linting.md) — Gradle/Maven toolchains, formatters, ktlint, detekt, Spotless, and slow-check policy.
-- [cli.md](references/cli.md) — writing or changing JVM CLIs.
+## CLIs
 
-## Project Baseline
+Use the existing stack (picocli, Clikt, plain `main`). Keep `main` thin, test through the command entrypoint with captured stdout, stderr, and exit code, and close executors, pools, and dispatchers the process owns.
 
-- Inspect `gradle/wrapper/gradle-wrapper.properties`, `settings.gradle*`, `build.gradle*`, `pom.xml`, `.mvn/`, `gradle.properties`, CI, and nearby code before using version-specific Java, Kotlin, or plugin behavior.
-- Prefer the project wrapper: `./gradlew` before global `gradle`; `./mvnw` before global `mvn`.
-- Use the configured Java toolchain and Kotlin `jvmToolchain`. Do not assume the shell's newest JDK is the compile target.
-- Prefer the JDK/Kotlin stdlib and existing dependencies before adding a library.
-- Keep domain code free of framework, persistence, HTTP, and DI types unless the project already chose that coupling.
+## References
 
-## Version-Gated APIs
+- [testing.md](references/testing.md): read when adding or reshaping tests, or when Gradle/Maven test runs are slow.
+- [linting.md](references/linting.md): read when changing formatters, ktlint, detekt, Spotless, or static analysis.
 
-- Java 21+: records, sealed types, pattern matching, switch expressions, and virtual threads are available when the project toolchain allows them.
-- Java 25+: treat new platform APIs as available only when Gradle/Maven toolchains and CI target 25 or newer.
-- Preview features require explicit user or project approval and a visible compiler/test flag.
-- Kotlin: follow the configured Kotlin language/API version. Do not use a Kotlin 2.x feature unless the build already enables it.
-
-## Comments, Javadoc, and KDoc
-
-- Use Javadoc or KDoc for visible public APIs when the project expects generated docs.
-- Keep API docs to a useful summary, contract, edge case, or effect. Do not restate names and signatures.
-- Omit comments for simple obvious getters, overrides, and data holders when there is nothing useful to add.
-- Add implementation comments only for non-obvious constraints, invariants, side effects, tradeoffs, or framework quirks.
-- Keep comments short. Move longer rationale to docs, issue links, or design notes.
-- Do not comment obvious code.
-- Keep tests readable without comments; add one only for unobvious fixtures, timing, concurrency, framework setup, or regression context.
-
-## Verification
-
-Run focused module tests and format/lint while editing, then the project-configured build, tests, lint, static analysis, and formatting checks before final output. Prefer Gradle/Maven test filtering over full-suite runs in the hot loop.
-
-If a check is unavailable, state that and run the closest configured gate. If a
-check fails, quote the failure, diagnose the cause, fix one issue, and rerun the
-relevant check.
-
-## Failure Cases
-
-- No clear JVM root: locate the nearest `settings.gradle*`, `build.gradle*`, or `pom.xml` before choosing commands or package names.
-- Unknown JDK or Kotlin target: inspect toolchains, compiler options, CI, and wrapper versions before using newer APIs or syntax.
-- New dependency requested: confirm the JDK/Kotlin stdlib or existing dependencies cannot meet the requirement.
-- Slow checks by default: switch to focused Gradle/Maven filters or file-scoped format/lint; reserve broad checks for final verification.
-- Broad or risky edit: state the risk and ask before acting. Do not run destructive commands.
-
-## Final Response
-
-Include:
-
-- changed files
-- checks run and results
-- checks skipped with reasons
-- remaining risks or follow-ups
+Done when the relevant build/test/lint checks pass on what you changed, or you name each check that did not run and why.
