@@ -159,6 +159,13 @@ FIXTURES="$BATS_TEST_DIRNAME/fixtures"
 	[ "$output" = '{"decision":"allow"}' ]
 }
 
+@test "skill-enforcer: Pi empty prompt does not fall back to text" {
+	run --separate-stderr python3 "$HOOK" <<<'{"event":"prompt-submit","piEvent":{"prompt":"","text":"Implement the Python worker and run pytest."}}'
+	[ "$status" -eq 0 ]
+	[ "$output" = '{"decision":"allow"}' ]
+	[ -z "$stderr" ]
+}
+
 @test "skill-enforcer: Pi suggestions use stderr and stdout remains a decision" {
 	bats_require_minimum_version 1.5.0
 	run --separate-stderr python3 "$HOOK" <<<'{"event":"prompt-submit","piEvent":{"prompt":"Implement the Python worker and run pytest."}}'

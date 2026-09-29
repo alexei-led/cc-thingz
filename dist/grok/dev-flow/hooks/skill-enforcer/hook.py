@@ -424,7 +424,9 @@ def main() -> int:
     )
     if pi:
         event = payload["piEvent"]
-        prompt = event.get("prompt") or event.get("text") or event.get("input") or ""
+        # Like jq `//`: only null/false fall through, so "" stays an empty prompt.
+        fields = (event.get(k) for k in ("prompt", "text", "input"))
+        prompt = next((v for v in fields if v is not None and v is not False), "")
     else:
         prompt = payload.get("prompt") or ""
     enabled = os.environ.get("HOOK_SKILL_ENFORCER", "1") != "0"
