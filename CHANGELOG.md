@@ -8,6 +8,17 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.14.1] - 2026-09-29
+
+### Fixed
+
+- `deploying-infra` describes the full deploy workflow when asked how to
+  proceed, instead of a blocked status report. Safety gates are unchanged.
+- `configuring-git-hygiene` gives the whole hooks, Gitleaks, or `.gitignore`
+  plan in one answer, with repo inspection as the first step.
+- `writing-rust` again covers `Result` for validation, focused then full Cargo
+  checks, nextest doctests, and behavior tests through the public API.
+
 ## [6.14.0] - 2026-09-28
 
 Skills, agents, and hooks are rewritten for current frontier models: about half
