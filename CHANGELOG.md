@@ -8,6 +8,27 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.14.2] - 2026-09-29
+
+### Fixed
+
+- Codex hooks that fail with `hook exited with code 127`, or file edits denied
+  with `can't open file .../hook.py`, come from sessions started before a
+  plugin update: Codex keeps the old plugin directory, which the update
+  deleted. Restart those sessions. The installation doctor now reports missing
+  hook files in its `hook-files` check.
+
+### Changed
+
+- `make validate` checks every generated hook config for all targets: known
+  events, valid matchers and timeouts, the right plugin-root variable, and
+  referenced files that exist. Tests also run each generated hook command from
+  its plugin root.
+- `make test` runs in parallel, and CI runs tests when only `dist/` changes.
+
+## [6.14.2] - 2026-09-29
+
+
 ## [6.14.1] - 2026-09-29
 
 ### Fixed

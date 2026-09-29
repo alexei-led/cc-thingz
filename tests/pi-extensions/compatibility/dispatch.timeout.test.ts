@@ -67,9 +67,9 @@ describe("runHook — real subprocess timeout kill", () => {
 		const controller = new AbortController();
 		let pid: number | undefined;
 		try {
-			const entry = makeEntry(`bash -c 'trap "" TERM; echo $$ > "${pidFile}"; exec sleep 30' </dev/null >/dev/null 2>&1 & wait`, mode === "timeout" ? 0.3 : 10);
+			const entry = makeEntry(`bash -c 'trap "" TERM; echo $$ > "${pidFile}"; exec sleep 30' </dev/null >/dev/null 2>&1 & wait`, mode === "timeout" ? 2 : 10);
 			const pending = runHook(entry, "", { signal: controller.signal });
-			const readyDeadline = Date.now() + 2000;
+			const readyDeadline = Date.now() + 1800;
 			while (!existsSync(pidFile) && Date.now() < readyDeadline) await Bun.sleep(10);
 			expect(existsSync(pidFile)).toBe(true);
 			pid = Number(readFileSync(pidFile, "utf8").trim());
@@ -91,7 +91,7 @@ describe("runHook — real subprocess timeout kill", () => {
 			}
 			rmSync(dir, { recursive: true, force: true });
 		}
-	}, 6000);
+	}, 10000);
 
 	it("does not launch a pre-cancelled hook", async () => {
 		const result = await runHook(makeEntry("echo should-not-run", 1), "", { signal: AbortSignal.abort() });
