@@ -19,3 +19,4 @@
 
 - Matrix jobs: artifact names are unique, and later jobs consume the intended artifact set.
 - Release pipelines: include provenance, SBOM, vulnerability scan, and image signing when supply chain matters.
+- Run `checkov` on this workflow when it's scanned alongside other IaC changes.

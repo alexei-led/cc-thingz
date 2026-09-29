@@ -6,10 +6,12 @@ already-validated Terraform, Helm, Kustomize, or Kubernetes artifact.
 ## Hard rules
 
 - Never invent deploy paths, release names, workspaces, namespaces, accounts, or environments. If one is unclear, ask.
-- Authorization binds to the reviewed artifact (saved plan or rendered file) and its exact destination: account, context, namespace, workspace, chart/version, release, and values. Production authorization names the exact environment. Ambiguous, partial, or mismatched authorization means stop and ask again.
+- Authorization binds to the reviewed artifact and destination (SKILL.md's apply/upgrade/rollout rule): account, context, namespace, workspace, chart/version, release, and values or var files. Production authorization names the exact environment. Ambiguous, partial, or mismatched authorization means stop and ask again.
 - Blocked validation, missing plan/diff evidence, or an unshown destructive change: stop before confirmation.
 - Never run a command with an unresolved placeholder. Keep secrets out of evidence and hashes.
 - Push no images and trigger no CI workflows here.
+- Default to validating only (dry run); apply only once the user explicitly asks to apply.
+- In a background or non-interactive run, never apply: validate and report only — a confirmation from earlier in the conversation doesn't authorize an apply in that run.
 - Asked to describe the workflow rather than run it: give the ordered steps below. Unknown details (destination, release, values) become the questions to ask, not a blocked report.
 
 ## Workflow

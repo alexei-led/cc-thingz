@@ -17,3 +17,4 @@ Weigh environments, values variation, release packaging, and who owns the chart.
 - Use one chart with per-environment values files, not a chart per environment.
 - Reference existing secrets or an external secret manager; keep secrets out of values files.
 - Surface immutable-field, selector, and PVC changes and resource deletions before any upgrade.
+- Add chart-testing for reusable charts and helm-unittest for complex conditionals.
