@@ -6,7 +6,7 @@ already-validated Terraform, Helm, Kustomize, or Kubernetes artifact.
 ## Hard rules
 
 - Never invent deploy paths, release names, workspaces, namespaces, accounts, or environments. If one is unclear, ask.
-- Authorization binds to the reviewed artifact (saved plan or rendered file) and its exact destination. Ambiguous, partial, or mismatched authorization means stop and ask again.
+- Authorization binds to the reviewed artifact (saved plan or rendered file) and its exact destination: account, context, namespace, workspace, chart/version, release, and values. Production authorization names the exact environment. Ambiguous, partial, or mismatched authorization means stop and ask again.
 - Blocked validation, missing plan/diff evidence, or an unshown destructive change: stop before confirmation.
 - Never run a command with an unresolved placeholder. Keep secrets out of evidence and hashes.
 - Push no images and trigger no CI workflows here.
@@ -38,8 +38,8 @@ already-validated Terraform, Helm, Kustomize, or Kubernetes artifact.
 Validate and apply against the same explicit destination and frozen inputs.
 
 - Kubernetes: `kubectl --context <context> --namespace <namespace> diff -f <reviewed-rendered-file>`, then `apply --dry-run=server` (`--dry-run=client` only without cluster access, and say so). Confirm the namespace and any referenced Secrets/ConfigMaps exist. List deletions and immutable-field changes (selectors, PVCs) before confirmation.
-- Kustomize: `kustomize build <overlay> > <reviewed-rendered-file>`, then the Kubernetes evidence on that file. Apply that same file; do not rebuild the overlay between review and apply.
-- Helm: freeze the chart package, dependencies, and every values file/flag. `helm lint`, `helm template` for the target values, then `helm diff upgrade` (or `kubectl diff` on the rendered output without `helm-diff`). Call out CRDs and hooks before confirmation. Record `helm history` as the rollback target.
+- Kustomize: `kustomize build <overlay> > <reviewed-rendered-file>`, then the Kubernetes evidence on that file. Apply that same file; do not rebuild the overlay between review and apply. The overlay path matches the target environment.
+- Helm: freeze the chart package, dependencies, and every values file/flag. `helm lint`, `helm template` for the target values, then `helm diff upgrade` (or `kubectl diff` on the rendered output without `helm-diff`). The values file matches the target environment. Call out CRDs and hooks before confirmation. Record `helm history` as the rollback target.
 - Terraform/OpenTofu: `fmt -check`, `init -backend=false` when safe, `validate`, then `plan -out=tfplan` and `show -no-color tfplan`. Confirm workspace, backend, and var files match the target; shared environments need a locked remote backend. List every destroy/replace before confirmation.
 
 ## Allowed apply commands
@@ -47,6 +47,8 @@ Validate and apply against the same explicit destination and frozen inputs.
 - `terraform apply tfplan`
 - `helm upgrade --install <release> <pinned-local-chart> --kube-context <context> --namespace <namespace> --values <reviewed-values-file>`
 - `kubectl --context <context> --namespace <namespace> apply -f <reviewed-rendered-file>`
+
+Write deployment logs only where the repo already has that convention.
 
 ## Output
 
