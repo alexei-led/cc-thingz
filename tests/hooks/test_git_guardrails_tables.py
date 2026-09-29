@@ -31,6 +31,8 @@ GIT_SSH_COMMAND="ssh -o ServerAliveInterval=20" git push origin refs/tags/v1.2.3
 HEREDOC_COMMAND = "cat <<'EOF'\nnever run git reset --hard on main\nEOF\n"
 
 MUST_BLOCK = [
+    ("echo ok\ngit reset --hard", "destructive command on a later line"),
+    ("true\n\ngit push --force origin main", "force push after a blank line"),
     ('for b in x y; do git branch -D "$b"; done', "unmerged branch inside a for-loop"),
     ("if true; then git reset --hard; fi", "reset --hard inside an if/then"),
     ("sudo git clean -fdx", "sudo-prefixed combined short flags"),
