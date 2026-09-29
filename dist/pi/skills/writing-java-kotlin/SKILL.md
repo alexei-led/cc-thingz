@@ -10,12 +10,12 @@
 
 ## Build baseline
 
-- Read the wrapper properties, `settings.gradle*`/`build.gradle*` or `pom.xml`, and CI before relying on version-specific behavior.
+- Read the wrapper properties, `settings.gradle*`/`build.gradle*`/`gradle.properties` or `pom.xml`, and CI before relying on version-specific behavior.
 - Use `./gradlew`/`./mvnw` when the repo has them; scope tests to the changed module (see testing.md).
-- The compile target is the configured Java toolchain and Kotlin `jvmToolchain`, never the shell's `JAVA_HOME`.
-- Toolchain, plugin, and dependency versions live in convention plugins, version catalogs, BOMs, or parent POMs, set once there. Raising the Java or Kotlin toolchain is a project-wide decision: ask first, and change it in shared build config, not one module.
-- A request to use a preview feature is not approval to enable it: ask first, name a non-preview fallback, and, once approved, add a visible `--enable-preview` flag to the build's compile and run/test tasks rather than a local flag. Previews can be withdrawn between JDKs: string templates were pulled after JDK 22, never reinstated.
-- Wire coverage, mutation, or other heavy analysis as its own task or under `check`, never `dependsOn`/`finalizedBy` on `test` — a finalizer still runs on every plain `test`. Keep it off that default loop even when adding it is the task; use a separate command or CI step.
+- The compile target is the declared Java toolchain and Kotlin `jvmToolchain`, not the shell's `JAVA_HOME`; without one, the running JDK compiles.
+- Toolchain, plugin, and dependency versions live in convention plugins, version catalogs, BOMs, or parent POMs, set once there. Raising the Java or Kotlin toolchain is a project-wide decision: ask, and change it in shared build config, not one module.
+- A request to use a preview feature is not approval to enable it: ask first, name a non-preview fallback, and, once approved, add `--enable-preview` to the build's compile and run/test tasks, not a local flag. Previews can be withdrawn between JDKs: string templates were withdrawn in JDK 23.
+- Wire coverage, mutation, or other heavy analysis as its own task or under `check`; never make `test` depend on or be finalized by the report, which would still run it on every plain `test`. Use a separate command or CI step, even when adding it is the task.
 
 ## Defaults
 

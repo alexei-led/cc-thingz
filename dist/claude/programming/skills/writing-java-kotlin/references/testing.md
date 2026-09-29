@@ -9,7 +9,6 @@ Use the project's test stack (JUnit 5, Kotest, TestNG, Mockito, MockK, AssertJ);
 ./mvnw -q -Dtest=FooTest test
 ```
 
-- Edit loop: one module and matching test class. Run the broader suite when the change crosses modules, build logic, serialization contracts, or framework wiring.
+- Edit loop: one module and matching test class; run the broader suite when the change crosses modules or build logic.
 - Database code: Testcontainers, a disposable DB, or the project's seam, not mocked query chains.
 - Java concurrency: control executors and synchronize deterministically; assert interrupt and cancellation behavior.
-- Run mutation, browser, and end-to-end suites only for the task that needs them; keep the default edit loop to the changed module's unit tests.
