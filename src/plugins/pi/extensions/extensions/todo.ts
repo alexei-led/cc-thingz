@@ -40,12 +40,7 @@ function isTodoDetails(value: unknown): value is TodoDetails {
 		TODO_ACTIONS.includes(details.action as TodoAction) &&
 		Array.isArray(details.todos) &&
 		details.todos.every(
-			(todo) =>
-				typeof todo === "object" &&
-				todo !== null &&
-				typeof todo.id === "number" &&
-				typeof todo.text === "string" &&
-				typeof todo.done === "boolean",
+			(todo) => typeof todo === "object" && todo !== null && typeof todo.id === "number" && typeof todo.text === "string" && typeof todo.done === "boolean",
 		) &&
 		Number.isSafeInteger(details.nextId) &&
 		details.nextId > 0 &&

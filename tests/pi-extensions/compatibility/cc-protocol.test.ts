@@ -1,6 +1,13 @@
 import { describe, expect, it } from "bun:test";
 
-import { blockingError, decodeGeneric, decodePermissionDenied, decodePermissionRequest, decodePreToolUse, plainTextContext } from "../../../src/plugins/pi/extensions/extensions/hook-runner/cc-protocol.ts";
+import {
+	blockingError,
+	decodeGeneric,
+	decodePermissionDenied,
+	decodePermissionRequest,
+	decodePreToolUse,
+	plainTextContext,
+} from "../../../src/plugins/pi/extensions/extensions/hook-runner/cc-protocol.ts";
 
 // ---------------------------------------------------------------------------
 // decodePreToolUse

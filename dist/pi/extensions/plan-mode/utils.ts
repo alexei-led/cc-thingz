@@ -17,8 +17,14 @@ const INSPECTION_COMMANDS: Record<string, InspectionOptions> = {
 	head: { flags: /^-(?:[qv]+|\d+)$/, values: ["-n", "-c"] },
 	tail: { flags: /^-(?:[qv]+|\d+)$/, values: ["-n", "-c"] },
 	wc: { flags: /^-[clmwL]+$/ },
-	grep: { flags: /^(?:-[rinvElwFcsho]+|--(?:line-number|ignore-case|files-with-matches|fixed-strings))$/, values: ["-e", "-f", "-A", "-B", "-C", "-m", "--include", "--exclude"] },
-	rg: { flags: /^(?:-[nvilwFcsoSU]+|--(?:files|hidden|no-ignore|line-number|ignore-case|fixed-strings|files-with-matches|count|json|no-heading))$/, values: ["-e", "-f", "-g", "-t", "-T", "-A", "-B", "-C", "-m", "--glob", "--type", "--max-count", "--max-depth"] },
+	grep: {
+		flags: /^(?:-[rinvElwFcsho]+|--(?:line-number|ignore-case|files-with-matches|fixed-strings))$/,
+		values: ["-e", "-f", "-A", "-B", "-C", "-m", "--include", "--exclude"],
+	},
+	rg: {
+		flags: /^(?:-[nvilwFcsoSU]+|--(?:files|hidden|no-ignore|line-number|ignore-case|fixed-strings|files-with-matches|count|json|no-heading))$/,
+		values: ["-e", "-f", "-g", "-t", "-T", "-A", "-B", "-C", "-m", "--glob", "--type", "--max-count", "--max-depth"],
+	},
 	find: { flags: /^-(?:print|print0|empty|a|o|not)$/, values: ["-name", "-iname", "-path", "-ipath", "-type", "-maxdepth", "-mindepth", "-size", "-mtime"] },
 	jq: { flags: /^-[rcesM]+$/ },
 	sort: { flags: /^-[nrfbu]+$/ },
@@ -27,7 +33,10 @@ const INSPECTION_COMMANDS: Record<string, InspectionOptions> = {
 
 const GIT_INSPECTION: Record<string, InspectionOptions> = {
 	status: { flags: /^(?:-[sb]+|--(?:short|branch|porcelain(?:=v[12])?|untracked-files(?:=(?:no|normal|all))?))$/ },
-	log: { flags: /^(?:-\d+|--(?:oneline|stat|name-only|name-status|all|graph|decorate|no-decorate|reverse|no-merges|no-ext-diff|no-textconv))$/, values: ["-n", "--max-count", "--since", "--until", "--author", "--grep"] },
+	log: {
+		flags: /^(?:-\d+|--(?:oneline|stat|name-only|name-status|all|graph|decorate|no-decorate|reverse|no-merges|no-ext-diff|no-textconv))$/,
+		values: ["-n", "--max-count", "--since", "--until", "--author", "--grep"],
+	},
 	diff: { flags: /^(?:--(?:stat|numstat|shortstat|name-only|name-status|cached|staged|check|no-ext-diff|no-textconv)|-[Uw]\d*)$/ },
 	show: { flags: /^(?:--(?:stat|name-only|name-status|oneline|no-patch|no-ext-diff|no-textconv))$/ },
 	"ls-files": { flags: /^(?:-[zcmots]+|--(?:cached|modified|others|exclude-standard|stage))$/ },
@@ -58,7 +67,7 @@ export function isSafeCommand(command: string): boolean {
 	const tokens = command.match(/'[^']*'|"[^"]*"|[^\s'"]+/g);
 	if (!tokens || tokens.join(" ") !== command.trim().replace(/ +/g, " ")) return false;
 	if (tokens.some((token) => !/^["']/.test(token) && /[*?\[\]]/.test(token))) return false;
-	const args = tokens.map((token) => /^["']/.test(token) ? token.slice(1, -1) : token);
+	const args = tokens.map((token) => (/^["']/.test(token) ? token.slice(1, -1) : token));
 	const name = args.shift();
 	if (name === "git") {
 		while (args[0] === "-C" || args[0] === "--no-pager" || args[0] === "--no-optional-locks") {

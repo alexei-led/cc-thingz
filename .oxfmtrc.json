@@ -1,0 +1,6 @@
+{
+  "useTabs": true,
+  "printWidth": 160,
+  "ignorePatterns": ["**/*.md", "**/*.json", "**/*.jsonc", "**/*.yaml", "**/*.yml", "**/*.toml", "dist/**"],
+  "overrides": [{ "files": ["**/*.js"], "options": { "useTabs": false, "printWidth": 80 } }]
+}

@@ -160,7 +160,8 @@ export async function cancelRunningHooks(): Promise<void> {
 export function runHook(entry: HookEntryRuntime, stdinJson: string, optionsOrDefault?: RunHookOptions | number): Promise<HookRunResult> {
 	const options: RunHookOptions = typeof optionsOrDefault === "number" ? { defaultTimeoutSec: optionsOrDefault } : (optionsOrDefault ?? {});
 	const timeoutSec = entry.config.timeout ?? options.defaultTimeoutSec ?? 30;
-	if (process.platform === "win32") return Promise.resolve({ exitCode: 2, stdout: "", stderr: "Hook process-group cleanup requires a POSIX platform", timedOut: false });
+	if (process.platform === "win32")
+		return Promise.resolve({ exitCode: 2, stdout: "", stderr: "Hook process-group cleanup requires a POSIX platform", timedOut: false });
 	if (options.signal?.aborted) return Promise.resolve({ exitCode: 2, stdout: "", stderr: "Hook cancelled", timedOut: false });
 	if (!Number.isFinite(timeoutSec) || timeoutSec <= 0) return Promise.resolve({ exitCode: 2, stdout: "", stderr: "Invalid hook timeout", timedOut: false });
 	const started = Date.now();
@@ -191,7 +192,14 @@ export function runHook(entry: HookEntryRuntime, stdinJson: string, optionsOrDef
 			clearTimeout(killTimer);
 			options.signal?.removeEventListener("abort", cancel);
 			const cleaned = extractProgress(stderr.toString("utf8")).stderr;
-			const notice = stopReason === "timeout" ? "Hook timed out" : stopReason === "cancelled" ? "Hook cancelled" : stopReason === "overflow" ? `Hook output exceeded ${HOOK_OUTPUT_MAX_BYTES / (1024 * 1024)}MB cap` : errorText;
+			const notice =
+				stopReason === "timeout"
+					? "Hook timed out"
+					: stopReason === "cancelled"
+						? "Hook cancelled"
+						: stopReason === "overflow"
+							? `Hook output exceeded ${HOOK_OUTPUT_MAX_BYTES / (1024 * 1024)}MB cap`
+							: errorText;
 			const result = { exitCode, stdout: stdout.toString("utf8"), stderr: [notice, cleaned].filter(Boolean).join(": "), timedOut: stopReason === "timeout" };
 			logHookTelemetry(entry, result, Date.now() - started);
 			resolve(result);
