@@ -44,7 +44,7 @@ lint-typescript: ## Lint and type-check Pi extension TypeScript
 
 .PHONY: test test-ts skill-evals-prepare skill-evals skill-evals-fast skill-evals-summary
 test: ## Run pytest suite
-	uv run --extra test python -m pytest tests/ -v
+	uv run --extra test python -m pytest tests/ -n auto
 
 test-ts: ## Run Bun TypeScript tests (Pi extensions)
 	bun test tests/pi-extensions --isolate

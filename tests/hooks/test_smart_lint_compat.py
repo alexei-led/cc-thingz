@@ -79,7 +79,7 @@ def test_wrapper_preserves_stdin_file_and_session(
         capture_output=True,
         cwd=SMART_LINT_ROOT,
         env=env,
-        timeout=10,
+        timeout=60,
     )
     assert result.returncode == 0, result.stderr
     assert not (tmp_path / "payload-exported").exists()

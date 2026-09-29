@@ -27,7 +27,7 @@ def run_specctl(*args: str, cwd: Path | None = None) -> subprocess.CompletedProc
         capture_output=True,
         text=True,
         cwd=cwd,
-        timeout=10,
+        timeout=60,
     )
 
 
@@ -112,7 +112,7 @@ def test_wrapper_entrypoint_executes():
         [str(WRAPPER), "--help"],
         capture_output=True,
         text=True,
-        timeout=10,
+        timeout=60,
     )
     assert result.returncode == 0, result.stderr
     assert "specctl" in result.stdout.lower()
