@@ -1,14 +1,16 @@
 # Grill Protocol
 
 Interview the user about each decision branch of a bounded plan, trade-off, or
-assumption set until the branch is resolved or explicitly deferred. Walk the tree
-depth-first, in this order:
+assumption set until the branch is resolved or explicitly deferred.
 
-1. Scope: problem framing, goals, explicit non-goals.
-2. Decisions: key design choices, dependencies, constraints.
-3. Edge cases: failure modes, rollback, scale limits.
+Order branches by risk, not by category, and skip what the plan already answers.
+For a concrete plan, open on its riskiest step or assumption — an irreversible
+action, a missing rollback, an all-at-once cutover, concurrent writes during a
+migration — before scope, goals, or environment; ask those only if the plan
+leaves them unclear.
 
-For each branch, give:
+Ask exactly one question per turn; its options are the only content in that turn.
+Give:
 
 - Question: the decision to resolve.
 - My take: your recommended answer and why.

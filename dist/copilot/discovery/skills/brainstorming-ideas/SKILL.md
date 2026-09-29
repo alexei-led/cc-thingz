@@ -36,16 +36,15 @@ decision.
   problem needs (architecture, data flow, interface, error handling, testing),
   confirming with the user as you go.
 - **Grill or debate.** A draft plan, a named trade-off such as "X vs Y", or a set
-  of assumptions is already bounded. Lead with a side-by-side comparison and your
-  take, grounded in the project's code, then walk the open decision branches with
-  `references/grill-protocol.md`. Ask for a plan only when nothing concrete was
-  named; do not invent opposing positions.
+  of assumptions is already bounded; ask for a plan only when nothing concrete was
+  named. For a named trade-off, lead with a side-by-side comparison and your take,
+  grounded in the project's code; do not invent opposing positions. For a concrete
+  plan, skip the comparison and go straight to `references/grill-protocol.md`: no
+  rewritten plan.
 
-Research external solutions only when the user asks for it.
-
-If the idea conflicts with domain docs, quote the conflicting terms and resolve
-them first. If a constraint blocks every approach, name the blocker and ask which
-constraint to relax.
+Research external solutions only when the user asks for it. If the idea conflicts
+with domain docs, quote the conflicting terms and resolve them first. If a
+constraint blocks every approach, name the blocker and ask which one to relax.
 
 ## Capture the outcome
 

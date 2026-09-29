@@ -36,16 +36,15 @@ decision.
   problem needs (architecture, data flow, interface, error handling, testing),
   confirming with the user as you go.
 - **Grill or debate.** A draft plan, a named trade-off such as "X vs Y", or a set
-  of assumptions is already bounded. Lead with a side-by-side comparison and your
-  take, grounded in the project's code, then walk the open decision branches with
-  `references/grill-protocol.md`. Ask for a plan only when nothing concrete was
-  named; do not invent opposing positions.
+  of assumptions is already bounded; ask for a plan only when nothing concrete was
+  named. For a named trade-off, lead with a side-by-side comparison and your take,
+  grounded in the project's code; do not invent opposing positions. For a concrete
+  plan, skip the comparison and go straight to `references/grill-protocol.md`: no
+  rewritten plan.
 
-Research external solutions only when the user asks for it.
-
-If the idea conflicts with domain docs, quote the conflicting terms and resolve
-them first. If a constraint blocks every approach, name the blocker and ask which
-constraint to relax.
+Research external solutions only when the user asks for it. If the idea conflicts
+with domain docs, quote the conflicting terms and resolve them first. If a
+constraint blocks every approach, name the blocker and ask which one to relax.
 
 ## Capture the outcome
 
@@ -83,7 +82,7 @@ Domain docs: <updates or none>
 
 - Ask each question in its own `AskUserQuestion` call: single-select for one path, multi-select for several risks, constraints, or goals, and `allowOther` for custom answers.
 - Track sessions longer than two steps with `TaskCreate` and `TaskUpdate`.
-- Search small scopes with `Read`, `Grep`, and `Glob`. For a broad scan, spawn one read-only subagent: "Quick scan only. Find structure, relevant flows, conventions, integration points, and tests for: <idea>. Return 5 bullets with file paths. Do not edit."
+- For a broad scan, spawn one read-only subagent: "Quick scan only. Find structure, conventions, and tests for: <idea>. Return 5 bullets with file paths. Do not edit." Otherwise use `Read`, `Grep`, `Glob` directly.
 - For research the user asked for, use `mcp__perplexity-ask__perplexity_ask` or `WebFetch` with a scoped query. If neither works, say so and continue from local context.
 - Use `Write` or `Edit` only after the user approves the exact design note, `CONTEXT.md` entry, or ADR.
 - At the end, offer the next step: create a worktree, create a plan, save the design note, or stop.
