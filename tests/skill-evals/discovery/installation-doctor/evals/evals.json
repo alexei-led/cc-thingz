@@ -31,7 +31,7 @@
     {
       "id": "hook-127-after-plugin-update",
       "name": "hook 127 after plugin update",
-      "prompt": "After I updated the cc-thingz plugins, one long-running Claude Code session keeps failing a hook with: `python3: can't open file '/Users/me/.claude/plugins/cache/alexei-led-cc-thingz/dev-flow/6.14.2/hooks/git-guardrails/decide.py'` (exit 127). The doctor passes on the new 6.15.0 install. What is wrong and what should I do?",
+      "prompt": "After I updated the cc-thingz plugins, one long-running Claude Code session keeps failing a hook with: `python3: can't open file '/Users/me/.claude/plugins/cache/alexei-led-cc-thingz/dev-flow/6.14.2/hooks/git-guardrails/decide.py'`, and the hook denies the command. The doctor passes on the new 6.15.0 install. What is wrong and what should I do?",
       "expected_output": "The response explains the running session still points at the old versioned plugin root that the update replaced, and says to restart that session.",
       "assertions": [
         "The output explains that a running session keeps the plugin root it started with, and the update replaced that versioned directory.",

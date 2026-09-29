@@ -31,7 +31,7 @@
       "id": "cleanup-without-gh-needs-confirmation",
       "name": "cleanup without gh needs confirmation",
       "prompt": "The PR for `feature/auth` was squash-merged on GitHub. `gh` isn't installed on this machine. Remove the /work/shop.worktrees/feature-auth worktree and its branch, then pull main.\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.",
-      "expected_output": "The response uses the cleanup script, explains it cannot confirm the merge without gh, asks the user to confirm before --force, and keeps git pull out of cleanup.",
+      "expected_output": "The response uses the cleanup script, explains that without gh it cannot confirm the merge, uses --force only on the user's stated merge with its risks named, and keeps git pull out of cleanup.",
       "assertions": [
         "The output uses `scripts/cleanup-worktree.sh` for feature/auth, not hand-written worktree and branch deletion.",
         "The output says the script cannot confirm the merge without gh.",

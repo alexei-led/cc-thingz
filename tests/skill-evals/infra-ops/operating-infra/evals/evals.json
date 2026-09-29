@@ -88,7 +88,8 @@
       "assertions": [
         "The output checks the AWS identity with `aws sts get-caller-identity --profile prod-admin` against account 123456789012.",
         "The output checks the Terraform workspace is prod.",
-        "The output runs terraform validate and saves the plan with -out.",
+        "The output's commands include terraform validate before the plan.",
+        "The output saves the plan to a file with -out.",
         "The output calls out the security-group replacement or RDS resize as a risk to review in the plan.",
         "The output waits for explicit confirmation before applying.",
         "The output applies the saved plan file, not a fresh `terraform apply`.",

@@ -44,7 +44,7 @@
     {
       "id": "warning-suppression-policy",
       "name": "warning suppression policy",
-      "prompt": "The build has TreatWarningsAsErrors on and now fails with CS8602 (possible null dereference) in three places after my change. Quickest fix is `#pragma warning disable CS8602` at the top of the file, right?\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.\n\nShow the code you would change, the tests you would add, and the commands you would run.",
+      "prompt": "The build has TreatWarningsAsErrors on and now fails with CS8602 (possible null dereference) after my change:\n\n```csharp\npublic string Describe(Order order)\n{\n    var customer = _repo.FindCustomer(order.CustomerId); // returns Customer?\n    return $\"{customer.Name} ({order.Items.FirstOrDefault()?.Sku.ToUpper()})\";\n}\n```\n\nQuickest fix is `#pragma warning disable CS8602` at the top of the file, right?\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.",
       "expected_output": "The response fixes the nullable warnings at the source instead of suppressing them and keeps the warning policy intact.",
       "assertions": [
         "The output rejects the #pragma suppression.",
@@ -56,7 +56,7 @@
     {
       "id": "small-cli-bcl-first",
       "name": "small cli bcl first",
-      "prompt": "Add a small `export` command-line tool to our .NET 8 solution. It takes `--from <date>` and an optional `--format csv|json`, and writes the exported report to stdout. We don't use any CLI library yet.\n\nShow the code you would change, the tests you would add, and the commands you would run.",
+      "prompt": "Add a small `export` command-line tool to our .NET 8 solution. It takes `--from <date>` and an optional `--format csv|json`, and writes the exported report to stdout. We don't use any CLI library yet.\n\nShow the code you would change, the tests you would add, and the commands you would run.\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.",
       "expected_output": "The response parses two flags with the BCL, keeps Program.cs thin, and tests a Run(args, stdout, stderr) seam for exit code and output.",
       "assertions": [
         "The output parses the arguments with the BCL and does not add System.CommandLine, Spectre.Console, or another CLI package.",
@@ -69,7 +69,7 @@
     {
       "id": "check-langversion-before-syntax",
       "name": "check langversion before syntax",
-      "prompt": "Convert our service classes to C# 12 primary constructors and collection expressions. Here is the project file:\n\n```xml\n<Project Sdk=\"Microsoft.NET.Sdk.Web\">\n  <PropertyGroup>\n    <TargetFramework>net6.0</TargetFramework>\n    <Nullable>enable</Nullable>\n  </PropertyGroup>\n</Project>\n```\n\nShow the code you would change, the tests you would add, and the commands you would run.",
+      "prompt": "Convert our service classes to C# 12 primary constructors and collection expressions. Here is the project file:\n\n```xml\n<Project Sdk=\"Microsoft.NET.Sdk.Web\">\n  <PropertyGroup>\n    <TargetFramework>net6.0</TargetFramework>\n    <Nullable>enable</Nullable>\n  </PropertyGroup>\n</Project>\n```\n\nShow the code you would change, the tests you would add, and the commands you would run.\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.",
       "expected_output": "The response checks TargetFramework and LangVersion first, says net6.0 defaults to C# 10 without these features, and does not raise the language version without approval.",
       "assertions": [
         "The output says net6.0 defaults to C# 10, which lacks primary constructors and collection expressions.",

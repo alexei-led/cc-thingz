@@ -61,7 +61,7 @@
     {
       "id": "characterization-before-legacy-refactor",
       "name": "characterization before legacy refactor",
-      "prompt": "We need to refactor `legacy_invoice_total` in billing.py. It has no tests and nobody knows every caller. Some outputs look wrong to me: it rounds each line before summing. Here it is:\n\n```python\ndef legacy_invoice_total(lines, region):\n    total = 0\n    for qty, price in lines:\n        line = round(qty * price, 2)\n        if region == 'EU':\n            line = round(line * 1.2, 2)\n        elif region == 'US' and qty > 10:\n            line = round(line * 0.95, 2)\n        total += line\n    return round(total, 2)\n```\n\nHow do we start?\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.",
+      "prompt": "Mode: coverage. We need to refactor `legacy_invoice_total` in billing.py. It has no tests and nobody knows every caller. Some outputs look wrong to me: it rounds each line before summing. Here it is:\n\n```python\ndef legacy_invoice_total(lines, region):\n    total = 0\n    for qty, price in lines:\n        line = round(qty * price, 2)\n        if region == 'EU':\n            line = round(line * 1.2, 2)\n        elif region == 'US' and qty > 10:\n            line = round(line * 0.95, 2)\n        total += line\n    return round(total, 2)\n```\n\nHow do we start?\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.",
       "expected_output": "The response adds characterization tests at the public boundary that pin current behavior, quirks included, before refactoring.",
       "assertions": [
         "The output writes characterization tests before changing the function.",
@@ -87,7 +87,7 @@
     {
       "id": "ask-before-new-tool",
       "name": "ask before new tool",
-      "prompt": "Mode: coverage. The repo uses plain unittest (tests/test_*.py, run with `python -m unittest`). The parser has no tests for invalid input:\n\n```python\n# parse_dates.py\nfrom datetime import date\n\ndef parse_date(text: str) -> date:\n    y, m, d = text.strip().split('-')\n    return date(int(y), int(m), int(d))\n```\n\nI'm thinking we should add Hypothesis for property-based tests. Go ahead.\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.",
+      "prompt": "Mode: coverage. The repo uses plain unittest (tests/test_*.py, run with `python -m unittest`). The parser has no tests for invalid input:\n\n```python\n# parse_dates.py\nfrom datetime import date\n\ndef parse_date(text: str) -> date:\n    y, m, d = text.strip().split('-')\n    return date(int(y), int(m), int(d))\n```\n\nI'm thinking we should add Hypothesis for property-based tests.\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.",
       "expected_output": "The response asks before adding Hypothesis, follows the existing unittest conventions, and covers the invalid-input paths.",
       "assertions": [
         "The output asks for approval before adding Hypothesis.",

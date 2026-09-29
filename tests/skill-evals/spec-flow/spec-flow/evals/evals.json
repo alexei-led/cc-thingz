@@ -57,7 +57,7 @@
       "prompt": "Plan this with spec-flow: add a CSV export button to the monthly report page. The project has no .spec/ directory yet.\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.",
       "expected_output": "The response initializes .spec/, plans one TASK for the clear single slice, shows the plan before writing, and validates it.",
       "assertions": [
-        "The output's commands start with `specctl init` because .spec/ is missing.",
+        "The output's commands include `specctl init` before `specctl new task`.",
         "The output plans one TASK via `specctl new task`, not an EPIC or REQ.",
         "The output shows the proposed plan and asks for approval before writing it.",
         "The output's commands include `specctl validate` and `specctl ready`.",

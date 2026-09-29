@@ -4,7 +4,7 @@
     {
       "id": "kotlin-coroutine-scope",
       "name": "kotlin coroutine scope",
-      "prompt": "Review this Kotlin code from our Ktor service and fix it:\n\n```kotlin\nclass Notifier(private val client: HttpClient) {\n    fun notifyAll(users: List<User>) {\n        users.forEach { u ->\n            GlobalScope.launch { client.post(u.webhook!!) { setBody(u.payload) } }\n        }\n    }\n}\n```\n\n`User` is a Java class from a shared library; `getWebhook()` can return null.\n\nShow the code you would change, the tests you would add, and the commands you would run.",
+      "prompt": "Review this Kotlin code from our Ktor service and fix it:\n\n```kotlin\nclass Notifier(private val client: HttpClient) {\n    fun notifyAll(users: List<User>) {\n        users.forEach { u ->\n            GlobalScope.launch { client.post(u.webhook!!) { setBody(u.payload) } }\n        }\n    }\n}\n```\n\n`User` is a Java class from a shared library; `getWebhook()` can return null.\n\nShow the code you would change, the tests you would add, and the commands you would run.\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.",
       "expected_output": "The response removes GlobalScope in favor of structured concurrency, handles the Java platform type at the boundary instead of !!, and tests with runTest.",
       "assertions": [
         "The fix removes GlobalScope and uses structured concurrency (coroutineScope or an injected scope).",
@@ -16,11 +16,11 @@
     {
       "id": "gradle-toolchain-and-focused-tests",
       "name": "gradle toolchain and focused tests",
-      "prompt": "I want to use Java 21 record patterns in `billing/src/main/java/com/acme/billing/InvoiceMapper.java`. My shell has JAVA_HOME pointing to JDK 23. The repo uses a Gradle wrapper with multiple modules. How should I proceed and which commands do I run while editing?\n\nShow the code you would change, the tests you would add, and the commands you would run.",
+      "prompt": "I want to use Java 21 record patterns in `billing/src/main/java/com/acme/billing/InvoiceMapper.java`. My shell has JAVA_HOME pointing to JDK 23, and the build's toolchain is set to Java 17. The repo uses a Gradle wrapper with multiple modules. How should I proceed and which commands do I run while editing?\n\nShow the code you would change, the tests you would add, and the commands you would run.\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.",
       "expected_output": "The response checks the configured Java toolchain, not JAVA_HOME, before using the feature, and uses ./gradlew with focused module tests.",
       "assertions": [
         "The output checks the configured Java toolchain in the build files, not JAVA_HOME.",
-        "The output says a toolchain change goes in shared build config, not one module.",
+        "The output says raising the toolchain to 21 needs approval and belongs in shared build config, not one module.",
         "The output's commands use ./gradlew, not a global gradle.",
         "The output's test command is focused on the billing module, for example `./gradlew :billing:test --tests ...`."
       ]
@@ -28,7 +28,7 @@
     {
       "id": "java-interrupt-and-virtual-threads",
       "name": "java interrupt and virtual threads",
-      "prompt": "Code review request (Java 21):\n\n```java\npublic class ImageResizer {\n    private static final ExecutorService POOL = Executors.newVirtualThreadPerTaskExecutor();\n\n    public List<byte[]> resizeAll(List<byte[]> images) throws Exception {\n        var futures = images.stream().map(i -> POOL.submit(() -> resize(i))).toList();\n        var out = new ArrayList<byte[]>();\n        for (var f : futures) {\n            try { out.add(f.get()); } catch (InterruptedException e) { /* ignore */ }\n        }\n        return out;\n    }\n}\n```\n\n`resize` is pure CPU work (image scaling).\n\nShow the code you would change, the tests you would add, and the commands you would run.",
+      "prompt": "Code review request (Java 21):\n\n```java\npublic class ImageResizer {\n    private static final ExecutorService POOL = Executors.newVirtualThreadPerTaskExecutor();\n\n    public List<byte[]> resizeAll(List<byte[]> images) throws Exception {\n        var futures = images.stream().map(i -> POOL.submit(() -> resize(i))).toList();\n        var out = new ArrayList<byte[]>();\n        for (var f : futures) {\n            try { out.add(f.get()); } catch (InterruptedException e) { /* ignore */ }\n        }\n        return out;\n    }\n}\n```\n\n`resize` is pure CPU work (image scaling).\n\nShow the code you would change, the tests you would add, and the commands you would run.\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.",
       "expected_output": "The response says virtual threads are for blocking I/O, not CPU-bound work, fixes the swallowed InterruptedException, and removes static executor state.",
       "assertions": [
         "The output says virtual threads do not help CPU-bound resizing.",
@@ -40,7 +40,7 @@
     {
       "id": "jpa-entity-leak",
       "name": "jpa entity leak",
-      "prompt": "Our Spring Boot REST controller returns `ResponseEntity<Customer>` where Customer is a JPA @Entity with a lazy `@OneToMany orders` collection. Some requests fail with LazyInitializationException. A teammate suggests turning on `spring.jpa.open-in-view=true`. What do you recommend?\n\nShow the code you would change, the tests you would add, and the commands you would run.",
+      "prompt": "Our Spring Boot REST controller returns `ResponseEntity<Customer>` where Customer is a JPA @Entity with a lazy `@OneToMany orders` collection. Some requests fail with LazyInitializationException. A teammate suggests turning on `spring.jpa.open-in-view=true`. What do you recommend?\n\nShow the code you would change, the tests you would add, and the commands you would run.\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.",
       "expected_output": "The response stops leaking the JPA entity through the API, maps to a DTO inside an explicit transaction near the use case, and tests with the existing Spring slice harness.",
       "assertions": [
         "The output recommends returning a DTO instead of the JPA entity.",
@@ -51,7 +51,7 @@
     {
       "id": "preview-feature-needs-approval",
       "name": "preview feature needs approval",
-      "prompt": "Our Java 21 service builds its log messages with string concatenation. Switch them to string templates (`STR.\"Order \\{id} failed\"`).\n\nShow the code you would change, the tests you would add, and the commands you would run.",
+      "prompt": "Our Java 21 service builds its log messages with string concatenation. Switch them to string templates (`STR.\"Order \\{id} failed\"`).\n\nShow the code you would change, the tests you would add, and the commands you would run.\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.",
       "expected_output": "The response says string templates are a preview feature (and were withdrawn after JDK 22), asks for approval, and keeps any preview flag visible in the build.",
       "assertions": [
         "The output says string templates are a preview feature in Java 21.",
@@ -63,12 +63,12 @@
     {
       "id": "shared-build-policy",
       "name": "shared build policy",
-      "prompt": "Add JaCoCo coverage to the `billing` module. I'll paste `plugins { jacoco }` plus `jacoco { toolVersion = \"0.8.12\" }` into billing/build.gradle.kts, and make `test` depend on `jacocoTestReport`. The repo has a `build-logic/` convention-plugin project and a `gradle/libs.versions.toml` catalog.\n\nShow the code you would change, the tests you would add, and the commands you would run.",
+      "prompt": "Add JaCoCo coverage to the `billing` module. I'll paste `plugins { jacoco }` plus `jacoco { toolVersion = \"0.8.12\" }` into billing/build.gradle.kts, and make `test` depend on `jacocoTestReport` so every local `./gradlew test` also builds the report. The repo has a `build-logic/` convention-plugin project and a `gradle/libs.versions.toml` catalog.\n\nShow the code you would change, the tests you would add, and the commands you would run.\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.",
       "expected_output": "The response puts JaCoCo config in the convention plugin and version catalog rather than one module, and keeps coverage off the default test loop.",
       "assertions": [
         "The output puts the JaCoCo setup in a build-logic convention plugin rather than copying it into billing/build.gradle.kts.",
         "The output keeps the JaCoCo version in the version catalog or convention plugin, not the module.",
-        "The output does not make `test` depend on the coverage report, keeping coverage off the default test loop.",
+        "The output keeps the coverage report out of the default `test` task, for example as a separate task or CI step.",
         "The output's commands use ./gradlew."
       ]
     }

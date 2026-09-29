@@ -35,7 +35,7 @@
         "The output treats this as a bounded trade-off debate rather than open-ended brainstorming.",
         "The output gives concrete pros and cons for both REST and GraphQL.",
         "The output grounds the comparison in the given context, such as 6 calls per dashboard page, a single client, or a 3-person team.",
-        "The output states a recommendation and what would change it.",
+        "The output states a recommendation.",
         "The output does not route to a separate debate skill."
       ]
     }
