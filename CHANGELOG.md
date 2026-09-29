@@ -8,6 +8,46 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.15.0] - 2026-09-29
+
+Hooks now stay out of the way: faster, with fewer false blocks. The skill set
+shrinks to 27 skills based on 30 days of usage.
+
+### Fixed
+
+- `git-guardrails` no longer blocks ordinary commands. Examples:
+  `--ff-only` in a later command on the same line, `-f` inside a path such as
+  `../fix-foo`, and git text inside commit messages or heredocs. It now checks
+  each git command's arguments instead of matching patterns against the text.
+- `git-guardrails` runs in about 30 ms for non-git commands and about 80 ms
+  for git commands. It used to take 150–300 ms, and seconds under load, and
+  it often hit its 10 s timeout, which let the command through unchecked.
+- `git-guardrails` catches destructive git commands behind wrappers
+  (`nice`, `timeout`, `nohup`, `eval`, `exec`), in subshells, with a quoted
+  or escaped `git`, and with combined flags such as `branch -fd` and
+  `push -fu`.
+- `skill-enforcer` no longer delays prompts or hits the 15 s
+  UserPromptSubmit timeout. It runs as one Python process in about 30 ms,
+  with a 3 s timeout.
+- `session-start` finishes within its timeout on spec-flow projects under
+  load.
+
+### Changed
+
+- `git-guardrails` allows cleanup of merged work after `cd <repo> &&`,
+  the same as with `git -C`.
+- `operating-infra` now handles deploy, apply, and rollout for Terraform,
+  Helm, Kustomize, and kubectl. It has an explicit gate: validate, show the
+  plan or diff, confirm, apply, verify. In Claude, invoke it with
+  `/operating-infra --dry-run` or `--apply <environment>`.
+- Deploy, apply, and rollout prompts now suggest `operating-infra`.
+
+### Removed
+
+- `deploying-infra`. Use `operating-infra`.
+- `refactoring-code`, which saw little use.
+- The `notify-grok` hook.
+
 ## [6.14.2] - 2026-09-29
 
 ### Fixed
@@ -25,9 +65,6 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
   referenced files that exist. Tests also run each generated hook command from
   its plugin root.
 - `make test` runs in parallel, and CI runs tests when only `dist/` changes.
-
-## [6.14.2] - 2026-09-29
-
 
 ## [6.14.1] - 2026-09-29
 
