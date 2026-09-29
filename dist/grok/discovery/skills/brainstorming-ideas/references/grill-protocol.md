@@ -9,13 +9,12 @@ action, a missing rollback, an all-at-once cutover, concurrent writes during a
 migration — before scope, goals, or environment; ask those only if the plan
 leaves them unclear.
 
-Ask exactly one question per turn; its options are the only content in that turn.
-Give:
+Ask exactly one question per turn, as the only question mark in the turn. Give:
 
 - Question: the decision to resolve.
 - My take: your recommended answer and why.
 - Options: 2-4 choices, including defer when legitimate.
-- Why it matters: the cost of choosing wrong.
+- Why it matters: state the cost of choosing wrong, as a statement, not a question.
 
 When code contradicts an assumption, show the path and resolve the discrepancy
 before continuing. If the user deflects, repeat the open branch or offer to defer
