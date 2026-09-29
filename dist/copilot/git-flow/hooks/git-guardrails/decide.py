@@ -578,6 +578,14 @@ def walk(
             # `$(git`, `` `git ``, `<(git`, and `X=$(git` are one shlex token;
             # command substitution still runs git, so look past the opener.
             base = SUBST_OPENER.sub("", token).rsplit("/", 1)[-1]
+            # ANSI-C and locale quoting (`$'git'`, `$"git"`) shlex-tokenize to
+            # a bare `$git` - no `$(` for SUBST_OPENER to strip - but bash
+            # expands both to the plain word `git` and runs it for real. A
+            # leading `$` left over any other way (a literal `$git` variable
+            # reference) is conservatively treated the same: blocking a
+            # dereferenced variable that happens to spell out a command name
+            # is an acceptable false positive for a fail-closed guard.
+            base = base[1:] if base.startswith("$") else base
             # Case-insensitive: `GIT`, `/usr/bin/GIT`, and `./GIT` all run the
             # real git binary on macOS's case-insensitive filesystem. `eval`
             # is a shell builtin (resolved by bash's own keyword table, never

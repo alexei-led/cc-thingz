@@ -111,6 +111,25 @@ MUST_BLOCK = [
         "BASH -c 'git push --force'",
         "uppercase BASH -c still resolves to the real interpreter",
     ),
+    # ANSI-C/locale quoting (`$'git'`, `$"git"`) shlex-tokenizes to a bare
+    # `$git` with no `(` for SUBST_OPENER to strip, but bash expands both to
+    # the plain word `git` and runs it for real.
+    (
+        "$'git' reset --hard",
+        "ANSI-C quoting ($'git') still resolves to the real binary",
+    ),
+    (
+        "$'GIT' push --force",
+        "ANSI-C quoting of an uppercase GIT still resolves",
+    ),
+    (
+        '$"git" clean -fdx',
+        'locale quoting ($"git") still resolves to the real binary',
+    ),
+    (
+        "BASH -c \"$'git' reset --hard\"",
+        "ANSI-C quoting inside an uppercase BASH -c script is still tokenized",
+    ),
 ]
 
 MUST_ALLOW = [
