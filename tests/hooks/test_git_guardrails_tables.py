@@ -42,6 +42,46 @@ MUST_BLOCK = [
         "GIT_SSH_COMMAND=x git push --force",
         "VAR=value prefix does not hide force push",
     ),
+    # Adversarial review: an unrecognized wrapper command must not hide a
+    # git invocation from evaluation (allowlisting known prefixes was the
+    # bug - these wrappers were never on any list).
+    (
+        "nice git reset --hard",
+        "unrecognized wrapper (nice) does not hide reset --hard",
+    ),
+    (
+        "timeout 30 git push --force",
+        "unrecognized wrapper (timeout N) does not hide force push",
+    ),
+    ("eval git reset --hard", "eval's bare-word argument is still evaluated"),
+    (
+        'eval "git reset --hard"',
+        "eval's quoted argument is tokenized and evaluated",
+    ),
+    (
+        "exec git clean -fdx",
+        "unrecognized wrapper (exec) does not hide clean --force",
+    ),
+    (
+        "nohup git reset --hard",
+        "unrecognized wrapper (nohup) does not hide reset --hard",
+    ),
+    (
+        "g\\it reset --hard",
+        "backslash-split git still resolves to git after unquoting",
+    ),
+    (
+        'g""it push --force',
+        "empty-quote-split git still resolves to git after unquoting",
+    ),
+    (
+        "g'i't clean -fdx",
+        "single-quote-split git still resolves to git after unquoting",
+    ),
+    (
+        "(git reset --hard) | git branch -fd x | git push -fu origin b",
+        "subshell parens and combined short-flag clusters (-fd, -fu)",
+    ),
 ]
 
 MUST_ALLOW = [

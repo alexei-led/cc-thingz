@@ -6,7 +6,13 @@ translates its verdict into the hook's exit code / Pi JSON contract. This
 process does the actual analysis: it tokenizes the command with shlex and
 evaluates each git invocation's argv directly against a destructive-op
 table, and verifies merge status for the "clean up merged work" exception
-by shelling out to `git` (never another python3 process).
+by shelling out to `git` (never another python3 process). A git
+invocation is found by scanning every token position within a statement,
+not only recognized command-start positions, so an unrecognized wrapper
+(nice, timeout N, strace, ...) can never hide it from evaluation; `eval`
+and `bash|sh|zsh|dash -c` are unwrapped one level so a *quoted* nested
+command is tokenized too, while an ordinary quoted argument (a commit
+message, a heredoc body) is not.
 
 This is a mistake guard, not a shell sandbox: shlex tokenizes text, it does
 not expand variables, globs, command substitution, backticks, or aliases,
@@ -39,9 +45,10 @@ import sys
 
 SEPARATORS = {";", "&&", "||", "|", "&", "\n"}
 
-# Tokens that may prefix a real command within one statement without
-# starting a new one: control-flow keywords, grouping, and command
-# wrappers that pass their remaining argv through unchanged.
+# Known wrapper/keyword tokens that may precede `cd`/`pushd`/`popd` within
+# one statement. Git itself is found by scanning every token position (see
+# walk()), so this set no longer gates git detection - only cwd tracking,
+# where an unrecognized wrapper is merely conservative, never unsafe.
 STRIP_PREFIXES = {
     "do",
     "then",
@@ -169,12 +176,14 @@ def handle_cd(base: str, rest: list[str], ctx: Ctx) -> None:
     ctx.cwd = target if os.path.isabs(target) else os.path.join(ctx.cwd, target)
 
 
-def try_unwrap_shell_c(rest: list[str]) -> str | None:
-    """`bash|sh|zsh|dash -c SCRIPT` as the whole statement, one level only."""
-    if len(rest) != 3:
+def shell_dash_c_script(span: list[str], j: int) -> str | None:
+    """True when span[j] is bash|sh|zsh|dash, span[j+1] is a -c-family
+    flag, and its script is the last token of the statement - regardless
+    of what precedes span[j] in the same statement (`nice bash -c '...'`
+    unwraps exactly like a bare `bash -c '...'`)."""
+    if j + 2 != len(span) - 1:
         return None
-    flag, script = rest[1], rest[2]
-    return script if SHELL_DASH_C.match(flag) else None
+    return span[j + 2] if SHELL_DASH_C.match(span[j + 1]) else None
 
 
 def parse_global_opts(tokens: list[str], base_dir: str) -> tuple[str, bool, list[str]]:
@@ -226,6 +235,15 @@ def is_short_force_cluster(arg: str) -> bool:
     return arg.startswith("-") and not arg.startswith("--") and "f" in arg[1:]
 
 
+def is_branch_force_delete_cluster(arg: str) -> bool:
+    """-D, or a combined short cluster with both d (delete) and f (force),
+    such as -fd/-df/-Df - git-branch bundles short options like these."""
+    if not (arg.startswith("-") and not arg.startswith("--")):
+        return False
+    letters = arg[1:]
+    return "D" in letters or ("d" in letters and "f" in letters)
+
+
 def classify(subcommand: str, args: list[str]) -> tuple[str, list[str] | str | None]:
     """Evaluates one git subcommand's argv against the destructive-op
     table. Returns (kind, info):
@@ -244,7 +262,11 @@ def classify(subcommand: str, args: list[str]) -> tuple[str, list[str] | str | N
             return "block", "git clean --force"
         return "safe", None
     if subcommand == "branch":
-        wants_force_delete = "-D" in args or ("--delete" in args and "--force" in args)
+        wants_force_delete = (
+            "-D" in args
+            or ("--delete" in args and "--force" in args)
+            or any(is_branch_force_delete_cluster(a) for a in args)
+        )
         if not wants_force_delete:
             return "safe", None
         names = [a for a in args if a not in ("-D", "--delete", "--force")]
@@ -277,7 +299,7 @@ def classify(subcommand: str, args: list[str]) -> tuple[str, list[str] | str | N
             return "block", "git worktree remove --force (unparseable arguments)"
         return "cleanup-worktree", paths[0]
     if subcommand == "push":
-        if any(a in ("-f", "--force") for a in args):
+        if any(a == "--force" or is_short_force_cluster(a) for a in args):
             return "block", "git push --force"
         if any(a.startswith("+") for a in args):
             return "block", "git push +refspec"
@@ -429,6 +451,69 @@ def load_patterns(raw: str) -> list[tuple[re.Pattern[str], str]]:
     return patterns
 
 
+def evaluate_git_call(
+    git_tokens: list[str],
+    ctx: Ctx,
+    patterns: list[tuple[re.Pattern[str], str]],
+    allow_force_push: bool,
+    blocks: list[tuple[str, bool]],
+    removed_worktrees: set[str],
+) -> None:
+    """git_tokens[0] == "git"; the rest runs to the end of its statement."""
+    directory, trusted, remaining = parse_global_opts(git_tokens, ctx.cwd)
+    overall_trusted = ctx.trusted and trusted
+    if not remaining:
+        return
+    subcommand, args = remaining[0], remaining[1:]
+
+    statement_text = "git " + " ".join(remaining)
+    for compiled, original in patterns:
+        if allow_force_push and "push" in original:
+            continue
+        if compiled.search(statement_text):
+            blocks.append((original, subcommand in CLEANUP_SUBCOMMANDS))
+
+    if subcommand == "push" and allow_force_push:
+        return
+
+    kind, info = classify(subcommand, args)
+    is_cleanup_subcommand = subcommand in CLEANUP_SUBCOMMANDS
+    if kind == "safe":
+        return
+    if kind == "block":
+        blocks.append((str(info), is_cleanup_subcommand))
+        return
+    if kind == "cleanup-branch":
+        names = info if isinstance(info, list) else []
+        if overall_trusted and all(
+            branch_is_merged(directory, name, removed_worktrees) for name in names
+        ):
+            return
+        blocks.append((f"git branch -D {' '.join(names)}", True))
+        return
+    if kind == "cleanup-worktree":
+        path = str(info)
+        resolved = worktree_is_merged(directory, path) if overall_trusted else None
+        if resolved is not None:
+            removed_worktrees.add(resolved)
+            return
+        blocks.append((f"git worktree remove --force {path}", True))
+        return
+
+
+def trim_grouping_chars(span: list[str]) -> list[str]:
+    """Drops a leading "("/"{" glued to the first token and a trailing
+    ")"/"}" glued to the last, e.g. `(git reset --hard)` after splitting
+    on separators is `["(git", "reset", "--hard)"]` - shlex has no notion
+    of shell grouping, so these punctuation chars stay stuck to words."""
+    span = list(span)
+    if span and span[0][:1] in ("(", "{"):
+        span[0] = span[0][1:]
+    if span and span[-1][-1:] in (")", "}"):
+        span[-1] = span[-1][:-1]
+    return span
+
+
 def walk(
     tokens: list[str],
     ctx: Ctx,
@@ -438,79 +523,69 @@ def walk(
     blocks: list[tuple[str, bool]],
     removed_worktrees: set[str],
 ) -> None:
-    for span in split_statements(tokens):
+    for raw_span in split_statements(tokens):
+        span = trim_grouping_chars(raw_span)
+        if not span:
+            continue
+
+        # cd/pushd/popd only matters as the statement's own command, behind
+        # at most the known wrapper keywords - an unrecognized wrapper
+        # (e.g. `nice cd x`) just leaves cwd untracked, which only makes
+        # later verification more conservative, never less safe.
         i = 0
         while i < len(span) and (
             span[i] in STRIP_PREFIXES or VAR_ASSIGNMENT.match(span[i])
         ):
             i += 1
-        rest = span[i:]
-        if not rest:
-            continue
-        head = rest[0]
-        base = head.rsplit("/", 1)[-1]
-
-        if base in ("cd", "pushd", "popd"):
-            handle_cd(base, rest, ctx)
+        head_rest = span[i:]
+        head_base = head_rest[0].rsplit("/", 1)[-1] if head_rest else ""
+        if head_base in ("cd", "pushd", "popd"):
+            handle_cd(head_base, head_rest, ctx)
             continue
 
-        if base in INTERPRETERS and depth == 0:
-            script = try_unwrap_shell_c(rest)
-            if script is not None:
-                inner = tokenize(strip_heredocs(script))
-                walk(
-                    inner,
-                    ctx.copy(),
-                    patterns,
-                    allow_force_push,
-                    depth + 1,
-                    blocks,
-                    removed_worktrees,
+        # A git invocation is detected by scanning every token position, not
+        # only recognized command-start positions: any wrapper this parser
+        # doesn't know (nice, timeout N, strace, ...) must not be able to
+        # hide git from evaluation. `eval` and `bash|sh|zsh|dash -c` are the
+        # two places a *quoted* command reaches this parser as one token
+        # instead of separate words, so their argument gets tokenized too -
+        # ordinary quoted arguments (a commit message, a heredoc body) do
+        # not, so they stay allowed.
+        for j, token in enumerate(span):
+            base = token.rsplit("/", 1)[-1]
+            if base == "git":
+                evaluate_git_call(
+                    span[j:], ctx, patterns, allow_force_push, blocks, removed_worktrees
                 )
-                continue
-
-        if base != "git":
-            continue
-
-        directory, trusted, remaining = parse_global_opts(rest, ctx.cwd)
-        overall_trusted = ctx.trusted and trusted
-        if not remaining:
-            continue
-        subcommand, args = remaining[0], remaining[1:]
-
-        statement_text = "git " + " ".join(remaining)
-        for compiled, original in patterns:
-            if allow_force_push and "push" in original:
-                continue
-            if compiled.search(statement_text):
-                blocks.append((original, subcommand in CLEANUP_SUBCOMMANDS))
-
-        if subcommand == "push" and allow_force_push:
-            continue
-
-        kind, info = classify(subcommand, args)
-        is_cleanup_subcommand = subcommand in CLEANUP_SUBCOMMANDS
-        if kind == "safe":
-            continue
-        if kind == "block":
-            blocks.append((str(info), is_cleanup_subcommand))
-            continue
-        if kind == "cleanup-branch":
-            names = info if isinstance(info, list) else []
-            if overall_trusted and all(
-                branch_is_merged(directory, name, removed_worktrees) for name in names
-            ):
-                continue
-            blocks.append((f"git branch -D {' '.join(names)}", True))
-            continue
-        if kind == "cleanup-worktree":
-            path = str(info)
-            resolved = worktree_is_merged(directory, path) if overall_trusted else None
-            if resolved is not None:
-                removed_worktrees.add(resolved)
-                continue
-            blocks.append((f"git worktree remove --force {path}", True))
-            continue
+                break
+            if depth == 0 and base == "eval":
+                nested = " ".join(span[j + 1 :])
+                if nested:
+                    inner = tokenize(strip_heredocs(nested))
+                    walk(
+                        inner,
+                        ctx.copy(),
+                        patterns,
+                        allow_force_push,
+                        depth + 1,
+                        blocks,
+                        removed_worktrees,
+                    )
+                break
+            if depth == 0 and base in INTERPRETERS:
+                script = shell_dash_c_script(span, j)
+                if script is not None:
+                    inner = tokenize(strip_heredocs(script))
+                    walk(
+                        inner,
+                        ctx.copy(),
+                        patterns,
+                        allow_force_push,
+                        depth + 1,
+                        blocks,
+                        removed_worktrees,
+                    )
+                    break
 
 
 def decide(

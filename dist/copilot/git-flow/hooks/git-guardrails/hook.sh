@@ -52,11 +52,16 @@ HOOK_CWD=${HOOK_CWD:-$PWD}
 
 # Fast path: most Bash calls aren't git at all (ls, cat, npm test, ...).
 # Skip every fork below - jq for config, python3 for analysis - when the
-# command has no "git" word. A "git" mentioned only inside a heredoc body
+# command has no "git" word. Quoting or backslash-escaping can spell "git"
+# without the literal substring appearing (g\it, g""it, g'i't all become
+# git once the shell parses them), so this checks a copy with \, ', and "
+# removed - never the real $COMMAND, which still needs its real quoting
+# for decide.py's tokenizer. A "git" mentioned only inside a heredoc body
 # or a quoted string still reaches the slow path (harmless: decide.py
 # strips heredocs and treats quoted text as data, not commands), so this
 # check only has to be safe to say no on, not exhaustive.
-if [[ ! "$COMMAND" =~ (^|[^[:alnum:]_])git($|[^[:alnum:]_]) ]]; then
+UNQUOTED_FOR_SCAN=${COMMAND//[\\\"\']/}
+if [[ ! "$UNQUOTED_FOR_SCAN" =~ (^|[^[:alnum:]_])git($|[^[:alnum:]_]) ]]; then
 	exit 0
 fi
 
