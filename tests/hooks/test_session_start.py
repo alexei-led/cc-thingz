@@ -109,6 +109,38 @@ def test_spec_project_reports_status_and_ready_tasks(tmp_path: Path) -> None:
     ]
 
 
+def test_specctl_queries_run_concurrently(tmp_path: Path) -> None:
+    """Sequential calls could exceed the 5 s hook timeout under load."""
+    (tmp_path / ".spec").mkdir()
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    log = tmp_path / "calls.log"
+    specctl = bin_dir / "specctl"
+    specctl.write_text(
+        "#!/bin/sh\n"
+        f'echo "start $(date +%s.%N)" >> "{log}"\n'
+        "sleep 1\n"
+        f'echo "end $(date +%s.%N)" >> "{log}"\n'
+        "echo '{}'\n"
+    )
+    specctl.chmod(0o755)
+    env = os.environ.copy()
+    env["PATH"] = f"{bin_dir}:/usr/bin:/bin"
+    subprocess.run(
+        [sys.executable, str(HOOK)],
+        input=json.dumps({"cwd": str(tmp_path)}),
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+    )
+    events = [line.split() for line in log.read_text().splitlines()]
+    starts = [float(t) for kind, t in events if kind == "start"]
+    ends = [float(t) for kind, t in events if kind == "end"]
+    assert len(starts) == 3
+    assert max(starts) < min(ends)
+
+
 def test_spec_branch_skipped_without_specctl(tmp_path: Path) -> None:
     """`.spec/` exists but `specctl` is missing on PATH — must not crash."""
     (tmp_path / ".spec").mkdir()
