@@ -1,5 +1,5 @@
 ---
-{"description":"Use when reviewing changed code, PRs, diffs, or specific files. Finds evidence-backed defects in security, correctness, tests, reliability, performance, maintainability, and docs. Supports quick, standard, deep, team, and external-review modes, plus a simplify mode for over-engineering and \"what can we delete\" reviews. NOT for repo-wide architecture review, general codebase exploration, fixing issues (use fixing-code), improving tests without a code review (use improving-tests), or applying refactors (use refactoring-code).","name":"reviewing-code"}
+{"description":"Use when reviewing changed code, PRs, diffs, or specific files. Finds evidence-backed defects in security, correctness, tests, reliability, performance, maintainability, and docs. Supports quick, standard, deep, team, and external-review modes, plus a simplify mode for over-engineering and \"what can we delete\" reviews. NOT for repo-wide architecture review, general codebase exploration, fixing issues (use fixing-code), or improving tests without a code review (use improving-tests).","name":"reviewing-code"}
 ---
 <!-- Codex platform guidance -->
 <!-- Use this platform's installed tool names exactly for shell, file reads, and search. If a referenced helper or optional tool is unavailable, say so and continue with built-in tools. -->

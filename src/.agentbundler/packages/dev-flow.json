@@ -16,9 +16,6 @@
       "path": "skills/improving-tests"
     },
     {
-      "path": "skills/refactoring-code"
-    },
-    {
       "path": "skills/reviewing-code"
     },
     {
@@ -114,12 +111,6 @@
       "targets": [
         "claude",
         "copilot"
-      ]
-    },
-    {
-      "path": "hooks/notify-grok",
-      "targets": [
-        "grok"
       ]
     }
   ],

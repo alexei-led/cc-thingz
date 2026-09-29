@@ -4,8 +4,7 @@ description:
   evidence-backed defects in security, correctness, tests, reliability, performance,
   maintainability, and docs. Supports quick, standard, deep, team, and external-review
   modes, plus a simplify mode for over-engineering and "what can we delete" reviews. NOT for repo-wide architecture review, general codebase exploration, fixing
-  issues (use fixing-code), improving tests without a code review (use improving-tests),
-  or applying refactors (use refactoring-code).
+  issues (use fixing-code), or improving tests without a code review (use improving-tests).
 name: reviewing-code
 ---
 

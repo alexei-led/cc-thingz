@@ -32,9 +32,11 @@
       "Bash(jq *)",
       "Bash(yq *)",
       "Bash(systemctl *)",
-      "Bash(journalctl *)"
+      "Bash(journalctl *)",
+      "AskUserQuestion"
     ],
+    "argument-hint": "[task | --dry-run | --apply <environment>]",
     "context": "fork",
-    "user-invocable": false
+    "user-invocable": true
   }
 }

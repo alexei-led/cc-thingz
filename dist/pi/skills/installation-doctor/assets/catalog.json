@@ -26,7 +26,6 @@
       "releasing-code",
       "fixing-code",
       "improving-tests",
-      "refactoring-code",
       "reviewing-code"
     ],
     "skill_targets": {},
@@ -54,9 +53,6 @@
         "SKILL.md"
       ],
       "improving-tests": [
-        "SKILL.md"
-      ],
-      "refactoring-code": [
         "SKILL.md"
       ],
       "reviewing-code": [
@@ -126,18 +122,10 @@
   },
   "infra-ops": {
     "skills": [
-      "deploying-infra",
       "operating-infra"
     ],
-    "skill_targets": {
-      "deploying-infra": [
-        "claude"
-      ]
-    },
+    "skill_targets": {},
     "resources": {
-      "deploying-infra": [
-        "SKILL.md"
-      ],
       "operating-infra": [
         "SKILL.md",
         "scripts/bq-cost-check.py"

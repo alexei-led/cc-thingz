@@ -1,5 +1,5 @@
 ---
-{"description":"Author, inspect, troubleshoot, and review infrastructure across IaC, Kubernetes, cloud resources, containers, CI/CD, and Linux hosts. Use when changing Terraform/OpenTofu, Kubernetes, Helm, Kustomize, Dockerfiles, GitHub Actions workflow/job/permissions semantics, AWS, GCP, Cloud Run, BigQuery, IAM, logs, instances, or service health. NOT for deploy/apply/rollback workflows (see deploying-infra). NOT for shell scripts, generic command pipelines, or only the shell body inside `run:` steps (see writing-shell).","name":"operating-infra"}
+{"description":"Author, inspect, troubleshoot, review, and — after explicit confirmation — apply infrastructure across IaC, Kubernetes, cloud resources, containers, CI/CD, and Linux hosts. Use when changing Terraform/OpenTofu, Kubernetes, Helm, Kustomize, Dockerfiles, GitHub Actions workflow/job/permissions semantics, AWS, GCP, Cloud Run, BigQuery, IAM, logs, instances, or service health, or when the user says \"deploy\", \"deploy to staging\", \"terraform apply\", \"helm upgrade\", \"kubectl apply\", \"rollout\", \"deploy check\", \"validate deployment\", or \"validate infrastructure\". NOT for shell scripts, generic command pipelines, or only the shell body inside `run:` steps (see writing-shell).","name":"operating-infra"}
 ---
 <!-- Pi platform guidance -->
 <!-- Use installed Pi tool names exactly, including extension toolsets such as Task*, Monitor*, and Loop*. -->
@@ -12,7 +12,8 @@ Work from files, plans, logs, and read-only commands. Edit repo files as the tas
 
 - Before any cloud command, confirm identity: `aws sts get-caller-identity --profile <profile>`, `gcloud auth list` and `gcloud config list`. Pass profile, project, region, and zone explicitly instead of relying on CLI defaults.
 - Before any live change that is destructive, costly, or externally visible (apply, delete, destroy, stop, resize, scale, IAM, bucket, network, DDL/DML, rollback), show the identity, exact resources (ARNs or names), blast radius, irreversibility, and the plan/diff/inventory behind them, then wait for the user to confirm.
-- Deployment, rollout, rollback, and production apply belong to deploying-infra where it is installed. Otherwise stop at the reviewed plan or diff and give the user the exact apply command.
+- Before any apply, upgrade, or rollout: confirm the exact destination (account, context, namespace, workspace, or release — name production explicitly), run the validation gates below on the same rendered artifact, and show the plan or diff with create/modify/delete counts. Apply only the same reviewed artifact (the saved plan file or rendered manifest), and only after explicit confirmation of that exact artifact and destination — never apply to production without it.
+- After applying, verify rollout status, pod health, or Terraform outputs/state, and name the rollback path. Apply failure or a timed-out/degraded rollout: stop, report status, and ask before any rollback.
 - Without write access, return proposed changes (file, change, reason) instead of applying them.
 
 For troubleshooting, rank likely causes, gather one safe signal at a time, and propose the next step. For authoring, pick the smallest pattern that keeps ownership, state boundaries, and least privilege.
@@ -33,6 +34,7 @@ Load every reference that matches the stack:
 - Cloud Run services, revisions, traffic, or logs → [cloud-run.md](references/cloud-run.md)
 - BigQuery queries, tables, datasets, or cost → [bigquery.md](references/bigquery.md)
 - Linux services, hosts, processes, disks, or networks → [linux.md](references/linux.md)
+- Applying, upgrading, rolling out, or any deploy request, including a bare "deploy this" → [deploying.md](references/deploying.md)
 
 ## Validation gates
 
@@ -53,7 +55,7 @@ Done when the relevant build/test/lint checks pass on what you changed, or you n
 INFRA RESULT
 Scope: <files/resources/environment>
 Identity: <account/project/profile/region or not applicable>
-Status: DONE | NEEDS CONFIRMATION | BLOCKED
+Status: DONE | NEEDS CONFIRMATION | BLOCKED | FAILED
 Evidence: <file:line, plan/log/status summary, command result>
 Changes or proposal: <minimal change or next step>
 Validation: <gate — pass/fail/skipped>

@@ -1,5 +1,5 @@
 ---
-{"description":"Fix code defects with a reproducible feedback loop, root-cause diagnosis, minimal patch, regression test, and clean verification. Use when debugging, diagnosing, or resolving lint/test/build failures. NOT for behavior-preserving refactors (use refactoring-code), test-suite cleanup without a production bug (use improving-tests), or code review findings without fixes (use reviewing-code).","name":"fixing-code"}
+{"description":"Fix code defects with a reproducible feedback loop, root-cause diagnosis, minimal patch, regression test, and clean verification. Use when debugging, diagnosing, or resolving lint/test/build failures. NOT for test-suite cleanup without a production bug (use improving-tests), or code review findings without fixes (use reviewing-code).","name":"fixing-code"}
 ---
 <!-- Pi platform guidance -->
 <!-- Use installed Pi tool names exactly, including extension toolsets such as Task*, Monitor*, and Loop*. -->
