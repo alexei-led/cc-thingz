@@ -1,0 +1,68 @@
+{
+  "skill_name": "spec-flow",
+  "evals": [
+    {
+      "id": "continue-resumes-active-session",
+      "name": "continue resumes active session",
+      "prompt": "continue\n\nState of this repo:\n\n```text\n$ scripts/specctl status\nActive session: TASK-003 (in-progress), step: implement, base: 4f2a9c1\nReady: TASK-004 add-retry-budget, TASK-006 docs-config\nDone: TASK-001, TASK-002\n$ scripts/specctl session show\ntask: TASK-003\nstep: implement\ncheckpoint: \"parser done; wire into loader next\"\n```\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.",
+      "expected_output": "The response resumes TASK-003 from its checkpoint instead of starting a ready task, and uses specctl for state.",
+      "assertions": [
+        "The output resumes TASK-003 from its checkpoint instead of starting TASK-004 or TASK-006.",
+        "The output uses specctl commands for session and task state, not hand edits to .spec/ files.",
+        "The output gives a short plan for the remaining TASK-003 work (wiring the parser into the loader).",
+        "The output ends with the Mode, Task, Status, Evidence, and Next block."
+      ]
+    },
+    {
+      "id": "close-with-evidence",
+      "name": "close with evidence",
+      "prompt": "TASK-004 add-retry-budget is implemented. `uv run pytest tests/test_retry.py` passed (12 passed). I did not run ruff because the linter config is broken on master. Changed files: src/retry.py, tests/test_retry.py. Commit a1b2c3d. Close the task.\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.",
+      "expected_output": "The response confirms acceptance criteria and closes with specctl done, putting the passing command and the skipped check with its reason in --tests.",
+      "assertions": [
+        "The output checks acceptance criteria, the scoped diff, or `specctl session handoff` before closing.",
+        "The output's close command is `specctl done TASK-004` with --summary.",
+        "The --tests value names the pytest command and its result.",
+        "The --tests value says ruff did not run and why.",
+        "The output passes --files and --commits a1b2c3d.",
+        "The output does not use --force."
+      ]
+    },
+    {
+      "id": "failing-check-blocks-done",
+      "name": "failing check blocks done",
+      "prompt": "I'm on TASK-006 docs-config. The link checker fails on two new links in docs/config.md, and I have to leave for the day. Mark it done so the board looks clean.\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.",
+      "expected_output": "The response refuses to mark the task done while verification fails and checkpoints it with a resume note instead.",
+      "assertions": [
+        "The output does not mark TASK-006 done while the link check fails.",
+        "The output's command is `specctl checkpoint --message` with a note on where to resume.",
+        "The output does not use --force.",
+        "The output names the failing link check in its Evidence line."
+      ]
+    },
+    {
+      "id": "conflicting-session-asks-first",
+      "name": "conflicting session asks first",
+      "prompt": "Start TASK-007 add-metrics now.\n\n```text\n$ scripts/specctl status\nActive session: TASK-003 (in-progress), step: verify, base: 4f2a9c1\nReady: TASK-007 add-metrics\n$ git status --short\n M src/loader.py\n```\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.",
+      "expected_output": "The response notices the conflicting active session with uncommitted work and asks before replacing it, offering a checkpoint first.",
+      "assertions": [
+        "The output notices TASK-003 is still active with uncommitted changes in src/loader.py.",
+        "The output asks the user before replacing or clearing the TASK-003 session.",
+        "The output offers `specctl checkpoint --message` for TASK-003 before switching.",
+        "The output does not run `specctl start TASK-007 --force` or `specctl session clear` without approval."
+      ]
+    },
+    {
+      "id": "plan-single-slice-smallest-set",
+      "name": "plan single slice smallest set",
+      "prompt": "Plan this with spec-flow: add a CSV export button to the monthly report page. The project has no .spec/ directory yet.\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.",
+      "expected_output": "The response initializes .spec/, plans one TASK for the clear single slice, shows the plan before writing, and validates it.",
+      "assertions": [
+        "The output's commands include `specctl init` before `specctl new task`.",
+        "The output plans one TASK via `specctl new task`, not an EPIC or REQ.",
+        "The output shows the proposed plan and asks for approval before writing it.",
+        "The output's commands include `specctl validate` and `specctl ready`.",
+        "The output keeps implementation code out of the plan."
+      ]
+    }
+  ]
+}

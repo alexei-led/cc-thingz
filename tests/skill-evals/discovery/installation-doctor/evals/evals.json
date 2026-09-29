@@ -1,0 +1,56 @@
+{
+  "skill_name": "installation-doctor",
+  "evals": [
+    {
+      "id": "claude-install-invocation",
+      "name": "claude install invocation",
+      "prompt": "Check whether my Claude Code cc-thingz plugins are installed correctly. They live under ~/.claude/plugins/cache/alexei-led-cc-thingz. Give me the exact command you would run and what you will report.\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.",
+      "expected_output": "The response runs the bundled doctor read-only with -B and --json, passes the Claude plugin root explicitly, and describes the report.",
+      "assertions": [
+        "The output's command runs doctor.py from the skill's scripts/ directory, next to SKILL.md.",
+        "The output's command runs Python with -B and passes --json.",
+        "The output's command passes --plugin-root with the Claude plugin cache path.",
+        "The output says exit 1 means findings and exit 2 means invalid arguments.",
+        "The output says the run does not install, change, or delete anything.",
+        "The output lists what it will report, including inspected roots, the baseline release, and findings with paths."
+      ]
+    },
+    {
+      "id": "cached-copies-not-proof-of-duplicates",
+      "name": "cached copies not proof of duplicates",
+      "prompt": "I ran the installation doctor on my Claude plugin cache. Summary of the non-passing checks:\n\n```text\npackage-version failed | Installed 6.11.2; baseline 6.15.0 | .../browser/6.11.2\npackage-version failed | Installed 6.14.2; baseline 6.15.0 | .../browser/6.14.2\nduplicate-plugin failed | dev-flow: 7 copies on disk; activation unknown | .../dev-flow/6.11.2\nduplicate-skill failed | reviewing-code: 7 copies on disk; activation unknown | .../dev-flow/6.11.2/skills/reviewing-code/SKILL.md\nskill-resources failed | releasing-code: 2 missing skill/helper files | .../dev-flow/6.11.2/skills/releasing-code/SKILL.md\nruntime-support unsupported | Static inventory cannot establish enabled plugins, hook event support, helper dependencies, or effective agent permissions\ncounts: passed 219, failed 86, skipped 1, unsupported 1\n```\n\nThe 6.15.0 directories all pass. Are my skills running seven times? Should I delete the old version folders now?",
+      "expected_output": "The response says cached copies do not prove enabled or duplicated execution, points to the enabled-plugin list first, and keeps the diagnostic read-only.",
+      "assertions": [
+        "The output says copies on disk do not prove old versions are enabled or that skills run more than once.",
+        "The output recommends checking the enabled or installed plugin list before removing anything.",
+        "The output says the failures are on old cached versions and the 6.15.0 install passes.",
+        "The output does not delete the old folders as part of this diagnosis.",
+        "The output says the doctor cannot verify active plugins, hook support, or permissions."
+      ]
+    },
+    {
+      "id": "hook-127-after-plugin-update",
+      "name": "hook 127 after plugin update",
+      "prompt": "After I updated the cc-thingz plugins, one long-running Claude Code session keeps failing a hook with: `python3: can't open file '/Users/me/.claude/plugins/cache/alexei-led-cc-thingz/dev-flow/6.14.2/hooks/git-guardrails/decide.py'`, and the hook denies the command. The doctor passes on the new 6.15.0 install. What is wrong and what should I do?",
+      "expected_output": "The response explains the running session still points at the old versioned plugin root that the update replaced, and says to restart that session.",
+      "assertions": [
+        "The output explains that a running session keeps the plugin root it started with, and the update replaced that versioned directory.",
+        "The output says to restart the affected session.",
+        "The output does not recommend reinstalling plugins, editing hook config, or recreating the old directory as the fix.",
+        "The output says a passing doctor run does not prove the hooks execute in the running session."
+      ]
+    },
+    {
+      "id": "boundary-broad-config-audit",
+      "name": "boundary broad config audit",
+      "prompt": "Audit my whole Claude Code setup: permissions, MCP servers, hooks, and settings.json. Fix whatever looks wrong.",
+      "expected_output": "The response says installation-doctor only inventories installed cc-thingz files and routes the broad audit and fixes to evolving-config.",
+      "assertions": [
+        "The output says the installation doctor only checks installed cc-thingz files, not the whole setup.",
+        "The output routes the audit to evolving-config.",
+        "The output does not claim the doctor verifies permissions, MCP servers, or hook event support.",
+        "The output does not edit configuration in this response."
+      ]
+    }
+  ]
+}

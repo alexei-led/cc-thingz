@@ -1,0 +1,82 @@
+{
+  "skill_name": "writing-csharp",
+  "evals": [
+    {
+      "id": "async-endpoint-review",
+      "name": "async endpoint review",
+      "prompt": "Review this ASP.NET Core controller action and rewrite it. The project targets net8.0 with nullable enabled.\n\n```csharp\n[HttpPost(\"orders\")]\npublic IActionResult Create(CreateOrderRequest req)\n{\n    var customer = _db.Customers.FirstOrDefault(c => c.Id == req.CustomerId)!;\n    var total = _pricing.CalculateAsync(req.Items).Result;\n    var order = new Order(customer, req.Items, total);\n    _db.Orders.Add(order);\n    _db.SaveChanges();\n    return Ok(order);\n}\n```\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.\n\nShow the code you would change, the tests you would add, and the commands you would run.",
+      "expected_output": "The rewrite is async end to end with a CancellationToken, removes .Result and the null-forgiving operator, validates the request at the handler, and does not return the EF entity.",
+      "assertions": [
+        "The rewrite awaits the pricing call instead of using `.Result`.",
+        "The rewrite passes a CancellationToken to the EF calls.",
+        "The rewrite removes the `!` operator and handles a missing customer explicitly.",
+        "The rewrite validates the request before mapping it to domain types.",
+        "The rewrite returns a response DTO, not the EF `Order` entity.",
+        "The output's verification includes `dotnet test` with a --filter or `dotnet build`."
+      ]
+    },
+    {
+      "id": "di-lifetime-and-options",
+      "name": "di lifetime and options",
+      "prompt": "Our .NET 8 worker registers `services.AddSingleton<ReportScheduler>()`. ReportScheduler takes `AppDbContext` in its constructor and reads `Environment.GetEnvironmentVariable(\"REPORT_INTERVAL\")` in ExecuteAsync. It loops with `while (true) { ...; Thread.Sleep(60000); }`. What's wrong and how do I fix it?\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.\n\nShow the code you would change, the tests you would add, and the commands you would run.",
+      "expected_output": "The response flags the singleton capturing a scoped DbContext, moves config to validated typed options, and honors the stopping token instead of Thread.Sleep.",
+      "assertions": [
+        "The output says the singleton must not capture the scoped AppDbContext, and uses a scope factory or IDbContextFactory.",
+        "The output moves REPORT_INTERVAL into typed options validated at startup.",
+        "The output's loop honors the stopping token instead of `while (true)`.",
+        "The output replaces Thread.Sleep with a cancellable wait such as Task.Delay with the token or PeriodicTimer.",
+        "The output uses the built-in DI container and adds no new library."
+      ]
+    },
+    {
+      "id": "flaky-time-test",
+      "name": "flaky time test",
+      "prompt": "This xUnit test in our net8.0 project is flaky in CI:\n\n```csharp\n[Fact]\npublic async void Token_expires_after_ttl()\n{\n    var cache = new TokenCache(TimeSpan.FromMilliseconds(50));\n    cache.Add(\"a\", \"t\");\n    Thread.Sleep(60);\n    Assert.Null(cache.Get(\"a\"));\n}\n```\n\nFix it.\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.\n\nShow the code you would change, the tests you would add, and the commands you would run.",
+      "expected_output": "The response changes async void to async Task, injects TimeProvider with a fake clock instead of sleeping, and keeps xUnit.",
+      "assertions": [
+        "The fix changes `async void` to `async Task` or makes the test synchronous.",
+        "The fix replaces the real sleep with a controllable clock such as TimeProvider with FakeTimeProvider.",
+        "The output stays on xUnit.",
+        "The output adds a case where the token is still present before the TTL.",
+        "The output's verification includes `dotnet test` with a --filter."
+      ]
+    },
+    {
+      "id": "warning-suppression-policy",
+      "name": "warning suppression policy",
+      "prompt": "The build has TreatWarningsAsErrors on and now fails with CS8602 (possible null dereference) after my change:\n\n```csharp\npublic string Describe(Order order)\n{\n    var customer = _repo.FindCustomer(order.CustomerId); // returns Customer?\n    return $\"{customer.Name} ({order.Items.FirstOrDefault()?.Sku.ToUpper()})\";\n}\n```\n\nQuickest fix is `#pragma warning disable CS8602` at the top of the file, right?\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.",
+      "expected_output": "The response fixes the nullable warnings at the source instead of suppressing them and keeps the warning policy intact.",
+      "assertions": [
+        "The output rejects the #pragma suppression.",
+        "The output keeps TreatWarningsAsErrors on.",
+        "The output fixes the warnings at the source with null checks or pattern matching, not `!`.",
+        "The output's verification includes `dotnet build`."
+      ]
+    },
+    {
+      "id": "small-cli-bcl-first",
+      "name": "small cli bcl first",
+      "prompt": "Add a small `export` command-line tool to our .NET 8 solution. It takes `--from <date>` and an optional `--format csv|json`, and writes the exported report to stdout. We don't use any CLI library yet.\n\nShow the code you would change, the tests you would add, and the commands you would run.\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.",
+      "expected_output": "The response parses two flags with the BCL, keeps Program.cs thin, and tests a Run(args, stdout, stderr) seam for exit code and output.",
+      "assertions": [
+        "The output parses the arguments with the BCL and does not add System.CommandLine, Spectre.Console, or another CLI package.",
+        "Program.cs only delegates to a testable method such as Run(args, stdout, stderr).",
+        "The tests assert the exit code and the written output through that method.",
+        "The output returns a non-zero exit code and writes an error to stderr for a bad or missing --from.",
+        "The output's verification uses `dotnet test` with a --filter."
+      ]
+    },
+    {
+      "id": "check-langversion-before-syntax",
+      "name": "check langversion before syntax",
+      "prompt": "Convert our service classes to C# 12 primary constructors and collection expressions. Here is the project file:\n\n```xml\n<Project Sdk=\"Microsoft.NET.Sdk.Web\">\n  <PropertyGroup>\n    <TargetFramework>net6.0</TargetFramework>\n    <Nullable>enable</Nullable>\n  </PropertyGroup>\n</Project>\n```\n\nShow the code you would change, the tests you would add, and the commands you would run.\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.",
+      "expected_output": "The response checks TargetFramework and LangVersion first, says net6.0 defaults to C# 10 without these features, and does not raise the language version without approval.",
+      "assertions": [
+        "The output says net6.0 defaults to C# 10, which lacks primary constructors and collection expressions.",
+        "The output does not convert the code to C# 12 syntax in this project as it stands.",
+        "The output asks before raising LangVersion or the target framework, and treats that as a separate decision.",
+        "The output does not set LangVersion to latest or preview on its own."
+      ]
+    }
+  ]
+}

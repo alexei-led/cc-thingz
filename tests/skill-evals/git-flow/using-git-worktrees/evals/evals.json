@@ -4,14 +4,15 @@
     {
       "id": "parallel-feature-worktree",
       "name": "parallel feature worktree",
-      "prompt": "A user wants to start a risky feature while keeping the current branch untouched. Describe the worktree workflow.",
-      "expected_output": "The response uses git worktree for isolation, checks current status, chooses branch/path, creates worktree, and explains how to work/clean up safely.",
+      "prompt": "I'm in /work/shop on main. I want to start a risky refactor on a new branch `feature/auth` in parallel, and keep main untouched because I'm reviewing a teammate's PR there. `git status --short` shows ` M README.md`. Set it up and tell me exactly what you run.\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.",
+      "expected_output": "The response checks status and worktree list, leaves the README change in place without stashing, creates the worktree with the setup script at the sibling slug path, and explains cleanup after merge.",
       "assertions": [
-        "The output says a git worktree is appropriate for isolated parallel feature work.",
-        "The output checks current git status or dirty state before creating the worktree.",
-        "The output chooses or asks for a branch name and worktree path.",
-        "The output creates or describes git worktree add workflow.",
-        "The output mentions cleanup/removal after the work is done."
+        "The output checks `git status --short` and `git worktree list` first.",
+        "The output does not stash the README.md change.",
+        "The output asks before using --allow-dirty, or explains that --allow-dirty keeps the change in the main worktree.",
+        "The output's command is `scripts/setup-worktree.sh feature/auth` or an equivalent `git worktree add`.",
+        "The output's path is /work/shop.worktrees/feature-auth.",
+        "The output mentions removing the worktree and branch after the PR merges."
       ]
     },
     {
@@ -24,6 +25,18 @@
         "The output recommends normal git switch/checkout workflow instead.",
         "The output still checks for uncommitted changes before switching.",
         "The output avoids creating extra worktrees unnecessarily."
+      ]
+    },
+    {
+      "id": "cleanup-without-gh-needs-confirmation",
+      "name": "cleanup without gh needs confirmation",
+      "prompt": "The PR for `feature/auth` was squash-merged on GitHub. `gh` isn't installed on this machine. Remove the /work/shop.worktrees/feature-auth worktree and its branch, then pull main.\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.",
+      "expected_output": "The response uses the cleanup script, explains that without gh it cannot confirm the merge, uses --force only on the user's stated merge with its risks named, and keeps git pull out of cleanup.",
+      "assertions": [
+        "The output uses `scripts/cleanup-worktree.sh` for feature/auth, not hand-written worktree and branch deletion.",
+        "The output says the script cannot confirm the merge without gh.",
+        "The output uses --force only on the user's statement that the PR merged, and warns it can remove a dirty worktree or force-delete the branch.",
+        "The output keeps `git pull` out of the cleanup step."
       ]
     }
   ]
