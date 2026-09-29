@@ -5,8 +5,9 @@ description: Author, inspect, troubleshoot, review, and — after explicit confi
   Dockerfiles, GitHub Actions workflow/job/permissions semantics, AWS, GCP, Cloud
   Run, BigQuery, IAM, logs, instances, or service health, or when the user says
   "deploy", "deploy to staging", "terraform apply", "helm upgrade", "kubectl apply",
-  or "rollout". NOT for shell scripts, generic command pipelines, or only the shell
-  body inside `run:` steps (see writing-shell).
+  "rollout", "deploy check", "validate deployment", or "validate infrastructure".
+  NOT for shell scripts, generic command pipelines, or only the shell body inside
+  `run:` steps (see writing-shell).
 name: operating-infra
 ---
 
@@ -38,7 +39,7 @@ Load every reference that matches the stack:
 - Cloud Run services, revisions, traffic, or logs → [cloud-run.md](references/cloud-run.md)
 - BigQuery queries, tables, datasets, or cost → [bigquery.md](references/bigquery.md)
 - Linux services, hosts, processes, disks, or networks → [linux.md](references/linux.md)
-- Applying, upgrading, or rolling out an already-validated change → [deploying.md](references/deploying.md)
+- Applying, upgrading, rolling out, or any deploy request, including a bare "deploy this" → [deploying.md](references/deploying.md)
 
 ## Validation gates
 

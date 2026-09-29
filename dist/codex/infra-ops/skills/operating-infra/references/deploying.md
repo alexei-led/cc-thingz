@@ -7,7 +7,8 @@ already-validated Terraform, Helm, Kustomize, or Kubernetes artifact.
 
 - Never invent deploy paths, release names, workspaces, namespaces, accounts, or environments. If one is unclear, ask.
 - Authorization binds to the reviewed artifact (saved plan or rendered file) and its exact destination. Ambiguous, partial, or mismatched authorization means stop and ask again.
-- Blocked validation or an unshown destructive change: stop before confirmation.
+- Blocked validation, missing plan/diff evidence, or an unshown destructive change: stop before confirmation.
+- Never run a command with an unresolved placeholder. Keep secrets out of evidence and hashes.
 - Push no images and trigger no CI workflows here.
 - Asked to describe the workflow rather than run it: give the ordered steps below. Unknown details (destination, release, values) become the questions to ask, not a blocked report.
 
@@ -55,5 +56,5 @@ After an actual apply run, start with one header, then its fields:
 DRY RUN COMPLETE: Status; Environment; Types; Validation; Plan/Diff; Blockers; Skipped
 AWAITING CONFIRMATION: Environment; Type; Command; Destructive changes; Confirmation needed
 DEPLOYMENT COMPLETE: Environment; Type; Status; Applied; Verification; Rollback option
-DEPLOYMENT FAILED: Environment; Type; Reason; Evidence; Next step
+DEPLOYMENT BLOCKED | DEPLOYMENT FAILED: Environment; Type; Reason; Evidence; Next step
 ```
