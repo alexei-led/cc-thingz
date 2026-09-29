@@ -18,6 +18,11 @@ PI_RUNTIME=0
 TEST_RUNNER_DIFF_FALLBACK_LIMIT="${TEST_RUNNER_DIFF_FALLBACK_LIMIT:-50}"
 TEST_RUNNER_FULL="${TEST_RUNNER_FULL:-0}"
 TEST_RUNNER_DEBUG="${TEST_RUNNER_DEBUG:-0}"
+# Wall-clock budget for the whole hook run, in seconds, measured from process
+# start via bash's builtin $SECONDS. Kept below the 120s harness timeout so a
+# hung or slow suite is reported as "skipped: timeout" instead of the harness
+# force-killing the hook with no output.
+TEST_RUNNER_TIMEOUT_SECS="${TEST_RUNNER_TIMEOUT_SECS:-90}"
 TEST_RUNNER_COMPACT_LINES=120
 HOOK_PROJECT_FALLBACK="${HOOK_PROJECT_FALLBACK:-0}"
 TESTS_RAN=0
@@ -156,6 +161,8 @@ if not isinstance(data, dict):
     sys.exit(1)
 source=data.get("piEvent", {}) if data.get("event") == "stop" else data
 value=source.get(field) if isinstance(source, dict) else None
+if value is None and isinstance(data.get("vendorEvent"), dict):
+    value=data["vendorEvent"].get(field)
 if value is None:
     sys.exit(1)
 print(str(value))
@@ -195,9 +202,18 @@ is_subagent_child() {
 }
 
 clear_hook_state() {
-	local state_path
+	# Truncate rather than remove: an empty state file tells the next Stop
+	# "nothing pending as of last conclusion", so collect_focus_files treats
+	# it as session state with zero files. Removing the file instead would
+	# make the next Stop see no state at all and fall back to a full git
+	# diff, re-running tests for every dirty file even when this turn
+	# changed nothing.
+	local state_path state_dir
 	state_path=$(hook_state_path 2>/dev/null || true)
-	[[ -n "$state_path" ]] && rm -f "$state_path"
+	[[ -n "$state_path" ]] || return 0
+	state_dir=$(dirname "$state_path")
+	mkdir -p "$state_dir" 2>/dev/null || return 0
+	: >"$state_path" 2>/dev/null
 }
 
 path_is_excluded() {
@@ -254,7 +270,11 @@ collect_focus_files() {
 	state_path=$(hook_state_path 2>/dev/null || true)
 	tmp_raw=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-focus-raw.%s' "$$")
 	tmp_filtered=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-focus-filtered.%s' "$$")
-	if [[ -n "$state_path" && -s "$state_path" ]]; then
+	if [[ -n "$state_path" && -f "$state_path" ]]; then
+		# -f, not -s: an existing empty file means clear_hook_state already
+		# concluded there was nothing pending, which is itself the answer —
+		# don't fall through to a git diff fallback that would re-run tests
+		# for every still-dirty file.
 		cat "$state_path" >"$tmp_raw"
 	elif is_subagent_child; then
 		source="subagent child without hook state"
@@ -371,14 +391,73 @@ compact_output() {
 	' <<<"$1"
 }
 
+# Runs "$@" in its own process group with a wall-clock deadline of $1 seconds,
+# so a hung or slow test process — and any children it spawns, e.g. `go build`,
+# `uv sync`, a Gradle daemon — cannot hold the Stop hook past its own timeout.
+# Prints the command's combined stdout/stderr; returns 124 if the deadline
+# fired, else the command's own exit code.
+run_with_deadline() {
+	local budget="$1"
+	shift
+	local outfile timeout_flag code
+	outfile=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-run.%s' "$$")
+	timeout_flag=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-run-timeout.%s' "$$")
+	rm -f "$timeout_flag"
+	(
+		# set -m gives "$@" its own process group so the watchdog can kill
+		# the whole tree; it also makes bash announce job state changes
+		# ("[1]+ Terminated ...") on this subshell's stderr, which is not
+		# part of the command's own output — redirected away below.
+		set -m
+		"$@" >"$outfile" 2>&1 &
+		cmd_pid=$!
+		(
+			sleep "$budget"
+			: >"$timeout_flag"
+			kill -TERM -- "-$cmd_pid" 2>/dev/null
+			sleep 2
+			kill -KILL -- "-$cmd_pid" 2>/dev/null
+		) </dev/null >/dev/null 2>&1 &
+		watchdog_pid=$!
+		wait "$cmd_pid"
+		cmd_status=$?
+		kill "$watchdog_pid" 2>/dev/null
+		wait "$watchdog_pid" 2>/dev/null
+		exit "$cmd_status"
+	) 2>/dev/null
+	code=$?
+	[[ -f "$timeout_flag" ]] && code=124
+	cat "$outfile" 2>/dev/null
+	rm -f "$outfile" "$timeout_flag"
+	return "$code"
+}
+
+# Remaining seconds in the hook's wall-clock budget, measured from process
+# start via bash's builtin $SECONDS. Zero or negative means the budget is
+# exhausted and no further test command should start.
+remaining_budget() {
+	printf '%d\n' "$((TEST_RUNNER_TIMEOUT_SECS - SECONDS))"
+}
+
 run_test_compact() {
 	local label="$1"
 	shift
+	local remaining
+	remaining=$(remaining_budget)
+	if [[ "$remaining" -le 0 ]]; then
+		log_warn "skipped: timeout — no budget left to run $label"
+		return 0
+	fi
 	TESTS_RAN=1
 	log_info "Running: $*"
 	local output code
-	output=$("$@" 2>&1)
+	output=$(run_with_deadline "$remaining" "$@")
 	code=$?
+	if [[ "$code" -eq 124 ]]; then
+		[[ -n "$output" ]] && compact_output "$output" >&2
+		log_warn "skipped: timeout — $label exceeded ${TEST_RUNNER_TIMEOUT_SECS}s budget"
+		return 0
+	fi
 	if [[ "$code" -eq 0 ]]; then
 		TESTS_PASSED=1
 		log_debug "$label passed"
@@ -398,11 +477,22 @@ run_and_capture() {
 run_pytest_compact() {
 	local label="$1"
 	shift
+	local remaining
+	remaining=$(remaining_budget)
+	if [[ "$remaining" -le 0 ]]; then
+		log_warn "skipped: timeout — no budget left to run $label"
+		return 0
+	fi
 	TESTS_RAN=1
 	log_info "Running: $*"
 	local output code
-	output=$("$@" 2>&1)
+	output=$(run_with_deadline "$remaining" "$@")
 	code=$?
+	if [[ "$code" -eq 124 ]]; then
+		[[ -n "$output" ]] && compact_output "$output" >&2
+		log_warn "skipped: timeout — $label exceeded ${TEST_RUNNER_TIMEOUT_SECS}s budget"
+		return 0
+	fi
 	if [[ "$code" -eq 5 ]]; then
 		log_info "skipped: $label collected no tests"
 		return 0
