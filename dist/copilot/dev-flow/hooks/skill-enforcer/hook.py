@@ -22,7 +22,7 @@ RELEASE = re.compile(
     r"|опубликуй|опубликовать|создай|создать|тегируй"
     r"|подготовь).{0,55}(релиз|v[0-9]+\.[0-9]+\.[0-9]+)"
     r"|(напис|подготов|проверь|исправ|состав|отредактир"
-    r"|обнов|перепиш).{0,45}(заметк.{0,10}(релиз)|release notes"
+    r"|обнов|перепиш|напиш).{0,45}(заметк.{0,10}(релиз)|release notes"
     r"|changelog)"
 )
 ARTICLE = re.compile(
@@ -204,7 +204,7 @@ RULES = [
         (
             r"git[\s-]?(hygiene|guardrails)|pre[\s-]?commit|pre[\s-]?push"
             r"|gitleaks|git[\s-]?leaks|secret\s+scan.*git|git\s+hooks?"
-            r"|core\.hooksPath|hooksPath|\.gitignore|gitignore"
+            r"|core\.hookspath|hookspath|\.gitignore|gitignore"
             r"|git\s+config.*(best|setup|hygiene|sign|pull|prune"
             r"|includeif)"
         ),
@@ -398,7 +398,8 @@ COMPILED = [
 
 
 def suggest(prompt: str) -> list[str]:
-    text = prompt.lower()
+    # Match the old shell hook: command substitution dropped trailing newlines.
+    text = prompt.lower().rstrip("\n")
     if len(text) < 10 or "skill(" in text or FOLLOW_UP.fullmatch(text):
         return []
     release = bool(RELEASE.search(text)) and not ARTICLE.search(text)

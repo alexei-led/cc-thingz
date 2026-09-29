@@ -245,6 +245,24 @@ FIXTURES="$BATS_TEST_DIRNAME/fixtures"
 	[[ "$output" != *"documenting-code"* ]]
 }
 
+@test "skill-enforcer: Russian imperative release-note request routes to releasing-code" {
+	run python3 "$HOOK" <<<'{"prompt":"Напиши заметки к релизу v6.13.0."}'
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"releasing-code"* ]]
+}
+
+@test "skill-enforcer: core.hooksPath routes to configuring-git-hygiene" {
+	run python3 "$HOOK" <<<'{"prompt":"set core.hooksPath for this repo"}'
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"configuring-git-hygiene"* ]]
+}
+
+@test "skill-enforcer: trailing newlines do not pass the length gate" {
+	run python3 "$HOOK" <<<'{"prompt":"fix it\n\n\n\n"}'
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
 @test "skill-enforcer: installed package update is not release preparation" {
 	run python3 "$HOOK" <<<'{"prompt":"Update the installed cc-thingz package to the latest release."}'
 	[ "$status" -eq 0 ]
