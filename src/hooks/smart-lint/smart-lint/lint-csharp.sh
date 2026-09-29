@@ -51,17 +51,23 @@ csharp_relative_to_target_dir() {
 csharp_run_dotnet_format() {
 	local target="$1"
 	shift
-	local target_dir target_name output
+	local target_dir target_name output status
 
 	mark_format_ran
 	mark_lint_ran
 	target_dir=$(dirname "$target")
 	target_name=$(basename "$target")
-	if output=$(cd "$target_dir" && dotnet format "$target_name" "$@" 2>&1); then
+	output=$(cd "$target_dir" && run_with_timeout "$SMART_LINT_CMD_TIMEOUT_SECONDS" dotnet format "$target_name" "$@")
+	status=$?
+	if [[ "$status" -eq 0 ]]; then
 		log_debug "dotnet format passed for $target $*"
 		return 0
 	fi
-	add_error "C# Formatter/Linter (dotnet format)" "$(compact_output "$output")"
+	if [[ "$status" -eq 124 ]]; then
+		add_timeout_error "C# Formatter/Linter (dotnet format)" "$output"
+	else
+		add_error "C# Formatter/Linter (dotnet format)" "$(compact_output "$output")"
+	fi
 	return 2
 }
 

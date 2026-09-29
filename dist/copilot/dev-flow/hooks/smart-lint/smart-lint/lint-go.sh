@@ -32,7 +32,7 @@ lint_go() {
 	done < <(printf '%s\n' "${pkg_dirs[@]}" | sort -u)
 
 	if command_exists golangci-lint; then
-		local version
+		local version status
 		version=$(golangci-lint version --short 2>/dev/null)
 		local base_cmd=(golangci-lint run --fix)
 		if [[ "$version" == 2* ]]; then
@@ -41,13 +41,22 @@ lint_go() {
 			base_cmd+=(--fast)
 		fi
 
-		if output=$("${base_cmd[@]}" "${unique_packages[@]}" 2>&1); then
+		output=$(run_with_timeout "$SMART_LINT_CMD_TIMEOUT_SECONDS" "${base_cmd[@]}" "${unique_packages[@]}")
+		status=$?
+		if [[ "$status" -eq 0 ]]; then
 			log_debug "golangci-lint passed"
+		elif [[ "$status" -eq 124 ]]; then
+			add_timeout_error "Go (golangci-lint)" "$output"
 		else
 			# Retry with --no-config if config error
 			if echo "$output" | grep -q "Error: can't load config"; then
 				log_info "Config error detected, retrying with --no-config..."
-				if output=$("${base_cmd[@]}" --no-config "${unique_packages[@]}" 2>&1); then
+				output=$(run_with_timeout "$SMART_LINT_CMD_TIMEOUT_SECONDS" "${base_cmd[@]}" --no-config "${unique_packages[@]}")
+				status=$?
+				if [[ "$status" -eq 0 ]]; then
+					return 0
+				elif [[ "$status" -eq 124 ]]; then
+					add_timeout_error "Go (golangci-lint)" "$output"
 					return 0
 				fi
 			fi

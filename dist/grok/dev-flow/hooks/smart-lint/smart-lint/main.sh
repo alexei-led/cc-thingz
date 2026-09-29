@@ -12,6 +12,15 @@ source "$SCRIPT_DIR/lib.sh"
 # --- MAIN EXECUTION ---
 [[ "$1" == "--debug" ]] && export CLAUDE_HOOKS_DEBUG=1
 init_hook_input
+
+# The edited file lives outside the project root (e.g. a /tmp scratchpad
+# file): nothing here to lint, and falling through would let an unrelated
+# in-project file's errors block an edit that never touched the project.
+if hook_edit_target_outside_project; then
+	log_debug "Edited file is outside the project root, skipping."
+	exit 0
+fi
+
 record_hook_edited_files
 
 # Layered config: global defaults, then project overrides.

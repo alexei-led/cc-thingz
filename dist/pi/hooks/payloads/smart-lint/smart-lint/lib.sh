@@ -10,6 +10,9 @@ CLAUDE_HOOKS_DEBUG="${CLAUDE_HOOKS_DEBUG:-0}"
 PROJECT_TYPE="${PROJECT_TYPE:-unknown}"
 SMART_LINT_DIFF_FALLBACK_LIMIT="${SMART_LINT_DIFF_FALLBACK_LIMIT:-5}"
 SMART_LINT_COMPACT_LINES=80
+# Per-command cap so one slow/cold tool (pyright's first node spin-up,
+# golangci-lint's first cache build, …) can't eat the whole hook budget.
+SMART_LINT_CMD_TIMEOUT_SECONDS="${SMART_LINT_CMD_TIMEOUT_SECONDS:-30}"
 HOOK_PROJECT_FALLBACK="${HOOK_PROJECT_FALLBACK:-0}"
 SMART_LINT_FORMAT_RAN=0
 SMART_LINT_LINT_RAN=0
@@ -265,6 +268,52 @@ except (ValueError, AttributeError):
 			cd "$hook_cwd" || return 0
 		fi
 	fi
+}
+
+# True (status 0) when the edited file named in the hook payload resolves
+# outside the project root (already cd'd to by init_hook_input). Catches
+# scratchpad edits (e.g. under /tmp, which symlinks to /private/tmp on macOS)
+# before any linter runs, so an unrelated in-project file can't block them.
+hook_edit_target_outside_project() {
+	[[ -n "$HOOK_INPUT_JSON" ]] || return 1
+	command_exists python3 || return 1
+	python3 -c '
+import json
+import sys
+from pathlib import Path
+
+try:
+    data = json.loads(sys.stdin.read() or "{}")
+except Exception:
+    sys.exit(1)
+if not isinstance(data, dict):
+    sys.exit(1)
+
+if data.get("event") == "post-tool":
+    tool_input = data.get("piEvent", {})
+    tool_input = tool_input.get("input") if isinstance(tool_input, dict) else None
+else:
+    tool_input = data.get("tool_input")
+if not isinstance(tool_input, dict):
+    sys.exit(1)
+
+raw = tool_input.get("file_path") or tool_input.get("path")
+if not isinstance(raw, str) or not raw.strip():
+    sys.exit(1)
+
+cwd = Path.cwd().resolve()
+target = Path(raw.strip())
+try:
+    full = target.resolve() if target.is_absolute() else (cwd / target).resolve()
+except OSError:
+    sys.exit(1)
+
+try:
+    full.relative_to(cwd)
+except ValueError:
+    sys.exit(0)
+sys.exit(1)
+' <<<"$HOOK_INPUT_JSON"
 }
 
 declare -a ERRORS=()
@@ -579,6 +628,51 @@ compact_output() {
 	' <<<"$1"
 }
 
+# Runs "$@" with a wall-clock cap, printing its combined output like a plain
+# $(...) capture would. No `timeout`/`gtimeout` on stock macOS, so this uses a
+# background watcher + SIGTERM instead; exits 124 (matching GNU timeout) when
+# it had to kill the command.
+run_with_timeout() {
+	local secs="$1"
+	shift
+	local tmp
+	tmp=$(mktemp 2>/dev/null) || {
+		"$@"
+		return $?
+	}
+
+	"$@" >"$tmp" 2>&1 &
+	local pid=$!
+	(
+		sleep "$secs" 2>/dev/null
+		kill -TERM "$pid" 2>/dev/null
+	) &
+	local watcher=$!
+
+	local status=0
+	wait "$pid" 2>/dev/null || status=$?
+
+	local timed_out=0
+	if kill -0 "$watcher" 2>/dev/null; then
+		kill "$watcher" 2>/dev/null
+	else
+		timed_out=1
+	fi
+	wait "$watcher" 2>/dev/null
+
+	cat "$tmp"
+	rm -f "$tmp"
+	[[ "$timed_out" -eq 1 ]] && return 124
+	return "$status"
+}
+
+# Shared "$name timed out after Ns" branch for callers wrapping a command in
+# run_with_timeout; the non-timeout failure message stays call-site specific.
+add_timeout_error() {
+	local name="$1" output="$2"
+	add_error "$name timed out after ${SMART_LINT_CMD_TIMEOUT_SECONDS}s" "$(compact_output "$output")"
+}
+
 run_formatter_on_files() {
 	local mode="check"
 	if [[ "${1:-}" == "--format-only" ]]; then
@@ -598,8 +692,18 @@ run_formatter_on_files() {
 	log_debug "Running $name on files: ${files[*]}"
 	mark_format_ran
 
-	if ! output=$($format_cmd "${files[@]}" 2>&1); then
-		add_error "$name failed" "$(compact_output "$output")"
+	local output status
+	# format_cmd/check_cmd are strings like "ruff format" that must split into
+	# multiple words here; each caller controls its own value (no user input).
+	# shellcheck disable=SC2086
+	output=$(run_with_timeout "$SMART_LINT_CMD_TIMEOUT_SECONDS" $format_cmd "${files[@]}")
+	status=$?
+	if [[ "$status" -ne 0 ]]; then
+		if [[ "$status" -eq 124 ]]; then
+			add_timeout_error "$name" "$output"
+		else
+			add_error "$name failed" "$(compact_output "$output")"
+		fi
 		return 2
 	fi
 
@@ -607,8 +711,13 @@ run_formatter_on_files() {
 		return 0
 	fi
 
-	if output=$($check_cmd "${files[@]}" 2>&1); then
+	# shellcheck disable=SC2086 # check_cmd is a multi-word string; see above.
+	output=$(run_with_timeout "$SMART_LINT_CMD_TIMEOUT_SECONDS" $check_cmd "${files[@]}")
+	status=$?
+	if [[ "$status" -eq 0 ]]; then
 		return 0
+	elif [[ "$status" -eq 124 ]]; then
+		add_timeout_error "$name" "$output"
 	else
 		add_error "$name needs fixing" "$(compact_output "$output")"
 	fi
@@ -617,9 +726,15 @@ run_formatter_on_files() {
 run_command_compact() {
 	local name="$1"
 	shift
-	if output=$("$@" 2>&1); then
+	local output status
+	output=$(run_with_timeout "$SMART_LINT_CMD_TIMEOUT_SECONDS" "$@")
+	status=$?
+	if [[ "$status" -eq 0 ]]; then
 		log_debug "$name passed."
 		return 0
+	elif [[ "$status" -eq 124 ]]; then
+		add_timeout_error "$name" "$output"
+		return 2
 	else
 		add_error "$name found issues" "$(compact_output "$output")"
 		return 2

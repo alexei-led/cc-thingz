@@ -55,6 +55,76 @@ SH
 	[ "$(cat "$state_path")" = "pkg/one.py" ]
 }
 
+@test "smart-lint: edits outside the project root are skipped, even with unrelated lint errors in the project" {
+	cd "$WORK_DIR" || exit
+	git init -q
+	git config user.email test@example.com
+	git config user.name Test
+	mkdir -p bin pkg
+	touch pyproject.toml
+	printf 'x=1\n' >pkg/bad.py
+	cat >bin/ruff <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"$PWD/ruff.args"
+echo "pkg/bad.py:1:1: E225 missing whitespace around operator" >&2
+exit 1
+SH
+	chmod +x bin/ruff
+
+	# Deliberately outside $WORK_DIR (not a subdirectory of it), unlike the
+	# nested BATS_TEST_TMPDIR the project itself lives under.
+	scratch_dir=$(mktemp -d)
+
+	touch "$scratch_dir/scratch.py"
+
+	run env -u HOOK_INPUT_JSON PATH="$WORK_DIR/bin:$PATH" bash "$HOOK" <<<"{\"session_id\":\"s_outside\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"$scratch_dir/scratch.py\"}}"
+	rm -rf "$scratch_dir"
+	[ "$status" -eq 0 ]
+	[ ! -f ruff.args ]
+}
+
+@test "smart-lint: a /tmp scratch edit is skipped (symlinked to /private/tmp on macOS)" {
+	cd "$WORK_DIR" || exit
+	git init -q
+	git config user.email test@example.com
+	git config user.name Test
+	touch pyproject.toml
+
+	scratch_dir=$(mktemp -d /tmp/smart-lint-outside.XXXXXX)
+	touch "$scratch_dir/scratch.py"
+
+	run env -u HOOK_INPUT_JSON bash "$HOOK" <<<"{\"session_id\":\"s_symlink\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"$scratch_dir/scratch.py\"}}"
+	rm -rf "$scratch_dir"
+	[ "$status" -eq 0 ]
+}
+
+@test "smart-lint: a slow linter is killed after SMART_LINT_CMD_TIMEOUT_SECONDS instead of hanging" {
+	cd "$WORK_DIR" || exit
+	git init -q
+	git config user.email test@example.com
+	git config user.name Test
+	mkdir -p bin pkg
+	touch pyproject.toml pkg/one.py
+	# A never-ending formatter: without the internal timeout this would hang
+	# the hook (and its "$(sleep 999...)" marker would never leave $tmp).
+	cat >bin/ruff <<'SH'
+#!/usr/bin/env bash
+if [[ "$1" == "format" ]]; then
+	sleep 999
+	exit 0
+fi
+exit 0
+SH
+	chmod +x bin/ruff
+
+	run env -u HOOK_INPUT_JSON SMART_LINT_CMD_TIMEOUT_SECONDS=1 PATH="$WORK_DIR/bin:/usr/bin:/bin" bash "$HOOK" <<<"{\"session_id\":\"s_timeout\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"pkg/one.py\"}}"
+	# A working kill is the only way this returns instead of hitting bats' own
+	# test timeout; the exit code and message confirm it was a timeout, not a
+	# real formatter failure.
+	[ "$status" -eq 2 ]
+	[[ "$output" == *"timed out after 1s"* ]]
+}
+
 @test "smart-lint: pyright JSON output is compact and filters missing imports" {
 	cd "$WORK_DIR" || exit
 	git init -q

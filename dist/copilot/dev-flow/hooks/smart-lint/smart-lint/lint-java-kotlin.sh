@@ -50,62 +50,73 @@ jvm_pom_mentions() {
 	grep -qiE "$pattern" "$pom" 2>/dev/null
 }
 
+jvm_report_timeout_or_error() {
+	local status="$1" name="$2" output="$3"
+	if [[ "$status" -eq 124 ]]; then
+		add_timeout_error "$name" "$output"
+	else
+		add_error "$name" "$(compact_output "$output")"
+	fi
+}
+
 jvm_run_gradle_task() {
-	local root="$1" task="$2" output
+	local root="$1" task="$2" output status
 	mark_lint_ran
 	if [[ -x "$root/gradlew" ]]; then
-		if output=$(cd "$root" && ./gradlew "$task" --quiet 2>&1); then
-			log_debug "Gradle $task passed in $root"
-			return 0
-		fi
+		output=$(cd "$root" && run_with_timeout "$SMART_LINT_CMD_TIMEOUT_SECONDS" ./gradlew "$task" --quiet)
+		status=$?
 	elif command_exists gradle; then
-		if output=$(gradle -p "$root" "$task" --quiet 2>&1); then
-			log_debug "Gradle $task passed in $root"
-			return 0
-		fi
+		output=$(run_with_timeout "$SMART_LINT_CMD_TIMEOUT_SECONDS" gradle -p "$root" "$task" --quiet)
+		status=$?
 	else
 		return 1
 	fi
-	add_error "JVM Gradle ($task)" "$(compact_output "$output")"
+	if [[ "$status" -eq 0 ]]; then
+		log_debug "Gradle $task passed in $root"
+		return 0
+	fi
+	jvm_report_timeout_or_error "$status" "JVM Gradle ($task)" "$output"
 	return 2
 }
 
 jvm_run_maven_task() {
-	local pom="$1" goal="$2" output
+	local pom="$1" goal="$2" output status
 	mark_lint_ran
 	if [[ -x "$(dirname "$pom")/mvnw" ]]; then
-		if output=$(cd "$(dirname "$pom")" && ./mvnw -q "$goal" 2>&1); then
-			log_debug "Maven $goal passed for $pom"
-			return 0
-		fi
+		output=$(cd "$(dirname "$pom")" && run_with_timeout "$SMART_LINT_CMD_TIMEOUT_SECONDS" ./mvnw -q "$goal")
+		status=$?
 	elif command_exists mvn; then
-		if output=$(mvn -q -f "$pom" "$goal" 2>&1); then
-			log_debug "Maven $goal passed for $pom"
-			return 0
-		fi
+		output=$(run_with_timeout "$SMART_LINT_CMD_TIMEOUT_SECONDS" mvn -q -f "$pom" "$goal")
+		status=$?
 	else
 		return 1
 	fi
-	add_error "JVM Maven ($goal)" "$(compact_output "$output")"
+	if [[ "$status" -eq 0 ]]; then
+		log_debug "Maven $goal passed for $pom"
+		return 0
+	fi
+	jvm_report_timeout_or_error "$status" "JVM Maven ($goal)" "$output"
 	return 2
 }
 
 jvm_run_ktlint_format() {
-	local files=("$@") output
+	local files=("$@") output status
 	[[ "${#files[@]}" -gt 0 ]] || return 0
 	command_exists ktlint || return 1
 	mark_format_ran
 	mark_lint_ran
-	if output=$(ktlint --format "${files[@]}" 2>&1); then
+	output=$(run_with_timeout "$SMART_LINT_CMD_TIMEOUT_SECONDS" ktlint --format "${files[@]}")
+	status=$?
+	if [[ "$status" -eq 0 ]]; then
 		log_debug "ktlint passed"
 		return 0
 	fi
-	add_error "Kotlin Linter/Formatter (ktlint)" "$(compact_output "$output")"
+	jvm_report_timeout_or_error "$status" "Kotlin Linter/Formatter (ktlint)" "$output"
 	return 2
 }
 
 jvm_run_detekt() {
-	local files=("$@") input output
+	local files=("$@") input output status
 	[[ "${#files[@]}" -gt 0 ]] || return 0
 	command_exists detekt || return 1
 	input=$(
@@ -113,11 +124,13 @@ jvm_run_detekt() {
 		printf '%s' "${files[*]}"
 	)
 	mark_lint_ran
-	if output=$(detekt --input "$input" 2>&1); then
+	output=$(run_with_timeout "$SMART_LINT_CMD_TIMEOUT_SECONDS" detekt --input "$input")
+	status=$?
+	if [[ "$status" -eq 0 ]]; then
 		log_debug "detekt passed"
 		return 0
 	fi
-	add_error "Kotlin Static Analysis (detekt)" "$(compact_output "$output")"
+	jvm_report_timeout_or_error "$status" "Kotlin Static Analysis (detekt)" "$output"
 	return 2
 }
 
