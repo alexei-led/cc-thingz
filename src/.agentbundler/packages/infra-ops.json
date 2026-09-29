@@ -1,12 +1,6 @@
 {
   "assets": [
     {
-      "path": "skills/deploying-infra",
-      "targets": [
-        "claude"
-      ]
-    },
-    {
       "path": "skills/operating-infra"
     },
     {

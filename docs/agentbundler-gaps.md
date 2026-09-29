@@ -12,9 +12,8 @@ a portable hook schema:
 - `smart-lint` ships to Claude, Codex, Copilot, Grok, and Pi. Codex receives it
   through its native `PostToolUse` matcher. Cursor is excluded because its edit
   matcher would lose semantics.
-- Notifications: Claude and Copilot receive portable `notify`; Grok receives the
-  synchronous `notify-grok`; Pi uses the native compatibility runner. Codex and
-  Cursor receive no notification hook.
+- Notifications: Claude and Copilot receive portable `notify`; Pi uses the native
+  compatibility runner. Codex, Cursor, and Grok receive no notification hook.
 - Pi receives `ccgram hook` at session start, stop, and session end.
 - Pi native assets register ask-user-question, hook-runner, permission-gate,
   plan-mode, and todo. The structured-output demonstration is available as an

@@ -351,15 +351,12 @@ def test_generated_target_inventory_matches_supported_contract() -> None:
     source_skills = {
         path.parent.name for path in (REPO_ROOT / "src/skills").glob("*/SKILL.md")
     }
-    assert len(source_skills) == 29
+    assert len(source_skills) == 27
     assert f"skills-{len(source_skills)}-green" in (REPO_ROOT / "README.md").read_text()
 
     for target in TARGETS:
         assert _agent_names(target) == EXPECTED_AGENTS[target]
-        expected_skills = source_skills - (
-            {"deploying-infra"} if target != "claude" else set()
-        )
-        assert _skill_names(target) == expected_skills
+        assert _skill_names(target) == source_skills
 
     generated_extensions = {
         f"extensions/{path.name}"

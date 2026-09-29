@@ -1,5 +1,5 @@
 ---
-{"description":"Improve test design, speed, and coverage with behavior-focused tests, useful seams, characterization tests, TDD, and test refactoring. Use when improving tests, optimizing slow suites, adding coverage, refactoring brittle tests, removing test waste, or working test-first. NOT for fixing production bugs (use fixing-code), production-code refactors (use refactoring-code), or reviewing non-test code quality (use reviewing-code).","name":"improving-tests"}
+{"description":"Improve test design, speed, and coverage with behavior-focused tests, useful seams, characterization tests, TDD, and test refactoring. Use when improving tests, optimizing slow suites, adding coverage, refactoring brittle tests, removing test waste, or working test-first. NOT for fixing production bugs (use fixing-code), or reviewing non-test code quality (use reviewing-code).","name":"improving-tests"}
 ---
 <!-- Pi platform guidance -->
 <!-- Use installed Pi tool names exactly, including extension toolsets such as Task*, Monitor*, and Loop*. -->

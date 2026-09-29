@@ -16,6 +16,13 @@
       "evals": 4
     },
     {
+      "source": "dev-flow/refactoring-code/evals/evals.json",
+      "destination": "archive/dev-flow/refactoring-code/evals/evals.json",
+      "status": "archived",
+      "reason": "Skill deleted; low usage (4 uses/30 days) and eval lift over no-skill was within noise (8/11 vs 7/11 across two runs).",
+      "evals": 2
+    },
+    {
       "source": "dev-tools/brainstorming-ideas/evals/evals.json",
       "destination": "discovery/brainstorming-ideas/evals/evals.json",
       "status": "migrated",
@@ -125,6 +132,13 @@
       "destination": "programming/writing-go/evals/evals.json",
       "status": "migrated",
       "reason": "Canonical package identity; existing scenarios merged without dropping cases.",
+      "evals": 2
+    },
+    {
+      "source": "infra-ops/deploying-infra/evals/evals.json",
+      "destination": "infra-ops/operating-infra/evals/evals.json",
+      "status": "migrated",
+      "reason": "Skill merged into operating-infra; safe-kubernetes-deploy and terraform-apply-safety scenarios moved there with reworded assertions.",
       "evals": 2
     },
     {

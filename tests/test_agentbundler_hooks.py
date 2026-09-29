@@ -111,14 +111,6 @@ def test_agentbundler_renders_target_hook_matrix() -> None:
     )
     assert "smart-lint" in codex_hooks["hooks"]["PostToolUse"][0]["hooks"][0]["command"]
 
-    grok_hooks = json.loads(
-        (REPO_ROOT / "dist/grok/dev-flow/hooks/hooks.json").read_text()
-    )
-    assert (
-        "notify-grok/hook.sh"
-        in grok_hooks["hooks"]["Notification"][0]["hooks"][0]["args"][0]
-    )
-
 
 def test_generated_pi_runtime_executes_real_git_guard_with_safe_environment(
     tmp_path: Path,
