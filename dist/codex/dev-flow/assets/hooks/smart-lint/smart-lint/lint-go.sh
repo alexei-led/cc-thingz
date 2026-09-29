@@ -46,7 +46,7 @@ lint_go() {
 		if [[ "$status" -eq 0 ]]; then
 			log_debug "golangci-lint passed"
 		elif [[ "$status" -eq 124 ]]; then
-			add_timeout_error "Go (golangci-lint)" "$output"
+			report_timeout "Go (golangci-lint)"
 		else
 			# Retry with --no-config if config error
 			if echo "$output" | grep -q "Error: can't load config"; then
@@ -56,7 +56,7 @@ lint_go() {
 				if [[ "$status" -eq 0 ]]; then
 					return 0
 				elif [[ "$status" -eq 124 ]]; then
-					add_timeout_error "Go (golangci-lint)" "$output"
+					report_timeout "Go (golangci-lint)"
 					return 0
 				fi
 			fi

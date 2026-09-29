@@ -93,7 +93,7 @@ rust_format_files() {
 		if [[ "$status" -eq 0 ]]; then
 			log_debug "rustfmt passed for $file"
 		elif [[ "$status" -eq 124 ]]; then
-			add_timeout_error "Rust Formatter (rustfmt) for $file" "$output"
+			report_timeout "Rust Formatter (rustfmt) for $file"
 		else
 			add_error "Rust Formatter (rustfmt) failed for $file" "$(compact_output "$output")"
 		fi
@@ -109,7 +109,7 @@ rust_lint_manifest() {
 		return 0
 	fi
 	if [[ "$status" -eq 124 ]]; then
-		add_timeout_error "Rust (cargo clippy) for $manifest" "$output"
+		report_timeout "Rust (cargo clippy) for $manifest"
 		return 0
 	fi
 
@@ -120,7 +120,7 @@ rust_lint_manifest() {
 		if [[ "$status" -eq 0 ]]; then
 			log_debug "cargo check passed for $manifest"
 		elif [[ "$status" -eq 124 ]]; then
-			add_timeout_error "Rust (cargo check) for $manifest" "$output"
+			report_timeout "Rust (cargo check) for $manifest"
 		else
 			add_error "Rust (cargo check)" "$(compact_output "$output")"
 		fi

@@ -64,10 +64,10 @@ csharp_run_dotnet_format() {
 		return 0
 	fi
 	if [[ "$status" -eq 124 ]]; then
-		add_timeout_error "C# Formatter/Linter (dotnet format)" "$output"
-	else
-		add_error "C# Formatter/Linter (dotnet format)" "$(compact_output "$output")"
+		report_timeout "C# Formatter/Linter (dotnet format)"
+		return 0
 	fi
+	add_error "C# Formatter/Linter (dotnet format)" "$(compact_output "$output")"
 	return 2
 }
 

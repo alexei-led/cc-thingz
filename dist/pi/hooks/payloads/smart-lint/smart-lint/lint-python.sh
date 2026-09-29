@@ -103,7 +103,7 @@ lint_python() {
 		if [[ "$pyright_status" -eq 0 ]]; then
 			log_debug "pyright passed"
 		elif [[ "$pyright_status" -eq 124 ]]; then
-			add_timeout_error "Python Type Checker (pyright)" "$pyright_output"
+			report_timeout "Python Type Checker (pyright)"
 		else
 			local filtered parse_status
 			filtered=$(pyright_compact_json <<<"$pyright_output")

@@ -83,34 +83,76 @@ SH
 	[ ! -f ruff.args ]
 }
 
-@test "smart-lint: a /tmp scratch edit is skipped (symlinked to /private/tmp on macOS)" {
+@test "smart-lint: a /tmp scratch edit is skipped (symlinked to /private/tmp on macOS), even with a failing linter" {
 	cd "$WORK_DIR" || exit
 	git init -q
 	git config user.email test@example.com
 	git config user.name Test
 	touch pyproject.toml
+	mkdir -p bin
+	cat >bin/ruff <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"$PWD/ruff.args"
+echo "should never run" >&2
+exit 1
+SH
+	chmod +x bin/ruff
 
 	scratch_dir=$(mktemp -d /tmp/smart-lint-outside.XXXXXX)
 	touch "$scratch_dir/scratch.py"
 
-	run env -u HOOK_INPUT_JSON bash "$HOOK" <<<"{\"session_id\":\"s_symlink\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"$scratch_dir/scratch.py\"}}"
+	run env -u HOOK_INPUT_JSON PATH="$WORK_DIR/bin:$PATH" bash "$HOOK" <<<"{\"session_id\":\"s_symlink\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"$scratch_dir/scratch.py\"}}"
 	rm -rf "$scratch_dir"
 	[ "$status" -eq 0 ]
+	[ ! -f ruff.args ]
 }
 
-@test "smart-lint: a slow linter is killed after SMART_LINT_CMD_TIMEOUT_SECONDS instead of hanging" {
+@test "smart-lint: cwd and file_path spelled through different symlink paths to the same real project dir still lints" {
+	# cwd given via the /tmp spelling, file_path given via its resolved
+	# /private/tmp spelling (or vice versa on a non-macOS box where /tmp
+	# isn't a symlink -- skip there since there is nothing to resolve).
+	real_tmp=$(cd /tmp && pwd -P)
+	[ "$real_tmp" != "/tmp" ] || skip "no /tmp -> $real_tmp symlink on this host"
+
+	project_dir=$(mktemp -d /tmp/smart-lint-proj.XXXXXX)
+	cd "$project_dir" || exit
+	git init -q
+	git config user.email test@example.com
+	git config user.name Test
+	mkdir -p bin pkg
+	touch pyproject.toml
+	printf 'x=1\n' >pkg/bad.py
+	cat >bin/ruff <<'SH'
+#!/usr/bin/env bash
+if [[ "$1" == "format" ]]; then exit 0; fi
+echo "pkg/bad.py:1:1: E225 missing whitespace around operator" >&2
+exit 1
+SH
+	chmod +x bin/ruff
+
+	resolved_file="$real_tmp/${project_dir#/tmp/}/pkg/bad.py"
+	run env -u HOOK_INPUT_JSON PATH="$project_dir/bin:$PATH" bash "$HOOK" <<<"{\"session_id\":\"s_same_real_dir\",\"cwd\":\"$project_dir\",\"tool_input\":{\"file_path\":\"$resolved_file\"}}"
+	rm -rf "$project_dir"
+	[ "$status" -eq 2 ]
+	[[ "$output" == *"E225"* ]]
+}
+
+@test "smart-lint: a slow linter (and its child process) is killed after SMART_LINT_CMD_TIMEOUT_SECONDS, without blocking the edit" {
 	cd "$WORK_DIR" || exit
 	git init -q
 	git config user.email test@example.com
 	git config user.name Test
 	mkdir -p bin pkg
 	touch pyproject.toml pkg/one.py
-	# A never-ending formatter: without the internal timeout this would hang
-	# the hook (and its "$(sleep 999...)" marker would never leave $tmp).
+	# A never-ending formatter with its own child process (a grandchild of
+	# the hook's direct child): without process-group cleanup on timeout,
+	# this child survives as an orphan.
 	cat >bin/ruff <<'SH'
 #!/usr/bin/env bash
 if [[ "$1" == "format" ]]; then
-	sleep 999
+	child_pid_file="$PWD/child.pid"
+	sh -c "echo \$\$ > '$child_pid_file'; sleep 999" &
+	wait
 	exit 0
 fi
 exit 0
@@ -118,11 +160,112 @@ SH
 	chmod +x bin/ruff
 
 	run env -u HOOK_INPUT_JSON SMART_LINT_CMD_TIMEOUT_SECONDS=1 PATH="$WORK_DIR/bin:/usr/bin:/bin" bash "$HOOK" <<<"{\"session_id\":\"s_timeout\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"pkg/one.py\"}}"
-	# A working kill is the only way this returns instead of hitting bats' own
-	# test timeout; the exit code and message confirm it was a timeout, not a
-	# real formatter failure.
+	# A working kill is the only way this returns instead of hitting bats'
+	# own test timeout. The whole point of this hook is to stop blocking
+	# edits that have no real lint problem, and a cold/slow tool timing out
+	# under load is exactly that case, so it must not block (status 0).
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"timed out"* ]]
+
+	child_pid=$(cat child.pid 2>/dev/null)
+	[ -n "$child_pid" ]
+	for _ in 1 2 3; do
+		kill -0 "$child_pid" 2>/dev/null || break
+		sleep 1
+	done
+	run kill -0 "$child_pid"
+	[ "$status" -ne 0 ]
+}
+
+@test "smart-lint: run_with_timeout returns quickly for a fast command captured via \$(...)" {
+	source "$BATS_TEST_DIRNAME/../../src/hooks/smart-lint/smart-lint/lib.sh"
+	start=$(date +%s)
+	x=$(run_with_timeout 20 true)
+	end=$(date +%s)
+	[ "$((end - start))" -lt 5 ]
+	[ -z "$x" ]
+}
+
+@test "smart-lint: SMART_LINT_CMD_TIMEOUT_SECONDS falls back to 30 when non-numeric or zero" {
+	for bad in "" "abc" "0" "-5" "15abc"; do
+		run env SMART_LINT_CMD_TIMEOUT_SECONDS="$bad" bash -c '
+			source "'"$BATS_TEST_DIRNAME"'/../../src/hooks/smart-lint/smart-lint/lib.sh"
+			echo "$SMART_LINT_CMD_TIMEOUT_SECONDS"
+		'
+		[ "$output" = "30" ]
+	done
+}
+
+@test "smart-lint: a notebook edit outside the project root is skipped" {
+	cd "$WORK_DIR" || exit
+	git init -q
+	git config user.email test@example.com
+	git config user.name Test
+	touch pyproject.toml
+
+	scratch_dir=$(mktemp -d)
+	touch "$scratch_dir/scratch.ipynb"
+
+	run env -u HOOK_INPUT_JSON bash "$HOOK" <<<"{\"session_id\":\"s_notebook\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"notebook_path\":\"$scratch_dir/scratch.ipynb\"}}"
+	rm -rf "$scratch_dir"
+	[ "$status" -eq 0 ]
+}
+
+@test "smart-lint: a patch touching only out-of-project files is skipped, but one in-project file is not" {
+	cd "$WORK_DIR" || exit
+	git init -q
+	git config user.email test@example.com
+	git config user.name Test
+	touch pyproject.toml
+
+	scratch_dir=$(mktemp -d)
+	patch=$'diff --git a/'"$scratch_dir"'/x.py b/'"$scratch_dir"'/x.py\n--- a/'"$scratch_dir"'/x.py\n+++ b/'"$scratch_dir"'/x.py\n'
+	payload=$(python3 -c 'import json,sys; print(json.dumps({"session_id":"p1","cwd":sys.argv[1],"tool_input":{"patch":sys.argv[2]}}))' "$WORK_DIR" "$patch")
+	run env -u HOOK_INPUT_JSON bash "$HOOK" <<<"$payload"
+	rm -rf "$scratch_dir"
+	[ "$status" -eq 0 ]
+	[[ "$output" != *"Style OK"* ]]
+
+	mkdir -p pkg
+	patch=$'diff --git a/pkg/one.py b/pkg/one.py\n--- a/pkg/one.py\n+++ b/pkg/one.py\n'
+	payload=$(python3 -c 'import json,sys; print(json.dumps({"session_id":"p2","cwd":sys.argv[1],"tool_input":{"patch":sys.argv[2]}}))' "$WORK_DIR" "$patch")
+	run env -u HOOK_INPUT_JSON CLAUDE_HOOKS_DEBUG=1 bash "$HOOK" <<<"$payload"
+	[[ "$output" != *"outside the project root"* ]]
+}
+
+@test "smart-lint: an Agent Bundler envelope payload resolves cwd from vendorEvent, not the inherited process cwd" {
+	cd "$WORK_DIR" || exit
+	git init -q
+	git config user.email test@example.com
+	git config user.name Test
+	mkdir -p bin pkg
+	touch pyproject.toml
+	printf 'x=1\n' >pkg/bad.py
+	cat >bin/ruff <<'SH'
+#!/usr/bin/env bash
+if [[ "$1" == "format" ]]; then exit 0; fi
+echo "pkg/bad.py:1:1: E225 missing whitespace around operator" >&2
+exit 1
+SH
+	chmod +x bin/ruff
+
+	payload=$(python3 -c '
+import json, sys
+work_dir = sys.argv[1]
+payload = {
+    "event": "post-tool",
+    "hook": "smart-lint",
+    "piEvent": {"toolName": "edit", "input": {"file_path": "pkg/bad.py"}},
+    "vendorEvent": {"cwd": work_dir, "session_id": "envelope", "tool_input": {"file_path": "pkg/bad.py"}},
+}
+print(json.dumps(payload))
+' "$WORK_DIR")
+
+	# Run from outside the project entirely so an inherited OS cwd can't
+	# paper over a broken vendorEvent.cwd fallback.
+	run env -u HOOK_INPUT_JSON PATH="$WORK_DIR/bin:$PATH" bash -c "cd / && bash '$HOOK' <<<'$payload'"
 	[ "$status" -eq 2 ]
-	[[ "$output" == *"timed out after 1s"* ]]
+	[[ "$output" == *"E225"* ]]
 }
 
 @test "smart-lint: pyright JSON output is compact and filters missing imports" {

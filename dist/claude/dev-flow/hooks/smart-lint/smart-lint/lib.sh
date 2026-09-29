@@ -12,7 +12,17 @@ SMART_LINT_DIFF_FALLBACK_LIMIT="${SMART_LINT_DIFF_FALLBACK_LIMIT:-5}"
 SMART_LINT_COMPACT_LINES=80
 # Per-command cap so one slow/cold tool (pyright's first node spin-up,
 # golangci-lint's first cache build, …) can't eat the whole hook budget.
+# An empty, non-numeric, or zero override falls back to the default instead
+# of turning into a `sleep`/no-op that defeats the cap.
 SMART_LINT_CMD_TIMEOUT_SECONDS="${SMART_LINT_CMD_TIMEOUT_SECONDS:-30}"
+case "$SMART_LINT_CMD_TIMEOUT_SECONDS" in
+'' | *[!0-9]* | 0) SMART_LINT_CMD_TIMEOUT_SECONDS=30 ;;
+esac
+# Whole-hook wall-clock budget, comfortably under hook.json's 120000ms
+# harness timeout, so a loop of several run_with_timeout calls (e.g. rustfmt
+# over many files) can't add up past it one call at a time. Not
+# user-configurable: a value at or above the harness timeout would defeat it.
+SMART_LINT_HOOK_BUDGET_SECONDS=100
 HOOK_PROJECT_FALLBACK="${HOOK_PROJECT_FALLBACK:-0}"
 SMART_LINT_FORMAT_RAN=0
 SMART_LINT_LINT_RAN=0
@@ -257,8 +267,18 @@ init_hook_input() {
 		hook_cwd=$(python3 -c 'import json,sys
 try:
     data=json.loads(sys.stdin.read() or "{}")
-    source=data.get("piEvent", {}) if data.get("event") == "post-tool" else data
+    if data.get("event") == "post-tool":
+        # Agent Bundler envelope: piEvent is the normalized {toolName, input}
+        # shape and never carries cwd; vendorEvent is the original host
+        # payload (Claude, Pi, …), which does.
+        source=data.get("piEvent", {}) if isinstance(data.get("piEvent"), dict) else {}
+        vendor=data.get("vendorEvent", {}) if isinstance(data.get("vendorEvent"), dict) else {}
+    else:
+        source=data
+        vendor={}
     cwd=source.get("cwd")
+    if not isinstance(cwd, str):
+        cwd=vendor.get("cwd")
     if isinstance(cwd, str):
         print(cwd)
 except (ValueError, AttributeError):
@@ -270,15 +290,19 @@ except (ValueError, AttributeError):
 	fi
 }
 
-# True (status 0) when the edited file named in the hook payload resolves
-# outside the project root (already cd'd to by init_hook_input). Catches
-# scratchpad edits (e.g. under /tmp, which symlinks to /private/tmp on macOS)
-# before any linter runs, so an unrelated in-project file can't block them.
+# True (status 0) when every path the hook payload names -- file_path/path,
+# notebook_path, or the files touched by a unified-diff/apply-patch blob --
+# resolves outside the project root (already cd'd to by init_hook_input).
+# Catches scratchpad edits (e.g. under /tmp, which symlinks to /private/tmp
+# on macOS) before any linter runs, so an unrelated in-project file can't
+# block them. A payload that names no path at all, or names at least one
+# in-project path, is left to run normally.
 hook_edit_target_outside_project() {
 	[[ -n "$HOOK_INPUT_JSON" ]] || return 1
 	command_exists python3 || return 1
 	python3 -c '
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -297,22 +321,60 @@ else:
 if not isinstance(tool_input, dict):
     sys.exit(1)
 
-raw = tool_input.get("file_path") or tool_input.get("path")
-if not isinstance(raw, str) or not raw.strip():
+candidates = []
+
+
+def add(raw):
+    if not isinstance(raw, str):
+        return
+    value = raw.strip()
+    if not value or value == "/dev/null":
+        return
+    if value.startswith(("a/", "b/")):
+        value = value[2:]
+    candidates.append(value)
+
+
+def scan_patch(text):
+    if not isinstance(text, str):
+        return
+    if "*** " not in text and "diff --git" not in text and "+++ " not in text:
+        return
+    patterns = [
+        r"^\*\*\* (?:Update|Add|Delete) File: (.+)$",
+        r"^\+\+\+ b/(.+)$",
+        r"^--- a/(.+)$",
+        r"^diff --git a/(.+?) b/.+$",
+    ]
+    for line in text.splitlines():
+        for pattern in patterns:
+            match = re.match(pattern, line)
+            if match:
+                add(match.group(1))
+
+
+for key in ("file_path", "path", "notebook_path", "filename", "source_file", "target_file"):
+    add(tool_input.get(key))
+for key in ("patch", "diff"):
+    scan_patch(tool_input.get(key))
+
+if not candidates:
     sys.exit(1)
 
 cwd = Path.cwd().resolve()
-target = Path(raw.strip())
-try:
-    full = target.resolve() if target.is_absolute() else (cwd / target).resolve()
-except OSError:
-    sys.exit(1)
+for raw in candidates:
+    target = Path(raw)
+    try:
+        full = target.resolve() if target.is_absolute() else (cwd / target).resolve()
+    except OSError:
+        sys.exit(1)
+    try:
+        full.relative_to(cwd)
+    except ValueError:
+        continue
+    sys.exit(1)  # this candidate is inside the project: do not skip
 
-try:
-    full.relative_to(cwd)
-except ValueError:
-    sys.exit(0)
-sys.exit(1)
+sys.exit(0)  # every candidate resolved outside the project
 ' <<<"$HOOK_INPUT_JSON"
 }
 
@@ -479,8 +541,13 @@ try:
     data=json.loads(sys.stdin.read() or "{}")
 except Exception:
     data={}
-source = data.get("piEvent", {}) if data.get("event") == "post-tool" else data
-print(str(source.get("session_id") or data.get("session_id") or "default"))
+if data.get("event") == "post-tool":
+    source = data.get("piEvent", {}) if isinstance(data.get("piEvent"), dict) else {}
+    vendor = data.get("vendorEvent", {}) if isinstance(data.get("vendorEvent"), dict) else {}
+else:
+    source = data
+    vendor = {}
+print(str(source.get("session_id") or vendor.get("session_id") or data.get("session_id") or "default"))
 ' <<<"$HOOK_INPUT_JSON" 2>/dev/null || true)
 		[[ -n "$parsed" ]] && printf '%s\n' "$parsed" && return 0
 	fi
@@ -628,49 +695,110 @@ compact_output() {
 	' <<<"$1"
 }
 
-# Runs "$@" with a wall-clock cap, printing its combined output like a plain
-# $(...) capture would. No `timeout`/`gtimeout` on stock macOS, so this uses a
-# background watcher + SIGTERM instead; exits 124 (matching GNU timeout) when
-# it had to kill the command.
+# Runs "$@" with a wall-clock cap (min($1, time left in the hook's overall
+# SMART_LINT_HOOK_BUDGET_SECONDS), so a loop over many files -- rustfmt over
+# each changed file, say -- can't blow past the harness's own hook timeout
+# one call at a time. Prints the command's combined output like a plain
+# $(...) capture would, and exits 124 (matching GNU timeout) when it had to
+# kill the command.
+#
+# No `timeout`/`gtimeout` on stock macOS. Instead: when python3 is available
+# (already a hard dependency elsewhere in this hook), put the command in its
+# own process group via os.setpgid before exec-ing into it, so a timeout can
+# kill its whole tree -- compilers, language servers, etc. -- not just the
+# direct child. (Bash job control (`set -m`) can do the same, but killing a
+# job it tracks then breaks `wait $pid` after a `disown`, and printing
+# "Terminated" job-status lines to stderr otherwise -- both avoided by doing
+# the grouping with a plain syscall instead.) The watcher subshell gets its
+# own /dev/null stdio *before* it forks `sleep`, so an orphaned `sleep` (e.g.
+# after we stop the watcher early because the command finished fast) never
+# inherits this function's stdout pipe -- otherwise, since every caller here
+# captures output via $(...), that orphaned `sleep` would keep the pipe open
+# and the caller blocked until it ran out, for the *entire* configured
+# timeout, regardless of how fast the real command finished.
 run_with_timeout() {
 	local secs="$1"
 	shift
+
+	local remaining=$((SMART_LINT_HOOK_BUDGET_SECONDS - SECONDS))
+	if [[ "$remaining" -le 0 ]]; then
+		echo "hook wall-clock budget (${SMART_LINT_HOOK_BUDGET_SECONDS}s) exhausted"
+		return 124
+	fi
+	[[ "$secs" -gt "$remaining" ]] && secs="$remaining"
+
 	local tmp
 	tmp=$(mktemp 2>/dev/null) || {
 		"$@"
 		return $?
 	}
+	local marker="${tmp}.timedout"
 
-	"$@" >"$tmp" 2>&1 &
+	if command_exists python3; then
+		python3 -c '
+import os
+import sys
+
+os.setpgid(0, 0)
+os.execvp(sys.argv[1], sys.argv[1:])
+' "$@" >"$tmp" 2>&1 &
+	else
+		"$@" >"$tmp" 2>&1 &
+	fi
 	local pid=$!
+
+	# Only sleeps, marks the timeout, and TERMs the command; SIGKILL
+	# escalation happens below in this function, not here, so the watcher
+	# can exit the instant we stop it (a trapped TERM interrupts `wait`,
+	# unlike a plain foreground `sleep`) instead of leaving its own `sleep`
+	# to run out.
 	(
-		sleep "$secs" 2>/dev/null
+		trap 'kill "$s" 2>/dev/null; exit 0' TERM
+		sleep "$secs" &
+		s=$!
+		wait "$s"
+		: >"$marker" 2>/dev/null
+		kill -TERM -- "-$pid" 2>/dev/null
 		kill -TERM "$pid" 2>/dev/null
-	) &
+	) </dev/null >/dev/null 2>&1 &
 	local watcher=$!
 
 	local status=0
 	wait "$pid" 2>/dev/null || status=$?
 
-	local timed_out=0
-	if kill -0 "$watcher" 2>/dev/null; then
-		kill "$watcher" 2>/dev/null
-	else
-		timed_out=1
-	fi
+	kill "$watcher" 2>/dev/null
 	wait "$watcher" 2>/dev/null
 
+	local timed_out=0
+	if [[ -e "$marker" ]]; then
+		timed_out=1
+		# Give the tree a couple of seconds to honor TERM before SIGKILL;
+		# catches grandchildren (gradle, node, a compiler) that ignore it.
+		local grace=0
+		while [[ "$grace" -lt 2 ]] && kill -0 "$pid" 2>/dev/null; do
+			sleep 1
+			grace=$((grace + 1))
+		done
+		kill -0 "$pid" 2>/dev/null && {
+			kill -KILL -- "-$pid" 2>/dev/null
+			kill -KILL "$pid" 2>/dev/null
+		}
+	fi
+
 	cat "$tmp"
-	rm -f "$tmp"
+	rm -f "$tmp" "$marker"
 	[[ "$timed_out" -eq 1 ]] && return 124
 	return "$status"
 }
 
-# Shared "$name timed out after Ns" branch for callers wrapping a command in
-# run_with_timeout; the non-timeout failure message stays call-site specific.
-add_timeout_error() {
-	local name="$1" output="$2"
-	add_error "$name timed out after ${SMART_LINT_CMD_TIMEOUT_SECONDS}s" "$(compact_output "$output")"
+# A run_with_timeout kill means the tool didn't finish in time -- not that
+# its output showed a real problem. Turning that into a blocking error would
+# recreate the kind of false block this hook exists to avoid (a cold or
+# slow tool under load blocking an edit that has no lint issue at all), so a
+# timeout is reported on stderr and does not fail the hook.
+report_timeout() {
+	local name="$1"
+	log_info "$name timed out and was skipped (not treated as a lint failure)"
 }
 
 run_formatter_on_files() {
@@ -698,12 +826,11 @@ run_formatter_on_files() {
 	# shellcheck disable=SC2086
 	output=$(run_with_timeout "$SMART_LINT_CMD_TIMEOUT_SECONDS" $format_cmd "${files[@]}")
 	status=$?
-	if [[ "$status" -ne 0 ]]; then
-		if [[ "$status" -eq 124 ]]; then
-			add_timeout_error "$name" "$output"
-		else
-			add_error "$name failed" "$(compact_output "$output")"
-		fi
+	if [[ "$status" -eq 124 ]]; then
+		report_timeout "$name"
+		return 0
+	elif [[ "$status" -ne 0 ]]; then
+		add_error "$name failed" "$(compact_output "$output")"
 		return 2
 	fi
 
@@ -717,7 +844,7 @@ run_formatter_on_files() {
 	if [[ "$status" -eq 0 ]]; then
 		return 0
 	elif [[ "$status" -eq 124 ]]; then
-		add_timeout_error "$name" "$output"
+		report_timeout "$name"
 	else
 		add_error "$name needs fixing" "$(compact_output "$output")"
 	fi
@@ -733,8 +860,8 @@ run_command_compact() {
 		log_debug "$name passed."
 		return 0
 	elif [[ "$status" -eq 124 ]]; then
-		add_timeout_error "$name" "$output"
-		return 2
+		report_timeout "$name"
+		return 0
 	else
 		add_error "$name found issues" "$(compact_output "$output")"
 		return 2

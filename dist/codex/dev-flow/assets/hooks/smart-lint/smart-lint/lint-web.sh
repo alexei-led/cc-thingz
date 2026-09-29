@@ -164,7 +164,7 @@ lint_terraform() {
 		output=$(run_with_timeout "$SMART_LINT_CMD_TIMEOUT_SECONDS" terraform fmt "${files[@]}")
 		status=$?
 		if [[ "$status" -eq 124 ]]; then
-			add_timeout_error "Terraform Formatter" "$output"
+			report_timeout "Terraform Formatter"
 		elif [[ "$status" -ne 0 ]]; then
 			add_error "Terraform Formatter" "$(compact_output "$output")"
 		fi

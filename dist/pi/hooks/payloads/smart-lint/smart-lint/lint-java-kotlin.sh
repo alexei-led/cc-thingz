@@ -53,7 +53,7 @@ jvm_pom_mentions() {
 jvm_report_timeout_or_error() {
 	local status="$1" name="$2" output="$3"
 	if [[ "$status" -eq 124 ]]; then
-		add_timeout_error "$name" "$output"
+		report_timeout "$name"
 	else
 		add_error "$name" "$(compact_output "$output")"
 	fi
