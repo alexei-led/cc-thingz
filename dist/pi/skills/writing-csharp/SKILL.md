@@ -23,8 +23,7 @@ Check the nearest `*.csproj`, `Directory.Build.props`, `global.json`, and CI for
 ## CLIs
 
 - Existing CLI stack first; the BCL is enough for small tools. Add `System.CommandLine` or Spectre.Console only when the command surface justifies it.
-- `Program.cs` only calls a `Run(args, stdout, stderr)` seam and returns its exit code; parsing, execution, and error handling (including try/catch) live inside `Run`, not in `Program.cs`.
-- Test `Run` with `dotnet test --filter` for exit code and output, including a non-zero exit and a stderr message on bad input.
+- Keep `Program.cs` thin: test the command handler, or a `Run(args, stdout, stderr)` seam, and assert exit code and output with `dotnet test --filter`, including a non-zero exit and a stderr message on bad input.
 
 ## References
 
