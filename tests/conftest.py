@@ -9,6 +9,7 @@ from __future__ import annotations
 import importlib.util
 import os
 import shutil
+import subprocess
 import sys
 import textwrap
 from pathlib import Path
@@ -66,3 +67,10 @@ def pytest_sessionstart(session: pytest.Session) -> None:
     missing = [name for name in required if name and shutil.which(name) is None]
     if missing:
         raise pytest.UsageError(f"Required runtime CLIs missing: {', '.join(missing)}")
+    # `agbun package` needs the untracked build metadata. A fresh checkout only
+    # gets it from whichever test builds first, a race under xdist, so build
+    # once in the controller before workers start.
+    metadata = _REPO_ROOT / ".agentbundler" / "build.json"
+    is_worker = hasattr(session.config, "workerinput")
+    if not is_worker and not metadata.exists() and shutil.which("agbun"):
+        subprocess.run(["agbun", "build", "--root", str(_REPO_ROOT)], check=True)
