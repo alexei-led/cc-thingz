@@ -1,33 +1,31 @@
 ---
 description: Idiomatic C# /.NET development. Use when writing C# code, changing `.csproj`
   or `.sln`, or working on ASP.NET Core apps, libraries, CLIs, workers, and xUnit/NUnit/MSTest
-  suites. Emphasizes nullable references, async/await, LINQ discipline, boundary validation,
-  focused `dotnet` feedback, and minimal dependencies. NOT for Go, Python, TypeScript,
+  suites. Emphasizes nullable references, async/await, boundary validation, focused
+  `dotnet` feedback, and minimal dependencies. NOT for Go, Python, TypeScript,
   shell scripts, or infra-only work.
 name: writing-csharp
 ---
 
 # C# /.NET Development
 
-Check the nearest `*.csproj`, `Directory.Build.props`, `global.json`, and CI for `TargetFramework(s)`, `LangVersion`, nullable context, and analyzer policy before using newer APIs or syntax. Project conventions win over these defaults.
+Check the nearest `*.csproj`, `Directory.Build.props`, `global.json`, and CI for `TargetFramework(s)`, `LangVersion`, nullable context, and analyzer policy before using newer syntax. Without an explicit `LangVersion`, the C# version follows the TFM (`net8.0` defaults to C# 12; `net6.0` defaults to C# 10, which lacks primary constructors and collection expressions). Project conventions win over these defaults, and raising `LangVersion` or the TFM to unlock syntax is a separate decision — ask first, don't do it on your own.
 
 ## Defaults
 
-- BCL and existing NuGet packages first. Keep the app's existing choices: controllers vs minimal APIs, MediatR or none, EF vs Dapper vs raw SQL, the configured test framework.
-- Keep nullable reference types on. Model absence with `?`; do not scatter `!` or suppress warnings.
-- Async end to end. Never block with `.Result`, `.Wait()`, or `GetAwaiter().GetResult()`. Pass `CancellationToken` through cancellable boundaries. `ValueTask` only when an existing API or a measurement calls for it.
-- Materialize LINQ once where it is needed; avoid repeated `ToList()` and multi-pass chains on hot paths.
-- Built-in DI unless the project chose another container. No interface per class. Never let a singleton capture a scoped service or request state.
-- Validate request DTOs and message payloads at the handler before mapping to domain types; model binding alone is not validation.
-- Bind and validate options at startup; inject typed options instead of reading config ad hoc.
-- Keep EF queries in repositories or adapters, project only needed fields on reads, and handle transactions and concurrency tokens at the persistence edge.
-- Background services honor the stopping token and keep retry and backoff in one place.
-- XML docs on public APIs when the project emits docs or enforces CS1591.
+- BCL and existing NuGet packages first. Keep the app's existing choices: controllers vs minimal APIs, DI container, ORM, test framework.
+- Nullable reference types stay on. Model absence with `?`; handle a missing result explicitly (e.g. return `NotFound`/`Problem`) instead of `!`. Never suppress a warning; fix it at the source.
+- Async end to end: no `.Result`, `.Wait()`, or `GetAwaiter().GetResult()`. Pass `CancellationToken` through cancellable boundaries, including EF calls.
+- Never let a singleton capture a scoped service (e.g. a `DbContext`); use `IServiceScopeFactory` or `IDbContextFactory` when a singleton needs scoped data.
+- Validate request DTOs and message payloads at the handler before mapping to domain types; model binding alone is not validation. Return response DTOs from API boundaries, not entities.
+- Bind and validate options at startup (`ValidateOnStart`); inject typed options instead of reading config ad hoc.
+- Background services honor the stopping token; replace `Thread.Sleep` with a cancellable wait (`Task.Delay` with the token, or `PeriodicTimer`).
 
 ## CLIs
 
 - Existing CLI stack first; the BCL is enough for small tools. Add `System.CommandLine` or Spectre.Console only when the command surface justifies it.
-- Keep `Program.cs` thin. Test the handler or a `Run(args, stdout, stderr)` seam and assert exit code and output.
+- `Program.cs` only calls a `Run(args, stdout, stderr)` seam and returns its exit code; parsing, execution, and error handling (including try/catch) live inside `Run`, not in `Program.cs`.
+- Test `Run` with `dotnet test --filter` for exit code and output, including a non-zero exit and a stderr message on bad input.
 
 ## References
 
