@@ -1,5 +1,5 @@
 ---
-{"description":"Diagnose cc-thingz plugin installations with the bundled read-only doctor. Use for missing installed skills or helpers, stale package versions, duplicate packages, or migration from old cc-thingz packages. NOT for broad agent configuration audits or config edits; use evolving-config.","name":"installation-doctor"}
+{"description":"Diagnose cc-thingz plugin installations with the bundled read-only doctor. Use for missing installed skills, helpers, or hook files, stale package versions, duplicate packages, or migration from old cc-thingz packages. NOT for broad agent configuration audits or config edits; use evolving-config.","name":"installation-doctor"}
 ---
 <!-- Pi platform guidance -->
 <!-- Use installed Pi tool names exactly, including extension toolsets such as Task*, Monitor*, and Loop*. -->
@@ -35,6 +35,11 @@ installations.
   runtime's enabled-plugin list before recommending removal.
 - Versions are compared with the release containing this helper, not an online
   latest release. Without a containing native manifest, version checks are skipped.
+- `hook-files` fails when a hook registration names a plugin file that is not
+  on disk. A running session keeps the plugin root it started with; after a
+  plugin update replaces that versioned directory, its hooks exit 127 or deny
+  with "can't open file" even though the new install passes. Restart those
+  sessions.
 - Hook support, helper dependencies, active plugins, and effective permissions
   remain unsupported by static inventory; exit 0 does not verify them.
 - Report missing Python or unreadable metadata precisely. Do not install tools,

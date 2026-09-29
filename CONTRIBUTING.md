@@ -37,7 +37,7 @@ agbun package --help # must support deterministic target archives
 ```bash
 make build     # agbun build --root .
 make check     # non-mutating agbun check --root .
-make validate  # Agent Bundler version, genericity, executable checks
+make validate  # Agent Bundler version, genericity, executable and hook-file checks
 make test      # pytest
 make test-ts   # Pi extension tests, including generated native-extension sources
 make ci        # all local gates
