@@ -26,17 +26,20 @@ create or change them only with user approval, for a resolved term or decision.
 ## Modes
 
 - **Explore an idea.** If no topic was given, ask for one. Narrow until the problem
-  fits one sentence: trigger, actor, what it replaces, non-goals, and the strongest
-  constraint. State assumptions and ask which are wrong. As soon as the problem is
-  stated, propose 2-3 approaches with their trade-offs, risks, and when each wins;
-  name the decision criteria and mark one recommendation. Refine the chosen design
-  only as far as the problem needs, confirming with the user as you go.
+  fits one sentence: trigger, actor, what it builds on or replaces, non-goals, and
+  the strongest constraint. State assumptions and ask which are wrong. As soon as
+  the problem is stated, propose 2-3 approaches, each with what it is, its
+  trade-offs, risks, and when it wins; name the decision criteria and mark one
+  recommendation. Refine the chosen design only as far as the problem needs
+  (architecture, data flow, interface, error handling, testing), confirming with
+  the user as you go.
 - **Grill or debate.** A draft plan, a named trade-off such as "X vs Y", or a set
   of assumptions is already bounded; ask for a plan only when nothing concrete was
-  named. For a trade-off, lead with a side-by-side comparison and your take,
-  grounded in the project's code; do not invent opposing positions. For a plan,
-  skip the comparison and go straight to `references/grill-protocol.md`: no
-  rewritten plan.
+  named. For a named trade-off, lead with a side-by-side comparison and your take,
+  grounded in the project's code, then continue into `references/grill-protocol.md`'s
+  resolve-or-defer loop through GRILL COMPLETE; do not invent opposing positions.
+  For a plan or an assumption set, skip the comparison and go straight to
+  `references/grill-protocol.md`: no rewritten plan.
 
 Research externally only when asked. If the idea conflicts with domain docs, quote
 and resolve the conflicting terms first. If a constraint blocks every approach,
@@ -57,8 +60,8 @@ One-sentence definition.
 Avoid: overloaded synonym
 ```
 
-Offer an ADR only for a decision that is hard to reverse, surprising, and the
-result of a real trade-off.
+Offer an ADR only for a decision that is hard to reverse, surprising without
+context, and the result of a real trade-off.
 
 ## Output
 
