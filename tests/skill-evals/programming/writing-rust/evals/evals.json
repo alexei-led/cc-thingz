@@ -28,6 +28,33 @@
         "The output warns against cargo clean or cache-busting as a routine fix.",
         "The output keeps tests behavior-focused rather than coupled to private helper details."
       ]
+    },
+    {
+      "id": "rust-msrv-feature-gate",
+      "name": "rust msrv feature gate",
+      "prompt": "A Rust crate has `edition = \"2021\"` and `package.rust-version = \"1.70\"` in Cargo.toml. It exposes two mutually exclusive Cargo features, `native-tls` and `rustls`, with `[features] default = [\"native-tls\"]`. The crate needs a single HTTP client instance created once and shared across all requests. Show the exact code for the shared client, including any global/static definition, and give the exact `cargo clippy` commands to check the crate compiles cleanly with each TLS backend.",
+      "expected_output": "The response respects the crate's 1.70 MSRV by using std::sync::OnceLock instead of LazyLock, does not bump rust-version or edition, scopes clippy to one TLS backend at a time with --no-default-features --features rustls instead of --all-features, and leaves the default feature list unchanged.",
+      "assertions": [
+        "The output's shared HTTP client does not use std::sync::LazyLock.",
+        "The output's shared HTTP client uses std::sync::OnceLock rather than LazyLock to lazily initialize the client.",
+        "The output does not raise the crate's rust-version or edition to enable a newer language feature.",
+        "The output's clippy commands do not use --all-features.",
+        "The output's clippy commands check the non-default rustls backend with --no-default-features together with --features rustls (or -F rustls).",
+        "The output does not change the crate's default = [\"native-tls\"] feature list."
+      ]
+    },
+    {
+      "id": "rust-secrets-and-unsafe-ffi",
+      "name": "rust secrets and unsafe ffi",
+      "prompt": "Write a Rust CLI's Config struct that loads a database URL and an API key from environment variables, plus a small unsafe wrapper around a C function `int normalize(const char *input, char *out, size_t out_len)`, where the caller must guarantee `out` points to a writable buffer of at least `out_len` bytes. Show: the Config struct definition and how it implements or derives any trait used for logging or debug printing; the function that parses Config from environment variables, including its error type; and the safe wrapper function around normalize, including the unsafe block.",
+      "expected_output": "The response keeps the API key out of Debug output and logs, returns a typed Result from environment parsing, and wraps the unsafe FFI call in a safe function with a SAFETY comment stating the buffer-length invariant.",
+      "assertions": [
+        "The output's Config Debug output does not show the API key value, either through a manual redacting Debug impl on Config or a key type with its own redacting Debug impl.",
+        "The output's environment-variable parsing function returns a Result with a named error type instead of calling unwrap, expect, or panicking on a missing or invalid variable.",
+        "The output wraps the unsafe call to normalize inside a function whose own signature is safe, not marked unsafe fn.",
+        "The output's unsafe block includes a // SAFETY: comment stating the invariant that out must point to a writable buffer of at least out_len bytes.",
+        "The output never prints or logs the raw API key value anywhere in the shown code."
+      ]
     }
   ]
 }
