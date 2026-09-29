@@ -1,9 +1,7 @@
 {
   "event": "pre-tool",
   "matcher": {
-    "tools": [
-      "command"
-    ]
+    "tools": ["command"]
   },
   "handler": {
     "mode": "exec",
@@ -11,6 +9,9 @@
     "arguments": [
       {
         "packageFile": "hook.sh"
+      },
+      {
+        "packageFile": "decide.py"
       }
     ]
   },
