@@ -44,7 +44,7 @@ lint-typescript: ## Lint and type-check Pi extension TypeScript
 
 .PHONY: test test-ts skill-evals-prepare skill-evals skill-evals-fast skill-evals-summary
 test: ## Run pytest suite
-	uv run --extra test python -m pytest tests/ -v
+	uv run --extra test python -m pytest tests/ -n auto
 
 test-ts: ## Run Bun TypeScript tests (Pi extensions)
 	bun test tests/pi-extensions --isolate
@@ -93,11 +93,14 @@ skill-evals-summary: ## Print summary for latest skill eval workspace
 # targets are gone — they duplicated what `make check` already proves
 # end-to-end, and disagreed with each other when generators changed.
 
-.PHONY: validate validate-executables validate-genericity lint-instructions
-validate: validate-genericity validate-executables check-agbun ## Validate canonical sources and Agent Bundler availability
+.PHONY: validate validate-executables validate-genericity validate-hooks lint-instructions
+validate: validate-genericity validate-executables validate-hooks check-agbun ## Validate canonical sources and Agent Bundler availability
 
 validate-genericity: ## Reject Claude-only tokens in vendor-neutral base SKILL.md/AGENT.md
 	uv run python scripts/validate/validate_genericity.py
+
+validate-hooks: ## Check every generated hook config: events, matchers, and referenced files
+	uv run python scripts/validate/validate_hooks.py
 
 lint-instructions: ## Lint agent/skill instructions (advisory)
 	@uv run python src/skills/reviewing-instructions/scripts/lint-instructions.py

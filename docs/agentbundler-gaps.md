@@ -40,6 +40,15 @@ build scripts:
 4. Full vendor CLI runtime smoke coverage. Archive/install tests run where a
    vendor CLI is available; Cursor needs `CURSOR_API_KEY` and vendor state.
 
+## Vendor runtime caveat: replaced plugin roots
+
+Codex resolves `${PLUGIN_ROOT}` to a versioned cache directory when a session
+starts. A later plugin update replaces that directory, so hooks in sessions that
+were already running point at deleted files: bash hooks exit 127, and the
+fail-closed file protector denies edits with "can't open file". The installed
+plugin is fine; restart those sessions. The installation doctor `hook-files`
+check reports missing hook files on disk.
+
 ## Intentional target differences
 
 - Codex agents are target-root `.codex/agents/*.toml` profiles, not plugin
@@ -55,6 +64,12 @@ build scripts:
 Checked in the repository:
 
 - generated hook matrices, target manifests, archives, and source/output drift;
+- every generated hook config: known target events, valid matchers and
+  timeouts, the target's plugin-root variable, and existing referenced files
+  (`make validate-hooks`);
+- every generated vendor hook command, run from its plugin root with a benign
+  payload, exits 0 without a missing-file error or deny
+  (`tests/test_validate_hooks.py`);
 - Pi guard deny protocol and safe hook environment;
 - native Pi extension registration and all copied compatibility dependencies;
 - permission-gate safe, headless-deny, user-deny, validated-update, and timeout

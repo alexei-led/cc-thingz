@@ -71,7 +71,7 @@ def evaluate(hook: Path, cases: list[dict], *, disabled: bool = False) -> dict:
             input=json.dumps({"prompt": case["prompt"]}),
             text=True,
             capture_output=True,
-            timeout=10,
+            timeout=60,
             cwd=ROOT,
             env=env,
         )

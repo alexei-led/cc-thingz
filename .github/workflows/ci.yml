@@ -52,7 +52,9 @@ jobs:
               - 'scripts/setup/**'
               - 'src/**'
               - 'src/.agentbundler/**'
-              - 'scripts/validate/validate_genericity.py'
+              - 'dist/**'
+              - 'Makefile'
+              - 'scripts/validate/**'
             skill_evals:
               - 'src/skills/**'
               - 'dist/**'

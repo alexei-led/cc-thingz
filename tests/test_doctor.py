@@ -121,6 +121,57 @@ def test_hook_duplicates_do_not_expose_or_execute_commands(load_script, tmp_path
     assert "1 exact duplicate" in result["reason"]
 
 
+def test_hook_files_missing_from_installed_plugin_fail(load_script, tmp_path):
+    doctor = load_script("diagnostics/doctor.py")
+    repo, plugin, config = fixture_tree(tmp_path)
+    present = plugin / "assets/hooks/present/hook.sh"
+    present.parent.mkdir(parents=True)
+    present.write_text("exit 0")
+    wrapped = (
+        "'node' '-e' 'x' '--' '/bin/sh' '-c' ''\"'\"'python3'\"'\"' "
+        "\"${PLUGIN_ROOT}\"'\"'\"'/assets/hooks/gone/hook.py'\"'\"''"
+    )
+    handlers = [
+        {
+            "type": "command",
+            "command": "'bash' \"${PLUGIN_ROOT}\"'/assets/hooks/present/hook.sh'",
+        },
+        {"type": "command", "command": wrapped},
+        {
+            "type": "command",
+            "command": "bash",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/x.sh"],
+        },
+    ]
+    write_json(plugin / "hooks/hooks.json", {"hooks": {"Stop": [{"hooks": handlers}]}})
+
+    report = doctor.inspect(repo, [plugin], config)
+
+    result = next(c for c in report["checks"] if c["check"] == "hook-files")
+    assert result["status"] == "failed"
+    assert result["reason"].startswith("2 of 3 referenced hook files missing")
+    assert result["scope"] == [
+        str(plugin / "assets/hooks/gone/hook.py"),
+        str(plugin / "hooks/x.sh"),
+    ]
+
+
+def test_hook_files_present_pass(load_script, tmp_path):
+    doctor = load_script("diagnostics/doctor.py")
+    repo, plugin, config = fixture_tree(tmp_path)
+    script = plugin / "assets/hooks/ok/hook.sh"
+    script.parent.mkdir(parents=True)
+    script.write_text("exit 0")
+    command = 'bash "${PLUGIN_ROOT}/assets/hooks/ok/hook.sh"'
+    handler = {"type": "command", "command": command}
+    write_json(plugin / "hooks/hooks.json", {"hooks": {"Stop": [{"hooks": [handler]}]}})
+
+    report = doctor.inspect(repo, [plugin], config)
+
+    result = next(c for c in report["checks"] if c["check"] == "hook-files")
+    assert result["status"] == "passed"
+
+
 @pytest.mark.parametrize("content", ["[]", '{"token":"secret"', "null"])
 def test_bad_manifest_reports_failure_without_contents(
     load_script,

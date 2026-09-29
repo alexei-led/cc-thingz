@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 from collections import defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
@@ -38,6 +39,8 @@ OBSOLETE = {
     "browser-automation": ["browser"],
 }
 MANIFESTS = (".codex-plugin/plugin.json", ".claude-plugin/plugin.json")
+# `${PLUGIN_ROOT}` or `${CLAUDE_PLUGIN_ROOT}` followed, across shell quotes, by a path.
+PLUGIN_FILE = re.compile(r"\$\{?(?:CLAUDE_)?PLUGIN_ROOT\}?[\"']*(/[\w./-]+)")
 
 
 class Inspection:
@@ -211,6 +214,7 @@ class Inspection:
             return
         seen: set[str] = set()
         duplicates = 0
+        referenced: set[str] = set()
         for event, groups in events.items():
             if not isinstance(groups, list):
                 self.add("hook-registrations", "failed", "Invalid event groups", [path])
@@ -231,12 +235,29 @@ class Inspection:
                     digest = hashlib.sha256(identity.encode()).hexdigest()
                     duplicates += digest in seen
                     seen.add(digest)
+                    if isinstance(hook, dict):
+                        texts = [hook.get("command"), *(hook.get("args") or [])]
+                        for text in texts:
+                            if isinstance(text, str):
+                                referenced.update(PLUGIN_FILE.findall(text))
         self.add(
             "hook-registrations",
             "failed" if duplicates else "passed",
             f"{duplicates} exact duplicate registrations within this manifest; "
             "runtime activation was not inspected",
             [path],
+        )
+        missing = sorted(
+            plugin / relative.lstrip("/")
+            for relative in referenced
+            if not (plugin / relative.lstrip("/")).is_file()
+        )
+        self.add(
+            "hook-files",
+            "failed" if missing else "passed",
+            f"{len(missing)} of {len(referenced)} referenced hook files missing"
+            + ("; reinstall the plugin and restart its sessions" if missing else ""),
+            missing or [path],
         )
 
 

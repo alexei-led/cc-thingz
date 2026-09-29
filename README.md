@@ -209,9 +209,11 @@ make ci
 agbun package --root . --out /tmp/cc-thingz-release
 ```
 
-`make validate` checks Agent Bundler availability, source genericity, and
-executable source scripts. `make test` verifies source/release helpers, hook
-manifests, target inventories, agent envelopes, version consistency, archives,
+`make validate` checks Agent Bundler availability, source genericity,
+executable source scripts, and that every generated hook config uses known
+events and references files that exist in its plugin. `make test` also runs
+each generated hook command from its plugin root and verifies source/release
+helpers, hook manifests, target inventories, agent envelopes, version consistency, archives,
 and Pi decision-hook protocol output.
 
 JS/TS hooks select project-declared tooling first. Without a project choice, they

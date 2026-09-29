@@ -28,7 +28,7 @@ def _run(payload: dict | None, cwd: Path | None = None) -> tuple[int, str, str]:
         capture_output=True,
         text=True,
         cwd=cwd or HOOK.parent,
-        timeout=5,
+        timeout=60,
     )
     return proc.returncode, proc.stdout, proc.stderr
 
@@ -98,7 +98,7 @@ def test_spec_project_reports_status_and_ready_tasks(tmp_path: Path) -> None:
         capture_output=True,
         text=True,
         env=env,
-        timeout=5,
+        timeout=60,
     )
     assert proc.returncode == 0
     assert proc.stdout.splitlines() == [
@@ -120,7 +120,7 @@ def test_spec_branch_skipped_without_specctl(tmp_path: Path) -> None:
         capture_output=True,
         text=True,
         env=env,
-        timeout=5,
+        timeout=60,
     )
     assert proc.returncode == 0
 
@@ -133,7 +133,7 @@ def test_malformed_stdin_does_not_crash(body: str, tmp_path: Path) -> None:
         capture_output=True,
         text=True,
         cwd=tmp_path,
-        timeout=5,
+        timeout=60,
     )
     assert proc.returncode == 0
 

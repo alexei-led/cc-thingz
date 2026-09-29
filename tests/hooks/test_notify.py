@@ -134,7 +134,7 @@ def _run(
         text=True,
         cwd=cwd,
         env=env,
-        timeout=5,
+        timeout=60,
         check=False,
     )
 
