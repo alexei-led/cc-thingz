@@ -166,6 +166,10 @@ SH
 	# under load is exactly that case, so it must not block (status 0).
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"timed out"* ]]
+	# A timeout means a check didn't run to completion, so the summary must
+	# not claim an unqualified pass.
+	[[ "$output" == *"Style checks incomplete: 1 timed out"* ]]
+	[[ "$output" != *"Style OK"* ]]
 
 	child_pid=$(cat child.pid 2>/dev/null)
 	[ -n "$child_pid" ]
@@ -192,10 +196,23 @@ SH
 	# bash -c to expand after sourcing lib.sh with the candidate value set.
 	script="source \"$BATS_TEST_DIRNAME/../../src/hooks/smart-lint/smart-lint/lib.sh\"
 echo \"\$SMART_LINT_CMD_TIMEOUT_SECONDS\""
-	for bad in "" "abc" "0" "-5" "15abc"; do
+	for bad in "" "abc" "0" "00" "08" "-5" "15abc"; do
 		run env SMART_LINT_CMD_TIMEOUT_SECONDS="$bad" bash -c "$script"
 		[ "$output" = "30" ]
 	done
+}
+
+@test "smart-lint: run_with_timeout runs the command directly, with no timeout, when python3 is unavailable" {
+	# Without python3 there is no way to put the command in its own process
+	# group, so killing only the direct child would be fake protection --
+	# grandchildren would survive as orphans. Confirm the fallback runs the
+	# command to completion instead of pretending to enforce a 1s cap.
+	script="source \"$BATS_TEST_DIRNAME/../../src/hooks/smart-lint/smart-lint/lib.sh\"
+command_exists() { [[ \"\$1\" != python3 ]] && command -v \"\$1\" &>/dev/null; }
+run_with_timeout 1 bash -c 'sleep 2; echo done'"
+	run bash -c "$script"
+	[ "$status" -eq 0 ]
+	[ "$output" = "done" ]
 }
 
 @test "smart-lint: a notebook edit outside the project root is skipped" {

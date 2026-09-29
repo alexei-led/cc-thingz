@@ -5,18 +5,21 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
+YELLOW='\033[0;33m'
 NC='\033[0m'
 CLAUDE_HOOKS_DEBUG="${CLAUDE_HOOKS_DEBUG:-0}"
 PROJECT_TYPE="${PROJECT_TYPE:-unknown}"
 SMART_LINT_DIFF_FALLBACK_LIMIT="${SMART_LINT_DIFF_FALLBACK_LIMIT:-5}"
 SMART_LINT_COMPACT_LINES=80
 # Per-command cap so one slow/cold tool (pyright's first node spin-up,
-# golangci-lint's first cache build, …) can't eat the whole hook budget.
-# An empty, non-numeric, or zero override falls back to the default instead
-# of turning into a `sleep`/no-op that defeats the cap.
+# golangci-lint's first cache build, …) can't eat the whole hook budget. A
+# value that isn't a plain positive integer (empty, non-numeric, zero, or
+# with a leading zero like "00"/"08" -- ambiguous with octal and rejected
+# rather than guessed at) falls back to the default instead of turning into
+# a `sleep`/no-op that defeats the cap.
 SMART_LINT_CMD_TIMEOUT_SECONDS="${SMART_LINT_CMD_TIMEOUT_SECONDS:-30}"
 case "$SMART_LINT_CMD_TIMEOUT_SECONDS" in
-'' | *[!0-9]* | 0) SMART_LINT_CMD_TIMEOUT_SECONDS=30 ;;
+'' | 0* | *[!0-9]*) SMART_LINT_CMD_TIMEOUT_SECONDS=30 ;;
 esac
 # Whole-hook wall-clock budget, comfortably under hook.json's 120000ms
 # harness timeout, so a loop of several run_with_timeout calls (e.g. rustfmt
@@ -26,6 +29,7 @@ SMART_LINT_HOOK_BUDGET_SECONDS=100
 HOOK_PROJECT_FALLBACK="${HOOK_PROJECT_FALLBACK:-0}"
 SMART_LINT_FORMAT_RAN=0
 SMART_LINT_LINT_RAN=0
+SMART_LINT_TIMEOUT_COUNT=0
 export -n HOOK_INPUT_JSON
 HOOK_INPUT_JSON="${HOOK_INPUT_JSON:-}"
 HOOK_EDITED_FILES_LOADED=0
@@ -419,7 +423,11 @@ print_summary_and_exit() {
 			find ~/.claude/skills -mindepth 2 -maxdepth 2 -name 'SKILL.md' -type f 2>/dev/null
 		)
 		local approx_tokens=$((total_words * 4 / 3))
-		echo -e "${PROJECT_TYPE} project ${GREEN}✅ Style OK${NC} ${CYAN}📊 ~${approx_tokens} tokens${NC}" >&2
+		if [[ "$SMART_LINT_TIMEOUT_COUNT" -gt 0 ]]; then
+			echo -e "${PROJECT_TYPE} project ${YELLOW}⚠️ Style checks incomplete: ${SMART_LINT_TIMEOUT_COUNT} timed out${NC} ${CYAN}📊 ~${approx_tokens} tokens${NC}" >&2
+		else
+			echo -e "${PROJECT_TYPE} project ${GREEN}✅ Style OK${NC} ${CYAN}📊 ~${approx_tokens} tokens${NC}" >&2
+		fi
 		exit 0
 	fi
 }
@@ -702,20 +710,25 @@ compact_output() {
 # $(...) capture would, and exits 124 (matching GNU timeout) when it had to
 # kill the command.
 #
-# No `timeout`/`gtimeout` on stock macOS. Instead: when python3 is available
-# (already a hard dependency elsewhere in this hook), put the command in its
-# own process group via os.setpgid before exec-ing into it, so a timeout can
-# kill its whole tree -- compilers, language servers, etc. -- not just the
-# direct child. (Bash job control (`set -m`) can do the same, but killing a
-# job it tracks then breaks `wait $pid` after a `disown`, and printing
-# "Terminated" job-status lines to stderr otherwise -- both avoided by doing
-# the grouping with a plain syscall instead.) The watcher subshell gets its
-# own /dev/null stdio *before* it forks `sleep`, so an orphaned `sleep` (e.g.
-# after we stop the watcher early because the command finished fast) never
-# inherits this function's stdout pipe -- otherwise, since every caller here
-# captures output via $(...), that orphaned `sleep` would keep the pipe open
-# and the caller blocked until it ran out, for the *entire* configured
-# timeout, regardless of how fast the real command finished.
+# No `timeout`/`gtimeout` on stock macOS. Instead: put the command in its own
+# process group via python3's os.setpgid before exec-ing into it, so a
+# timeout can kill its whole tree -- compilers, language servers, etc. -- not
+# just the direct child. (Bash job control (`set -m`) can do the same, but
+# killing a job it tracks then breaks `wait $pid` after a `disown`, and
+# prints "Terminated" job-status lines to stderr otherwise -- both avoided by
+# doing the grouping with a plain syscall instead.) Without python3 there is
+# no way here to group the process, and killing only the direct child would
+# be fake protection -- its own children would simply survive as orphans --
+# so this runs the command directly with no timeout at all in that case,
+# same as the mktemp-failure fallback below.
+#
+# The watcher subshell gets its own /dev/null stdio *before* it forks
+# `sleep`, so an orphaned `sleep` (e.g. after we stop the watcher early
+# because the command finished fast) never inherits this function's stdout
+# pipe -- otherwise, since every caller here captures output via $(...),
+# that orphaned `sleep` would keep the pipe open and the caller blocked
+# until it ran out, for the *entire* configured timeout, regardless of how
+# fast the real command finished.
 run_with_timeout() {
 	local secs="$1"
 	shift
@@ -727,6 +740,11 @@ run_with_timeout() {
 	fi
 	[[ "$secs" -gt "$remaining" ]] && secs="$remaining"
 
+	command_exists python3 || {
+		"$@"
+		return $?
+	}
+
 	local tmp
 	tmp=$(mktemp 2>/dev/null) || {
 		"$@"
@@ -734,20 +752,16 @@ run_with_timeout() {
 	}
 	local marker="${tmp}.timedout"
 
-	if command_exists python3; then
-		python3 -c '
+	python3 -c '
 import os
 import sys
 
 os.setpgid(0, 0)
 os.execvp(sys.argv[1], sys.argv[1:])
 ' "$@" >"$tmp" 2>&1 &
-	else
-		"$@" >"$tmp" 2>&1 &
-	fi
 	local pid=$!
 
-	# Only sleeps, marks the timeout, and TERMs the command; SIGKILL
+	# Only sleeps, marks the timeout, and TERMs the group; SIGKILL
 	# escalation happens below in this function, not here, so the watcher
 	# can exit the instant we stop it (a trapped TERM interrupts `wait`,
 	# unlike a plain foreground `sleep`) instead of leaving its own `sleep`
@@ -759,7 +773,6 @@ os.execvp(sys.argv[1], sys.argv[1:])
 		wait "$s"
 		: >"$marker" 2>/dev/null
 		kill -TERM -- "-$pid" 2>/dev/null
-		kill -TERM "$pid" 2>/dev/null
 	) </dev/null >/dev/null 2>&1 &
 	local watcher=$!
 
@@ -774,15 +787,14 @@ os.execvp(sys.argv[1], sys.argv[1:])
 		timed_out=1
 		# Give the tree a couple of seconds to honor TERM before SIGKILL;
 		# catches grandchildren (gradle, node, a compiler) that ignore it.
+		# Check the *group*, not just the leader: the leader can exit while
+		# a grandchild it spawned is still alive in the same group.
 		local grace=0
-		while [[ "$grace" -lt 2 ]] && kill -0 "$pid" 2>/dev/null; do
+		while [[ "$grace" -lt 2 ]] && kill -0 -- "-$pid" 2>/dev/null; do
 			sleep 1
 			grace=$((grace + 1))
 		done
-		kill -0 "$pid" 2>/dev/null && {
-			kill -KILL -- "-$pid" 2>/dev/null
-			kill -KILL "$pid" 2>/dev/null
-		}
+		kill -0 -- "-$pid" 2>/dev/null && kill -KILL -- "-$pid" 2>/dev/null
 	fi
 
 	cat "$tmp"
@@ -798,6 +810,7 @@ os.execvp(sys.argv[1], sys.argv[1:])
 # timeout is reported on stderr and does not fail the hook.
 report_timeout() {
 	local name="$1"
+	SMART_LINT_TIMEOUT_COUNT=$((SMART_LINT_TIMEOUT_COUNT + 1))
 	log_info "$name timed out and was skipped (not treated as a lint failure)"
 }
 
