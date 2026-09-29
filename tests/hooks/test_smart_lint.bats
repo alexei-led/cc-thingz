@@ -187,11 +187,13 @@ SH
 }
 
 @test "smart-lint: SMART_LINT_CMD_TIMEOUT_SECONDS falls back to 30 when non-numeric or zero" {
+	# Built with the outer shell's double quotes so $BATS_TEST_DIRNAME expands
+	# here, while \$SMART_LINT_CMD_TIMEOUT_SECONDS stays literal for the inner
+	# bash -c to expand after sourcing lib.sh with the candidate value set.
+	script="source \"$BATS_TEST_DIRNAME/../../src/hooks/smart-lint/smart-lint/lib.sh\"
+echo \"\$SMART_LINT_CMD_TIMEOUT_SECONDS\""
 	for bad in "" "abc" "0" "-5" "15abc"; do
-		run env SMART_LINT_CMD_TIMEOUT_SECONDS="$bad" bash -c '
-			source "'"$BATS_TEST_DIRNAME"'/../../src/hooks/smart-lint/smart-lint/lib.sh"
-			echo "$SMART_LINT_CMD_TIMEOUT_SECONDS"
-		'
+		run env SMART_LINT_CMD_TIMEOUT_SECONDS="$bad" bash -c "$script"
 		[ "$output" = "30" ]
 	done
 }
