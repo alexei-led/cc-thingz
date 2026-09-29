@@ -328,7 +328,7 @@ def inspect(
                     [Path(source) for source in sources],
                 )
     if config_root is not None:
-        for role in ("advisor", "reviewer", "runner"):
+        for role in ("reviewer", "runner"):
             path = config_root / "agents" / f"{role}.toml"
             scan.add(
                 "codex-agent-profile",

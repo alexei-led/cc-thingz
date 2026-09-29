@@ -51,7 +51,6 @@
     {
       "path": "agents/advisor.md",
       "targets": [
-        "codex",
         "pi"
       ]
     }

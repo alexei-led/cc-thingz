@@ -66,7 +66,7 @@ def _pi_native_asset_files() -> set[str]:
 
 EXPECTED_AGENTS = {
     "claude": {"engineer", "reviewer", "runner"},
-    "codex": {"advisor", "reviewer", "runner"},
+    "codex": {"reviewer", "runner"},
     "pi": {"advisor", "engineer", "reviewer", "runner"},
     "copilot": {"reviewer", "runner"},
     "cursor": {"reviewer", "runner"},
@@ -158,10 +158,10 @@ def test_release_archives_have_native_install_roots(release_artifacts: Path) -> 
 
     codex_members = _archive_members(archives["alexei-led-cc-thingz-codex.tar.gz"])
     assert {
-        ".codex/agents/advisor.toml",
         ".codex/agents/reviewer.toml",
         ".codex/agents/runner.toml",
     } <= codex_members
+    assert ".codex/agents/advisor.toml" not in codex_members
 
     pi_members = _archive_members(archives["alexei-led-cc-thingz-pi.tgz"])
     assert "extensions/agentbundler-hooks.ts" in pi_members
@@ -444,7 +444,7 @@ def test_generated_agent_frontmatter_preserves_target_envelopes() -> None:
         "reviewing-code, improving-tests, documenting-code, spec-flow"
     )
 
-    for role in ("advisor", "reviewer", "runner"):
+    for role in ("reviewer", "runner"):
         profile = _codex_agent(role)
         assert profile["name"] == role
         assert (

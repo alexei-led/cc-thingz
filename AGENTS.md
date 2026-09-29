@@ -51,7 +51,7 @@ Three roles plus a utility lane. A role is a capability envelope plus a reasonin
 - `engineer` — read, write, execute. The only mutator; applies changes and verifies them. Claude, Pi, and Grok.
 - `reviewer` — read-only adversarial evaluator for review, audit, code location, and planning. Claude, Codex, Pi, Copilot, Cursor, and Grok.
 - `runner` — read-only utility lane for bounded lookups. Same targets as reviewer.
-- `advisor` — read-only verdict, ranked risks, next actions. Codex and Pi only; Claude Code has a built-in advisor.
+- `advisor` — read-only verdict, ranked risks, next actions. Pi only; Claude Code has a built-in advisor.
 
 Envelope enforcement differs by target:
 
