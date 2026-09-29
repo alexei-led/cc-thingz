@@ -15,14 +15,17 @@ command is tokenized too, while an ordinary quoted argument (a commit
 message, a heredoc body) is not.
 
 This is a mistake guard, not a shell sandbox: shlex tokenizes text, it does
-not expand variables, globs, command substitution, backticks, or aliases,
-and heredoc bodies are stripped rather than interpreted. A command this
-script cannot confidently parse is blocked (fail closed) rather than
-silently allowed. Limit: `cd`/`pushd`/`popd` tracking understands a plain
-`cd <literal-path>` only; anything else (bare `cd`, `cd -`, `pushd`,
-`popd`, a variable) permanently loses directory trust for the rest of the
-command, so any later merge-verified cleanup in it blocks. Upgrade
-trigger: a reported false positive from one of those forms.
+not expand variables, globs, or git aliases, and heredoc bodies are stripped
+rather than interpreted. A git call that opens a `$(...)`, backtick, or
+`<(...)` substitution is still found; git hidden in a variable or alias is
+not. A command this script cannot confidently parse is blocked (fail
+closed) rather than silently allowed.
+
+Limit: `cd`/`pushd`/`popd` tracking understands a plain `cd <literal-path>`
+only; anything else (bare `cd`, `cd -`, `pushd`, `popd`, a variable)
+permanently loses directory trust for the rest of the command, so any later
+merge-verified cleanup in it blocks. Upgrade trigger: a reported false
+positive from one of those forms.
 
 Input: environment variables set by hook.sh (GG_COMMAND, GG_CWD,
 GG_ALLOW_FORCE_PUSH, GG_PATTERNS). Output: stdout is always exactly one of
@@ -274,12 +277,22 @@ def classify(subcommand: str, args: list[str]) -> tuple[str, list[str] | str | N
             return "block", "git branch -D (unparseable arguments)"
         return "cleanup-branch", names
     if subcommand == "checkout":
-        if "-f" in args or "--force" in args or "." in args:
+        if (
+            "--force" in args
+            or "." in args
+            or any(is_short_force_cluster(a) for a in args)
+        ):
             return "block", "git checkout --force or checkout ."
         return "safe", None
     if subcommand == "switch":
         if "-C" in args or "--force-create" in args:
             return "block", "git switch --force-create"
+        if (
+            "--discard-changes" in args
+            or "--force" in args
+            or any(is_short_force_cluster(a) for a in args)
+        ):
+            return "block", "git switch --discard-changes"
         return "safe", None
     if subcommand == "restore":
         if "." in args:
@@ -501,6 +514,9 @@ def evaluate_git_call(
         return
 
 
+SUBST_OPENER = re.compile(r"^.*(?:\$\(|`|<\(|>\()")
+
+
 def trim_grouping_chars(span: list[str]) -> list[str]:
     """Drops a leading "("/"{" glued to the first token and a trailing
     ")"/"}" glued to the last, e.g. `(git reset --hard)` after splitting
@@ -509,7 +525,7 @@ def trim_grouping_chars(span: list[str]) -> list[str]:
     span = list(span)
     if span and span[0][:1] in ("(", "{"):
         span[0] = span[0][1:]
-    if span and span[-1][-1:] in (")", "}"):
+    if span and span[-1][-1:] in (")", "}", "`"):
         span[-1] = span[-1][:-1]
     return span
 
@@ -552,7 +568,9 @@ def walk(
         # ordinary quoted arguments (a commit message, a heredoc body) do
         # not, so they stay allowed.
         for j, token in enumerate(span):
-            base = token.rsplit("/", 1)[-1]
+            # `$(git`, `` `git ``, `<(git`, and `X=$(git` are one shlex token;
+            # command substitution still runs git, so look past the opener.
+            base = SUBST_OPENER.sub("", token).rsplit("/", 1)[-1]
             if base == "git":
                 evaluate_git_call(
                     span[j:], ctx, patterns, allow_force_push, blocks, removed_worktrees

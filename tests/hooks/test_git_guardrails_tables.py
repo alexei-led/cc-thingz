@@ -31,6 +31,12 @@ GIT_SSH_COMMAND="ssh -o ServerAliveInterval=20" git push origin refs/tags/v1.2.3
 HEREDOC_COMMAND = "cat <<'EOF'\nnever run git reset --hard on main\nEOF\n"
 
 MUST_BLOCK = [
+    ("git switch --discard-changes main", "switch discarding local changes"),
+    ("git switch -f main", "switch -f discards local changes"),
+    ("git checkout -qf main", "checkout force inside a short-flag cluster"),
+    ("X=$(git reset --hard)", "command substitution runs git"),
+    ("echo `git clean -fdx`", "backtick substitution runs git"),
+    ("cat <(git push --force origin main)", "process substitution runs git"),
     ("echo ok\ngit reset --hard", "destructive command on a later line"),
     ("true\n\ngit push --force origin main", "force push after a blank line"),
     ('for b in x y; do git branch -D "$b"; done', "unmerged branch inside a for-loop"),
