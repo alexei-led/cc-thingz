@@ -11,17 +11,30 @@ function log(options, ...parts) {
 }
 
 function cacheDirectory(options = {}) {
-  return options.cacheDir || path.join(
-    process.env.XDG_CACHE_HOME || path.join(os.homedir(), ".cache"),
-    "cc-thingz", "playwright", PLAYWRIGHT_VERSION,
+  return (
+    options.cacheDir ||
+    path.join(
+      process.env.XDG_CACHE_HOME || path.join(os.homedir(), ".cache"),
+      "cc-thingz",
+      "playwright",
+      PLAYWRIGHT_VERSION,
+    )
   );
 }
 
 function resolvePlaywright(options = {}) {
   const projectDir = options.projectDir || process.cwd();
-  const candidates = [() => require.resolve("playwright", { paths: [projectDir] }),
-    () => require.resolve("playwright", { paths: [require.resolve("@playwright/test", { paths: [projectDir] })] }),
-    () => require.resolve(path.join(cacheDirectory(options), "node_modules", "playwright"))];
+  const candidates = [
+    () => require.resolve("playwright", { paths: [projectDir] }),
+    () =>
+      require.resolve("playwright", {
+        paths: [require.resolve("@playwright/test", { paths: [projectDir] })],
+      }),
+    () =>
+      require.resolve(
+        path.join(cacheDirectory(options), "node_modules", "playwright"),
+      ),
+  ];
   for (const resolve of candidates) {
     try {
       return resolve();
@@ -41,11 +54,21 @@ function ensurePlaywrightInstalled(options = {}) {
   const cacheDir = cacheDirectory(options);
   fs.mkdirSync(cacheDir, { recursive: true });
   log(options, `Installing Playwright ${PLAYWRIGHT_VERSION} in ${cacheDir}`);
-  execFileSync("npm", [
-    "install", "--prefix", cacheDir, "--no-save", "--package-lock=false",
-    "--ignore-scripts", `playwright@${PLAYWRIGHT_VERSION}`,
-  ], { cwd: cacheDir, stdio: options.quiet ? "ignore" : "inherit" });
-  if (!isPlaywrightInstalled(options)) throw new Error("Playwright installation failed");
+  execFileSync(
+    "npm",
+    [
+      "install",
+      "--prefix",
+      cacheDir,
+      "--no-save",
+      "--package-lock=false",
+      "--ignore-scripts",
+      `playwright@${PLAYWRIGHT_VERSION}`,
+    ],
+    { cwd: cacheDir, stdio: options.quiet ? "ignore" : "inherit" },
+  );
+  if (!isPlaywrightInstalled(options))
+    throw new Error("Playwright installation failed");
 }
 
 function loadPlaywright(options = {}) {
@@ -57,13 +80,18 @@ function ensureBrowserAvailable(browser, browserName, options = {}) {
   if (!fs.existsSync(browser.executablePath())) {
     const entry = resolvePlaywright(options);
     const cli = path.join(path.dirname(entry), "cli.js");
-    throw new Error(`Playwright package is ready but ${browserName} is missing. Install it with: node ${JSON.stringify(cli)} install ${browserName}`);
+    throw new Error(
+      `Playwright package is ready but ${browserName} is missing. Install it with: node ${JSON.stringify(cli)} install ${browserName}`,
+    );
   }
 }
 
 function sandboxOptions() {
   return process.env.PLAYWRIGHT_SKILL_NO_SANDBOX === "1"
-    ? { chromiumSandbox: false, args: ["--no-sandbox", "--disable-setuid-sandbox"] }
+    ? {
+        chromiumSandbox: false,
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      }
     : { chromiumSandbox: true, args: [] };
 }
 

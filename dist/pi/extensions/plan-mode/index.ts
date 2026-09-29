@@ -402,7 +402,8 @@ After completing a step, include a [DONE:n] tag in your response.`,
 
 		// Restore persisted state
 		const planModeEntry = entries.filter((e: { type: string; customType?: string }) => e.type === "custom" && e.customType === "plan-mode").pop() as
-			{ data?: { enabled: boolean; todos?: TodoItem[]; executing?: boolean } } | undefined;
+			| { data?: { enabled: boolean; todos?: TodoItem[]; executing?: boolean } }
+			| undefined;
 
 		if (planModeEntry?.data) {
 			planModeEnabled = planModeEntry.data.enabled ?? planModeEnabled;

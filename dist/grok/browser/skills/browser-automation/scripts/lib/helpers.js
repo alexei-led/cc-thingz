@@ -3,7 +3,11 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { loadPlaywright, ensureBrowserAvailable, sandboxOptions } = require("./runtime");
+const {
+  loadPlaywright,
+  ensureBrowserAvailable,
+  sandboxOptions,
+} = require("./runtime");
 
 function isQuiet() {
   return process.env.PLAYWRIGHT_SKILL_QUIET === "1";

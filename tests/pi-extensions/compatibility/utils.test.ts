@@ -1,5 +1,12 @@
 import { describe, expect, it } from "bun:test";
-import { cleanStepText, extractDoneSteps, extractTodoItems, isSafeCommand, markCompletedSteps, type TodoItem } from "../../../src/plugins/pi/extensions/extensions/plan-mode/utils.ts";
+import {
+	cleanStepText,
+	extractDoneSteps,
+	extractTodoItems,
+	isSafeCommand,
+	markCompletedSteps,
+	type TodoItem,
+} from "../../../src/plugins/pi/extensions/extensions/plan-mode/utils.ts";
 
 describe("isSafeCommand", () => {
 	it.each([

@@ -61,37 +61,45 @@ describe("runHook — real subprocess timeout kill", () => {
 		}
 	}, 8000);
 
-	it.each(["timeout", "abort", "shutdown"])("terminates descendants on %s even after the shell exits", async (mode) => {
-		const dir = mkdtempSync(join(tmpdir(), "hook-runner-tree-"));
-		const pidFile = join(dir, "child-pid");
-		const controller = new AbortController();
-		let pid: number | undefined;
-		try {
-			const entry = makeEntry(`bash -c 'trap "" TERM; echo $$ > "${pidFile}"; exec sleep 30' </dev/null >/dev/null 2>&1 & wait`, mode === "timeout" ? 2 : 10);
-			const pending = runHook(entry, "", { signal: controller.signal });
-			const readyDeadline = Date.now() + 1800;
-			while (!existsSync(pidFile) && Date.now() < readyDeadline) await Bun.sleep(10);
-			expect(existsSync(pidFile)).toBe(true);
-			pid = Number(readFileSync(pidFile, "utf8").trim());
-			expect(pid).toBeGreaterThan(0);
-			if (mode === "abort") controller.abort();
-			if (mode === "shutdown") await cancelRunningHooks();
-			const result = await pending;
-			expect(result.exitCode).toBe(mode === "timeout" ? 1 : 2);
-			expect(result.timedOut).toBe(mode === "timeout");
-			const deadline = Date.now() + 1000;
-			while (isAlive(pid) && Date.now() < deadline) await Bun.sleep(20);
-			let status = "";
-			try { status = execFileSync("ps", ["-o", "stat=", "-p", String(pid)], { encoding: "utf8" }).trim(); } catch {}
-			expect(status === "" || status.startsWith("Z")).toBe(true);
-		} finally {
-			controller.abort();
-			if (pid && isAlive(pid)) {
-				try { process.kill(pid, "SIGKILL"); } catch {}
+	it.each(["timeout", "abort", "shutdown"])(
+		"terminates descendants on %s even after the shell exits",
+		async (mode) => {
+			const dir = mkdtempSync(join(tmpdir(), "hook-runner-tree-"));
+			const pidFile = join(dir, "child-pid");
+			const controller = new AbortController();
+			let pid: number | undefined;
+			try {
+				const entry = makeEntry(`bash -c 'trap "" TERM; echo $$ > "${pidFile}"; exec sleep 30' </dev/null >/dev/null 2>&1 & wait`, mode === "timeout" ? 2 : 10);
+				const pending = runHook(entry, "", { signal: controller.signal });
+				const readyDeadline = Date.now() + 1800;
+				while (!existsSync(pidFile) && Date.now() < readyDeadline) await Bun.sleep(10);
+				expect(existsSync(pidFile)).toBe(true);
+				pid = Number(readFileSync(pidFile, "utf8").trim());
+				expect(pid).toBeGreaterThan(0);
+				if (mode === "abort") controller.abort();
+				if (mode === "shutdown") await cancelRunningHooks();
+				const result = await pending;
+				expect(result.exitCode).toBe(mode === "timeout" ? 1 : 2);
+				expect(result.timedOut).toBe(mode === "timeout");
+				const deadline = Date.now() + 1000;
+				while (isAlive(pid) && Date.now() < deadline) await Bun.sleep(20);
+				let status = "";
+				try {
+					status = execFileSync("ps", ["-o", "stat=", "-p", String(pid)], { encoding: "utf8" }).trim();
+				} catch {}
+				expect(status === "" || status.startsWith("Z")).toBe(true);
+			} finally {
+				controller.abort();
+				if (pid && isAlive(pid)) {
+					try {
+						process.kill(pid, "SIGKILL");
+					} catch {}
+				}
+				rmSync(dir, { recursive: true, force: true });
 			}
-			rmSync(dir, { recursive: true, force: true });
-		}
-	}, 10000);
+		},
+		10000,
+	);
 
 	it("does not launch a pre-cancelled hook", async () => {
 		const result = await runHook(makeEntry("echo should-not-run", 1), "", { signal: AbortSignal.abort() });

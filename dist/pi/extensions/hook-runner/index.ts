@@ -262,7 +262,8 @@ export default function (pi: ExtensionAPI): void {
 	// --- agent_end → Stop / StopFailure + Notification ---
 	pi.on("agent_end", async (event: AgentEndEvent, ctx: ExtensionContext) => {
 		const lastAssistant = [...event.messages].reverse().find((m) => m.role === "assistant") as
-			{ role: "assistant"; stopReason?: string; errorMessage?: string; content?: Array<{ type: string; text?: string }> } | undefined;
+			| { role: "assistant"; stopReason?: string; errorMessage?: string; content?: Array<{ type: string; text?: string }> }
+			| undefined;
 		const isFailure = lastAssistant?.stopReason === "error";
 
 		if (isFailure) {
