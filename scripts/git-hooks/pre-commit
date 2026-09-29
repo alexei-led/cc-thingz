@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Pre-commit: fast lint/validation and secrets checks.
-# Heavier drift validation and the full test suite run in pre-push.
+# Heavier drift validation and a fast test subset run in pre-push; `make ci`
+# runs the full suite CI also runs.
 # Install: make setup (uses core.hooksPath, no copy needed)
 set -euo pipefail
 

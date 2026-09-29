@@ -30,7 +30,10 @@ describe("runHook — real subprocess timeout kill", () => {
 		const dir = mkdtempSync(join(tmpdir(), "hook-runner-timeout-"));
 		const pidFile = join(dir, "pid");
 		try {
-			const entry = makeEntry(`echo $$ > ${pidFile}; trap '' TERM; echo out; sleep 5`, 1);
+			// The child sleeps far longer than the 1s deadline so a kill that's
+			// merely late under CPU load still lands well short of the child's
+			// own exit — a slow force-kill can't be mistaken for a natural one.
+			const entry = makeEntry(`echo $$ > ${pidFile}; trap '' TERM; echo out; sleep 30`, 1);
 
 			const start = Date.now();
 			const result = await runHook(entry, "");
@@ -38,12 +41,12 @@ describe("runHook — real subprocess timeout kill", () => {
 
 			expect(result.timedOut).toBe(true);
 			expect(result.exitCode).toBe(1);
-			expect(elapsed).toBeLessThanOrEqual(4000);
+			expect(elapsed).toBeLessThanOrEqual(8000);
 
 			const pid = Number(readFileSync(pidFile, "utf8").trim());
 			expect(Number.isNaN(pid)).toBe(false);
 
-			const deadline = Date.now() + 1000;
+			const deadline = Date.now() + 3000;
 			while (isAlive(pid) && Date.now() < deadline) {
 				await new Promise((r) => setTimeout(r, 20));
 			}
@@ -59,7 +62,7 @@ describe("runHook — real subprocess timeout kill", () => {
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
-	}, 8000);
+	}, 15000);
 
 	it.each(["timeout", "abort", "shutdown"])(
 		"terminates descendants on %s even after the shell exits",
@@ -69,9 +72,14 @@ describe("runHook — real subprocess timeout kill", () => {
 			const controller = new AbortController();
 			let pid: number | undefined;
 			try {
-				const entry = makeEntry(`bash -c 'trap "" TERM; echo $$ > "${pidFile}"; exec sleep 30' </dev/null >/dev/null 2>&1 & wait`, mode === "timeout" ? 2 : 10);
+				// "timeout" mode's own deadline must stay well clear of the poll
+				// below that waits for the child to report in: under CPU load a
+				// tight deadline can force-kill the process tree before the pid
+				// file is even written, racing the readiness check below it.
+				const timeoutSec = mode === "timeout" ? 6 : 10;
+				const entry = makeEntry(`bash -c 'trap "" TERM; echo $$ > "${pidFile}"; exec sleep 30' </dev/null >/dev/null 2>&1 & wait`, timeoutSec);
 				const pending = runHook(entry, "", { signal: controller.signal });
-				const readyDeadline = Date.now() + 1800;
+				const readyDeadline = Date.now() + (timeoutSec * 1000) / 2;
 				while (!existsSync(pidFile) && Date.now() < readyDeadline) await Bun.sleep(10);
 				expect(existsSync(pidFile)).toBe(true);
 				pid = Number(readFileSync(pidFile, "utf8").trim());
@@ -81,7 +89,7 @@ describe("runHook — real subprocess timeout kill", () => {
 				const result = await pending;
 				expect(result.exitCode).toBe(mode === "timeout" ? 1 : 2);
 				expect(result.timedOut).toBe(mode === "timeout");
-				const deadline = Date.now() + 1000;
+				const deadline = Date.now() + 3000;
 				while (isAlive(pid) && Date.now() < deadline) await Bun.sleep(20);
 				let status = "";
 				try {
@@ -98,7 +106,7 @@ describe("runHook — real subprocess timeout kill", () => {
 				rmSync(dir, { recursive: true, force: true });
 			}
 		},
-		10000,
+		20000,
 	);
 
 	it("does not launch a pre-cancelled hook", async () => {
@@ -109,17 +117,21 @@ describe("runHook — real subprocess timeout kill", () => {
 	});
 
 	it("caps real stdout and denies overflowing hooks", async () => {
-		const result = await runHook(makeEntry("head -c 12000000 /dev/zero", 5), "");
+		// Asserts the byte cap, not latency: a generous entry timeout keeps a
+		// CPU-starved run from being killed by the deadline instead of the cap.
+		const result = await runHook(makeEntry("head -c 12000000 /dev/zero", 15), "");
 		expect(result.exitCode).toBe(2);
 		expect(result.stdout.length).toBeLessThanOrEqual(10 * 1024 * 1024);
 		expect(result.stderr).toContain("cap");
 		expect(result.timedOut).toBe(false);
-	}, 6000);
+	}, 16000);
 
 	it("preserves hook stdin, stderr and blocking exit codes", async () => {
-		const result = await runHook(makeEntry("cat; echo denied >&2; exit 2", 2), '{"event":"test"}');
+		// Asserts exit-code/stream plumbing, not latency: a generous entry
+		// timeout keeps this from racing a CPU-starved runner.
+		const result = await runHook(makeEntry("cat; echo denied >&2; exit 2", 10), '{"event":"test"}');
 		expect(result).toEqual({ exitCode: 2, stdout: '{"event":"test"}', stderr: "denied\n", timedOut: false });
-	});
+	}, 12000);
 
 	it("rejects invalid timeouts without launching", async () => {
 		const result = await runHook(makeEntry("echo should-not-run", -1), "");
@@ -128,7 +140,10 @@ describe("runHook — real subprocess timeout kill", () => {
 	});
 
 	it("happy path is unaffected: a fast hook resolves quickly with exitCode 0", async () => {
-		const entry = makeEntry("echo hello", 5);
+		// The behavior under test is "didn't wait for the timeout", not raw
+		// latency: the entry timeout is generous, and the elapsed bound only
+		// needs to stay comfortably under it to prove the deadline was never hit.
+		const entry = makeEntry("echo hello", 10);
 
 		const start = Date.now();
 		const result = await runHook(entry, "");
@@ -137,6 +152,6 @@ describe("runHook — real subprocess timeout kill", () => {
 		expect(result.exitCode).toBe(0);
 		expect(result.timedOut).toBe(false);
 		expect(result.stdout.trim()).toBe("hello");
-		expect(elapsed).toBeLessThan(1000);
-	});
+		expect(elapsed).toBeLessThan(5000);
+	}, 12000);
 });

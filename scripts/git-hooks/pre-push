@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
-# Pre-push: heavier checks that catch what CI catches before pushing.
-# Runs the full build pipeline so drift, generator bugs, and broken tests
-# are caught locally instead of blocking a PR.
+# Pre-push: lint plus fast pytest/Bun subsets, so a slow local push can't hold
+# the SSH connection open long enough for it to drop. `.github/workflows/ci.yml`
+# runs the full suite (lint, check, test, test-ts) unconditionally on every
+# push to master/main; on a PR each job only runs when its path filter
+# matches the changed files. Run `make ci` yourself for the same full
+# coverage before pushing a feature branch.
 # Install: make setup (uses core.hooksPath, no copy needed)
 #
 # Hook contract (per githooks(5)):
@@ -25,7 +28,7 @@ if [[ $have_input -eq 1 && $all_deletes -eq 1 ]]; then
 	exit 0
 fi
 
-echo "=== Pre-push (full) ==="
+echo "=== Pre-push (fast) ==="
 
 # Git runs hooks with GIT_DIR and related variables set. From a linked worktree they point at that worktree's
 # git dir, so tests that create their own repositories act on it instead. Clear them before the checks.
@@ -33,25 +36,33 @@ while IFS= read -r var; do unset "$var"; done < <(git rev-parse --local-env-vars
 
 # Full lint/type checks, including the fastest available JS tooling.
 make lint || {
-	echo "FAIL: make lint"
+	echo "FAIL: make lint — run 'make fmt' to auto-fix"
 	exit 1
 }
 
-# Agent Bundler rebuilds and checks the complete generated tree.
+# Runs before the test subset: it rebuilds dist/, and the tests below read
+# dist/ as part of what they check. Running them first would let pytest's own
+# rebuild (tests/conftest.py) silently repair drift in the working tree, and
+# this check would then pass against a dist/ the pushed commit doesn't have.
 make check || {
 	echo "FAIL: make check"
 	exit 1
 }
 
-# Full test suite
-make test || {
-	echo "FAIL: make test"
+# Fast pytest subset: skips the slow real-git/worktree/package-install and
+# per-case-subprocess hook suites (see `make test-fast`'s TEST_FAST_IGNORE).
+# CI's full `make test` still runs all of them on push to master/main, and
+# on a PR whose changed paths match its filter.
+make test-fast || {
+	echo "FAIL: make test-fast"
 	exit 1
 }
 
-make test-ts || {
-	echo "FAIL: make test-ts"
+# Fast TypeScript subset: skips dispatch.timeout.test.ts, which exercises real
+# subprocess timeout/kill behavior and dominates test-ts's wall time.
+make test-ts-fast || {
+	echo "FAIL: make test-ts-fast"
 	exit 1
 }
 
-echo "=== Pre-push passed ==="
+echo "=== Pre-push passed (run 'make ci' for the full suite CI also runs) ==="

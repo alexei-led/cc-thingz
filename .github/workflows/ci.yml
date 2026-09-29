@@ -49,12 +49,11 @@ jobs:
               - 'agentbundle.json'
               - '.agentbundler-version'
               - '.github/workflows/**'
-              - 'scripts/setup/**'
+              - 'scripts/**'
               - 'src/**'
               - 'src/.agentbundler/**'
               - 'dist/**'
               - 'Makefile'
-              - 'scripts/validate/**'
             skill_evals:
               - 'src/skills/**'
               - 'dist/**'

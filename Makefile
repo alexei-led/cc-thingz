@@ -42,12 +42,42 @@ lint-typescript: ## Lint and type-check Pi extension TypeScript
 
 # --- Test ---
 
-.PHONY: test test-ts skill-evals-prepare skill-evals skill-evals-fast skill-evals-summary
+# Excludes two kinds of slow suite: real-git/worktree/package-install
+# end-to-end tests, and hook-validation suites that fork a subprocess (bash,
+# python3, git) per case, which account for most of this subset's wall time.
+# CI's full `make test` still runs all of them on push to master/main, and on
+# a PR whose changed paths match its filter.
+TEST_FAST_IGNORE = \
+	--ignore=tests/test_agentbundler_release.py \
+	--ignore=tests/hooks/test_git_guardrails_branch_cleanup.py \
+	--ignore=tests/hooks/test_git_guardrails_e2e.py \
+	--ignore=tests/hooks/test_git_guardrails_tables.py \
+	--ignore=tests/hooks/test_file_protector.py \
+	--ignore=tests/hooks/test_notify.py \
+	--ignore=tests/hooks/test_smart_lint_compat.py \
+	--ignore=tests/test_cleanup_git_script.py \
+	--ignore=tests/test_cleanup_worktree_script.py \
+	--ignore=tests/test_setup_worktree_script.py \
+	--ignore=tests/test_setup_worktree_layout.py \
+	--ignore=tests/test_commit_state_script.py \
+	--ignore=tests/test_root_compatibility.py \
+	--ignore=tests/test_specctl.py \
+	--ignore=tests/test_js_tools.py \
+	--ignore=tests/test_validate_hooks.py \
+	--ignore=tests/test_generate_release_notes.py
+
+.PHONY: test test-fast test-ts test-ts-fast skill-evals-prepare skill-evals skill-evals-fast skill-evals-summary
 test: ## Run pytest suite
 	uv run --extra test python -m pytest tests/ -n auto
 
+test-fast: ## Run pytest, skipping the slow suites CI's full run also covers (used by pre-push; see CONTRIBUTING.md)
+	uv run --extra test python -m pytest tests/ -n auto $(TEST_FAST_IGNORE)
+
 test-ts: ## Run Bun TypeScript tests (Pi extensions)
 	bun test tests/pi-extensions --isolate
+
+test-ts-fast: ## Run Bun TypeScript tests, skipping the real-subprocess timeout suite (used by pre-push; see CONTRIBUTING.md)
+	bun test tests/pi-extensions --isolate --path-ignore-patterns='**/dispatch.timeout.test.ts'
 
 skill-evals-prepare: ## Build temporary Agent Skills eval tree under /tmp
 	uv run python scripts/evals/prepare-skill-evals.py --out $(SKILL_EVAL_ROOT)

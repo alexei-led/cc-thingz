@@ -29,17 +29,12 @@ GUARD_TARGETS = {
 }
 
 
-def _build() -> None:
-    subprocess.run(["agbun", "build", "--root", str(REPO_ROOT)], check=True)
-
-
 def _generated_hook_paths(target: str, hook_name: str) -> list[Path]:
     return list((REPO_ROOT / "dist" / target).rglob(hook_name))
 
 
 def test_agentbundler_renders_pi_portable_and_compatibility_hook_contracts() -> None:
-    _build()
-
+    # dist/ is built once for the whole session in conftest.pytest_sessionstart.
     manifest = json.loads((REPO_ROOT / "dist/pi/hooks/hooks.v1.json").read_text())
     hooks = {entry["identity"]: entry for entry in manifest["hooks"]}
 
@@ -89,7 +84,6 @@ def test_agentbundler_renders_pi_portable_and_compatibility_hook_contracts() -> 
 
 
 def test_agentbundler_renders_target_hook_matrix() -> None:
-    _build()
 
     for target, expected in GUARD_TARGETS.items():
         for hook_name in ("file-protector", "git-guardrails"):
@@ -115,7 +109,6 @@ def test_agentbundler_renders_target_hook_matrix() -> None:
 def test_generated_pi_runtime_executes_real_git_guard_with_safe_environment(
     tmp_path: Path,
 ) -> None:
-    _build()
     config = tmp_path / "hook-config.json"
     config.write_text(
         json.dumps({"git-guardrails": {"block_patterns": ["git[[:space:]]+status"]}})
@@ -143,7 +136,10 @@ for (const [command, configured] of cases) {
       hook: hook.identity,
       piEvent: { toolName: "bash", input: { command } },
     },
-    timeoutMilliseconds: hook.timeoutMilliseconds,
+    // Test-only budget, decoupled from the hook's shipped 10s timeout: this
+    // asserts on the deny/allow decision and env sanitization, not latency,
+    // so a CPU-starved CI runner shouldn't force-kill an otherwise-correct run.
+    timeoutMilliseconds: 60000,
     environment: hook.environment,
   });
   console.log(JSON.stringify({
@@ -165,6 +161,9 @@ for (const [command, configured] of cases) {
         capture_output=True,
         check=True,
         text=True,
+        # Generous outer bound: a safety net against a true hang, well above
+        # the 3 sequential 60s per-case budgets above.
+        timeout=200,
     )
     status, reset, configured = [
         json.loads(line) for line in result.stdout.splitlines()
@@ -211,7 +210,6 @@ def test_pi_decision_guards_emit_runtime_protocol() -> None:
 def test_generated_pi_release_guard_denies_invalid_notes_with_pi_envelope(
     tmp_path: Path,
 ) -> None:
-    _build()
     notes = tmp_path / "notes.md"
     notes.write_text("TODO: fill in notes\n")
     command = (
@@ -234,7 +232,9 @@ const result = await runProcess(hook.handler, {
       input: { command: process.env.RELEASE_COMMAND },
     },
   },
-  timeoutMilliseconds: hook.timeoutMilliseconds,
+  // Test-only budget: see the git-guardrails test above for why this
+  // doesn't reuse the hook's shipped 10s timeout.
+  timeoutMilliseconds: 60000,
   environment: hook.environment,
 });
 console.log(JSON.stringify(result));
@@ -251,7 +251,8 @@ console.log(JSON.stringify(result));
         capture_output=True,
         text=True,
         check=True,
-        timeout=20,
+        # Generous outer bound: see the git-guardrails test above.
+        timeout=90,
     )
     outcome = json.loads(result.stdout)
     assert outcome["exitCode"] == 0, outcome["stderr"]
@@ -264,7 +265,6 @@ console.log(JSON.stringify(result));
 def test_generated_pi_smart_lint_preserves_project_file_and_session(
     tmp_path: Path,
 ) -> None:
-    _build()
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
     (tmp_path / "one.py").touch()
     (tmp_path / "two.py").touch()
@@ -297,7 +297,8 @@ console.log(JSON.stringify(result));
         text=True,
         capture_output=True,
         check=True,
-        timeout=20,
+        # Generous outer bound: see the git-guardrails test above.
+        timeout=90,
     )
     outcome = json.loads(result.stdout)
     assert outcome["exitCode"] == 0, outcome["stderr"]
