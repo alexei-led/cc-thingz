@@ -4,28 +4,24 @@
 
 # Java and Kotlin Development
 
-## Build Baseline
+## Build baseline
 
-- Read the wrapper properties, `settings.gradle*`, `build.gradle*` or `pom.xml`, `gradle.properties`, and CI before using version-specific Java, Kotlin, or plugin behavior.
-- Use `./gradlew` and `./mvnw` when the repo has them, not global `gradle` or `mvn`.
-- The compile target is the configured Java toolchain and Kotlin `jvmToolchain`, not the shell's `JAVA_HOME`.
-- Use a Java or Kotlin language feature only when the configured toolchain, language version, and CI target support it. Preview features need explicit approval and a visible compiler flag.
-- Shared build policy lives in convention plugins, version catalogs, BOMs, or parent POMs; do not copy plugin or version blocks into modules.
+- Read the wrapper properties, `settings.gradle*`/`build.gradle*` or `pom.xml`, and CI before relying on version-specific Java, Kotlin, or plugin behavior.
+- Use `./gradlew`/`./mvnw` when the repo has them, never a global `gradle`/`mvn`. Scope the test command to the changed module, e.g. `./gradlew :billing:test --tests '*FooTest'` or `./mvnw -q -pl module -Dtest=FooTest test`.
+- The compile target is the configured Java toolchain and Kotlin `jvmToolchain`, never the shell's `JAVA_HOME`.
+- Toolchain, plugin, and dependency versions live in convention plugins, version catalogs, BOMs, or parent POMs — set once there, not copied into one module.
+- A preview feature needs more than toolchain and CI support: stop and ask for explicit approval before writing code that enables it, name a non-preview fallback, and, if approved, add `--enable-preview` to the build's compile and run/test tasks so it is a visible, committed setting rather than a local flag. Previews can be withdrawn between JDKs — string templates were pulled after JDK 22 and never reinstated.
+- Add coverage, mutation, or other heavy analysis as its own task (or under `check`), never wired into `test` with `dependsOn`/`finalizedBy` — keep it off the default test loop even when adding it is the task at hand.
 
 ## Defaults
 
-- JDK, Kotlin stdlib, and existing dependencies first. Avoid new reflection-heavy or bytecode-weaving tools.
-- Kotlin: structured coroutines only, never `GlobalScope`; pass scopes or suspend through the chain.
-- Kotlin: handle Java platform types at the boundary instead of not-null assertions (`!!`).
-- Java: virtual threads for blocking I/O only, not CPU-bound work. Never swallow `InterruptedException`; restore the flag or propagate.
-- Keep blocking calls off event-loop and coroutine dispatcher threads unless the framework allows it.
-- Constructor injection. No static state for config, clocks, clients, executors, or scopes.
-- Do not leak JPA entities, ORM sessions, or generated API models through domain interfaces. Keep transactions explicit and near the use case; watch lazy loading across API boundaries.
-- Kotlin APIs called from Java: explicit nullability, and `@JvmStatic`/`@JvmOverloads` only where call sites benefit.
-
-## CLIs
-
-Use the existing stack (picocli, Clikt, plain `main`). Keep `main` thin, test through the command entrypoint with captured stdout, stderr, and exit code, and close executors, pools, and dispatchers the process owns.
+- JDK/Kotlin stdlib and existing dependencies first; avoid new reflection-heavy or bytecode-weaving tools.
+- Kotlin: structured concurrency only — no `GlobalScope`; pass a `coroutineScope` or an injected scope through the call chain. Test coroutine code with `kotlinx-coroutines-test`'s `runTest`, not `runBlocking` or real delays.
+- Kotlin: resolve nullable Java platform types at the boundary instead of asserting past them with `!!`.
+- Java: virtual threads help blocking I/O; they do not speed up CPU-bound work. For CPU-bound work, size a bounded pool to available processors or use a parallel stream instead. Never swallow `InterruptedException`: restore the flag or propagate it, and close any executor you own instead of holding it in static state.
+- Constructor injection; no static state for config, clocks, clients, or scopes.
+- Don't return JPA entities or their ORM sessions from an API; map to a DTO inside an explicit transaction near the use case. Load what that transaction needs (fetch join or entity graph) instead of enabling `spring.jpa.open-in-view`.
+- Kotlin called from Java: explicit nullability, `@JvmStatic`/`@JvmOverloads` only where a call site benefits.
 
 ## References
 
