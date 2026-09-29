@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 HOOK = Path(__file__).resolve().parents[2] / "src/hooks/git-guardrails/hook.sh"
+DECIDE = Path(__file__).resolve().parents[2] / "src/hooks/git-guardrails/decide.py"
 ENV = {
     **os.environ,
     "GIT_AUTHOR_NAME": "t",
@@ -69,7 +70,11 @@ def clone(tmp_path_factory: pytest.TempPathFactory) -> Path:
 def run_hook(command: str, cwd: Path) -> subprocess.CompletedProcess[str]:
     payload = json.dumps({"tool_input": {"command": command}, "cwd": str(cwd)})
     return subprocess.run(
-        ["bash", str(HOOK)], input=payload, env=ENV, capture_output=True, text=True
+        ["bash", str(HOOK), str(DECIDE)],
+        input=payload,
+        env=ENV,
+        capture_output=True,
+        text=True,
     )
 
 
@@ -88,6 +93,10 @@ def run_hook(command: str, cwd: Path) -> subprocess.CompletedProcess[str]:
         ("git branch -D missing", False),
         ("git branch -D main", False),
         ("cd /tmp && git branch -D squashed", False),
+        ("cd {work} && git branch -D squashed", True),
+        ("cd {parent} && cd work && git branch -D squashed", True),
+        ("cd {work} && git branch -D unmerged", False),
+        ("cd && git branch -D squashed", False),
         ("git --git-dir=/tmp/x.git branch -D squashed", False),
         ("git branch -D squashed && git reset --hard", False),
         ("git branch -D squashed; sudo git branch -D unmerged", False),
@@ -152,6 +161,25 @@ def test_mixed_branch_and_worktree_cleanup_needs_both_verified(clone: Path) -> N
     bad = f"git branch -D fast-forwarded && git worktree remove --force {unmerged}"
     assert run_hook(ok, clone).returncode == 0
     assert run_hook(bad, clone).returncode == 2
+
+
+def test_cd_then_cleanup_is_allowed_when_verified(clone: Path) -> None:
+    """Agents commonly write `cd <repo> && ...`; the tracked cwd must let a
+    fully merged worktree+branch cleanup through, exactly as `-C` does."""
+    merged = add_worktree(clone, "cd-merged", "origin/squashed")
+    command = (
+        f"cd {clone} && git worktree remove --force {merged} "
+        "&& git branch -D fast-forwarded"
+    )
+    result = run_hook(command, clone.parent)
+    assert result.returncode == 0, result.stderr
+
+
+def test_cd_then_cleanup_is_blocked_when_unmerged(clone: Path) -> None:
+    unmerged = add_worktree(clone, "cd-unmerged", "origin/unmerged")
+    command = f"cd {clone} && git worktree remove --force {unmerged}"
+    result = run_hook(command, clone.parent)
+    assert result.returncode == 2
 
 
 def test_blocked_delete_explains_the_allowed_case(clone: Path) -> None:

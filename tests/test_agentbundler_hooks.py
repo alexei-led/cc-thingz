@@ -192,7 +192,11 @@ def test_pi_decision_guards_emit_runtime_protocol() -> None:
         text=True,
     )
     git_guardrails = subprocess.run(
-        ["bash", "src/hooks/git-guardrails/hook.sh"],
+        [
+            "bash",
+            "src/hooks/git-guardrails/hook.sh",
+            "src/hooks/git-guardrails/decide.py",
+        ],
         cwd=REPO_ROOT,
         input='{"event":"pre-tool","piEvent":{"input":{"command":"git reset --hard"}}}',
         capture_output=True,
