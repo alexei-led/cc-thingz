@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import json
-import shutil
 
-import pytest
 from conftest import _load
 
 routing = _load("evaluate-skill-routing.py")
@@ -90,8 +88,6 @@ def test_invalid_expectations_fail_before_hook_execution(tmp_path, capsys):
 
 
 def test_real_hook_runs_bilingual_fixture_sample():
-    if not shutil.which("jq"):
-        pytest.skip("actual hook requires jq")
     cases = routing.load_cases(routing.DEFAULT_FIXTURES)
     sample = [
         case
@@ -105,8 +101,6 @@ def test_real_hook_runs_bilingual_fixture_sample():
 
 
 def test_real_hook_routes_doc_writing_and_doc_lookup():
-    if not shutil.which("jq"):
-        pytest.skip("actual hook requires jq")
     doc_ids = {
         "docs-architecture-rewrite",
         "docs-readme-front-page",
