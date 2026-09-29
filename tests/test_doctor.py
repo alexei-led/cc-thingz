@@ -106,6 +106,23 @@ def test_missing_helpers_versions_profiles_and_duplicates(load_script, tmp_path)
     assert len(report["plugins"]) == 2
 
 
+def test_leftover_advisor_profile_is_ignored(load_script, tmp_path):
+    doctor = load_script("diagnostics/doctor.py")
+    repo, plugin, config = fixture_tree(tmp_path)
+    # Advisor no longer ships to Codex; an old install may still have this
+    # file on disk. Doctor should neither check it nor flag it.
+    (config / "agents/advisor.toml").write_text("leftover from an old install")
+    report = doctor.inspect(repo, [tmp_path / "cache", plugin], config)
+    profile_checks = [
+        c for c in report["checks"] if c["check"] == "codex-agent-profile"
+    ]
+    assert {Path(c["scope"][0]).name for c in profile_checks} == {
+        "reviewer.toml",
+        "runner.toml",
+    }
+    assert all(c["status"] == "passed" for c in profile_checks)
+
+
 def test_hook_duplicates_do_not_expose_or_execute_commands(load_script, tmp_path):
     doctor = load_script("diagnostics/doctor.py")
     repo, plugin, config = fixture_tree(tmp_path)
