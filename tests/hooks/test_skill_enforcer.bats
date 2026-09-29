@@ -2,269 +2,282 @@
 
 bats_require_minimum_version 1.5.0
 
-HOOK="$BATS_TEST_DIRNAME/../../src/hooks/skill-enforcer/hook.sh"
+HOOK="$BATS_TEST_DIRNAME/../../src/hooks/skill-enforcer/hook.py"
 FIXTURES="$BATS_TEST_DIRNAME/fixtures"
 
 @test "skill-enforcer: unrelated prompt is silent and exits 0" {
-	run bash "$HOOK" <"$FIXTURES/skill_enforcer_no_match.json"
+	run python3 "$HOOK" <"$FIXTURES/skill_enforcer_no_match.json"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
 
 @test "skill-enforcer: prompt matching known skills outputs suggestion and exits 0" {
-	run bash "$HOOK" <"$FIXTURES/skill_enforcer_match.json"
+	run python3 "$HOOK" <"$FIXTURES/skill_enforcer_match.json"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"Consider skills"* ]]
 }
 
 @test "skill-enforcer: debate prompts route to brainstorming" {
-	run bash "$HOOK" <"$FIXTURES/skill_enforcer_debate.json"
+	run python3 "$HOOK" <"$FIXTURES/skill_enforcer_debate.json"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"brainstorming-ideas"* ]]
 	[[ "$output" != *"debating"* ]]
 }
 
 @test "skill-enforcer: structural code search is left to companion workflows" {
-	run bash "$HOOK" <"$FIXTURES/skill_enforcer_ast_grep.json"
+	run python3 "$HOOK" <"$FIXTURES/skill_enforcer_ast_grep.json"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
 
 @test "skill-enforcer: shell scripting routes to writing-shell" {
-	run bash "$HOOK" <"$FIXTURES/skill_enforcer_shell.json"
+	run python3 "$HOOK" <"$FIXTURES/skill_enforcer_shell.json"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"writing-shell"* ]]
 }
 
 @test "skill-enforcer: Rust cargo work routes to writing-rust" {
-	run bash "$HOOK" <<<'{"prompt":"fix the Rust borrow checker error in src/lib.rs and run cargo test"}'
+	run python3 "$HOOK" <<<'{"prompt":"fix the Rust borrow checker error in src/lib.rs and run cargo test"}'
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"writing-rust"* ]]
 }
 
 @test "skill-enforcer: C# dotnet work routes to writing-csharp" {
-	run bash "$HOOK" <<<'{"prompt":"fix the nullable warning in src/Foo/Bar.cs and run dotnet test"}'
+	run python3 "$HOOK" <<<'{"prompt":"fix the nullable warning in src/Foo/Bar.cs and run dotnet test"}'
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"writing-csharp"* ]]
 }
 
 @test "skill-enforcer: Java Gradle work routes to writing-java-kotlin" {
-	run bash "$HOOK" <<<'{"prompt":"fix the failing JUnit test in src/main/java/com/acme/App.java and run gradle test"}'
+	run python3 "$HOOK" <<<'{"prompt":"fix the failing JUnit test in src/main/java/com/acme/App.java and run gradle test"}'
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"writing-java-kotlin"* ]]
 }
 
 @test "skill-enforcer: Kotlin ktlint work routes to writing-java-kotlin" {
-	run bash "$HOOK" <<<'{"prompt":"format the Ktor route in src/main/kotlin/App.kt with ktlint"}'
+	run python3 "$HOOK" <<<'{"prompt":"format the Ktor route in src/main/kotlin/App.kt with ktlint"}'
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"writing-java-kotlin"* ]]
 }
 
 @test "skill-enforcer: JavaScript does not route to writing-java-kotlin" {
-	run bash "$HOOK" <<<'{"prompt":"fix this JavaScript file src/app.js and run npm test"}'
+	run python3 "$HOOK" <<<'{"prompt":"fix this JavaScript file src/app.js and run npm test"}'
 	[ "$status" -eq 0 ]
 	[[ "$output" != *"writing-java-kotlin"* ]]
 }
 
 @test "skill-enforcer: codebase flow is left to companion workflows" {
-	run bash "$HOOK" <"$FIXTURES/skill_enforcer_codebase_search.json"
+	run python3 "$HOOK" <"$FIXTURES/skill_enforcer_codebase_search.json"
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "skill-enforcer: deploy prompt routes to operating-infra" {
+	run python3 "$HOOK" <<<'{"prompt":"run terraform apply for staging after the plan looks right"}'
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"operating-infra"* ]]
+	[[ "$output" != *"deploying-infra"* ]]
+}
+
+@test "skill-enforcer: invalid JSON is silent and exits 0" {
+	run python3 "$HOOK" <<<'not json'
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
 
 @test "skill-enforcer: commit prompt routes to committing-code" {
-	run bash "$HOOK" <<<'{"prompt":"commit these changes as two logical commits"}'
+	run python3 "$HOOK" <<<'{"prompt":"commit these changes as two logical commits"}'
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"committing-code"* ]]
 }
 
 @test "skill-enforcer: delete merged branches routes to cleanup-git" {
-	run bash "$HOOK" <<<'{"prompt":"delete merged branches and stale worktrees"}'
+	run python3 "$HOOK" <<<'{"prompt":"delete merged branches and stale worktrees"}'
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"cleanup-git"* ]]
 }
 
 @test "skill-enforcer: pre-commit gitleaks setup routes to configuring-git-hygiene" {
-	run bash "$HOOK" <<<'{"prompt":"setup pre-commit hooks with gitleaks"}'
+	run python3 "$HOOK" <<<'{"prompt":"setup pre-commit hooks with gitleaks"}'
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"configuring-git-hygiene"* ]]
 	[[ "$output" != *"configuring-git-flow"* ]]
 }
 
 @test "skill-enforcer: isolated branch routes to using-git-worktrees" {
-	run bash "$HOOK" <<<'{"prompt":"create a new isolated branch for feature auth"}'
+	run python3 "$HOOK" <<<'{"prompt":"create a new isolated branch for feature auth"}'
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"using-git-worktrees"* ]]
 }
 
 @test "skill-enforcer: instruction review routes to reviewing-instructions" {
-	run bash "$HOOK" <<<'{"prompt":"review all git-flow skills for instruction quality"}'
+	run python3 "$HOOK" <<<'{"prompt":"review all git-flow skills for instruction quality"}'
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"reviewing-instructions"* ]]
 }
 
 @test "skill-enforcer: Slack channel is not Go development" {
-	run bash "$HOOK" <<<'{"prompt":"Which Slack channel should I use for this question?"}'
+	run python3 "$HOOK" <<<'{"prompt":"Which Slack channel should I use for this question?"}'
 	[ "$status" -eq 0 ]
 	[[ "$output" != *"writing-go"* ]]
 }
 
 @test "skill-enforcer: JavaScript async await is not Python development" {
-	run bash "$HOOK" <<<'{"prompt":"Please explain the difference between async and await in JavaScript."}'
+	run python3 "$HOOK" <<<'{"prompt":"Please explain the difference between async and await in JavaScript."}'
 	[ "$status" -eq 0 ]
 	[[ "$output" != *"writing-python"* ]]
 }
 
 @test "skill-enforcer: explicit Go and Python still route" {
-	run bash "$HOOK" <<<'{"prompt":"Implement a channel in Go and a Python asyncio worker."}'
+	run python3 "$HOOK" <<<'{"prompt":"Implement a channel in Go and a Python asyncio worker."}'
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"writing-go"* ]]
 	[[ "$output" == *"writing-python"* ]]
 }
 
 @test "skill-enforcer: any 20xx year routes to research" {
-	run bash "$HOOK" <<<'{"prompt":"What changed in the Node.js release schedule for 2031?"}'
+	run python3 "$HOOK" <<<'{"prompt":"What changed in the Node.js release schedule for 2031?"}'
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"researching-web"* ]]
 }
 
 @test "skill-enforcer: stepwise thinking request routes no reasoning skill" {
-	run bash "$HOOK" <<<'{"prompt":"Think step by step about the competing constraints."}'
+	run python3 "$HOOK" <<<'{"prompt":"Think step by step about the competing constraints."}'
 	[ "$status" -eq 0 ]
 	[[ "$output" != *"sequential-thinking"* ]]
 }
 
 @test "skill-enforcer: disabled native hook is silent" {
-	run env HOOK_SKILL_ENFORCER=0 bash "$HOOK" <<<'{"prompt":"Implement the Python worker and run pytest."}'
+	run env HOOK_SKILL_ENFORCER=0 python3 "$HOOK" <<<'{"prompt":"Implement the Python worker and run pytest."}'
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
 
 @test "skill-enforcer: disabled Pi hook preserves allow protocol" {
-	run env HOOK_SKILL_ENFORCER=0 bash "$HOOK" <<<'{"event":"prompt-submit","piEvent":{"prompt":"Implement the Python worker and run pytest."}}'
+	run env HOOK_SKILL_ENFORCER=0 python3 "$HOOK" <<<'{"event":"prompt-submit","piEvent":{"prompt":"Implement the Python worker and run pytest."}}'
 	[ "$status" -eq 0 ]
 	[ "$output" = '{"decision":"allow"}' ]
 }
 
 @test "skill-enforcer: Pi suggestions use stderr and stdout remains a decision" {
 	bats_require_minimum_version 1.5.0
-	run --separate-stderr bash "$HOOK" <<<'{"event":"prompt-submit","piEvent":{"prompt":"Implement the Python worker and run pytest."}}'
+	run --separate-stderr python3 "$HOOK" <<<'{"event":"prompt-submit","piEvent":{"prompt":"Implement the Python worker and run pytest."}}'
 	[ "$status" -eq 0 ]
 	[ "$output" = '{"decision":"allow"}' ]
 	[[ "$stderr" == *"writing-python"* ]]
 }
 
 @test "skill-enforcer: cargo test does not match go test" {
-	run bash "$HOOK" <<<'{"prompt":"Implement the Rust parser in lib.rs and run cargo test."}'
+	run python3 "$HOOK" <<<'{"prompt":"Implement the Rust parser in lib.rs and run cargo test."}'
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"writing-rust"* ]]
 	[[ "$output" != *"writing-go"* ]]
 }
 
 @test "skill-enforcer: Python type hints do not match ts abbreviation" {
-	run bash "$HOOK" <<<'{"prompt":"Implement validation in parser.py with Python type hints."}'
+	run python3 "$HOOK" <<<'{"prompt":"Implement validation in parser.py with Python type hints."}'
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"writing-python"* ]]
 	[[ "$output" != *"writing-typescript"* ]]
 }
 
 @test "skill-enforcer: ownership checklist is not Rust" {
-	run bash "$HOOK" <<<'{"prompt":"Write an ownership checklist for the support team."}'
+	run python3 "$HOOK" <<<'{"prompt":"Write an ownership checklist for the support team."}'
 	[ "$status" -eq 0 ]
 	[[ "$output" != *"writing-rust"* ]]
 }
 
 @test "skill-enforcer: explicit Rust ownership still routes" {
-	run bash "$HOOK" <<<'{"prompt":"Explain Rust ownership and lifetimes for this parser."}'
+	run python3 "$HOOK" <<<'{"prompt":"Explain Rust ownership and lifetimes for this parser."}'
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"writing-rust"* ]]
 }
 
 @test "skill-enforcer: Slack recommendation is not web research" {
-	run bash "$HOOK" <<<'{"prompt":"Which Slack channel should I use for this question?"}'
+	run python3 "$HOOK" <<<'{"prompt":"Which Slack channel should I use for this question?"}'
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
 
 @test "skill-enforcer: technical recommendation still suggests research" {
-	run bash "$HOOK" <<<'{"prompt":"Which framework should I use for this web API?"}'
+	run python3 "$HOOK" <<<'{"prompt":"Which framework should I use for this web API?"}'
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"researching-web"* ]]
 }
 
 @test "skill-enforcer: writing project docs routes to documenting-code, not docs lookup" {
-	run bash "$HOOK" <<<'{"prompt":"Now make all docs easier to read, less wordy, and aligned with the code."}'
+	run python3 "$HOOK" <<<'{"prompt":"Now make all docs easier to read, less wordy, and aligned with the code."}'
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"documenting-code"* ]]
 	[[ "$output" != *"looking-up-docs"* ]]
 }
 
 @test "skill-enforcer: rewriting the architecture document routes to documenting-code" {
-	run bash "$HOOK" <<<'{"prompt":"Rewrite the architecture document and use mermaid diagrams."}'
+	run python3 "$HOOK" <<<'{"prompt":"Rewrite the architecture document and use mermaid diagrams."}'
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"documenting-code"* ]]
 }
 
 @test "skill-enforcer: Russian doc rewrite routes to documenting-code" {
-	run bash "$HOOK" <<<'{"prompt":"Перепиши документацию проекта и сделай её понятнее."}'
+	run python3 "$HOOK" <<<'{"prompt":"Перепиши документацию проекта и сделай её понятнее."}'
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"documenting-code"* ]]
 }
 
 @test "skill-enforcer: release preparation routes to releasing-code, not documenting-code" {
-	run bash "$HOOK" <<<'{"prompt":"Prepare the v6.13.0 release and write concise release notes."}'
+	run python3 "$HOOK" <<<'{"prompt":"Prepare the v6.13.0 release and write concise release notes."}'
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"releasing-code"* ]]
 	[[ "$output" != *"documenting-code"* ]]
 }
 
 @test "skill-enforcer: Russian release intent routes to releasing-code" {
-	run bash "$HOOK" <<<'{"prompt":"Подготовь релиз v6.13.0 и напиши заметки к релизу."}'
+	run python3 "$HOOK" <<<'{"prompt":"Подготовь релиз v6.13.0 и напиши заметки к релизу."}'
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"releasing-code"* ]]
 	[[ "$output" != *"documenting-code"* ]]
 }
 
 @test "skill-enforcer: Russian release-note repair routes to releasing-code" {
-	run bash "$HOOK" <<<'{"prompt":"Обнови заметки к релизу v6.13.0."}'
+	run python3 "$HOOK" <<<'{"prompt":"Обнови заметки к релизу v6.13.0."}'
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"releasing-code"* ]]
 	[[ "$output" != *"documenting-code"* ]]
 }
 
 @test "skill-enforcer: installed package update is not release preparation" {
-	run bash "$HOOK" <<<'{"prompt":"Update the installed cc-thingz package to the latest release."}'
+	run python3 "$HOOK" <<<'{"prompt":"Update the installed cc-thingz package to the latest release."}'
 	[ "$status" -eq 0 ]
 	[[ "$output" != *"releasing-code"* ]]
 }
 
 @test "skill-enforcer: publishing an article is not publishing a software release" {
-	run bash "$HOOK" <<<'{"prompt":"Publish this article to our engineering blog."}'
+	run python3 "$HOOK" <<<'{"prompt":"Publish this article to our engineering blog."}'
 	[ "$status" -eq 0 ]
 	[[ "$output" != *"releasing-code"* ]]
 }
 
 @test "skill-enforcer: publishing an article about a release is not a software release" {
-	run bash "$HOOK" <<<'{"prompt":"Publish this blog post about the v6.13 release."}'
+	run python3 "$HOOK" <<<'{"prompt":"Publish this blog post about the v6.13 release."}'
 	[ "$status" -eq 0 ]
 	[[ "$output" != *"releasing-code"* ]]
 }
 
 @test "skill-enforcer: informational release discussion is not release preparation" {
-	run bash "$HOOK" <<<'{"prompt":"Explain what the v6.13 release means for users; do not publish anything."}'
+	run python3 "$HOOK" <<<'{"prompt":"Explain what the v6.13 release means for users; do not publish anything."}'
 	[ "$status" -eq 0 ]
 	[[ "$output" != *"releasing-code"* ]]
 }
 
 @test "skill-enforcer: Pi release routing is model-visible and remains advisory" {
-	run --separate-stderr bash "$HOOK" <<<'{"event":"prompt-submit","piEvent":{"prompt":"Prepare the v6.13.0 release and write release notes."}}'
+	run --separate-stderr python3 "$HOOK" <<<'{"event":"prompt-submit","piEvent":{"prompt":"Prepare the v6.13.0 release and write release notes."}}'
 	[ "$status" -eq 0 ]
 	[[ "$output" == *'"decision":"allow"'* ]]
 	[[ "$stderr" == *"releasing-code"* ]]
 }
 
 @test "skill-enforcer: reading library docs still routes to looking-up-docs" {
-	run bash "$HOOK" <<<'{"prompt":"What do the docs for pydantic v2 say about model validators?"}'
+	run python3 "$HOOK" <<<'{"prompt":"What do the docs for pydantic v2 say about model validators?"}'
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"looking-up-docs"* ]]
 	[[ "$output" != *"documenting-code"* ]]

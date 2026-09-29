@@ -13,7 +13,7 @@ ROOT = next(
     p for p in Path(__file__).resolve().parents if (p / "pyproject.toml").is_file()
 )
 DEFAULT_FIXTURES = ROOT / "tests/skill-evals/routing/prompts.json"
-DEFAULT_HOOK = ROOT / "src/hooks/skill-enforcer/hook.sh"
+DEFAULT_HOOK = ROOT / "src/hooks/skill-enforcer/hook.py"
 
 
 def load_cases(path: Path) -> list[dict]:
@@ -67,7 +67,7 @@ def evaluate(hook: Path, cases: list[dict], *, disabled: bool = False) -> dict:
     rows = []
     for case in cases:
         result = subprocess.run(
-            ["bash", str(hook.resolve())],
+            ["python3" if hook.suffix == ".py" else "bash", str(hook.resolve())],
             input=json.dumps({"prompt": case["prompt"]}),
             text=True,
             capture_output=True,
