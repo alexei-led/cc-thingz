@@ -230,6 +230,8 @@ Reports are written to:
 - Boundary/routing tests (which skill should fire?) find the most useful failures.
 - If a skill has good instructions but the model omits them, the prompt probably needs to demand command-level detail.
 - If the judge makes a bad call, rewrite the assertion to be more concrete instead of trusting vibes. Obviously.
+- The target gets one turn and runs no tools. Put every fact it would otherwise ask for (command output, code, config) in the prompt, and ask for the exact commands and changes it would make. Otherwise the skill arm asks for the repo and scores zero.
+- Assert on what the output proposes ("the output's command is ..."), one claim per assertion. The judge fails "runs X" when the output says nothing was run, and fails compound "X, because Y" assertions on the second clause.
 
 ## Reading a run
 

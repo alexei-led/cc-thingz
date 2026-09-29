@@ -28,6 +28,74 @@
         "The output mentions deleting shallow duplicate tests once deeper behavior tests cover them.",
         "The output includes verification with pytest or an equivalent test command."
       ]
+    },
+    {
+      "id": "performance-slow-suite",
+      "name": "performance slow suite",
+      "prompt": "Mode: performance. Our pytest suite takes 9 minutes locally. What I know: conftest.py starts a fresh Postgres container for every test module, many tests call time.sleep(2) waiting for a background worker, and pytest.ini sets `addopts = --cov=app --cov-report=html`. Describe the plan.\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.",
+      "expected_output": "The response measures the same command before and after, names the bottlenecks, removes waste before checks, moves coverage to its own tier, and leaves a regression guard.",
+      "assertions": [
+        "The output measures the same pytest command's wall time before and after.",
+        "The output identifies per-module Postgres startup, real sleeps, and default coverage as the bottlenecks to address.",
+        "The output replaces the time.sleep waits with deterministic synchronization or a controllable clock.",
+        "The output moves coverage out of the default addopts into a separate command or tier.",
+        "The output widens the Postgres fixture scope while keeping per-test isolation, such as transactions or truncation.",
+        "The output adds a regression guard such as --durations, a per-test ceiling, or a slow marker.",
+        "The output does not skip, delete, or weaken tests to improve the time."
+      ]
+    },
+    {
+      "id": "tdd-one-slice",
+      "name": "tdd one slice",
+      "prompt": "Mode: tdd. In our TypeScript checkout service, add a rule: orders over $100 get 10% off, and never discount below cost. The service and its Vitest test look like this:\n\n```ts\n// src/checkout.ts\nexport interface Line { priceCents: number; costCents: number; qty: number }\nexport function checkout(lines: Line[]): { subtotalCents: number; discountCents: number; totalCents: number } {\n  const subtotalCents = lines.reduce((s, l) => s + l.priceCents * l.qty, 0);\n  return { subtotalCents, discountCents: 0, totalCents: subtotalCents };\n}\n```\n\n```ts\n// src/checkout.test.ts\nimport { describe, it, expect } from 'vitest';\nimport { checkout } from './checkout';\ndescribe('checkout', () => {\n  it('sums lines', () => {\n    expect(checkout([{ priceCents: 500, costCents: 200, qty: 2 }]).totalCents).toBe(1000);\n  });\n});\n```\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.",
+      "expected_output": "The response works in one red-green-refactor slice at a time, starting with a single failing test that fails for the expected reason.",
+      "assertions": [
+        "The first test the output adds covers only one rule, not both rules at once.",
+        "The output says to run that test and see it fail for the expected reason before changing checkout.ts.",
+        "The output's production change is the smallest one that passes that test.",
+        "The output says refactoring happens only while tests pass.",
+        "The output handles 'never below cost' as a separate slice after the first one passes.",
+        "The output's cases include the $100 boundary, such as exactly 10000 cents."
+      ]
+    },
+    {
+      "id": "characterization-before-legacy-refactor",
+      "name": "characterization before legacy refactor",
+      "prompt": "We need to refactor `legacy_invoice_total` in billing.py. It has no tests and nobody knows every caller. Some outputs look wrong to me: it rounds each line before summing. Here it is:\n\n```python\ndef legacy_invoice_total(lines, region):\n    total = 0\n    for qty, price in lines:\n        line = round(qty * price, 2)\n        if region == 'EU':\n            line = round(line * 1.2, 2)\n        elif region == 'US' and qty > 10:\n            line = round(line * 0.95, 2)\n        total += line\n    return round(total, 2)\n```\n\nHow do we start?\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.",
+      "expected_output": "The response adds characterization tests at the public boundary that pin current behavior, quirks included, before refactoring.",
+      "assertions": [
+        "The output writes characterization tests before changing the function.",
+        "The tests assert today's outputs, including per-line rounding, not the values the user expects.",
+        "The tests call legacy_invoice_total directly, not internal branches.",
+        "The output treats fixing the rounding as a separate, deliberate behavior change after the refactor.",
+        "The output parameterizes cases across regions (EU, US with qty above and at 10, other)."
+      ]
+    },
+    {
+      "id": "parallel-only-failures-are-isolation",
+      "name": "parallel only failures are isolation",
+      "prompt": "Mode: performance. Our suite passes with plain `pytest` but about 5% of runs fail with `pytest -n 8` (pytest-xdist). Failures are in tests that write `/tmp/export.csv` and tests that start a server on port 8080. Should I just add pytest-rerunfailures and retry them?\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.",
+      "expected_output": "The response treats parallel-only failures as isolation bugs and fixes the shared state instead of adding retries.",
+      "assertions": [
+        "The output treats the parallel-only failures as isolation bugs, not flakiness.",
+        "The fix gives each test its own temporary directory, such as tmp_path, instead of /tmp/export.csv.",
+        "The fix gives each test or worker its own port, for example binding to port 0, instead of 8080.",
+        "The output advises against adding reruns or retries as the fix.",
+        "The output's verification repeats the `pytest -n 8` run several times."
+      ]
+    },
+    {
+      "id": "ask-before-new-tool",
+      "name": "ask before new tool",
+      "prompt": "Mode: coverage. The repo uses plain unittest (tests/test_*.py, run with `python -m unittest`). The parser has no tests for invalid input:\n\n```python\n# parse_dates.py\nfrom datetime import date\n\ndef parse_date(text: str) -> date:\n    y, m, d = text.strip().split('-')\n    return date(int(y), int(m), int(d))\n```\n\nI'm thinking we should add Hypothesis for property-based tests. Go ahead.\n\nYou cannot run commands or edit files in this reply. Give the exact commands, code, and file changes you would make, in order.",
+      "expected_output": "The response asks before adding Hypothesis, follows the existing unittest conventions, and covers the invalid-input paths.",
+      "assertions": [
+        "The output asks for approval before adding Hypothesis.",
+        "The proposed tests use unittest.",
+        "The proposed tests cover invalid input such as '', '2024-13-01', or 'abc'.",
+        "The proposed tests call parse_date directly.",
+        "The output names the command `python -m unittest` or an equivalent unittest invocation."
+      ]
     }
   ]
 }
