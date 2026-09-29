@@ -56,6 +56,10 @@ MUST_ALLOW = [
     ("git pull --ff-only", "plain pull --ff-only"),
     ("git merge --ff-only origin/master", "plain merge --ff-only"),
     ("git worktree remove ../fix-foo", "worktree remove without force"),
+    (
+        "git -C /repo worktree remove /repo.worktrees/skill-enforcer-fast",
+        "worktree remove without force, path contains -fast",
+    ),
     ("git checkout -- README.md", "checkout of a path after --"),
     (
         "git checkout --conflict=merge -- f",
