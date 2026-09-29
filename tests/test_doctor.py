@@ -35,7 +35,7 @@ def fixture_tree(tmp_path: Path) -> tuple[Path, Path, Path]:
     (skill / "SKILL.md").write_text("# Python")
     (skill / "scripts/check.py").write_text(helper.read_text())
     (config / "agents").mkdir(parents=True)
-    for role in ("reviewer", "runner", "advisor"):
+    for role in ("reviewer", "runner"):
         (config / "agents" / f"{role}.toml").write_text("not read by doctor")
     return repo, plugin, config
 

@@ -59,8 +59,8 @@ test checks this catalog against source manifests and resources on every test ru
 Custom skill-directory declarations and other vendor
 installation layouts are outside this first version.
 
-`--config-root` selects a Codex `.codex` directory and checks for advisor,
-reviewer, and runner TOML files under `agents/`. It does not read the profiles
+`--config-root` selects a Codex `.codex` directory and checks for reviewer
+and runner TOML files under `agents/`. It does not read the profiles
 or prove that the runtime loads them. Without this option, that check is skipped.
 Use `--repo` to compare against another cc-thingz checkout.
 
