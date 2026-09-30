@@ -1,0 +1,35 @@
+schema_version: "1.0"
+name: simple-branch-switch-no-worktree
+description: |
+  A plain branch switch with no parallel work — the skill's own boundary ("no worktree needed for this"). Should-NOT-fire-a-worktree case.
+tags:
+  - git-flow
+  - using-git-worktrees
+  - boundary
+  - negative
+runs: 3
+expected_outcome: no-worktree
+context:
+  scaffold_script: scaffold.sh
+execution:
+  max_turns: 15
+  timeout_seconds: 300
+  allowed_tools:
+    - Bash
+  prompt: |
+    Switch me from feature-a to feature-b. No parallel work, I'm just done
+    with feature-a for now.
+graders:
+  - name: never-created-a-worktree
+    type: tool_used
+    tool: Bash
+    input_match: worktree add
+    min: 0
+    max: 0
+    weight: 1
+  - name: used-plain-switch-after-checking-status
+    type: llm
+    focus: trace
+    criteria: |
+      The response checks for uncommitted changes (e.g. git status) before switching, then does a normal git switch/checkout to feature-b without creating a worktree, and doesn't silently stash anything.
+    weight: 1

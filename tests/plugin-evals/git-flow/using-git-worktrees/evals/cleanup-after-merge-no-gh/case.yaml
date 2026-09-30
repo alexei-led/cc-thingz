@@ -1,0 +1,47 @@
+schema_version: "1.0"
+name: cleanup-after-merge-no-gh
+description: |
+  Clean up a worktree after the user says its PR merged on GitHub, with no `gh` available to confirm it — the skill's own refusal/--force boundary.
+tags:
+  - git-flow
+  - using-git-worktrees
+  - cleanup
+  - fire
+runs: 3
+expected_outcome: fire
+context:
+  scaffold_script: scaffold.sh
+execution:
+  max_turns: 20
+  timeout_seconds: 600
+  allowed_tools:
+    - Bash
+  prompt: |
+    The PR for `feature/auth` was squash-merged on GitHub — I merged it
+    there myself just now. `gh` isn't installed in this environment.
+    Remove the feature/auth worktree and its branch, then get main up to
+    date.
+graders:
+  - name: skill-fired
+    type: tool_used
+    tool: Skill
+    input_match: using-git-worktrees
+  - name: used-cleanup-script-not-manual-deletion
+    type: tool_used
+    tool: Bash
+    input_match: cleanup-worktree\.sh
+    min: 1
+    weight: 1
+  - name: kept-git-pull-out-of-cleanup
+    type: tool_used
+    tool: Bash
+    input_match: git pull
+    min: 0
+    max: 0
+    weight: 0.5
+  - name: names-the-gh-confirmation-gap-and-force-risk
+    type: llm
+    focus: trace
+    criteria: |
+      The response says it cannot confirm the merge itself without `gh`, relies on the user's own statement that the PR merged, and if it passes --force to the cleanup script it names what --force can do (remove a dirty worktree, force-delete the branch) rather than using it silently.
+    weight: 1

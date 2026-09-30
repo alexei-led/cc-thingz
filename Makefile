@@ -14,6 +14,10 @@ SKILL_EVAL_BASELINE ?= 1
 SKILL_EVAL_CONCURRENCY ?= 4
 SKILL_EVAL_STRICT ?= 1
 SKILL_EVAL_CLI ?= $(shell if command -v agent-skills-eval >/dev/null 2>&1; then printf 'agent-skills-eval'; elif command -v bunx >/dev/null 2>&1; then printf 'bunx agent-skills-eval'; elif command -v fnm >/dev/null 2>&1; then printf 'fnm exec --using $(NODE_VERSION) -- npx --yes agent-skills-eval'; else printf 'npx --yes agent-skills-eval'; fi)
+PLUGIN_EVAL_ROOT ?= /tmp/cc-thingz-plugin-eval-root
+PLUGIN_EVAL_PACKAGE ?=
+PLUGIN_EVAL_JUDGE ?= haiku
+PLUGIN_EVAL_MAX_COST ?= 1.00
 
 # --- Lint ---
 
@@ -66,7 +70,7 @@ TEST_FAST_IGNORE = \
 	--ignore=tests/test_validate_hooks.py \
 	--ignore=tests/test_generate_release_notes.py
 
-.PHONY: test test-fast test-ts test-ts-fast skill-evals-prepare skill-evals skill-evals-fast skill-evals-summary
+.PHONY: test test-fast test-ts test-ts-fast skill-evals-prepare skill-evals skill-evals-fast skill-evals-summary plugin-evals-prepare plugin-evals
 test: ## Run pytest suite
 	uv run --extra test python -m pytest tests/ -n auto
 
@@ -115,6 +119,18 @@ skill-evals-fast: ## Fast paid skill eval loop: no baseline, no HTML, higher con
 
 skill-evals-summary: ## Print summary for latest skill eval workspace
 	uv run python scripts/evals/summarize-skill-evals.py $(SKILL_EVAL_WORKSPACE) --markdown $(SKILL_EVAL_REPORT)
+
+plugin-evals-prepare: ## Build a temp `claude plugin eval` tree for PLUGIN_EVAL_PACKAGE=<name>
+	@test -n "$(PLUGIN_EVAL_PACKAGE)" || { echo "set PLUGIN_EVAL_PACKAGE=<package>, e.g. git-flow" >&2; exit 2; }
+	uv run python scripts/evals/prepare-plugin-evals.py \
+		--package $(PLUGIN_EVAL_PACKAGE) --out $(PLUGIN_EVAL_ROOT)/$(PLUGIN_EVAL_PACKAGE)
+
+plugin-evals: plugin-evals-prepare ## Run claude plugin eval (paid) for PLUGIN_EVAL_PACKAGE=<name>; pass EXTRA_ARGS for --case/--tag/etc
+	claude plugin eval $(PLUGIN_EVAL_ROOT)/$(PLUGIN_EVAL_PACKAGE) \
+		--ablation with-without --trust-plugin \
+		--judge-model $(PLUGIN_EVAL_JUDGE) \
+		--max-cost-usd $(PLUGIN_EVAL_MAX_COST) \
+		$(EXTRA_ARGS)
 
 # --- Validate ---
 
