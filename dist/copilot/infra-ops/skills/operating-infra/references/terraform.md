@@ -14,6 +14,7 @@ Use Terraform for cloud resource lifecycle, shared infrastructure, policy-contro
 ## Safety
 
 - A plan is evidence, not permission to apply. Surface every create/update/delete count and stop on an unexpected destroy or replace.
+- Run Conftest on the plan JSON when policy depends on planned values.
 - Use targeted apply only for narrowly explained recovery work.
 - Keep remote state encrypted and locked. Never commit state, plan files with secrets, or provider credentials.
 - Mark sensitive outputs. Keep secrets out of variable files unless they are encrypted and intentionally managed.

@@ -7,6 +7,7 @@
 - Use minimal runtime images (distroless, slim, scratch) or a pinned base that fits debugging needs.
 - Pin base images by version or digest; deployable images never use `latest`.
 - Use `COPY` plus an explicit fetch-and-verify step instead of `ADD` for remote URLs.
+- Run `syft`, `grype`, and `cosign` when SBOM, vulnerability, or provenance evidence matters.
 
 ## Runtime
 
