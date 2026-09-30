@@ -97,9 +97,13 @@ lint_python() {
 	fi
 	if [[ "${#pyright_runner[@]}" -gt 0 ]]; then
 		# Filter out reportMissingImports — missing stubs, not real errors
-		local pyright_output
-		if pyright_output=$("${pyright_runner[@]}" --outputjson "${files[@]}" 2>&1); then
+		local pyright_output pyright_status
+		pyright_output=$(run_with_timeout "$SMART_LINT_CMD_TIMEOUT_SECONDS" "${pyright_runner[@]}" --outputjson "${files[@]}")
+		pyright_status=$?
+		if [[ "$pyright_status" -eq 0 ]]; then
 			log_debug "pyright passed"
+		elif [[ "$pyright_status" -eq 124 ]]; then
+			report_timeout "Python Type Checker (pyright)"
 		else
 			local filtered parse_status
 			filtered=$(pyright_compact_json <<<"$pyright_output")

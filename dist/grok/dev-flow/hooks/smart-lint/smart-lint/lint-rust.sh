@@ -81,15 +81,19 @@ rust_format_files() {
 	command_exists rustfmt || return 0
 
 	mark_format_ran
-	local file manifest edition output
+	local file manifest edition output status
 	for file in "${files[@]}"; do
 		manifest=$(rust_nearest_manifest "$file" || true)
 		edition="2021"
 		if [[ -n "$manifest" ]]; then
 			edition=$(rust_manifest_edition "$manifest")
 		fi
-		if output=$(rustfmt --edition "$edition" "$file" 2>&1); then
+		output=$(run_with_timeout "$SMART_LINT_CMD_TIMEOUT_SECONDS" rustfmt --edition "$edition" "$file")
+		status=$?
+		if [[ "$status" -eq 0 ]]; then
 			log_debug "rustfmt passed for $file"
+		elif [[ "$status" -eq 124 ]]; then
+			report_timeout "Rust Formatter (rustfmt) for $file"
 		else
 			add_error "Rust Formatter (rustfmt) failed for $file" "$(compact_output "$output")"
 		fi
@@ -97,16 +101,26 @@ rust_format_files() {
 }
 
 rust_lint_manifest() {
-	local manifest="$1" output
-	if output=$(cargo clippy --manifest-path "$manifest" --fix --allow-dirty --allow-staged --all-targets -- -D warnings 2>&1); then
+	local manifest="$1" output status
+	output=$(run_with_timeout "$SMART_LINT_CMD_TIMEOUT_SECONDS" cargo clippy --manifest-path "$manifest" --fix --allow-dirty --allow-staged --all-targets -- -D warnings)
+	status=$?
+	if [[ "$status" -eq 0 ]]; then
 		log_debug "cargo clippy passed for $manifest"
+		return 0
+	fi
+	if [[ "$status" -eq 124 ]]; then
+		report_timeout "Rust (cargo clippy) for $manifest"
 		return 0
 	fi
 
 	if echo "$output" | grep -qiE "no such command: .?clippy.?|clippy.*not installed"; then
 		log_info "cargo clippy unavailable, falling back to cargo check for $manifest"
-		if output=$(cargo check --manifest-path "$manifest" --all-targets 2>&1); then
+		output=$(run_with_timeout "$SMART_LINT_CMD_TIMEOUT_SECONDS" cargo check --manifest-path "$manifest" --all-targets)
+		status=$?
+		if [[ "$status" -eq 0 ]]; then
 			log_debug "cargo check passed for $manifest"
+		elif [[ "$status" -eq 124 ]]; then
+			report_timeout "Rust (cargo check) for $manifest"
 		else
 			add_error "Rust (cargo check)" "$(compact_output "$output")"
 		fi

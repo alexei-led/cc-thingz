@@ -160,7 +160,12 @@ lint_terraform() {
 	if command_exists terraform; then
 		mark_format_ran
 		log_debug "Found changed Terraform files, running terraform fmt on edited files"
-		if ! output=$(terraform fmt "${files[@]}" 2>&1); then
+		local output status
+		output=$(run_with_timeout "$SMART_LINT_CMD_TIMEOUT_SECONDS" terraform fmt "${files[@]}")
+		status=$?
+		if [[ "$status" -eq 124 ]]; then
+			report_timeout "Terraform Formatter"
+		elif [[ "$status" -ne 0 ]]; then
 			add_error "Terraform Formatter" "$(compact_output "$output")"
 		fi
 	fi
