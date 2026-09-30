@@ -90,6 +90,46 @@ MUST_BLOCK = [
         "(git reset --hard) | git branch -fd x | git push -fu origin b",
         "subshell parens and combined short-flag clusters (-fd, -fu)",
     ),
+    # Case-insensitive command matching: on macOS's default case-insensitive
+    # filesystem, these all resolve to and run the real git binary.
+    ("GIT reset --hard", "uppercase GIT still resolves to the real binary"),
+    ("Git push --force", "title-case Git still resolves to the real binary"),
+    ("gIt clean -fdx", "mixed-case gIt still resolves to the real binary"),
+    (
+        "/usr/bin/GIT checkout -- .",
+        "uppercase GIT behind an absolute path still resolves",
+    ),
+    (
+        "timeout 30 GIT push --force",
+        "unrecognized wrapper does not hide an uppercase GIT",
+    ),
+    (
+        "bash -c 'GIT reset --hard'",
+        "uppercase GIT inside a bash -c script is still tokenized",
+    ),
+    (
+        "BASH -c 'git push --force'",
+        "uppercase BASH -c still resolves to the real interpreter",
+    ),
+    # ANSI-C/locale quoting (`$'git'`, `$"git"`) shlex-tokenizes to a bare
+    # `$git` with no `(` for SUBST_OPENER to strip, but bash expands both to
+    # the plain word `git` and runs it for real.
+    (
+        "$'git' reset --hard",
+        "ANSI-C quoting ($'git') still resolves to the real binary",
+    ),
+    (
+        "$'GIT' push --force",
+        "ANSI-C quoting of an uppercase GIT still resolves",
+    ),
+    (
+        '$"git" clean -fdx',
+        'locale quoting ($"git") still resolves to the real binary',
+    ),
+    (
+        "BASH -c \"$'git' reset --hard\"",
+        "ANSI-C quoting inside an uppercase BASH -c script is still tokenized",
+    ),
 ]
 
 MUST_ALLOW = [
@@ -120,6 +160,16 @@ MUST_ALLOW = [
     ),
     (HEREDOC_COMMAND, "dangerous text inside a heredoc body"),
     (RELEASE_SCRIPT, "sanitized multi-line release script"),
+    ("echo GITHUB_TOKEN", "a word containing GIT that isn't a command (env var name)"),
+    ("ls GIT_NOTES", "a word containing GIT that isn't a command (path argument)"),
+    (
+        'git commit -m "GIT PUSH --FORCE is dangerous, never run it"',
+        "uppercase git text inside a commit message",
+    ),
+    (
+        "cat <<'EOF'\nGIT RESET --HARD\nEOF\n",
+        "uppercase git text inside a heredoc body",
+    ),
 ]
 
 

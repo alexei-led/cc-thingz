@@ -36,8 +36,12 @@ IFS= read -r -d '' INPUT || true
 # skips the check; harnesses only escape control characters.
 # No word-boundary test: JSON escapes like \n before "git" become "ngit"
 # once backslashes are stripped, so any "git" substring takes the slow path.
+# Case-insensitive: on macOS's default case-insensitive filesystem, `GIT`,
+# `Git`, and `/usr/bin/GIT` all resolve to and run the real git binary.
+# bash 3.2 has no `${x,,}`; a per-letter bracket class keeps this a single
+# pattern match, so the fast path still forks nothing extra.
 UNQUOTED_FOR_SCAN=${INPUT//[\\\"\']/}
-if [[ "$UNQUOTED_FOR_SCAN" != *git* ]]; then
+if [[ "$UNQUOTED_FOR_SCAN" != *[Gg][Ii][Tt]* ]]; then
 	exit 0
 fi
 

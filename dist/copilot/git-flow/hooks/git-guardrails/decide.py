@@ -21,6 +21,13 @@ rather than interpreted. A git call that opens a `$(...)`, backtick, or
 not. A command this script cannot confidently parse is blocked (fail
 closed) rather than silently allowed.
 
+Command-name comparisons (`git`, and the `bash|sh|zsh|dash` interpreter set
+for `-c` unwrapping) are case-insensitive: on macOS's default
+case-insensitive filesystem, `GIT reset --hard` and `BASH -c 'GIT ...'`
+resolve to and run the real binaries. Subcommands and flags (`RESET`,
+`--Force`) are not: git's own argument parser resolves those from a fixed
+table, not the filesystem, so case there is not a bypass.
+
 Limit: `cd`/`pushd`/`popd` tracking understands a plain `cd <literal-path>`
 only; anything else (bare `cd`, `cd -`, `pushd`, `popd`, a variable)
 permanently loses directory trust for the rest of the command, so any later
@@ -571,7 +578,19 @@ def walk(
             # `$(git`, `` `git ``, `<(git`, and `X=$(git` are one shlex token;
             # command substitution still runs git, so look past the opener.
             base = SUBST_OPENER.sub("", token).rsplit("/", 1)[-1]
-            if base == "git":
+            # ANSI-C and locale quoting (`$'git'`, `$"git"`) shlex-tokenize to
+            # a bare `$git` - no `$(` for SUBST_OPENER to strip - but bash
+            # expands both to the plain word `git` and runs it for real. A
+            # leading `$` left over any other way (a literal `$git` variable
+            # reference) is conservatively treated the same: blocking a
+            # dereferenced variable that happens to spell out a command name
+            # is an acceptable false positive for a fail-closed guard.
+            base = base[1:] if base.startswith("$") else base
+            # Case-insensitive: `GIT`, `/usr/bin/GIT`, and `./GIT` all run the
+            # real git binary on macOS's case-insensitive filesystem. `eval`
+            # is a shell builtin (resolved by bash's own keyword table, never
+            # the filesystem), so it stays case-sensitive on purpose.
+            if base.lower() == "git":
                 evaluate_git_call(
                     span[j:], ctx, patterns, allow_force_push, blocks, removed_worktrees
                 )
@@ -590,7 +609,7 @@ def walk(
                         removed_worktrees,
                     )
                 break
-            if depth == 0 and base in INTERPRETERS:
+            if depth == 0 and base.lower() in INTERPRETERS:
                 script = shell_dash_c_script(span, j)
                 if script is not None:
                     inner = tokenize(strip_heredocs(script))
