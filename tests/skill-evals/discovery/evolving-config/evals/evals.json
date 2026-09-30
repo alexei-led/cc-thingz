@@ -65,6 +65,23 @@
         "The output includes example prompts or scenarios to verify activation behavior.",
         "The output avoids editing until the proposed scope is clear or approved."
       ]
+    },
+    {
+      "id": "pi-mcp-audit",
+      "name": "pi mcp server audit",
+      "prompt": "A user asks: audit my Pi coding agent's MCP server config in .pi/mcp.json and ~/.pi/agent/mcp.json before I turn it on for the team. Describe the workflow and what you would check.",
+      "expected_output": "The response treats Pi as having built-in MCP support, checks mcp.json for literal secrets instead of ${NAME}/!command, notes that project mcp.json only loads once the project is trusted, recommends codemode exposure for the servers, checks installed extensions for MCP servers outside mcp.json, cites concrete paths for findings, stays review-only, and asks before changing MCP server config.",
+      "assertions": [
+        "The output treats Pi as having built-in MCP support rather than saying Pi cannot connect to MCP servers.",
+        "The output checks for secrets written as literal values in env or headers instead of ${NAME} or !command.",
+        "The output notes that a project's .pi/mcp.json only loads once the project is trusted.",
+        "The output recommends codemode exposure for the MCP servers.",
+        "The output says only hidden exposure makes a tool uncallable.",
+        "The output checks installed extensions for MCP servers or a /mcp replacement outside mcp.json.",
+        "The output cites concrete paths such as mcp.json or mcp-auth.json for its findings.",
+        "The output stays review-only rather than changing MCP server config on its own.",
+        "The output asks for confirmation before changing MCP server config."
+      ]
     }
   ]
 }
