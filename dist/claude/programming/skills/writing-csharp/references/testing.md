@@ -14,4 +14,3 @@ dotnet test path/to/App.sln
 - ASP.NET Core HTTP behavior: the project's existing integration harness (usually `WebApplicationFactory`) before a new one.
 - EF-backed code: a disposable test database or the project's existing seam, not mocked `IQueryable` chains.
 - Replace real sleeps with a controllable clock (.NET 8+: `TimeProvider`, faked with `FakeTimeProvider` from `Microsoft.Extensions.TimeProvider.Testing` when the project accepts that package), cancellation, or deterministic synchronization.
-- Keep browser, end-to-end, coverage, and slow integration tiers off the hot path unless they are the task.
