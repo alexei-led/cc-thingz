@@ -792,3 +792,298 @@ SH
 	[[ "$output" == *"skipped: no tests completed"* ]]
 	[[ "$output" != *"tests passed"* ]]
 }
+
+@test "test-runner: a second Stop with no new edits on a dirty tree is a no-op" {
+	mkdir -p bin pkg tests
+	cat >pyproject.toml <<'TOML'
+[project]
+name = "demo"
+version = "0.0.0"
+
+[project.optional-dependencies]
+test = ["pytest"]
+TOML
+	touch pkg/foo.py tests/test_foo.py
+	cat >bin/uv <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"$PWD/uv.calls"
+SH
+	chmod +x bin/uv
+	write_state s_noop pkg/foo.py
+
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_noop\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	local calls_after_first
+	calls_after_first="$(wc -l <uv.calls)"
+
+	# The working tree is still dirty (pkg/foo.py, tests/test_foo.py,
+	# pyproject.toml are all untracked) but nothing new was edited since the
+	# first Stop concluded. Must not fall back to a git diff and re-run the
+	# same tests a second time.
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_noop\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"no changed code files"* ]]
+	[ "$(wc -l <uv.calls)" -eq "$calls_after_first" ]
+}
+
+@test "test-runner: a later edit after a no-op Stop is still tested" {
+	mkdir -p bin pkg tests
+	cat >pyproject.toml <<'TOML'
+[project]
+name = "demo"
+version = "0.0.0"
+
+[project.optional-dependencies]
+test = ["pytest"]
+TOML
+	touch pkg/foo.py tests/test_foo.py
+	cat >bin/uv <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"$PWD/uv.calls"
+SH
+	chmod +x bin/uv
+	write_state s_later pkg/foo.py
+
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_later\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	local calls_after_first
+	calls_after_first="$(wc -l <uv.calls)"
+
+	# Simulate smart-lint recording a fresh edit on the (now-truncated) state
+	# file: this must run tests again, not stay a no-op forever.
+	write_state s_later pkg/foo.py
+
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_later\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(wc -l <uv.calls)" -gt "$calls_after_first" ]
+}
+
+@test "test-runner: timeout kills a hung test process and reports skipped: timeout" {
+	mkdir -p bin pkg
+	touch pkg/foo.go
+	cat >bin/go <<SH
+#!/usr/bin/env bash
+sleep 30
+touch "$WORK_DIR/should-not-exist"
+SH
+	chmod +x bin/go
+	write_state s_timeout pkg/foo.go
+
+	run env PATH="$WORK_DIR/bin:$PATH" TEST_RUNNER_TIMEOUT_SECS=1 HOOK_INPUT_JSON="{\"session_id\":\"s_timeout\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"skipped: timeout"* ]]
+	[[ "$output" != *"Focused tests passed"* ]]
+
+	# The watchdog kill is asynchronous; give a killed process time to exit
+	# and confirm it never reached the line after sleep.
+	sleep 3
+	[ ! -f "$WORK_DIR/should-not-exist" ]
+}
+
+@test "test-runner: a real failure inside the timeout budget still exits 2" {
+	mkdir -p bin pkg tests
+	cat >pyproject.toml <<'TOML'
+[project]
+name = "demo"
+version = "0.0.0"
+
+[project.optional-dependencies]
+test = ["pytest"]
+TOML
+	touch pkg/foo.py tests/test_foo.py
+	cat >bin/uv <<'SH'
+#!/usr/bin/env bash
+case "$*" in
+*" pytest "*) echo focused-failure; exit 1 ;;
+*) exit 0 ;;
+esac
+SH
+	chmod +x bin/uv
+	write_state s_fail_budget pkg/foo.py
+
+	run env PATH="$WORK_DIR/bin:$PATH" TEST_RUNNER_TIMEOUT_SECS=30 HOOK_INPUT_JSON="{\"session_id\":\"s_fail_budget\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 2 ]
+	[[ "$output" == *"focused-failure"* ]]
+	[[ "$output" != *"skipped: timeout"* ]]
+}
+
+@test "test-runner: Pi stop envelope (event/piEvent) resolves cwd and session id" {
+	mkdir -p bin pkg tests
+	cat >pyproject.toml <<'TOML'
+[project]
+name = "demo"
+version = "0.0.0"
+
+[project.optional-dependencies]
+test = ["pytest"]
+TOML
+	touch pkg/foo.py tests/test_foo.py
+	cat >bin/uv <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/uv.args"
+SH
+	chmod +x bin/uv
+	write_state s_pi pkg/foo.py
+
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"event\":\"stop\",\"piEvent\":{\"session_id\":\"s_pi\",\"cwd\":\"$WORK_DIR\"}}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat uv.args)" = "run --extra test pytest -q --maxfail=1 --tb=short tests/test_foo.py" ]
+}
+
+@test "test-runner: cwd falls back to vendorEvent when piEvent lacks it" {
+	mkdir -p bin pkg tests
+	cat >pyproject.toml <<'TOML'
+[project]
+name = "demo"
+version = "0.0.0"
+
+[project.optional-dependencies]
+test = ["pytest"]
+TOML
+	touch pkg/foo.py tests/test_foo.py
+	cat >bin/uv <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/uv.args"
+SH
+	chmod +x bin/uv
+	write_state s_env pkg/foo.py
+
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"event\":\"stop\",\"piEvent\":{\"session_id\":\"s_env\"},\"vendorEvent\":{\"cwd\":\"$WORK_DIR\"}}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat uv.args)" = "run --extra test pytest -q --maxfail=1 --tb=short tests/test_foo.py" ]
+}
+
+@test "test-runner: an edit made outside smart-lint tracking is still tested" {
+	mkdir -p bin pkg tests
+	cat >pyproject.toml <<'TOML'
+[project]
+name = "demo"
+version = "0.0.0"
+
+[project.optional-dependencies]
+test = ["pytest"]
+TOML
+	touch pkg/foo.py tests/test_foo.py
+	git add pkg/foo.py tests/test_foo.py pyproject.toml
+	git commit -q -m "initial"
+	cat >bin/uv <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"$PWD/uv.calls"
+SH
+	chmod +x bin/uv
+	write_state s_bash pkg/foo.py
+
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_bash\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	local calls_after_first
+	calls_after_first="$(wc -l <uv.calls)"
+
+	# Simulate an edit made through the Bash tool (sed -i, git apply,
+	# codegen) to a file already tracked by git: the file changes but
+	# smart-lint's extractor never records it, so the session state file
+	# stays empty. The tree fingerprint must still catch this via the
+	# tracked diff and fall back to testing it, not trust the empty state
+	# file as "nothing pending".
+	printf '# edited via bash\n' >>pkg/foo.py
+
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_bash\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(wc -l <uv.calls)" -gt "$calls_after_first" ]
+}
+
+@test "test-runner: a second Stop with truly no changes stays a no-op after the fingerprint fix" {
+	mkdir -p bin pkg tests
+	cat >pyproject.toml <<'TOML'
+[project]
+name = "demo"
+version = "0.0.0"
+
+[project.optional-dependencies]
+test = ["pytest"]
+TOML
+	touch pkg/foo.py tests/test_foo.py
+	cat >bin/uv <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"$PWD/uv.calls"
+SH
+	chmod +x bin/uv
+	write_state s_fp pkg/foo.py
+
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_fp\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	local calls_after_first
+	calls_after_first="$(wc -l <uv.calls)"
+
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_fp\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"no changed code files"* ]]
+	[ "$(wc -l <uv.calls)" -eq "$calls_after_first" ]
+}
+
+@test "test-runner: an invalid TEST_RUNNER_TIMEOUT_SECS falls back to the default" {
+	mkdir -p bin pkg tests
+	cat >pyproject.toml <<'TOML'
+[project]
+name = "demo"
+version = "0.0.0"
+
+[project.optional-dependencies]
+test = ["pytest"]
+TOML
+	touch pkg/foo.py tests/test_foo.py
+	cat >bin/uv <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/uv.args"
+SH
+	chmod +x bin/uv
+	write_state s_bad_a pkg/foo.py
+
+	run env PATH="$WORK_DIR/bin:$PATH" TEST_RUNNER_DEBUG=1 TEST_RUNNER_TIMEOUT_SECS=abc HOOK_INPUT_JSON="{\"session_id\":\"s_bad_a\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"TEST_RUNNER_TIMEOUT_SECS=90"* ]]
+	[ "$(cat uv.args)" = "run --extra test pytest -q --maxfail=1 --tb=short tests/test_foo.py" ]
+
+	write_state s_bad_b pkg/foo.py
+	run env PATH="$WORK_DIR/bin:$PATH" TEST_RUNNER_DEBUG=1 TEST_RUNNER_TIMEOUT_SECS=1.5 HOOK_INPUT_JSON="{\"session_id\":\"s_bad_b\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"TEST_RUNNER_TIMEOUT_SECS=90"* ]]
+}
+
+@test "test-runner: TEST_RUNNER_TIMEOUT_SECS is clamped to [1, 110]" {
+	mkdir -p bin pkg
+	touch pkg/foo.go
+	cat >bin/go <<'SH'
+#!/usr/bin/env bash
+exit 0
+SH
+	chmod +x bin/go
+	write_state s_clamp_low pkg/foo.go
+
+	run env PATH="$WORK_DIR/bin:$PATH" TEST_RUNNER_DEBUG=1 TEST_RUNNER_TIMEOUT_SECS=0 HOOK_INPUT_JSON="{\"session_id\":\"s_clamp_low\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"TEST_RUNNER_TIMEOUT_SECS=1"* ]]
+
+	write_state s_clamp_high pkg/foo.go
+	run env PATH="$WORK_DIR/bin:$PATH" TEST_RUNNER_DEBUG=1 TEST_RUNNER_TIMEOUT_SECS=500 HOOK_INPUT_JSON="{\"session_id\":\"s_clamp_high\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"TEST_RUNNER_TIMEOUT_SECS=110"* ]]
+}
+
+@test "test-runner: pending state survives a timeout so the file is retried" {
+	mkdir -p bin pkg
+	touch pkg/foo.go
+	cat >bin/go <<SH
+#!/usr/bin/env bash
+sleep 30
+SH
+	chmod +x bin/go
+	write_state s_keep pkg/foo.go
+
+	run env PATH="$WORK_DIR/bin:$PATH" TEST_RUNNER_TIMEOUT_SECS=1 HOOK_INPUT_JSON="{\"session_id\":\"s_keep\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"skipped: timeout"* ]]
+
+	state_path=$(git rev-parse --git-path "cc-thingz/hook-files-s_keep")
+	[ -s "$state_path" ]
+	[ "$(cat "$state_path")" = "pkg/foo.go" ]
+}
