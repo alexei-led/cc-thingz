@@ -20,6 +20,12 @@ test (no state since the last run, an unchanged working tree) exits immediately
 instead of re-running the same tests. The kill targets the test command's
 process group; a process that detaches into its own session (`setsid`, a
 Gradle daemon left running in the background) is not reached by it.
+"Unchanged" is decided by a tree fingerprint (tracked diff content plus
+untracked file names), recomputed with a full `git diff HEAD` on most
+Stops. Known limits: an in-place edit to an untracked file that keeps its
+name isn't detected, and an edit made by something else while the hook is
+still running can get folded into the fingerprint instead of triggering a
+retest on the next Stop.
 
 JavaScript and TypeScript tooling is selected without per-tool environment flags.
 Project configs and package declarations win. Without them, smart-lint uses the
