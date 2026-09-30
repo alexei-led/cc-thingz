@@ -21,12 +21,29 @@ TEST_RUNNER_DEBUG="${TEST_RUNNER_DEBUG:-0}"
 # Wall-clock budget for the whole hook run, in seconds, measured from process
 # start via bash's builtin $SECONDS. Kept below the 120s harness timeout so a
 # hung or slow suite is reported as "skipped: timeout" instead of the harness
-# force-killing the hook with no output.
+# force-killing the hook with no output. An invalid value (empty, non-integer)
+# falls back to the default; anything out of [1, 110] is clamped so a
+# misconfigured value can't disable the budget or exceed the harness timeout.
 TEST_RUNNER_TIMEOUT_SECS="${TEST_RUNNER_TIMEOUT_SECS:-90}"
+case "$TEST_RUNNER_TIMEOUT_SECS" in
+'' | *[!0-9]*) TEST_RUNNER_TIMEOUT_SECS=90 ;;
+esac
+[[ "$TEST_RUNNER_TIMEOUT_SECS" -lt 1 ]] && TEST_RUNNER_TIMEOUT_SECS=1
+[[ "$TEST_RUNNER_TIMEOUT_SECS" -gt 110 ]] && TEST_RUNNER_TIMEOUT_SECS=110
 TEST_RUNNER_COMPACT_LINES=120
 HOOK_PROJECT_FALLBACK="${HOOK_PROJECT_FALLBACK:-0}"
 TESTS_RAN=0
 TESTS_PASSED=0
+# Set when any test command was skipped for exceeding the timeout budget.
+# main() must not clear the pending session state in that case — the
+# untested files are still pending and must be retried on the next Stop.
+TESTS_TIMED_OUT=0
+# Set by collect_focus_files when it found zero files because the tree's
+# fingerprint still matches the last successful conclusion. The state file
+# and fingerprint are already correct on disk in that case, so main() skips
+# clear_hook_state's recompute instead of paying its cost on every repeated
+# no-op Stop.
+FOCUS_TREE_UNCHANGED=0
 
 log_debug() { [[ "$TEST_RUNNER_DEBUG" == "1" ]] && echo -e "${CYAN}[DEBUG]${NC} $*" >&2; }
 log_info() { echo -e "${BLUE}[INFO]${NC} $*" >&2; }
@@ -197,23 +214,70 @@ hook_state_path() {
 	git rev-parse --git-path "cc-thingz/hook-files-${safe_session_id:-default}" 2>/dev/null
 }
 
+# Separate from hook_state_path: a snapshot of the working tree at the moment
+# the session state was last cleared, so a later Stop can tell "still exactly
+# what I already tested" (skip) from "something changed that smart-lint never
+# recorded" (fall back to a git diff), instead of trusting an empty state file
+# blindly. See tree_fingerprint() and tree_unchanged_since_last_run().
+hook_fingerprint_path() {
+	git rev-parse --git-dir >/dev/null 2>&1 || return 1
+	local session_id safe_session_id
+	session_id=$(hook_session_id)
+	safe_session_id=$(printf '%s' "$session_id" | tr -c 'A-Za-z0-9_.-' '_')
+	git rev-parse --git-path "cc-thingz/hook-tree-${safe_session_id:-default}" 2>/dev/null
+}
+
 is_subagent_child() {
 	[[ "${PI_SUBAGENT_CHILD:-}" == "1" ]]
 }
 
+# A cheap, order-independent summary of the working tree: the content of
+# every tracked change since HEAD, plus the sorted list of untracked file
+# names. Bounded to a handful of git forks regardless of repo size (no
+# per-file subprocess). A new, removed, or renamed untracked file changes
+# the name list and is caught; an in-place content edit to an untracked
+# file that keeps its name is the one gap this doesn't catch — narrower
+# than the pre-fix state, where an empty session state silently skipped
+# every such edit for the rest of the session.
+tree_fingerprint() {
+	git rev-parse --git-dir >/dev/null 2>&1 || return 1
+	{
+		git diff --binary --no-ext-diff HEAD 2>/dev/null || true
+		git ls-files --others --exclude-standard 2>/dev/null | sort
+	} | cksum 2>/dev/null
+}
+
+# True when the working tree matches the fingerprint taken the last time
+# clear_hook_state() concluded a run — i.e. nothing changed since, including
+# edits smart-lint never recorded (Bash tool: sed -i, git apply, codegen).
+tree_unchanged_since_last_run() {
+	local fp_path stored current
+	fp_path=$(hook_fingerprint_path 2>/dev/null || true)
+	[[ -n "$fp_path" && -f "$fp_path" ]] || return 1
+	stored=$(cat "$fp_path" 2>/dev/null)
+	[[ -n "$stored" ]] || return 1
+	current=$(tree_fingerprint)
+	[[ -n "$current" && "$current" == "$stored" ]]
+}
+
 clear_hook_state() {
-	# Truncate rather than remove: an empty state file tells the next Stop
-	# "nothing pending as of last conclusion", so collect_focus_files treats
-	# it as session state with zero files. Removing the file instead would
-	# make the next Stop see no state at all and fall back to a full git
-	# diff, re-running tests for every dirty file even when this turn
-	# changed nothing.
-	local state_path state_dir
+	# Truncate rather than remove the file list: an empty state file tells
+	# the next Stop "nothing recorded as pending", so collect_focus_files
+	# falls through to the fingerprint check below instead of trusting an
+	# absent file straight into a git diff fallback that would re-run tests
+	# for every still-dirty file.
+	local state_path state_dir fp_path
 	state_path=$(hook_state_path 2>/dev/null || true)
-	[[ -n "$state_path" ]] || return 0
-	state_dir=$(dirname "$state_path")
-	mkdir -p "$state_dir" 2>/dev/null || return 0
-	: >"$state_path" 2>/dev/null
+	if [[ -n "$state_path" ]]; then
+		state_dir=$(dirname "$state_path")
+		mkdir -p "$state_dir" 2>/dev/null && : >"$state_path" 2>/dev/null
+	fi
+	# Snapshot the tree we just finished testing, so the next Stop can tell
+	# a genuine no-op from an untracked edit smart-lint never saw.
+	fp_path=$(hook_fingerprint_path 2>/dev/null || true)
+	[[ -n "$fp_path" ]] || return 0
+	mkdir -p "$(dirname "$fp_path")" 2>/dev/null || return 0
+	tree_fingerprint >"$fp_path" 2>/dev/null
 }
 
 path_is_excluded() {
@@ -270,12 +334,17 @@ collect_focus_files() {
 	state_path=$(hook_state_path 2>/dev/null || true)
 	tmp_raw=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-focus-raw.%s' "$$")
 	tmp_filtered=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-focus-filtered.%s' "$$")
-	if [[ -n "$state_path" && -f "$state_path" ]]; then
-		# -f, not -s: an existing empty file means clear_hook_state already
-		# concluded there was nothing pending, which is itself the answer —
-		# don't fall through to a git diff fallback that would re-run tests
-		# for every still-dirty file.
+	if [[ -n "$state_path" && -s "$state_path" ]]; then
+		# Recorded edits take precedence over the fingerprint check below.
 		cat "$state_path" >"$tmp_raw"
+	elif [[ -n "$state_path" && -f "$state_path" ]] && tree_unchanged_since_last_run; then
+		# The state file exists but is empty (clear_hook_state concluded a
+		# run) and the tree still matches that moment's fingerprint: nothing
+		# changed since, including edits smart-lint doesn't track (Bash
+		# tool: sed -i, git apply, codegen). Genuinely nothing to test.
+		source="session state (tree unchanged since last run)"
+		FOCUS_TREE_UNCHANGED=1
+		: >"$tmp_raw"
 	elif is_subagent_child; then
 		source="subagent child without hook state"
 		: >"$tmp_raw"
@@ -426,7 +495,14 @@ run_with_deadline() {
 		exit "$cmd_status"
 	) 2>/dev/null
 	code=$?
-	[[ -f "$timeout_flag" ]] && code=124
+	# Only classify as a timeout if the watchdog actually fired AND the exit
+	# code shows the process died to a signal (>128) — otherwise a command
+	# that happened to finish in the narrow window between the watchdog
+	# writing its flag and sending the kill would be misreported as timed
+	# out instead of using its real (successful) exit code.
+	if [[ -f "$timeout_flag" && "$code" -gt 128 ]]; then
+		code=124
+	fi
 	cat "$outfile" 2>/dev/null
 	rm -f "$outfile" "$timeout_flag"
 	return "$code"
@@ -445,6 +521,7 @@ run_test_compact() {
 	local remaining
 	remaining=$(remaining_budget)
 	if [[ "$remaining" -le 0 ]]; then
+		TESTS_TIMED_OUT=1
 		log_warn "skipped: timeout — no budget left to run $label"
 		return 0
 	fi
@@ -454,6 +531,7 @@ run_test_compact() {
 	output=$(run_with_deadline "$remaining" "$@")
 	code=$?
 	if [[ "$code" -eq 124 ]]; then
+		TESTS_TIMED_OUT=1
 		[[ -n "$output" ]] && compact_output "$output" >&2
 		log_warn "skipped: timeout — $label exceeded ${TEST_RUNNER_TIMEOUT_SECS}s budget"
 		return 0
@@ -480,6 +558,7 @@ run_pytest_compact() {
 	local remaining
 	remaining=$(remaining_budget)
 	if [[ "$remaining" -le 0 ]]; then
+		TESTS_TIMED_OUT=1
 		log_warn "skipped: timeout — no budget left to run $label"
 		return 0
 	fi
@@ -489,6 +568,7 @@ run_pytest_compact() {
 	output=$(run_with_deadline "$remaining" "$@")
 	code=$?
 	if [[ "$code" -eq 124 ]]; then
+		TESTS_TIMED_OUT=1
 		[[ -n "$output" ]] && compact_output "$output" >&2
 		log_warn "skipped: timeout — $label exceeded ${TEST_RUNNER_TIMEOUT_SECS}s budget"
 		return 0
@@ -1476,6 +1556,7 @@ run_full_override() {
 main() {
 	init_hook_input
 	maybe_cd_to_hook_cwd
+	log_debug "TEST_RUNNER_TIMEOUT_SECS=$TEST_RUNNER_TIMEOUT_SECS"
 
 	if [[ "${SKIP_TESTS:-}" == "1" ]] || [[ -f ".notests" ]]; then
 		echo -e "${CYAN}⏭ Tests skipped${NC}" >&2
@@ -1490,7 +1571,9 @@ main() {
 	if [[ "$TEST_RUNNER_FULL" == "1" ]]; then
 		run_full_override
 		status=$?
-		[[ "$status" -eq 0 ]] && clear_hook_state
+		if [[ "$status" -eq 0 && "$TESTS_TIMED_OUT" -eq 0 ]]; then
+			clear_hook_state
+		fi
 		finish_hook "$status"
 	fi
 
@@ -1502,7 +1585,12 @@ main() {
 
 	if [[ "${#focus_files[@]}" -eq 0 ]]; then
 		log_info "skipped: no changed code files with focused test support"
-		clear_hook_state
+		# When the tree's fingerprint already matched, state and fingerprint
+		# on disk are already correct — skip re-deriving them on every
+		# repeated no-op Stop. Any other empty-result path (fresh session,
+		# subagent child, a diff fallback with no code-extension matches)
+		# still needs a fresh baseline written.
+		[[ "$FOCUS_TREE_UNCHANGED" -eq 1 ]] || clear_hook_state
 		finish_hook 0
 	fi
 
@@ -1544,7 +1632,11 @@ main() {
 		else
 			echo -e "${GREEN}✅ Focused tests passed${NC}" >&2
 		fi
-		clear_hook_state
+		if [[ "$TESTS_TIMED_OUT" -eq 0 ]]; then
+			clear_hook_state
+		else
+			log_debug "keeping pending state: a test command timed out, its files are still untested"
+		fi
 	else
 		echo -e "${RED}❌ Focused tests failed${NC}" >&2
 	fi

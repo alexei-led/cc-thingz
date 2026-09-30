@@ -952,3 +952,138 @@ SH
 	[ "$status" -eq 0 ]
 	[ "$(cat uv.args)" = "run --extra test pytest -q --maxfail=1 --tb=short tests/test_foo.py" ]
 }
+
+@test "test-runner: an edit made outside smart-lint tracking is still tested" {
+	mkdir -p bin pkg tests
+	cat >pyproject.toml <<'TOML'
+[project]
+name = "demo"
+version = "0.0.0"
+
+[project.optional-dependencies]
+test = ["pytest"]
+TOML
+	touch pkg/foo.py tests/test_foo.py
+	git add pkg/foo.py tests/test_foo.py pyproject.toml
+	git commit -q -m "initial"
+	cat >bin/uv <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"$PWD/uv.calls"
+SH
+	chmod +x bin/uv
+	write_state s_bash pkg/foo.py
+
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_bash\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	local calls_after_first
+	calls_after_first="$(wc -l <uv.calls)"
+
+	# Simulate an edit made through the Bash tool (sed -i, git apply,
+	# codegen) to a file already tracked by git: the file changes but
+	# smart-lint's extractor never records it, so the session state file
+	# stays empty. The tree fingerprint must still catch this via the
+	# tracked diff and fall back to testing it, not trust the empty state
+	# file as "nothing pending".
+	printf '# edited via bash\n' >>pkg/foo.py
+
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_bash\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(wc -l <uv.calls)" -gt "$calls_after_first" ]
+}
+
+@test "test-runner: a second Stop with truly no changes stays a no-op after the fingerprint fix" {
+	mkdir -p bin pkg tests
+	cat >pyproject.toml <<'TOML'
+[project]
+name = "demo"
+version = "0.0.0"
+
+[project.optional-dependencies]
+test = ["pytest"]
+TOML
+	touch pkg/foo.py tests/test_foo.py
+	cat >bin/uv <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"$PWD/uv.calls"
+SH
+	chmod +x bin/uv
+	write_state s_fp pkg/foo.py
+
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_fp\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	local calls_after_first
+	calls_after_first="$(wc -l <uv.calls)"
+
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_fp\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"no changed code files"* ]]
+	[ "$(wc -l <uv.calls)" -eq "$calls_after_first" ]
+}
+
+@test "test-runner: an invalid TEST_RUNNER_TIMEOUT_SECS falls back to the default" {
+	mkdir -p bin pkg tests
+	cat >pyproject.toml <<'TOML'
+[project]
+name = "demo"
+version = "0.0.0"
+
+[project.optional-dependencies]
+test = ["pytest"]
+TOML
+	touch pkg/foo.py tests/test_foo.py
+	cat >bin/uv <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/uv.args"
+SH
+	chmod +x bin/uv
+	write_state s_bad_a pkg/foo.py
+
+	run env PATH="$WORK_DIR/bin:$PATH" TEST_RUNNER_DEBUG=1 TEST_RUNNER_TIMEOUT_SECS=abc HOOK_INPUT_JSON="{\"session_id\":\"s_bad_a\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"TEST_RUNNER_TIMEOUT_SECS=90"* ]]
+	[ "$(cat uv.args)" = "run --extra test pytest -q --maxfail=1 --tb=short tests/test_foo.py" ]
+
+	write_state s_bad_b pkg/foo.py
+	run env PATH="$WORK_DIR/bin:$PATH" TEST_RUNNER_DEBUG=1 TEST_RUNNER_TIMEOUT_SECS=1.5 HOOK_INPUT_JSON="{\"session_id\":\"s_bad_b\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"TEST_RUNNER_TIMEOUT_SECS=90"* ]]
+}
+
+@test "test-runner: TEST_RUNNER_TIMEOUT_SECS is clamped to [1, 110]" {
+	mkdir -p bin pkg
+	touch pkg/foo.go
+	cat >bin/go <<'SH'
+#!/usr/bin/env bash
+exit 0
+SH
+	chmod +x bin/go
+	write_state s_clamp_low pkg/foo.go
+
+	run env PATH="$WORK_DIR/bin:$PATH" TEST_RUNNER_DEBUG=1 TEST_RUNNER_TIMEOUT_SECS=0 HOOK_INPUT_JSON="{\"session_id\":\"s_clamp_low\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"TEST_RUNNER_TIMEOUT_SECS=1"* ]]
+
+	write_state s_clamp_high pkg/foo.go
+	run env PATH="$WORK_DIR/bin:$PATH" TEST_RUNNER_DEBUG=1 TEST_RUNNER_TIMEOUT_SECS=500 HOOK_INPUT_JSON="{\"session_id\":\"s_clamp_high\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"TEST_RUNNER_TIMEOUT_SECS=110"* ]]
+}
+
+@test "test-runner: pending state survives a timeout so the file is retried" {
+	mkdir -p bin pkg
+	touch pkg/foo.go
+	cat >bin/go <<SH
+#!/usr/bin/env bash
+sleep 30
+SH
+	chmod +x bin/go
+	write_state s_keep pkg/foo.go
+
+	run env PATH="$WORK_DIR/bin:$PATH" TEST_RUNNER_TIMEOUT_SECS=1 HOOK_INPUT_JSON="{\"session_id\":\"s_keep\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"skipped: timeout"* ]]
+
+	state_path=$(git rev-parse --git-path "cc-thingz/hook-files-s_keep")
+	[ -s "$state_path" ]
+	[ "$(cat "$state_path")" = "pkg/foo.go" ]
+}

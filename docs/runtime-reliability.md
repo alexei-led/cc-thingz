@@ -17,7 +17,9 @@ in the run. A command that would exceed it is killed, along with any children
 it spawned, and reported as `skipped: timeout` rather than left to hang until
 the harness force-kills the hook with no output. A Stop with nothing new to
 test (no state since the last run, an unchanged working tree) exits immediately
-instead of re-running the same tests.
+instead of re-running the same tests. The kill targets the test command's
+process group; a process that detaches into its own session (`setsid`, a
+Gradle daemon left running in the background) is not reached by it.
 
 JavaScript and TypeScript tooling is selected without per-tool environment flags.
 Project configs and package declarations win. Without them, smart-lint uses the
