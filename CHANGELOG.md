@@ -8,6 +8,25 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.17.0] - 2026-09-30
+
+Skill evals gain a second, agentic harness (`claude plugin eval`: real tool
+use, with/without-plugin delta) alongside the existing single-turn one,
+piloted on `using-git-worktrees`.
+
+### Fixed
+
+- `using-git-worktrees` now fires for "remove this worktree and its branch"
+  cleanup requests, not just creation — the routing description previously
+  never mentioned removal, even though the skill has a full cleanup section.
+
+### Added
+
+- `claude plugin eval` agentic eval harness: `scripts/evals/prepare-plugin-evals.py`,
+  `make plugin-evals[-prepare]`. Piloted on `using-git-worktrees` (4 cases);
+  see `docs/skill-evals.md` for the harness layout and the pilot's
+  with/without results.
+
 ## [6.16.0] - 2026-09-30
 
 git-guardrails closes two bypasses, and smart-lint and test-runner stop
@@ -183,7 +202,6 @@ Release preparation, notes, and publication now follow one reviewed process.
 
 ## [6.12.0] - 2026-09-24
 
-
 ### Added
 
 - `documenting-code` has two modes: Update, for docs that a code change made
@@ -215,7 +233,6 @@ Release preparation, notes, and publication now follow one reviewed process.
   git repositories.
 
 ## [6.11.2] - 2026-09-15
-
 
 ### Fixed
 
@@ -335,7 +352,6 @@ Release preparation, notes, and publication now follow one reviewed process.
   by default. See `docs/runtime-reliability.md` for upgrade settings and limits.
 
 ## [6.8.13] - 2026-09-08
-
 
 ### Fixed
 
