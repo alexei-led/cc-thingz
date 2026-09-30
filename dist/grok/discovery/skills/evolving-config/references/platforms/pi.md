@@ -63,16 +63,16 @@ Pi connects to MCP servers over stdio or streamable HTTP as a built-in extension
   `!command` must be the whole field value — `"Bearer !cmd"` is sent
   literally, not run and substituted; the command itself has to print
   `Bearer <token>`.
-- `exposure` controls how a server's tools reach the model; default is
-  `codemode`. `codemode`, `codemode-deferred`, and `deferred` tools are all
-  still callable — codemode scripts can call any of them, and `tool_search`
-  can load any of them — they are just not *declared* to the model up front.
-  Only `hidden` makes a tool actually uncallable. Recommend `hidden` (at the
-  server level, or per tool via `toolExposure`, e.g. `"delete_*": "hidden"`)
-  for tools that must not run at all; `direct` vs. the other exposures is a
-  context-budget choice, not a safety one. `autoEnableCodemode: false` at the
-  top level of `mcp.json` stops Pi from auto-activating `codemode` for a
-  connected server.
+- `exposure` controls how a server's tools reach the model. Recommend
+  `codemode` (the default): the server's tools stay callable from codemode
+  scripts without being declared to the model up front. `codemode`,
+  `codemode-deferred`, and `deferred` are all equally callable this way —
+  codemode scripts can call any of them, and `tool_search` can load any of
+  them; they only differ in how much is described to the model in advance.
+  Only `hidden` actually makes a tool uncallable — use it, at the server
+  level or per tool via `toolExposure` (e.g. `"delete_*": "hidden"`), for
+  tools that must never run. `autoEnableCodemode: false` at the top level of
+  `mcp.json` stops Pi from auto-activating `codemode` for a connected server.
 - OAuth tokens are stored in `~/.pi/agent/mcp-auth.json`; never quote its
   contents. `pi mcp remove` deletes the server entry but leaves its stored
   OAuth tokens in `mcp-auth.json` — sign out (`/mcp` or `pi mcp logout`)
@@ -95,10 +95,7 @@ Pi connects to MCP servers over stdio or streamable HTTP as a built-in extension
   user setting); `pi config` lists it under Built-in. An installed extension
   that registers `/mcp` (for example `pi-mcp-adapter`) replaces the built-in
   support — Pi then ignores `mcp.json` in sessions entirely, and v0.99.0
-  (#10174) added a startup warning for this case. `pi mcp` shell commands
-  always use the built-in support regardless, so `pi mcp list` can report
-  servers a running session will never actually load while such an adapter
-  is installed — check for both.
+  (#10174) added a startup warning for this case.
 - `defaultTools` accepts `+codemode` / `+tool_search` to keep those tools active
   without an MCP server, and `-name` to remove a default tool; plain entries
   replace the whole default list.
