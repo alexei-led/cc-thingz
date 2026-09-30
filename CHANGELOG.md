@@ -8,6 +8,49 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.16.0] - 2026-09-30
+
+git-guardrails closes two bypasses, and smart-lint and test-runner stop
+hanging or blocking on unrelated files. Every skill now has an eval.
+
+### Fixed
+
+- `git-guardrails` blocks destructive git spelled in another case
+  (`GIT reset --hard`, `/usr/bin/GIT`), which macOS runs as the real git,
+  and behind ANSI-C quoting (`$'git' reset --hard`).
+- `smart-lint` skips edits to files outside the project instead of
+  blocking them with errors from unrelated files; those edits take under a
+  second instead of up to a minute.
+- `smart-lint` stops each linter after 30 s
+  (`SMART_LINT_CMD_TIMEOUT_SECONDS`) and the hook after 100 s, including
+  child processes. A timeout is reported, not blocked. Both fixes need
+  python3; without it, smart-lint behaves as before.
+- `test-runner` stops rerunning the same tests on every Stop, still tests
+  files changed by shell commands, and ends a hung run after 90 s
+  (`TEST_RUNNER_TIMEOUT_SECS`) instead of hitting the hook timeout.
+
+### Changed
+
+- `brainstorming-ideas`: grill mode starts with the riskiest step of a
+  plan and asks one question at a time.
+- `operating-infra`: overlapping confirmation rules merged, every apply,
+  rollback, and authorization rule kept. A background run never applies.
+- `writing-csharp`, `writing-java-kotlin`: focused on rules models miss:
+  check the language version first, ask before toolchain changes, and keep
+  ORM entities out of APIs. Java and Kotlin also ask before preview
+  features.
+- `evolving-config` covers Pi's built-in MCP (v0.99+): server config
+  files, secrets, `codemode` exposure, project trust, and servers that
+  extensions register.
+- Skill evals cover all 27 skills (106 cases).
+- The pre-push hook runs a fast subset (about 30 s). Run `make ci` for
+  the full suite.
+
+### Removed
+
+- The Codex `advisor` agent profile; it remains for Pi. Codex users can
+  delete a leftover `~/.codex/agents/advisor.toml`.
+
 ## [6.15.0] - 2026-09-29
 
 Hooks now stay out of the way: faster, with fewer false blocks. The skill set
