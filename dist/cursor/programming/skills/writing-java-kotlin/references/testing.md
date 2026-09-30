@@ -9,9 +9,6 @@ Use the project's test stack (JUnit 5, Kotest, TestNG, Mockito, MockK, AssertJ);
 ./mvnw -q -Dtest=FooTest test
 ```
 
-- Edit loop: one module and matching test class. Run the broader suite when the change crosses modules, build logic, serialization contracts, or framework wiring.
-- Spring HTTP behavior: the project's existing slice or integration harness. Keep Spring context startup and Testcontainers out of unit tests unless behavior needs real wiring.
+- Edit loop: one module and matching test class; run the broader suite when the change crosses modules or build logic.
 - Database code: Testcontainers, a disposable DB, or the project's seam, not mocked query chains.
-- Kotlin coroutines: `kotlinx-coroutines-test` (`runTest` with the test dispatcher's virtual time), never real sleeps.
 - Java concurrency: control executors and synchronize deterministically; assert interrupt and cancellation behavior.
-- Keep coverage, mutation, browser, and end-to-end tiers off the hot path unless they are the task.

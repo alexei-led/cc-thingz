@@ -4,28 +4,21 @@
 
 # Java and Kotlin Development
 
-## Build Baseline
+## Build baseline
 
-- Read the wrapper properties, `settings.gradle*`, `build.gradle*` or `pom.xml`, `gradle.properties`, and CI before using version-specific Java, Kotlin, or plugin behavior.
-- Use `./gradlew` and `./mvnw` when the repo has them, not global `gradle` or `mvn`.
-- The compile target is the configured Java toolchain and Kotlin `jvmToolchain`, not the shell's `JAVA_HOME`.
-- Use a Java or Kotlin language feature only when the configured toolchain, language version, and CI target support it. Preview features need explicit approval and a visible compiler flag.
-- Shared build policy lives in convention plugins, version catalogs, BOMs, or parent POMs; do not copy plugin or version blocks into modules.
+- Read the wrapper properties, `settings.gradle*`/`build.gradle*`/`gradle.properties` or `pom.xml`, and CI before relying on version-specific behavior.
+- Use `./gradlew`/`./mvnw` when the repo has them; scope tests to the changed module (see testing.md).
+- The compile target is the declared Java toolchain and Kotlin `jvmToolchain`, not the shell's `JAVA_HOME`; without one, the running JDK compiles.
+- Toolchain, plugin, and dependency versions live in convention plugins, version catalogs, BOMs, or parent POMs, set once there. Raising the Java or Kotlin toolchain is a project-wide decision: ask, and change it in shared build config, not one module.
+- A request to use a preview feature is not approval to enable it: ask first, name a non-preview fallback, and, once approved, add `--enable-preview` to the build's compile and run/test tasks, not a local flag. Previews can be withdrawn between JDKs: string templates were withdrawn in JDK 23.
+- Wire coverage, mutation, or other heavy analysis as its own task or under `check`; never make `test` depend on or be finalized by the report, which would still run it on every plain `test`. Use a separate command or CI step, even when adding it is the task.
 
 ## Defaults
 
-- JDK, Kotlin stdlib, and existing dependencies first. Avoid new reflection-heavy or bytecode-weaving tools.
-- Kotlin: structured coroutines only, never `GlobalScope`; pass scopes or suspend through the chain.
-- Kotlin: handle Java platform types at the boundary instead of not-null assertions (`!!`).
-- Java: virtual threads for blocking I/O only, not CPU-bound work. Never swallow `InterruptedException`; restore the flag or propagate.
-- Keep blocking calls off event-loop and coroutine dispatcher threads unless the framework allows it.
-- Constructor injection. No static state for config, clocks, clients, executors, or scopes.
-- Do not leak JPA entities, ORM sessions, or generated API models through domain interfaces. Keep transactions explicit and near the use case; watch lazy loading across API boundaries.
-- Kotlin APIs called from Java: explicit nullability, and `@JvmStatic`/`@JvmOverloads` only where call sites benefit.
-
-## CLIs
-
-Use the existing stack (picocli, Clikt, plain `main`). Keep `main` thin, test through the command entrypoint with captured stdout, stderr, and exit code, and close executors, pools, and dispatchers the process owns.
+- Kotlin: structured concurrency only — no `GlobalScope`; pass a `coroutineScope` or an injected scope through the call chain. Test coroutine code with `kotlinx-coroutines-test`'s `runTest`, not `runBlocking` or real delays. Keep blocking calls off event-loop and coroutine dispatcher threads unless the framework allows it.
+- Kotlin: resolve nullable Java platform types at the boundary instead of asserting past them with `!!`.
+- Java: say outright when virtual threads help (blocking I/O) versus don't (CPU-bound work); size CPU-bound work to a bounded pool near the processor count or a parallel stream. Never swallow `InterruptedException` — restore the flag or propagate it. No static state for config, clocks, clients, executors, or scopes.
+- Don't leak JPA entities, ORM sessions, or generated API models through domain interfaces; map to a DTO while the transaction is open, loading what it needs (fetch join or entity graph) instead of keeping the session open via `spring.jpa.open-in-view`.
 
 ## References
 
