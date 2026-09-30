@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import importlib.util
+import io
 import json
 import os
+import select
 import subprocess
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
@@ -18,6 +22,14 @@ HOOK = (
     / "session-start"
     / "hook.py"
 )
+
+
+def _load_hook_module():
+    spec = importlib.util.spec_from_file_location("session_start_hook", HOOK)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def _run(payload: dict | None, cwd: Path | None = None) -> tuple[int, str, str]:
@@ -76,7 +88,15 @@ def test_ignores_legacy_feature_list(tmp_path: Path) -> None:
     assert out == ""
 
 
-def test_spec_project_reports_status_and_ready_tasks(tmp_path: Path) -> None:
+def test_spec_project_reports_status_and_ready_tasks(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    # In-process with a generous test-only specctl timeout, decoupled from
+    # hook.py's real 3s production ceiling: under CPU load, scheduling delay
+    # alone can eat that whole budget before this trivial mock even runs,
+    # which has nothing to do with the JSON-formatting behavior under test.
+    hook = _load_hook_module()
+    monkeypatch.setattr(hook, "SPECCTL_TIMEOUT_SECONDS", 30)
     (tmp_path / ".spec").mkdir()
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
@@ -90,18 +110,15 @@ def test_spec_project_reports_status_and_ready_tasks(tmp_path: Path) -> None:
         "esac\n"
     )
     specctl.chmod(0o755)
-    env = os.environ.copy()
-    env["PATH"] = f"{bin_dir}:/usr/bin:/bin"
-    proc = subprocess.run(
-        [sys.executable, str(HOOK)],
-        input=json.dumps({"cwd": str(tmp_path)}),
-        capture_output=True,
-        text=True,
-        env=env,
-        timeout=60,
+    monkeypatch.setenv("PATH", f"{bin_dir}:/usr/bin:/bin")
+    monkeypatch.setattr(
+        hook.sys, "stdin", io.StringIO(json.dumps({"cwd": str(tmp_path)}))
     )
-    assert proc.returncode == 0
-    assert proc.stdout.splitlines() == [
+
+    code = hook.main()
+
+    assert code == 0
+    assert capsys.readouterr().out.splitlines() == [
         "Spec-driven project (.spec/)",
         "Tasks: 1/3 done, 1 in progress",
         "Ready:",
@@ -109,36 +126,56 @@ def test_spec_project_reports_status_and_ready_tasks(tmp_path: Path) -> None:
     ]
 
 
-def test_specctl_queries_run_concurrently(tmp_path: Path) -> None:
-    """Sequential calls could exceed the 5 s hook timeout under load."""
+def test_specctl_queries_run_concurrently(tmp_path: Path, monkeypatch) -> None:
+    """Sequential calls could exceed the 5 s hook timeout under load.
+
+    Proves concurrency structurally instead of via a wall-clock overlap
+    window: each specctl invocation blocks until released, so all 3 must be
+    in flight simultaneously before any of them can complete. A timestamp/
+    sleep overlap check can't survive CPU load or xdist parallelism, which
+    can add several seconds of pure process-scheduling latency to a single
+    call regardless of whether hook.py's dispatch is sequential or concurrent.
+    """
+    hook = _load_hook_module()
+    arrival_deadline_sec = 30
+    # Must clear the arrival deadline: a shorter timeout would let a
+    # sequential implementation "pass" by arriving, getting killed, arriving
+    # again, and so on for each of the 3 calls in turn, all before the
+    # deadline fires — hiding exactly the bug this test exists to catch.
+    monkeypatch.setattr(hook, "SPECCTL_TIMEOUT_SECONDS", arrival_deadline_sec * 2)
     (tmp_path / ".spec").mkdir()
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
-    log = tmp_path / "calls.log"
+    arrived_dir = tmp_path / "arrived"
+    arrived_dir.mkdir()
+    release = tmp_path / "release"
     specctl = bin_dir / "specctl"
     specctl.write_text(
         "#!/bin/sh\n"
-        f'echo "start $(date +%s.%N)" >> "{log}"\n'
-        "sleep 1\n"
-        f'echo "end $(date +%s.%N)" >> "{log}"\n'
+        f'touch "{arrived_dir}/$1"\n'
+        f'while [ ! -f "{release}" ]; do sleep 0.1; done\n'
         "echo '{}'\n"
     )
     specctl.chmod(0o755)
-    env = os.environ.copy()
-    env["PATH"] = f"{bin_dir}:/usr/bin:/bin"
-    subprocess.run(
-        [sys.executable, str(HOOK)],
-        input=json.dumps({"cwd": str(tmp_path)}),
-        capture_output=True,
-        text=True,
-        env=env,
-        timeout=60,
-    )
-    events = [line.split() for line in log.read_text().splitlines()]
-    starts = [float(t) for kind, t in events if kind == "start"]
-    ends = [float(t) for kind, t in events if kind == "end"]
-    assert len(starts) == 3
-    assert max(starts) < min(ends)
+    monkeypatch.setenv("PATH", f"{bin_dir}:/usr/bin:/bin")
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(hook._show_spec_project, tmp_path)
+        try:
+            deadline = time.monotonic() + arrival_deadline_sec
+            arrived: set[str] = set()
+            while time.monotonic() < deadline:
+                arrived = {p.name for p in arrived_dir.iterdir()}
+                if arrived == {"status", "session", "ready"}:
+                    break
+                time.sleep(0.1)
+            assert arrived == {"status", "session", "ready"}, (
+                f"only {arrived or 'none'} arrived within {arrival_deadline_sec}s "
+                "— dispatch looks sequential, not concurrent"
+            )
+        finally:
+            release.touch()
+            future.result(timeout=arrival_deadline_sec)
 
 
 def test_spec_branch_skipped_without_specctl(tmp_path: Path) -> None:
@@ -200,7 +237,14 @@ def test_start_preserves_global_artifacts(tmp_path, monkeypatch, pi_runtime):
 def test_stdout_reaches_eof_promptly(tmp_path: Path) -> None:
     """End-to-end smoke: a caller reading stdout to EOF must not block on the
     detached cleanup subprocess. Pre-fix (os.fork()), the child inherited the
-    stdout pipe and this would hang past the timeout."""
+    stdout pipe and this would hang past the timeout.
+
+    Measures from the hook process's own exit, not overall wall-clock: once
+    the parent has exited, EOF on its stdout pipe depends only on kernel
+    file-descriptor state (whether a detached child still holds the write end
+    open), not on anything that needs to be scheduled — so a short bound
+    holds under any CPU load, unlike a fixed bound on the whole run.
+    """
     proc = subprocess.Popen(
         [sys.executable, str(HOOK)],
         stdin=subprocess.PIPE,
@@ -209,9 +253,13 @@ def test_stdout_reaches_eof_promptly(tmp_path: Path) -> None:
         text=True,
         cwd=tmp_path,
     )
-    start = time.monotonic()
-    proc.communicate(input=json.dumps({"cwd": str(tmp_path)}), timeout=2)
-    elapsed = time.monotonic() - start
+    proc.stdin.write(json.dumps({"cwd": str(tmp_path)}))
+    proc.stdin.close()
+    proc.wait(timeout=60)
 
     assert proc.returncode == 0
-    assert elapsed < 2
+    # Output is empty for this bare cwd, so reading after wait() can't
+    # deadlock on a full pipe buffer.
+    ready, _, _ = select.select([proc.stdout], [], [], 2)
+    assert ready, "stdout not at EOF within 2s of the hook process exiting"
+    assert proc.stdout.read() == ""
