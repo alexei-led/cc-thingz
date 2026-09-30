@@ -1069,6 +1069,29 @@ SH
 	[[ "$output" == *"TEST_RUNNER_TIMEOUT_SECS=110"* ]]
 }
 
+@test "test-runner: a leading zero in TEST_RUNNER_TIMEOUT_SECS is read as base 10" {
+	mkdir -p bin pkg
+	touch pkg/foo.go
+	cat >bin/go <<'SH'
+#!/usr/bin/env bash
+exit 0
+SH
+	chmod +x bin/go
+	write_state s_octal_a pkg/foo.go
+
+	# Bash arithmetic reads a leading-zero literal as octal, and "008" isn't
+	# even valid octal — without forcing base 10 this would error out
+	# instead of clamping, breaking the timeout budget entirely.
+	run env PATH="$WORK_DIR/bin:$PATH" TEST_RUNNER_DEBUG=1 TEST_RUNNER_TIMEOUT_SECS=008 HOOK_INPUT_JSON="{\"session_id\":\"s_octal_a\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"TEST_RUNNER_TIMEOUT_SECS=8"* ]]
+
+	write_state s_octal_b pkg/foo.go
+	run env PATH="$WORK_DIR/bin:$PATH" TEST_RUNNER_DEBUG=1 TEST_RUNNER_TIMEOUT_SECS=010 HOOK_INPUT_JSON="{\"session_id\":\"s_octal_b\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"TEST_RUNNER_TIMEOUT_SECS=10"* ]]
+}
+
 @test "test-runner: pending state survives a timeout so the file is retried" {
 	mkdir -p bin pkg
 	touch pkg/foo.go

@@ -28,6 +28,11 @@ TEST_RUNNER_TIMEOUT_SECS="${TEST_RUNNER_TIMEOUT_SECS:-90}"
 case "$TEST_RUNNER_TIMEOUT_SECS" in
 '' | *[!0-9]*) TEST_RUNNER_TIMEOUT_SECS=90 ;;
 esac
+# Force base-10: a digits-only value with a leading zero (e.g. "008") is
+# otherwise read as octal by bash arithmetic, and "008" isn't even valid
+# octal, so the -lt/-gt comparisons below would error out instead of
+# clamping.
+TEST_RUNNER_TIMEOUT_SECS=$((10#$TEST_RUNNER_TIMEOUT_SECS))
 [[ "$TEST_RUNNER_TIMEOUT_SECS" -lt 1 ]] && TEST_RUNNER_TIMEOUT_SECS=1
 [[ "$TEST_RUNNER_TIMEOUT_SECS" -gt 110 ]] && TEST_RUNNER_TIMEOUT_SECS=110
 TEST_RUNNER_COMPACT_LINES=120
@@ -239,10 +244,23 @@ is_subagent_child() {
 # file that keeps its name is the one gap this doesn't catch — narrower
 # than the pre-fix state, where an empty session state silently skipped
 # every such edit for the rest of the session.
+#
+# No --binary: a changed binary blob still changes the diff's "index
+# old..new" line, so the fingerprint still moves, at a fraction of the
+# cost (--binary was ~8x slower against a 20MB blob). --no-ext-diff avoids
+# running a project's configured external diff driver, which could be
+# arbitrarily expensive or have side effects.
+#
+# Known limits: this runs a full `git diff HEAD` on most Stops (roughly
+# 120ms per 100k changed lines on a typical repo) — cheap next to a real
+# test command, but not free. And it's a snapshot taken once per Stop: an
+# edit made by something else while the hook itself is still running (rare)
+# can get folded into the "last tested" fingerprint instead of triggering a
+# retest on the next Stop.
 tree_fingerprint() {
 	git rev-parse --git-dir >/dev/null 2>&1 || return 1
 	{
-		git diff --binary --no-ext-diff HEAD 2>/dev/null || true
+		git diff --no-ext-diff HEAD 2>/dev/null || true
 		git ls-files --others --exclude-standard 2>/dev/null | sort
 	} | cksum 2>/dev/null
 }
