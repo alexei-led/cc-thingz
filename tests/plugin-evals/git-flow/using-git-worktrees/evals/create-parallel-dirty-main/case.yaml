@@ -1,0 +1,46 @@
+schema_version: "1.0"
+name: create-parallel-dirty-main
+description: |
+  Start isolated parallel work while main stays dirty and under review — the skill's core "Create" flow, with an uncommitted change it must not touch.
+tags:
+  - git-flow
+  - using-git-worktrees
+  - create
+  - fire
+runs: 3
+expected_outcome: fire
+context:
+  scaffold_script: scaffold.sh
+execution:
+  max_turns: 20
+  timeout_seconds: 600
+  allowed_tools:
+    - Bash
+  prompt: |
+    I'm on main and mid-review of a teammate's PR here, so I can't touch
+    anything in this worktree right now. I need to start a risky refactor
+    on a new branch called `feature/auth`, in parallel, without disturbing
+    what's currently checked out. Set it up.
+graders:
+  - name: skill-fired
+    type: tool_used
+    tool: Skill
+    input_match: using-git-worktrees
+  - name: did-not-stash-the-dirty-change
+    type: tool_used
+    tool: Bash
+    input_match: git stash
+    min: 0
+    max: 0
+    weight: 1
+  - name: worktree-created-and-explained
+    type: llm
+    focus: trace
+    criteria: |
+      The transcript shows a `git worktree add` (directly or via setup-worktree.sh) that actually succeeded for branch feature/auth — not just a proposed command — and the final response tells the user where the new worktree lives and that main was left untouched.
+    weight: 1
+  - name: mentions-cleanup-after-merge
+    type: llm
+    criteria: |
+      The final response mentions removing the feature/auth worktree and branch once its PR merges.
+    weight: 0.5

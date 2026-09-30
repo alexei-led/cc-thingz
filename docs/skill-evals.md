@@ -253,6 +253,127 @@ Use advisory mode locally when you want the same behavior:
 make skill-evals SKILL_EVAL_STRICT=0
 ```
 
+## Agentic evals (`claude plugin eval`)
+
+The single-turn harness above (`make skill-evals`, `agent-skills-eval`) grades what a
+model _says_ it would do, with no tools. `claude plugin eval` runs a real Claude Code
+agent — tools, multi-turn, an optional no-plugin baseline arm, and a `tool_used: Skill`
+grader that shows whether the skill actually fired. See `claude plugin eval --help` for
+the full flag reference. It's a different, complementary signal, not a replacement —
+`make skill-evals` stays the cheap cross-model check.
+
+### Layout
+
+Like the single-turn harness, fixtures never ship inside a built plugin. Store them
+under `tests/plugin-evals/<package>/<skill>/evals/<case>/`:
+
+```text
+tests/plugin-evals/git-flow/using-git-worktrees/evals/smoke/
+├── prompt.md          # frontmatter: max_turns, allowed_tools; body is the task
+└── graders/
+    └── criteria.md    # frontmatter: type (llm), weight; body is the rubric
+```
+
+`<package>` and `<skill>` must match a compiled `dist/claude/<package>/skills/<skill>/`
+directory. Use `claude plugin eval init --bare <name>` (from any plugin folder) to see
+the exact frontmatter shape before hand-writing a case.
+
+### Running it
+
+```bash
+make plugin-evals-prepare PLUGIN_EVAL_PACKAGE=git-flow   # free: copies dist/claude/<package>,
+                                                           # layers evals/ from tests/plugin-evals/
+make plugin-evals PLUGIN_EVAL_PACKAGE=git-flow            # paid: claude plugin eval against the copy
+```
+
+`scripts/evals/prepare-plugin-evals.py --package <name> --out <dir>` copies the built
+plugin into an owned scratch tree (same ownership-marker safety model as
+`prepare-skill-evals.py`) and injects the matching fixtures — this is what keeps eval
+prompts and graders out of `dist/` and out of released plugin packages. Run
+`--inventory` to see which packages/skills currently have fixtures without writing
+anything.
+
+`make plugin-evals` always sets `--max-cost-usd` (`PLUGIN_EVAL_MAX_COST`, default
+`1.00`) and `--ablation with-without`; pass `EXTRA_ARGS='--case ... --runs ...'` to
+narrow a run. One package per targeted run, with a fresh `PLUGIN_EVAL_ROOT` when
+comparing before/after — `claude plugin eval`'s own `--json`/`--report` flags cover
+report output.
+
+### Status
+
+Pilot only, as of v6.17.0 planning. The harness plumbing (prepare script, make
+targets) is built.
+
+`git-flow/using-git-worktrees` (a scripted skill) has a 4-case suite —
+`create-parallel-dirty-main`, `cleanup-after-merge-no-gh`,
+`conflict-branch-checked-out-elsewhere` (fire), `simple-branch-switch-no-worktree`
+(should-NOT-fire) — sourced from the existing `tests/skill-evals` cases and
+rewritten for live tool use, each with a `context.scaffold_script` that stands up a
+throwaway git repo. Paid-piloted across several `--runs 1 --ablation none` calibration rounds
+(~$3.38 total so far); `runs: 3 --ablation with-without` (the real suite) is
+running as of this writing.
+
+Calibration found, in order:
+
+1. Every `tool_used` grader using `max: 0` needs an explicit `min: 0` — the schema
+   defaults `min` to 1, so an unset `min` alongside `max: 0` asserts an impossible
+   `1..0` range and always fails regardless of behavior. Fixed in all three
+   affected graders.
+2. `Skill` is not implicitly grantable — a run needs `--allow-tools Bash,Skill`
+   explicitly, or `Skill` calls get denied under `dontAsk` permission mode.
+3. `execution.env` in `case.yaml` only accepts `EVAL_*`-prefixed keys — a case
+   cannot set `PATH` (or anything else) to route around a broken tool in the
+   sandbox. Tried this to route `git` calls around an `/usr/bin/git` that failed
+   to write its cache in the sandbox on `create-parallel-dirty-main`; reverted
+   rather than fight the boundary, and dropped that case's
+   `ran-setup-script-for-feature-auth` grader (it was checking a literal script
+   invocation the sandbox artifact could legitimately make an agent route around;
+   the case's outcome-based `worktree-created-and-explained` llm grader covers
+   the same ground without depending on exact invocation form).
+4. **Real routing gap, found and fixed.** `cleanup-after-merge-no-gh` scored 0.14
+   twice running: the skill never fired for "remove this worktree and its branch"
+   — the model ran plain `git` directly. Root cause: `using-git-worktrees`'
+   frontmatter `description` only advertised creating worktrees, never mentioned
+   removing one, so the router had no reason to consider it for a cleanup ask even
+   though the skill body already has a whole "Clean up one worktree" section.
+   Fixed the description (now explicitly covers removing one worktree/branch
+   after merge, while still routing bulk/stale sweeps to `cleanup-git`). Rebuilt
+   `dist/` and re-piloted: all 4 cases scored 1.0.
+
+With the routing fix and the dropped grader, `--ablation none` now scores 1.0
+across all four cases — clean, but not discriminating on its own (a suite where
+nothing fails says nothing round-to-round). The `--ablation with-without` pass
+(`--runs 1`, $2.15) is what actually tests the delta, and it splits cleanly:
+
+| case                                    | with | without |       Δ |
+| --------------------------------------- | ---: | ------: | ------: |
+| `cleanup-after-merge-no-gh`             |  1.0 |     0.2 | **0.8** |
+| `conflict-branch-checked-out-elsewhere` |  1.0 |     1.0 |       0 |
+| `create-parallel-dirty-main`            |  1.0 |     1.0 |       0 |
+| `simple-branch-switch-no-worktree`      |  1.0 |     1.0 |       0 |
+
+Real uplift lives entirely in the cleanup flow — without the skill the model still
+attempts cleanup (12 turns) but doesn't reliably reach for `cleanup-worktree.sh`,
+and its gh-confirmation-gap explanation is inconsistent (2/3 judge votes fail).
+The create flow and the negative case show **zero** measured lift: a capable
+model already sets up a worktree correctly, and already avoids creating one for a
+plain branch switch, with no skill guidance at all. This is `runs: 1` (noise
+unmeasured — the 0/0/0 deltas could firm up or wobble at `runs: 3`), but the
+0.8 vs. flat-0 split is a clean early read: this skill's value concentrates in
+one specific procedural rule (use the bundled cleanup script; confirm the merge;
+be careful with `--force`), not in general worktree know-how. Relevant input for
+the later slim/hillclimb pass once the harness covers more skills.
+
+Running total spent across all calibration rounds so far: **~$5.53**.
+
+`dev-flow/reviewing-code` (a knowledge skill, most-used per `usage-report.md`) has
+no suite yet. The plan was to source it from real session transcripts, but that
+scan was blocked outright by this environment's permission classifier (bulk reads
+of personal transcript content, flagged as PII handling) — not narrowed, not
+retried through another tool. Next attempt reframes the existing
+`tests/skill-evals/dev-flow/reviewing-code` cases the same way `using-git-worktrees`
+was done, instead of live transcripts.
+
 ## Offline hook routing probes
 
 Measure skill-enforcer suggestions against curated English/Russian prompts without

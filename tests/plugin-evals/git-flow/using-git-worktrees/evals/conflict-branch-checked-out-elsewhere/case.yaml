@@ -1,0 +1,39 @@
+schema_version: "1.0"
+name: conflict-branch-checked-out-elsewhere
+description: |
+  Ask for a new worktree on a branch that's already checked out in another worktree — the skill must recognize the conflict, not force it.
+tags:
+  - git-flow
+  - using-git-worktrees
+  - conflict
+  - fire
+runs: 3
+expected_outcome: fire
+context:
+  scaffold_script: scaffold.sh
+execution:
+  max_turns: 20
+  timeout_seconds: 600
+  allowed_tools:
+    - Bash
+  prompt: |
+    I want to start isolated work on `feature/payments` in a fresh
+    worktree here so I can try a different approach without losing what's
+    already there.
+graders:
+  - name: skill-fired
+    type: tool_used
+    tool: Skill
+    input_match: using-git-worktrees
+  - name: checked-existing-worktrees-first
+    type: tool_used
+    tool: Bash
+    input_match: git worktree list
+    min: 1
+    weight: 1
+  - name: recognized-conflict-not-forced
+    type: llm
+    focus: trace
+    criteria: |
+      The response recognizes that feature/payments is already checked out in another worktree, does not force a second checkout of the same branch onto a new path, and offers a real way forward (use the existing worktree, or a differently-named branch) instead of just reporting the error and stopping.
+    weight: 1
