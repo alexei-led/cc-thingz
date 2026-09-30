@@ -39,7 +39,10 @@ hanging or blocking on unrelated files. Every skill now has an eval.
   check the language version first, ask before toolchain changes, and keep
   ORM entities out of APIs. Java and Kotlin also ask before preview
   features.
-- Skill evals cover all 27 skills (105 cases).
+- `evolving-config` covers Pi's built-in MCP (v0.99+): server config
+  files, secrets, `codemode` exposure, project trust, and servers that
+  extensions register.
+- Skill evals cover all 27 skills (106 cases).
 - The pre-push hook runs a fast subset (about 30 s). Run `make ci` for
   the full suite.
 
