@@ -8,6 +8,39 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.18.0] - 2026-10-04
+
+Pi questions now use native dialogs, and idle notifications wait until work
+has settled. The Pi integration is tested against 1.0.2.
+
+### Fixed
+
+- The Bash permission heuristic recognizes `rm -fr`, split recursive flags,
+  `-R`, and `--recursive` without confusing flag-prefix lookalikes. It is
+  still a warning heuristic, not a sandbox.
+- Single-choice questions work in RPC through native `select`. Free text and
+  multiple selections use native input; labels, machine values, custom answers,
+  deduplication, and cancellation are preserved.
+- Idle notifications use `agent_settled`; Stop hooks remain on `agent_end`.
+  Compaction hooks receive the actual `manual`, `threshold`, or `overflow` reason.
+- Async SessionEnd hooks no longer block shutdown. A detached Node supervisor
+  bounds their lifetime and cleans up descendants.
+
+### Changed
+
+- `ask_user_question` is model-only, stays direct in Code Mode-only sessions,
+  and returns answer JSON in model-facing text as well as `details`.
+- Pi guidance distinguishes callable tools, durable workflows, and output
+  protection. Documentation and review references load only for the relevant branch.
+
+### Upgrade
+
+Before upgrading, use Pi 1.0.2 or newer within 1.x; earlier hosts are unsupported.
+Keep `node` on `PATH` for async SessionEnd hooks, or those hooks log an error and
+skip. Call `ask_user_question` directly rather than from Code Mode. Consumers of
+its display text must now parse answer JSON. Reload or restart Pi after updating.
+
+
 ## [6.17.0] - 2026-09-30
 
 Skill evals gain a second, agentic harness (`claude plugin eval`: real tool
