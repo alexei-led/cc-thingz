@@ -2,8 +2,8 @@
 {"description":"Find exact, version-correct library/API/framework docs through one lookup workflow. Use when the user says \"look up docs\", \"how to use\", \"API for\", \"syntax for\", \"examples of\", \"show me the docs\", mentions \"ctx7\"/\"Context7\", passes a `/org/project` library ID, or needs API signatures, config keys, syntax, examples, or versioned docs. NOT for comparisons, current-state or release-behavior questions, best-practice surveys, or recent ecosystem news — use researching-web.","name":"looking-up-docs"}
 ---
 <!-- Pi platform guidance -->
-<!-- Use installed Pi tool names exactly, including extension toolsets such as Task*, Monitor*, and Loop*. -->
-<!-- When available, track work with Task* (`todo` is the fallback), run long or background commands with MonitorCreate, and schedule follow-up with LoopCreate instead of sleep/poll loops. -->
+<!-- Use installed tool names. Discover callable tools before batching independent calls in codemode; model-only UI/orchestration tools must be called directly. -->
+<!-- Prefer direct read for required skill/instruction files when exposed; otherwise use Code Mode only after verifying output protection, not assumed nested-path protection. Code Mode composes calls, not durable workflows or context-mode data processing. Async subagents notify natively: yield rather than poll. -->
 
 
 # Documentation Lookup

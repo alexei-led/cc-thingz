@@ -9,6 +9,8 @@ import { HOOK_RUNNER_INVOKE_CHANNEL } from "../../../src/plugins/pi/extensions/e
 
 const execQueue: Array<{ exitCode: number; stdout: string; stderr: string }> = [];
 const capturedCommands: string[] = [];
+const capturedSpawnOptions: unknown[] = [];
+const capturedExecutables: string[] = [];
 const settingsFiles = new Map<string, string>();
 const commands = new Map<string, { handler: (args: string, ctx: ReturnType<typeof makeCtx>) => Promise<void> }>();
 const bundledHooksConfigPath = `${process.cwd()}/src/plugins/pi/extensions/extensions/hooks.json`;
@@ -112,7 +114,9 @@ const originalPiCodingAgentDir = process.env.PI_CODING_AGENT_DIR;
 let capturedStdin = "";
 
 mock.module("node:child_process", () => ({
-	spawn: (_cmd: string, args: string[]) => {
+	spawn: (_cmd: string, args: string[], options: unknown) => {
+		capturedSpawnOptions.push(options);
+		capturedExecutables.push(_cmd);
 		capturedCommands.push(args.join(" "));
 		const resp = execQueue.shift() ?? { exitCode: 0, stdout: "", stderr: "" };
 		const child = Object.assign(new EventEmitter(), {
@@ -120,9 +124,11 @@ mock.module("node:child_process", () => ({
 				end: (data: string) => {
 					capturedStdin = data;
 				},
+				destroy: () => {},
 			}),
 			stdout: new EventEmitter(),
 			stderr: new EventEmitter(),
+			unref: () => {},
 		});
 		setTimeout(() => {
 			child.stdout.emit("data", Buffer.from(resp.stdout));
@@ -220,6 +226,8 @@ beforeEach(() => {
 	_resetForTesting();
 	execQueue.length = 0;
 	capturedCommands.length = 0;
+	capturedSpawnOptions.length = 0;
+	capturedExecutables.length = 0;
 	settingsFiles.clear();
 	settingsFiles.set(bundledHooksConfigPath, runnerFixtureConfig);
 	if (originalPiCodingAgentDir === undefined) {
@@ -833,6 +841,69 @@ describe("synthetic invoke bridge", () => {
 		} finally {
 			errorSpy.mockRestore();
 		}
+	});
+});
+
+describe("settlement and session lifecycle", () => {
+	it("does not notify at agent_end before a continuation has settled", async () => {
+		await handlers.get("agent_end")!({ messages: [] }, makeCtx());
+		expect(capturedCommands.some((command) => command.includes("notify.sh"))).toBe(false);
+		await handlers.get("agent_settled")!({}, makeCtx());
+		expect(capturedCommands.filter((command) => command.includes("notify.sh"))).toHaveLength(1);
+		expect(JSON.parse(capturedStdin)).toMatchObject({ notification_type: "idle_prompt", message: "Ready for input" });
+	});
+
+	it.each(["manual", "threshold", "overflow"])("passes %s as the real pre/post compaction reason", async (reason) => {
+		settingsFiles.set(
+			bundledHooksConfigPath,
+			JSON.stringify({
+				hooks: {
+					PreCompact: [{ hooks: [{ type: "command", command: "echo pre" }] }],
+					PostCompact: [{ hooks: [{ type: "command", command: "echo post" }] }],
+				},
+			}),
+		);
+		await handlers.get("session_before_compact")!({ reason }, makeCtx());
+		expect(JSON.parse(capturedStdin).trigger).toBe(reason);
+		await handlers.get("session_compact")!({ reason, fromExtension: reason !== "manual" }, makeCtx());
+		expect(JSON.parse(capturedStdin).trigger).toBe(reason);
+	});
+
+	it("dispatches async SessionEnd through an independent, bounded supervisor", async () => {
+		settingsFiles.set(
+			bundledHooksConfigPath,
+			JSON.stringify({
+				hooks: {
+					SessionEnd: [{ hooks: [{ type: "command", command: "echo end", timeout: 5, async: true }] }],
+				},
+			}),
+		);
+		await handlers.get("session_shutdown")!({ reason: "reload" }, makeCtx());
+		expect(capturedExecutables.at(-1)).toBe("node");
+		expect(capturedSpawnOptions.at(-1)).toMatchObject({ detached: true, stdio: ["pipe", "ignore", "ignore"] });
+		const payload = JSON.parse(capturedStdin);
+		expect(payload).toMatchObject({ command: "echo end", timeoutMs: 5000 });
+		expect(JSON.parse(payload.stdinJson)).toMatchObject({ hook_event_name: "SessionEnd", end_reason: "reload" });
+	});
+
+	it.each([0, -1, Infinity, 2 ** 31 / 1000])("does not launch async shutdown hooks with invalid timer %s", async (timeout) => {
+		const { runShutdownHookAsync } = await import("../../../src/plugins/pi/extensions/extensions/hook-runner/dispatch.ts");
+		runShutdownHookAsync({ config: { type: "command", command: "echo end", timeout }, eventName: "SessionEnd", source: "bundled", disabled: false }, "{}");
+		expect(capturedCommands).toEqual([]);
+	});
+
+	it("awaits synchronous SessionEnd normally", async () => {
+		settingsFiles.set(
+			bundledHooksConfigPath,
+			JSON.stringify({
+				hooks: {
+					SessionEnd: [{ hooks: [{ type: "command", command: "echo end", timeout: 5 }] }],
+				},
+			}),
+		);
+		await handlers.get("session_shutdown")!({ reason: "quit" }, makeCtx());
+		expect(capturedCommands.at(-1)).toBe("-c echo end");
+		expect(JSON.parse(capturedStdin)).toMatchObject({ hook_event_name: "SessionEnd", end_reason: "quit" });
 	});
 });
 

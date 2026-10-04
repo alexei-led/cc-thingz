@@ -1,10 +1,10 @@
 import { execFileSync } from "node:child_process";
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it, spyOn } from "bun:test";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { cancelRunningHooks, runHook } from "../../../src/plugins/pi/extensions/extensions/hook-runner/dispatch.ts";
+import { cancelRunningHooks, runHook, runShutdownHookAsync } from "../../../src/plugins/pi/extensions/extensions/hook-runner/dispatch.ts";
 import type { HookEntryRuntime } from "../../../src/plugins/pi/extensions/extensions/hook-runner/types.ts";
 
 function makeEntry(command: string, timeoutSec: number): HookEntryRuntime {
@@ -24,6 +24,74 @@ function isAlive(pid: number): boolean {
 		return false;
 	}
 }
+
+describe("async SessionEnd — independent supervisor", () => {
+	it("survives the launching process exiting and delivers stdin", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "hook-runner-shutdown-"));
+		const output = join(dir, "result");
+		try {
+			const entry = makeEntry(`sleep 2; cat > "${output}.tmp"; mv "${output}.tmp" "${output}"`, 10);
+			const modulePath = join(process.cwd(), "src/plugins/pi/extensions/extensions/hook-runner/dispatch.ts");
+			const code = `import { runShutdownHookAsync } from ${JSON.stringify(modulePath)}; runShutdownHookAsync(${JSON.stringify(entry)}, '{"end_reason":"quit"}');`;
+			execFileSync(process.execPath, ["-e", code], { timeout: 1500 });
+			const deadline = Date.now() + 10000;
+			while (!existsSync(output) && Date.now() < deadline) await Bun.sleep(20);
+			expect(readFileSync(output, "utf8")).toBe('{"end_reason":"quit"}');
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	}, 15000);
+
+	it("reports missing Node without blocking or leaving a hook process", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "hook-runner-no-node-"));
+		const output = join(dir, "unexpected");
+		const originalPath = process.env.PATH;
+		let notified = () => {};
+		const reported = new Promise<void>((resolve) => {
+			notified = resolve;
+		});
+		const errorSpy = spyOn(console, "error").mockImplementation(() => notified());
+		try {
+			process.env.PATH = dir;
+			runShutdownHookAsync(makeEntry(`echo launched > "${output}"`, 2), "{}");
+			await reported;
+			expect(errorSpy).toHaveBeenCalledWith("[hook-runner] Could not start async SessionEnd hook");
+			expect(existsSync(output)).toBe(false);
+		} finally {
+			if (originalPath === undefined) delete process.env.PATH;
+			else process.env.PATH = originalPath;
+			errorSpy.mockRestore();
+			rmSync(dir, { recursive: true, force: true });
+		}
+	}, 5000);
+
+	it("enforces its own timeout and kills SIGTERM-trapping descendants", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "hook-runner-shutdown-tree-"));
+		const pidFile = join(dir, "pid");
+		let pid: number | undefined;
+		try {
+			runShutdownHookAsync(makeEntry(`bash -c 'trap "" TERM; echo $$ > "${pidFile}"; exec sleep 30' & wait`, 3), "{}");
+			const readyDeadline = Date.now() + 2000;
+			while (!existsSync(pidFile) && Date.now() < readyDeadline) await Bun.sleep(10);
+			pid = Number(readFileSync(pidFile, "utf8").trim());
+			expect(pid).toBeGreaterThan(0);
+			const deadline = Date.now() + 7000;
+			while (isAlive(pid) && Date.now() < deadline) await Bun.sleep(20);
+			let status = "";
+			try {
+				status = execFileSync("ps", ["-o", "stat=", "-p", String(pid)], { encoding: "utf8" }).trim();
+			} catch {}
+			expect(status === "" || status.startsWith("Z")).toBe(true);
+		} finally {
+			if (pid && isAlive(pid)) {
+				try {
+					process.kill(pid, "SIGKILL");
+				} catch {}
+			}
+			rmSync(dir, { recursive: true, force: true });
+		}
+	}, 12000);
+});
 
 describe("runHook — real subprocess timeout kill", () => {
 	it("force-kills a SIGTERM-trapping child near the deadline instead of waiting for it to finish", async () => {

@@ -33,9 +33,9 @@ the result matches the code, and every visual renders cleanly.
 Decide the reader before writing.
 
 - **Human**: short, scannable text. Use a diagram, table, or chart when it
-  answers a question faster than prose. Load `references/doc-set.md` for doc
-  roles and outlines, `references/style.md` for language, and
-  `references/visuals.md` for diagrams and charts.
+  answers a question faster than prose. Load `references/doc-set.md` only for
+  doc-set structure or Overhaul mode, `references/style.md` when rewriting prose,
+  and `references/visuals.md` only when changing diagrams or charts.
 - **Agent** (AGENTS.md, CLAUDE.md, skills, prompts): terse operational text with
   headers, bullets, numbered steps, exact contracts, and a table where it is the
   clearest form. No diagrams or rationale that a model already knows. To score
@@ -57,11 +57,11 @@ Decide the reader before writing.
    that the doc is the intended contract.
 4. Write. Keep each fact in one place and link to it from the others. Replace
    adjectives with measured facts.
-5. Check every claim against its source with `references/claims.md`. Generate
-   sample output from the real code. Mark each claim that you cannot confirm,
-   and say where you looked.
-6. Render every new or changed diagram and chart, look at the images, and fix
-   the faults named in `references/visuals.md`.
+5. Check changed claims against their source; use `references/claims.md` for
+   configuration, API, or measured-performance claims. Generate sample output
+   when changing examples. Mark unconfirmed claims and say where you looked.
+6. If visuals changed, load `references/visuals.md`, render them, inspect the
+   images, and fix the faults.
 7. Run the gate once. Run it again only after further edits.
 8. Report with the output contract.
 

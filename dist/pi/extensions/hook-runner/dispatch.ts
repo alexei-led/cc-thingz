@@ -134,6 +134,7 @@ export interface RunHookOptions {
 export const HOOK_OUTPUT_MAX_BYTES = 10 * 1024 * 1024;
 const FALLBACK_PATH = "/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin";
 const KILL_GRACE_MS = 1500;
+const MAX_TIMER_DELAY_MS = 2 ** 31 - 1;
 
 function hookChildEnv(timeoutSec: number): NodeJS.ProcessEnv {
 	const env = { ...process.env };
@@ -242,6 +243,48 @@ export function runHook(entry: HookEntryRuntime, stdinJson: string, optionsOrDef
 	activeHooks.set(cancel, pending);
 	void pending.finally(() => activeHooks.delete(cancel));
 	return pending;
+}
+
+// A shutdown hook cannot borrow timers or UI from the departing runtime.
+// Its detached supervisor owns the timeout and cleans up the whole hook group.
+const SHUTDOWN_SUPERVISOR = `
+const { spawn } = require("node:child_process");
+let input = "";
+process.stdin.setEncoding("utf8");
+process.stdin.on("data", chunk => { input += chunk; });
+process.stdin.on("end", () => {
+  const { command, stdinJson, timeoutMs } = JSON.parse(input);
+  const child = spawn("bash", ["-c", command], { detached: true, stdio: ["pipe", "ignore", "ignore"] });
+  let stopping = false;
+  const signalGroup = signal => { if (child.pid) { try { process.kill(-child.pid, signal); } catch {} } };
+  const stop = () => {
+    if (stopping) return;
+    stopping = true;
+    clearTimeout(deadline);
+    signalGroup("SIGTERM");
+    setTimeout(() => signalGroup("SIGKILL"), ${KILL_GRACE_MS});
+  };
+  const deadline = setTimeout(stop, timeoutMs);
+  child.on("error", stop);
+  child.on("exit", stop);
+  child.stdin.on("error", () => {});
+  child.stdin.end(stdinJson);
+});
+`;
+
+export function runShutdownHookAsync(entry: HookEntryRuntime, stdinJson: string): void {
+	const timeoutSec = entry.config.timeout ?? 30;
+	if (process.platform === "win32" || !Number.isFinite(timeoutSec) || timeoutSec <= 0 || timeoutSec * 1000 > MAX_TIMER_DELAY_MS) return;
+	const supervisor = spawn("node", ["--input-type=commonjs", "-e", SHUTDOWN_SUPERVISOR], {
+		detached: true,
+		env: hookChildEnv(timeoutSec),
+		stdio: ["pipe", "ignore", "ignore"],
+	});
+	supervisor.on("error", () => console.error("[hook-runner] Could not start async SessionEnd hook"));
+	supervisor.stdin.on("error", () => {});
+	supervisor.stdin.on("finish", () => supervisor.stdin.destroy());
+	supervisor.stdin.end(JSON.stringify({ command: entry.config.command, stdinJson, timeoutMs: timeoutSec * 1000 }));
+	supervisor.unref();
 }
 
 export function runHookAsync(

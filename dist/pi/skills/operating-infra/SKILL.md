@@ -2,8 +2,8 @@
 {"description":"Author, inspect, troubleshoot, review, and apply (after explicit confirmation) infrastructure across IaC, Kubernetes, cloud resources, containers, CI/CD, and Linux hosts. Use when changing Terraform/OpenTofu, Kubernetes, Helm, Kustomize, Dockerfiles, GitHub Actions workflow/job/permissions semantics, AWS, GCP, Cloud Run, BigQuery, IAM, logs, instances, or service health, or when the user says \"deploy\", \"deploy to staging\", \"terraform apply\", \"helm upgrade\", \"kubectl apply\", \"rollout\", \"deploy check\", \"validate deployment\", or \"validate infrastructure\". NOT for shell scripts, generic command pipelines, or only the shell body inside `run:` steps (see writing-shell).","name":"operating-infra"}
 ---
 <!-- Pi platform guidance -->
-<!-- Use installed Pi tool names exactly, including extension toolsets such as Task*, Monitor*, and Loop*. -->
-<!-- When available, track work with Task* (`todo` is the fallback), run long or background commands with MonitorCreate, and schedule follow-up with LoopCreate instead of sleep/poll loops. -->
+<!-- Use installed tool names. Discover callable tools before batching independent calls in codemode; model-only UI/orchestration tools must be called directly. -->
+<!-- Prefer direct read for required skill/instruction files when exposed; otherwise use Code Mode only after verifying output protection, not assumed nested-path protection. Code Mode composes calls, not durable workflows or context-mode data processing. Async subagents notify natively: yield rather than poll. -->
 
 
 # Operate Infrastructure

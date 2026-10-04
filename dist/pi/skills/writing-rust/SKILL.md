@@ -2,8 +2,8 @@
 {"description":"Idiomatic Rust development. Use when writing Rust code, Cargo crates/workspaces, Rust tests, or rustfmt/clippy/cargo workflows. Emphasizes ownership, Result errors, small APIs, stdlib-first dependencies, fast cargo feedback, and behavior tests. NOT for Go, Python, TypeScript, shell scripts, or infra-only work.","name":"writing-rust"}
 ---
 <!-- Pi platform guidance -->
-<!-- Use installed Pi tool names exactly, including extension toolsets such as Task*, Monitor*, and Loop*. -->
-<!-- When available, track work with Task* (`todo` is the fallback), run long or background commands with MonitorCreate, and schedule follow-up with LoopCreate instead of sleep/poll loops. -->
+<!-- Use installed tool names. Discover callable tools before batching independent calls in codemode; model-only UI/orchestration tools must be called directly. -->
+<!-- Prefer direct read for required skill/instruction files when exposed; otherwise use Code Mode only after verifying output protection, not assumed nested-path protection. Code Mode composes calls, not durable workflows or context-mode data processing. Async subagents notify natively: yield rather than poll. -->
 
 
 # Rust Development

@@ -2,8 +2,8 @@
 {"description":"Browser automation for rendered UI exploration, validation, screenshots, recordings, and end-to-end flows. Use when a task needs an actual browser or rendered DOM: inspect UI state, click/fill forms, debug frontend behavior, capture evidence, verify a feature, or run/generate browser tests. NOT for API checks or pure logic tests where curl, unit tests, or JSDOM is cheaper.","name":"browser-automation"}
 ---
 <!-- Pi platform guidance -->
-<!-- Use installed Pi tool names exactly, including extension toolsets such as Task*, Monitor*, and Loop*. -->
-<!-- When available, track work with Task* (`todo` is the fallback), run long or background commands with MonitorCreate, and schedule follow-up with LoopCreate instead of sleep/poll loops. -->
+<!-- Use installed tool names. Discover callable tools before batching independent calls in codemode; model-only UI/orchestration tools must be called directly. -->
+<!-- Prefer direct read for required skill/instruction files when exposed; otherwise use Code Mode only after verifying output protection, not assumed nested-path protection. Code Mode composes calls, not durable workflows or context-mode data processing. Async subagents notify natively: yield rather than poll. -->
 
 
 # Browser Automation

@@ -2,8 +2,8 @@
 {"description":"Idiomatic shell development for POSIX sh, Bash, Zsh, Fish, hooks, CI shell steps, and scriptable CLI glue. Use when writing or changing `.sh`, `.bash`, `.zsh`, `.fish`, `.bats`, shell functions, shell pipelines, CI `run:` shell bodies, or command-runner recipes. Emphasizes portability, quoting, safe filesystem/process handling, non-TUI CLI tools, ShellCheck, shfmt, Bats, and ShellSpec. NOT for Python, Rust, TypeScript, Go, web code, or GitHub Actions workflow/job/permissions semantics; use operating-infra.","name":"writing-shell"}
 ---
 <!-- Pi platform guidance -->
-<!-- Use installed Pi tool names exactly, including extension toolsets such as Task*, Monitor*, and Loop*. -->
-<!-- When available, track work with Task* (`todo` is the fallback), run long or background commands with MonitorCreate, and schedule follow-up with LoopCreate instead of sleep/poll loops. -->
+<!-- Use installed tool names. Discover callable tools before batching independent calls in codemode; model-only UI/orchestration tools must be called directly. -->
+<!-- Prefer direct read for required skill/instruction files when exposed; otherwise use Code Mode only after verifying output protection, not assumed nested-path protection. Code Mode composes calls, not durable workflows or context-mode data processing. Async subagents notify natively: yield rather than poll. -->
 
 
 # Shell Development

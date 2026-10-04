@@ -11,11 +11,6 @@ mock.module("typebox", () => ({
 	},
 }));
 mock.module("@earendil-works/pi-coding-agent", () => ({}));
-mock.module("@earendil-works/pi-tui", () => ({
-	Key: { down: "down", enter: "enter", escape: "escape", up: "up" },
-	matchesKey: (data: string, key: string) => data === key,
-	truncateToWidth: (value: string, width: number) => value.slice(0, width),
-}));
 
 const { default: askUserQuestion, parseMultiSelect, wrapQuestionText } = await import("../../src/plugins/pi/extensions/extensions/ask-user-question.ts");
 
@@ -47,7 +42,7 @@ describe("selection UI", () => {
 			},
 		} as any);
 
-		let rendered = "";
+		const select = mock(async () => "1. Yes");
 		const result = await registeredTool.execute(
 			"tool-call-id",
 			{
@@ -67,30 +62,14 @@ describe("selection UI", () => {
 			undefined,
 			{
 				hasUI: true,
-				ui: {
-					custom: async (factory: any) => {
-						let selected: number | undefined;
-						const component = factory(
-							{ requestRender() {} },
-							{
-								fg: (_name: string, value: string) => value,
-								bold: (value: string) => value,
-							},
-							{},
-							(value: number | undefined) => {
-								selected = value;
-							},
-						);
-						rendered = component.render(60).join("\n");
-						component.handleInput("enter");
-						return selected;
-					},
-				},
+				mode: "rpc",
+				ui: { select },
 			},
 		);
 
-		expect(rendered).toContain("1. Yes");
-		expect(rendered).toContain("2. No");
+		expect(select).toHaveBeenCalledWith(expect.stringContaining("Decision"), ["1. Yes", "2. No"], expect.anything());
+		expect(registeredTool.exposure).toBe("model-only");
+		expect(result.content[0].text).toContain('"value":"yes"');
 		expect(result.details.answers[0].answers).toEqual([{ label: "Yes", value: "yes", source: "option" }]);
 	});
 
@@ -124,8 +103,8 @@ describe("selection UI", () => {
 			{
 				hasUI: true,
 				ui: {
-					editor: async (_title: string, value: string) => {
-						prompt = value;
+					input: async (title: string) => {
+						prompt = title;
 						return "1,2";
 					},
 				},
@@ -139,6 +118,110 @@ describe("selection UI", () => {
 			{ label: "Yes", value: "yes", source: "option" },
 			{ label: "No", value: "no", source: "option" },
 		]);
+	});
+});
+
+describe("native question flow", () => {
+	function tool() {
+		let registered: any;
+		askUserQuestion({
+			registerTool: (value: any) => {
+				registered = value;
+			},
+		} as any);
+		return registered;
+	}
+
+	it("keeps duplicate labels and the Other label distinct", async () => {
+		const registered = tool();
+		const select = mock(async () => "2. Same — second");
+		const result = await registered.execute(
+			"id",
+			{
+				questions: [
+					{
+						question: "Pick",
+						options: [
+							{ label: "Same", description: "first", value: "a" },
+							{ label: "Same", description: "second", value: "b" },
+						],
+					},
+				],
+			},
+			undefined,
+			undefined,
+			{ hasUI: true, mode: "rpc", ui: { select } },
+		);
+		expect(result.details.answers[0].answers).toEqual([{ label: "Same", value: "b", source: "option" }]);
+	});
+
+	it.each([undefined, "unexpected"])("stops sequential questions on a cancelled or invalid selection: %s", async (selection) => {
+		const registered = tool();
+		const select = mock(async () => selection);
+		const result = await registered.execute(
+			"id",
+			{
+				questions: [
+					{ question: "First", options: OPTIONS },
+					{ question: "Second", options: OPTIONS },
+				],
+			},
+			undefined,
+			undefined,
+			{ hasUI: true, ui: { select } },
+		);
+		expect(result.details.cancelled).toBe(true);
+		expect(select).toHaveBeenCalledTimes(1);
+	});
+
+	it.each(["  custom value  ", "", undefined])("uses native input for Other and preserves cancellation: %s", async (inputValue) => {
+		const registered = tool();
+		const signal = new AbortController().signal;
+		const input = mock(async () => inputValue);
+		const result = await registered.execute("id", { questions: [{ question: "Pick", options: [{ label: "Only" }] }] }, signal, undefined, {
+			hasUI: true,
+			mode: "rpc",
+			ui: { select: async () => "2. Other / type something", input },
+		});
+		expect(input).toHaveBeenCalledWith(expect.stringContaining("Pick"), undefined, { signal });
+		expect(result.details.cancelled).toBe(inputValue === undefined);
+		expect(result.details.answers[0].answers).toEqual(inputValue?.trim() ? [{ label: "custom value", value: "custom value", source: "custom" }] : []);
+	});
+
+	it("keeps the question visible when free text has a placeholder", async () => {
+		const registered = tool();
+		const input = mock(async () => " answer ");
+		const result = await registered.execute(
+			"id",
+			{ questions: [{ header: "Decision", question: "Which path?", placeholder: "/path" }] },
+			undefined,
+			undefined,
+			{ hasUI: true, mode: "rpc", ui: { input } },
+		);
+		expect(input).toHaveBeenCalledWith("Decision\nWhich path?", "/path", expect.anything());
+		expect(result.details.answers[0].answers).toEqual([{ label: "answer", value: "answer", source: "custom" }]);
+	});
+
+	it.each([true, false])("uses blank native input for multi-select (allowOther=%s)", async (allowOther) => {
+		const registered = tool();
+		const input = mock(async () => "1, BETA, 1, custom");
+		const result = await registered.execute(
+			"id",
+			{ questions: [{ question: "Pick several", options: OPTIONS, multiSelect: true, allowOther }] },
+			undefined,
+			undefined,
+			{ hasUI: true, mode: "rpc", ui: { input } },
+		);
+		expect(result.details.answers[0].answers).toEqual([
+			{ label: "Alpha", value: "alpha", source: "option" },
+			{ label: "Beta", value: "beta", source: "option" },
+			...(allowOther ? [{ label: "custom", value: "custom", source: "custom" }] : []),
+		]);
+	});
+
+	it("does not open UI without a client", async () => {
+		const result = await tool().execute("id", { questions: [{ question: "Pick" }] }, undefined, undefined, { hasUI: false });
+		expect(result.isError).toBe(true);
 	});
 });
 

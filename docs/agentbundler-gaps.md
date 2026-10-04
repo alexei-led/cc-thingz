@@ -38,6 +38,10 @@ build scripts:
 3. Portable Pi `Notification` mapping. Pi uses its native compatibility runner.
 4. Full vendor CLI runtime smoke coverage. Archive/install tests run where a
    vendor CLI is available; Cursor needs `CURSOR_API_KEY` and vendor state.
+5. Pi aggregate peer dependencies. Aggregate metadata does not render
+   `peerDependencies` into `dist/pi/package.json`. The repository-root manifest
+   carries `^1.0.2` Pi peers; the target-root archive's minimum host version is
+   documented in [Pi package](pi-extensions.md).
 
 ## Vendor runtime caveat: replaced plugin roots
 

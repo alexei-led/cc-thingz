@@ -2,8 +2,8 @@
 {"description":"Creates and removes isolated git worktrees for parallel development. Use when starting feature work needing isolation, working on multiple branches simultaneously, or removing one specific worktree and its branch after its PR merges. NOT for simple branch switching, sweeping multiple stale worktrees or merged branches at once (use cleanup-git), or git hook/config setup (use configuring-git-hygiene).","name":"using-git-worktrees"}
 ---
 <!-- Pi platform guidance -->
-<!-- Use installed Pi tool names exactly, including extension toolsets such as Task*, Monitor*, and Loop*. -->
-<!-- When available, track work with Task* (`todo` is the fallback), run long or background commands with MonitorCreate, and schedule follow-up with LoopCreate instead of sleep/poll loops. -->
+<!-- Use installed tool names. Discover callable tools before batching independent calls in codemode; model-only UI/orchestration tools must be called directly. -->
+<!-- Prefer direct read for required skill/instruction files when exposed; otherwise use Code Mode only after verifying output protection, not assumed nested-path protection. Code Mode composes calls, not durable workflows or context-mode data processing. Async subagents notify natively: yield rather than poll. -->
 
 
 # Git Worktrees

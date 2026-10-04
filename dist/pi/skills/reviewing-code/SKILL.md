@@ -2,8 +2,8 @@
 {"description":"Use when reviewing changed code, PRs, diffs, or specific files. Finds evidence-backed defects in security, correctness, tests, reliability, performance, maintainability, and docs. Supports quick, standard, deep, team, and external-review modes, plus a simplify mode for over-engineering and \"what can we delete\" reviews. NOT for repo-wide architecture review, general codebase exploration, fixing issues (use fixing-code), or improving tests without a code review (use improving-tests).","name":"reviewing-code"}
 ---
 <!-- Pi platform guidance -->
-<!-- Use installed Pi tool names exactly, including extension toolsets such as Task*, Monitor*, and Loop*. -->
-<!-- When available, track work with Task* (`todo` is the fallback), run long or background commands with MonitorCreate, and schedule follow-up with LoopCreate instead of sleep/poll loops. -->
+<!-- Use installed tool names. Discover callable tools before batching independent calls in codemode; model-only UI/orchestration tools must be called directly. -->
+<!-- Prefer direct read for required skill/instruction files when exposed; otherwise use Code Mode only after verifying output protection, not assumed nested-path protection. Code Mode composes calls, not durable workflows or context-mode data processing. Async subagents notify natively: yield rather than poll. -->
 
 
 # Code Review
@@ -12,7 +12,8 @@ Produce findings, not edits, for the requested diff, PR, changed files, or file
 list. Read `references/severity-rubric.md` before scoring or reporting: it owns
 the dimensions, severity, confidence, and score rules.
 
-Load a language reference only for languages in scope:
+Load a language reference only when a finding needs language or framework
+semantics; do not read every reference merely because that language is in scope:
 
 - C#: `references/csharp.md`
 - Go: `references/go.md`
@@ -22,7 +23,8 @@ Load a language reference only for languages in scope:
 - TypeScript: `references/typescript.md`
 - Web, HTML, CSS, JS, HTMX: `references/web.md`
 
-Other languages: use the rubric alone and report reduced coverage.
+Other languages: use the rubric alone; report reduced coverage if missing
+language guidance limits the review.
 
 ## Scope
 

@@ -1,5 +1,4 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { Key, matchesKey, truncateToWidth } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 
 type AskOption = {
@@ -28,8 +27,6 @@ type Answer = {
 		source: "option" | "custom";
 	}>;
 };
-
-type DisplayOption = (AskOption & { isOther: false }) | { label: string; description?: string; isOther: true };
 
 const AskOptionSchema = Type.Object({
 	label: Type.String({ description: "Display label for the option" }),
@@ -61,7 +58,7 @@ function normalizeValue(option: AskOption): string {
 }
 
 const MAX_QUESTION_LINES = 8;
-const MULTI_SELECT_PROMPT_WIDTH = 80;
+const PROMPT_WIDTH = 80;
 
 export function wrapQuestionText(text: string, width: number, maxLines = MAX_QUESTION_LINES): string[] {
 	const usableWidth = Math.max(20, width);
@@ -93,40 +90,25 @@ export function wrapQuestionText(text: string, width: number, maxLines = MAX_QUE
 	return visible;
 }
 
-export function parseMultiSelect(input: string, options: AskOption[]): Array<{ label: string; value: string; source: "option" | "custom" }> {
+export function parseMultiSelect(input: string, options: AskOption[]): Answer["answers"] {
 	const rawParts = input
 		.split(",")
 		.map((part) => part.trim())
 		.filter(Boolean);
-
-	const answers: Array<{ label: string; value: string; source: "option" | "custom" }> = [];
+	const answers: Answer["answers"] = [];
 	const seen = new Set<string>();
 
 	for (const part of rawParts) {
 		const asNumber = Number(part);
-		if (Number.isInteger(asNumber) && asNumber >= 1 && asNumber <= options.length) {
-			const option = options[asNumber - 1];
-			const key = `option:${normalizeValue(option)}`;
-			if (!seen.has(key)) {
-				answers.push({ label: option.label, value: normalizeValue(option), source: "option" });
-				seen.add(key);
-			}
-			continue;
-		}
-
-		const match = options.find((option) => option.label.toLowerCase() === part.toLowerCase());
-		if (match) {
-			const key = `option:${normalizeValue(match)}`;
-			if (!seen.has(key)) {
-				answers.push({ label: match.label, value: normalizeValue(match), source: "option" });
-				seen.add(key);
-			}
-			continue;
-		}
-
-		const key = `custom:${part}`;
+		const option =
+			Number.isInteger(asNumber) && asNumber >= 1 && asNumber <= options.length
+				? options[asNumber - 1]
+				: options.find((candidate) => candidate.label.toLowerCase() === part.toLowerCase());
+		const value = option ? normalizeValue(option) : part;
+		const source = option ? "option" : "custom";
+		const key = `${source}:${value}`;
 		if (!seen.has(key)) {
-			answers.push({ label: part, value: part, source: "custom" });
+			answers.push({ label: option?.label ?? part, value, source });
 			seen.add(key);
 		}
 	}
@@ -134,175 +116,64 @@ export function parseMultiSelect(input: string, options: AskOption[]): Array<{ l
 	return answers;
 }
 
-async function askOne(question: AskQuestion, ctx: ExtensionContext): Promise<Answer> {
-	const header = question.header ?? "Question";
+async function askOne(question: AskQuestion, ctx: ExtensionContext, signal?: AbortSignal): Promise<Answer> {
 	const options = question.options ?? [];
-	const multiSelect = question.multiSelect === true;
+	const multiSelect = options.length > 0 && question.multiSelect === true;
 	const allowOther = question.allowOther ?? options.length > 0;
+	const title = [question.header ?? "Question", ...wrapQuestionText(question.question, PROMPT_WIDTH)].join("\n");
+	const answer: Answer = { question: question.question, header: question.header, multiSelect, cancelled: false, answers: [] };
+	const dialogOptions = { signal };
 
 	if (options.length === 0) {
-		const input = await ctx.ui.input(header, question.placeholder ?? question.question);
-		if (input === undefined) {
-			return { question: question.question, header: question.header, multiSelect: false, cancelled: true, answers: [] };
-		}
-
-		const value = input.trim();
-		if (!value) {
-			return { question: question.question, header: question.header, multiSelect: false, cancelled: false, answers: [] };
-		}
-
-		return {
-			question: question.question,
-			header: question.header,
-			multiSelect: false,
-			cancelled: false,
-			answers: [{ label: value, value, source: "custom" }],
-		};
+		const input = await ctx.ui.input(title, question.placeholder, dialogOptions);
+		answer.cancelled = input === undefined;
+		const value = input?.trim();
+		if (value) answer.answers.push({ label: value, value, source: "custom" });
+		return answer;
 	}
 
 	if (!multiSelect) {
-		const displayOptions: DisplayOption[] = options.map((option) => ({ ...option, isOther: false }));
-		if (allowOther) displayOptions.push({ label: "Other / type something", isOther: true });
-
-		const selectedIndex = await ctx.ui.custom<number | undefined>((tui, theme, _keybindings, done) => {
-			let optionIndex = 0;
-
-			function refresh() {
-				tui.requestRender();
-			}
-
-			function selectCurrent() {
-				done(optionIndex);
-			}
-
-			function handleInput(data: string) {
-				if (matchesKey(data, Key.up)) {
-					optionIndex = Math.max(0, optionIndex - 1);
-					refresh();
-					return;
-				}
-				if (matchesKey(data, Key.down)) {
-					optionIndex = Math.min(displayOptions.length - 1, optionIndex + 1);
-					refresh();
-					return;
-				}
-				if (matchesKey(data, Key.enter)) {
-					selectCurrent();
-					return;
-				}
-				if (matchesKey(data, Key.escape)) {
-					done(undefined);
-					return;
-				}
-
-				const numeric = Number(data);
-				if (Number.isInteger(numeric) && numeric >= 1 && numeric <= displayOptions.length) {
-					optionIndex = numeric - 1;
-					selectCurrent();
-				}
-			}
-
-			function render(width: number): string[] {
-				const safeWidth = Math.max(20, width);
-				const lines: string[] = [];
-				const add = (value: string) => lines.push(truncateToWidth(value, safeWidth));
-
-				add(theme.fg("accent", "─".repeat(safeWidth)));
-				add(theme.fg("accent", theme.bold(` ${header}`)));
-				lines.push("");
-				for (const line of wrapQuestionText(question.question, safeWidth - 2)) {
-					add(` ${theme.fg("text", line)}`);
-				}
-				lines.push("");
-
-				for (let i = 0; i < displayOptions.length; i++) {
-					const option = displayOptions[i];
-					const selected = i === optionIndex;
-					const prefix = selected ? theme.fg("accent", "→ ") : "  ";
-					const label = `${i + 1}. ${option.label}`;
-					add(prefix + theme.fg(selected ? "accent" : "text", label));
-					if (option.description) add(`    ${theme.fg("muted", option.description)}`);
-				}
-
-				lines.push("");
-				add(theme.fg("dim", " ↑↓ navigate • Enter select • Esc cancel • number quick-select"));
-				add(theme.fg("accent", "─".repeat(safeWidth)));
-				return lines;
-			}
-
-			return { render, invalidate: () => {}, handleInput };
-		});
-
-		if (selectedIndex === undefined) {
-			return { question: question.question, header: question.header, multiSelect: false, cancelled: true, answers: [] };
+		const choices = options.map(formatOption);
+		if (allowOther) choices.push(`${options.length + 1}. Other / type something`);
+		const selected = await ctx.ui.select(title, choices, dialogOptions);
+		const selectedIndex = selected === undefined ? -1 : choices.indexOf(selected);
+		if (selectedIndex < 0) {
+			answer.cancelled = true;
+			return answer;
 		}
-
-		const selected = displayOptions[selectedIndex];
-		if (!selected) {
-			return { question: question.question, header: question.header, multiSelect: false, cancelled: true, answers: [] };
+		if (selectedIndex === options.length) {
+			const input = await ctx.ui.input(title, question.placeholder, dialogOptions);
+			answer.cancelled = input === undefined;
+			const value = input?.trim();
+			if (value) answer.answers.push({ label: value, value, source: "custom" });
+		} else {
+			const option = options[selectedIndex];
+			answer.answers.push({ label: option.label, value: normalizeValue(option), source: "option" });
 		}
-		if (selected.isOther) {
-			const custom = await ctx.ui.input(header, question.placeholder ?? question.question);
-			if (custom === undefined) {
-				return { question: question.question, header: question.header, multiSelect: false, cancelled: true, answers: [] };
-			}
-			const value = custom.trim();
-			return {
-				question: question.question,
-				header: question.header,
-				multiSelect: false,
-				cancelled: false,
-				answers: value ? [{ label: value, value, source: "custom" }] : [],
-			};
-		}
-
-		return {
-			question: question.question,
-			header: question.header,
-			multiSelect: false,
-			cancelled: false,
-			answers: [{ label: selected.label, value: normalizeValue(selected), source: "option" }],
-		};
+		return answer;
 	}
 
-	const numberedOptions = options.map(formatOption).join("\n");
-	const promptLines = [
-		...wrapQuestionText(question.question, MULTI_SELECT_PROMPT_WIDTH),
+	// Pi has no native multi-select dialog. A blank input avoids treating editor
+	// instructions as answers and works with both TUI and RPC clients.
+	const prompt = [
+		title,
 		"",
-		numberedOptions,
+		...options.map(formatOption),
 		"",
 		"Enter comma-separated option numbers or labels.",
-	];
-
-	if (allowOther) {
-		promptLines.push("Custom values are allowed too.");
-	} else {
-		promptLines.push("Use only the listed options.");
-	}
-
-	const input = await ctx.ui.editor(header, promptLines.join("\n"));
-	if (input === undefined) {
-		return { question: question.question, header: question.header, multiSelect: true, cancelled: true, answers: [] };
-	}
-
-	let answers = parseMultiSelect(input, options);
-	if (!allowOther) {
-		answers = answers.filter((answer) => answer.source === "option");
-	}
-
-	return {
-		question: question.question,
-		header: question.header,
-		multiSelect: true,
-		cancelled: false,
-		answers,
-	};
+		allowOther ? "Custom values are allowed too." : "Use only the listed options.",
+	].join("\n");
+	const input = await ctx.ui.input(prompt, question.placeholder ?? "1, 2", dialogOptions);
+	answer.cancelled = input === undefined;
+	answer.answers = parseMultiSelect(input ?? "", options).filter((item) => allowOther || item.source === "option");
+	return answer;
 }
 
 export default function askUserQuestion(pi: ExtensionAPI) {
 	pi.registerTool({
 		name: "ask_user_question",
 		label: "Ask User Question",
+		exposure: "model-only",
 		description: "Ask the user structured questions. Use for one-question-at-a-time clarification, scoped choices, or short free-text answers.",
 		promptSnippet: "Ask the user a structured question and get a machine-readable answer.",
 		promptGuidelines: [
@@ -310,46 +181,23 @@ export default function askUserQuestion(pi: ExtensionAPI) {
 			"Use ask_user_question for one question at a time. Prefer single-select options over open-ended text when possible.",
 		],
 		parameters: AskUserQuestionParams,
-		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-			if (!ctx.hasUI) {
+		async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+			if (!ctx.hasUI || params.questions.length === 0) {
 				return {
-					content: [{ type: "text", text: "Error: ask_user_question requires interactive UI" }],
+					content: [{ type: "text", text: ctx.hasUI ? "Error: no questions provided" : "Error: ask_user_question requires interactive UI" }],
 					details: { questions: params.questions, answers: [], cancelled: true },
-					isError: true,
-				};
-			}
-
-			if (params.questions.length === 0) {
-				return {
-					content: [{ type: "text", text: "Error: no questions provided" }],
-					details: { questions: [], answers: [], cancelled: true },
 					isError: true,
 				};
 			}
 
 			const answers: Answer[] = [];
 			for (const question of params.questions) {
-				const answer = await askOne(question, ctx);
+				const answer = await askOne(question, ctx, signal);
 				answers.push(answer);
-				if (answer.cancelled) {
-					return {
-						content: [{ type: "text", text: `User cancelled: ${question.question}` }],
-						details: { questions: params.questions, answers, cancelled: true },
-					};
-				}
+				if (answer.cancelled) break;
 			}
-
-			const summary = answers
-				.map((answer) => {
-					const rendered = answer.answers.map((item) => item.label).join(", ") || "(empty)";
-					return `${answer.question}: ${rendered}`;
-				})
-				.join("\n");
-
-			return {
-				content: [{ type: "text", text: summary }],
-				details: { questions: params.questions, answers, cancelled: false },
-			};
+			const details = { questions: params.questions, answers, cancelled: answers.some((answer) => answer.cancelled) };
+			return { content: [{ type: "text", text: JSON.stringify(details) }], details };
 		},
 	});
 }

@@ -8,7 +8,8 @@ Produce findings, not edits, for the requested diff, PR, changed files, or file
 list. Read `references/severity-rubric.md` before scoring or reporting: it owns
 the dimensions, severity, confidence, and score rules.
 
-Load a language reference only for languages in scope:
+Load a language reference only when a finding needs language or framework
+semantics; do not read every reference merely because that language is in scope:
 
 - C#: `references/csharp.md`
 - Go: `references/go.md`
@@ -18,7 +19,8 @@ Load a language reference only for languages in scope:
 - TypeScript: `references/typescript.md`
 - Web, HTML, CSS, JS, HTMX: `references/web.md`
 
-Other languages: use the rubric alone and report reduced coverage.
+Other languages: use the rubric alone; report reduced coverage if missing
+language guidance limits the review.
 
 ## Scope
 

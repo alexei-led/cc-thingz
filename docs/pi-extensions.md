@@ -3,6 +3,10 @@
 Agent Bundler produces the aggregate Pi package at `dist/pi/`; releases archive
 it as `cc-thingz-pi.tgz`. The development `package.json` also carries a merged
 root compatibility manifest whose resource paths point into `dist/pi`.
+The native extensions require Pi **1.0.2 or later in the 1.x series**. The
+repository-root peer contracts use `^1.0.2`; Agent Bundler does not render peer
+dependencies into the target-root archive manifest, so archive users must check
+the host version themselves. The lockfiles record the tested baseline.
 
 ## Registered extensions
 
@@ -96,6 +100,21 @@ See the upstream [model selection and retries
 documentation](https://github.com/nicobailon/pi-subagents/blob/main/docs/models.md)
 for the current contract.
 
+## Structured questions
+
+`ask_user_question` remains a model-facing tool with the same question schema
+and answer `details`. It is `model-only`: invoke it directly, not from Code Mode.
+The model-facing text contains the answer JSON, including machine values.
+
+- Single choices use native `ctx.ui.select`, with numbered labels and optional
+  descriptions. Duplicate labels retain distinct option values.
+- Free text and **Other / type something** use native `ctx.ui.input`.
+- Pi has no native multi-select dialog. Multiple choices use a blank native input
+  with comma-separated option numbers or labels. Custom values are accepted only
+  when `allowOther` permits them; duplicate selections are removed.
+- These flows work with TUI and RPC clients. Escape/cancellation stops subsequent
+  questions. Empty input is an empty answer, not cancellation.
+
 ## Portable hooks
 
 `hooks/hooks.v1.json` and `agentbundler-hooks.ts` handle portable session-start,
@@ -117,9 +136,27 @@ and package contributions. It must not list portable hooks already dispatched
 by `agentbundler-hooks.ts`; otherwise they run twice.
 
 `permission-gate` uses the runner's synthetic PermissionRequest and
-PermissionDenied events. Safe commands pass. Dangerous `rm -rf`, `sudo`, and
-`chmod/chown 777` commands require UI confirmation, fail closed headlessly, and
-reject a hook-supplied replacement that remains dangerous.
+PermissionDenied events. Recursive `rm` flags (`-rf`, `-fr`, split `-f -r`, `-R`,
+`--recursive`), `sudo`, and `chmod/chown 777` trigger confirmation unless a hook
+explicitly allows or denies them. Without UI or a hook allow, they fail closed;
+hook-supplied replacements are checked again. Nonmatching commands pass.
+This is a Bash warning heuristic, not a shell parser or sandbox. It does not
+cover arbitrary deletion methods, MCP calls, or non-Bash tools.
+
+`Stop` and `StopFailure` retain their `agent_end` behavior. Idle notifications
+run only on `agent_settled`, after automatic retries and queued continuations.
+`PreCompact` and `PostCompact` receive `trigger: event.reason` (`manual`,
+`threshold`, or `overflow`), independent of who supplied the summary.
+
+Shutdown first cancels and drains session-owned hooks. Synchronous `SessionEnd`
+hooks are awaited. Async `SessionEnd` hooks run best-effort under a detached
+POSIX supervisor using `node` on `PATH` that owns the configured deadline
+(default 30 seconds) and
+terminates the hook process group, with a 1.5-second forced-kill grace. These
+hooks have no departing-session UI or captured output/telemetry. No temporary
+files are created. Invalid or overflowing timer values are not launched.
+A missing Node executable logs a launch error and skips the async hook without
+blocking shutdown; compiled Pi users must also install Node for this flow.
 
 `plan-mode` supplies `/plan`, read-only tools, plan progress, and synthetic
 ExitPlanMode review. Revdiff denial, an updated plan, and timeout behavior flow

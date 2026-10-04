@@ -74,6 +74,17 @@ describe("permission-gate / tool_call", () => {
 		expect(ctx.ui.select).not.toHaveBeenCalled();
 	});
 
+	it.each(["rm -f /tmp/file", "rm -- -rf", "rm --recursive-file", "rm -rf-file"])(
+		"does not confuse operand tokens with recursive flags: %s",
+		async (command) => {
+			const { handlers } = setup();
+			const handler = handlers.get("tool_call")!;
+			const ctx = makeCtx(true);
+			expect(await handler({ toolName: "bash", input: { command } }, ctx)).toBeUndefined();
+			expect(ctx.ui.select).not.toHaveBeenCalled();
+		},
+	);
+
 	it("blocks invalid bash command input", async () => {
 		const { handlers } = setup();
 		const handler = handlers.get("tool_call")!;
@@ -124,7 +135,7 @@ describe("permission-gate / tool_call", () => {
 			if (payload.hookEventName === "PermissionRequest") {
 				payload.onResult?.({
 					behavior: "allow",
-					updatedInput: { command: "sudo rm -rf /tmp" },
+					updatedInput: { command: "rm -fr /tmp" },
 				});
 			}
 		});
@@ -181,15 +192,18 @@ describe("permission-gate / tool_call", () => {
 		});
 	});
 
-	it.each(["rm -rf /tmp", "sudo whoami", "chmod 777 /tmp"])("blocks %s without a UI", async (command) => {
-		const { handlers } = setup();
-		const handler = handlers.get("tool_call")!;
-		const result = await handler({ toolName: "bash", input: { command } }, makeCtx(false));
-		expect(result).toMatchObject({
-			block: true,
-			reason: expect.stringContaining("no UI"),
-		});
-	});
+	it.each(["rm -rf /tmp", "rm -fr /tmp", "rm -f -r /tmp", "rm -R /tmp", "rm --force --recursive /tmp", "rm --recursive /tmp", "sudo whoami", "chmod 777 /tmp"])(
+		"blocks %s without a UI",
+		async (command) => {
+			const { handlers } = setup();
+			const handler = handlers.get("tool_call")!;
+			const result = await handler({ toolName: "bash", input: { command } }, makeCtx(false));
+			expect(result).toMatchObject({
+				block: true,
+				reason: expect.stringContaining("no UI"),
+			});
+		},
+	);
 
 	it("allows dangerous command when UI prompt answered Yes", async () => {
 		const { handlers } = setup();

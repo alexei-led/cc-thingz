@@ -45,6 +45,7 @@ import {
 	cancelRunningHooks,
 	runHook,
 	runHookAsync,
+	runShutdownHookAsync,
 	runPermissionDeniedGroups,
 	runPermissionRequestGroups,
 	runPreToolUseGroups,
@@ -254,12 +255,16 @@ export default function (pi: ExtensionAPI): void {
 		});
 		for (const group of resolvedConfig()[hookName] ?? []) {
 			for (const entry of group.hooks) {
-				await runHook(entry, stdin);
+				if (entry.config.async) {
+					runShutdownHookAsync(entry, stdin);
+				} else {
+					await runHook(entry, stdin);
+				}
 			}
 		}
 	});
 
-	// --- agent_end → Stop / StopFailure + Notification ---
+	// --- agent_end → Stop / StopFailure ---
 	pi.on("agent_end", async (event: AgentEndEvent, ctx: ExtensionContext) => {
 		const lastAssistant = [...event.messages].reverse().find((m) => m.role === "assistant") as
 			| { role: "assistant"; stopReason?: string; errorMessage?: string; content?: Array<{ type: string; text?: string }> }
@@ -302,7 +307,10 @@ export default function (pi: ExtensionAPI): void {
 				}
 			}
 		}
+	});
 
+	// --- agent_settled → Notification (no retry or queued continuation remains) ---
+	pi.on("agent_settled", async (_event, ctx: ExtensionContext) => {
 		const notifStdin = JSON.stringify({
 			...baseStdin("Notification", ctx),
 			title: "Pi",
@@ -317,10 +325,10 @@ export default function (pi: ExtensionAPI): void {
 	});
 
 	// --- session_before_compact → PreCompact ---
-	pi.on("session_before_compact", async (_event: SessionBeforeCompactEvent, ctx: ExtensionContext) => {
+	pi.on("session_before_compact", async (event: SessionBeforeCompactEvent, ctx: ExtensionContext) => {
 		const stdin = JSON.stringify({
 			...baseStdin("PreCompact", ctx),
-			trigger: "unknown",
+			trigger: event.reason,
 		});
 		for (const group of resolvedConfig().PreCompact ?? []) {
 			for (const entry of group.hooks) {
@@ -336,7 +344,7 @@ export default function (pi: ExtensionAPI): void {
 	pi.on("session_compact", async (event: SessionCompactEvent, ctx: ExtensionContext) => {
 		const stdin = JSON.stringify({
 			...baseStdin("PostCompact", ctx),
-			trigger: event.fromExtension ? "manual" : "auto",
+			trigger: event.reason,
 		});
 		for (const group of resolvedConfig().PostCompact ?? []) {
 			for (const entry of group.hooks) {

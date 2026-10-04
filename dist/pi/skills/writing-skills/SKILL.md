@@ -2,8 +2,8 @@
 {"description":"Create, split, slim, or rewrite repository skills. Use when adding a new `src/skills/\u003cname\u003e/` skill, editing a skill description, frontmatter, references, overlays, or plugin placement, or tightening routing between neighboring skills. NOT for score-only instruction review; use reviewing-instructions. NOT for broad agent/package config audits; use evolving-config. NOT for ordinary docs; use documenting-code.","name":"writing-skills"}
 ---
 <!-- Pi platform guidance -->
-<!-- Use installed Pi tool names exactly, including extension toolsets such as Task*, Monitor*, and Loop*. -->
-<!-- When available, track work with Task* (`todo` is the fallback), run long or background commands with MonitorCreate, and schedule follow-up with LoopCreate instead of sleep/poll loops. -->
+<!-- Use installed tool names. Discover callable tools before batching independent calls in codemode; model-only UI/orchestration tools must be called directly. -->
+<!-- Prefer direct read for required skill/instruction files when exposed; otherwise use Code Mode only after verifying output protection, not assumed nested-path protection. Code Mode composes calls, not durable workflows or context-mode data processing. Async subagents notify natively: yield rather than poll. -->
 
 
 # Writing Skills

@@ -2,8 +2,8 @@
 {"description":"Use when planning, executing, checkpointing, finishing, or inspecting lightweight spec-driven work. Runs one task at a time using `.spec/` markdown files and the bundled `specctl` helper. NOT for broad product discovery beyond a short requirement interview. NOT for generic implementation planning that does not read or write `.spec/` files.","name":"spec-flow"}
 ---
 <!-- Pi platform guidance -->
-<!-- Use installed Pi tool names exactly, including extension toolsets such as Task*, Monitor*, and Loop*. -->
-<!-- When available, track work with Task* (`todo` is the fallback), run long or background commands with MonitorCreate, and schedule follow-up with LoopCreate instead of sleep/poll loops. -->
+<!-- Use installed tool names. Discover callable tools before batching independent calls in codemode; model-only UI/orchestration tools must be called directly. -->
+<!-- Prefer direct read for required skill/instruction files when exposed; otherwise use Code Mode only after verifying output protection, not assumed nested-path protection. Code Mode composes calls, not durable workflows or context-mode data processing. Async subagents notify natively: yield rather than poll. -->
 
 
 # Spec flow
