@@ -136,12 +136,13 @@ process's OS permissions.
   `model-only` UI or orchestration tool is not callable from Code Mode; call it
   directly. Batch only independent calls and return the computed result, not
   the full payload.
-- Code Mode composes calls, context-mode processes/indexes large data, and
-  subagents or controllers own durable workflows. Do not duplicate controller
-  recovery in a script or assume pending calls survive script exit.
-- Prefer direct `read` for required skill/instruction documents when exposed.
-  In Code Mode-only configurations, verify output protection before using
-  nested reads; do not assume path-based protection covers a Code Mode script.
+- Code Mode composes calls; subagents or controllers own durable workflows.
+  Do not duplicate controller recovery in a script or assume pending calls
+  survive script exit.
+- Read required skill/instruction documents through direct `read` when exposed
+  or through Code Mode. If an optional pruning extension is installed, verify
+  its output protection semantics; do not assume path-based protection covers
+  nested reads in a Code Mode script.
 - Native `select`, `input`, `confirm`, and `editor` dialogs work in TUI and RPC.
   `hasUI` is true in RPC, but `custom()` returns undefined. Prefer native dialogs;
   guard custom components with `ctx.mode === "tui"`.

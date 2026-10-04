@@ -3,7 +3,7 @@
 ---
 <!-- Pi platform guidance -->
 <!-- Use installed tool names. Discover callable tools before batching independent calls in codemode; model-only UI/orchestration tools must be called directly. -->
-<!-- Prefer direct read for required skill/instruction files when exposed; otherwise use Code Mode only after verifying output protection, not assumed nested-path protection. Code Mode composes calls, not durable workflows or context-mode data processing. Async subagents notify natively: yield rather than poll. -->
+<!-- Read required skill/instruction files through direct read when exposed or through Code Mode. If an optional pruning extension is installed, verify its output protection semantics; do not assume nested-path protection. Code Mode composes calls; subagents or controllers own durable workflows. Async subagents notify natively: yield rather than poll. -->
 
 
 # Fix and Diagnose Code
