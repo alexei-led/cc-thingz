@@ -8,6 +8,15 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.18.1] - 2026-10-04
+
+### Fixed
+
+- Pi skill guidance no longer assumes an optional context-pruning extension is
+  installed. Required instruction files can be read directly or through native
+  Code Mode; output-protection checks apply only when a pruning extension is
+  installed.
+
 ## [6.18.0] - 2026-10-04
 
 Pi questions now use native dialogs, and idle notifications wait until work
