@@ -85,7 +85,7 @@ def make_gh_stub(
     script = bin_dir / "gh"
     lines = [
         "#!/usr/bin/env python3",
-        "import sys",
+        "import sys, subprocess",
         "states = {",
     ]
     for branch, value in states.items():
@@ -106,7 +106,9 @@ def make_gh_stub(
         "    json_idx = args.index('--json') if '--json' in args else -1",
         "    fields = args[json_idx + 1] if json_idx != -1 else ''",
         "    if 'headRefOid' in fields:",
-        "        sys.stdout.write(state + '\\t' + (head or ''))",
+        "        merge = subprocess.check_output("
+        "['git', 'rev-parse', 'main'], text=True).strip()",
+        "        sys.stdout.write(state + '\\t' + (head or '') + '\\tmain\\t' + merge)",
         "    else:",
         "        sys.stdout.write(state)",
         "    sys.exit(0)",

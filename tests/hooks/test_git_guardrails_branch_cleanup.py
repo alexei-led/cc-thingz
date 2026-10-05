@@ -124,7 +124,7 @@ def add_worktree(clone: Path, name: str, start: str) -> Path:
     ("start", "dirty_tracked", "untracked", "allowed"),
     [
         ("origin/squashed", False, False, True),
-        ("origin/fast-forwarded", False, True, True),
+        ("origin/fast-forwarded", False, True, False),
         ("origin/squashed", True, False, False),
         ("origin/unmerged", False, False, False),
     ],

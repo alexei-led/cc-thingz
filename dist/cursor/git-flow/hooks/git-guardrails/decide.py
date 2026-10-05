@@ -47,6 +47,7 @@ BLOCK.
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import shlex
@@ -103,6 +104,8 @@ GLOBAL_FLAGS = {
     "--no-optional-locks",
 }
 CLEANUP_SUBCOMMANDS = {"branch", "worktree"}
+PROTECTED_BRANCHES = {"main", "master", "trunk", "develop", "dev"}
+APPROVAL_VALUE = re.compile(r"^cc-thingz\.cleanupApproved=([0-9a-f]{40}|[0-9a-f]{64})$")
 
 
 class ParseError(Exception):
@@ -188,19 +191,24 @@ def handle_cd(base: str, rest: list[str], ctx: Ctx) -> None:
 
 def shell_dash_c_script(span: list[str], j: int) -> str | None:
     """True when span[j] is bash|sh|zsh|dash, span[j+1] is a -c-family
-    flag, and its script is the last token of the statement - regardless
-    of what precedes span[j] in the same statement (`nice bash -c '...'`
-    unwraps exactly like a bare `bash -c '...'`)."""
-    if j + 2 != len(span) - 1:
-        return None
-    return span[j + 2] if SHELL_DASH_C.match(span[j + 1]) else None
+    flag (possibly after other shell options). Extra tokens after the
+    script are shell positional parameters, not part of the script."""
+    for i in range(j + 1, len(span) - 1):
+        if SHELL_DASH_C.fullmatch(span[i]):
+            return span[i + 1]
+        if not span[i].startswith("-"):
+            return None
+    return None
 
 
-def parse_global_opts(tokens: list[str], base_dir: str) -> tuple[str, bool, list[str]]:
-    """Returns (effective_dir, trusted, remaining_tokens_from_subcommand)."""
+def parse_global_opts(
+    tokens: list[str], base_dir: str
+) -> tuple[str, bool, list[str], str | None]:
+    """Returns effective cwd, trust, remaining argv, and command-local consent."""
     i = 1  # tokens[0] == "git"
     dir_ = base_dir
     trusted = True
+    approved_tip = None
     while i < len(tokens):
         token = tokens[i]
         if token in GLOBAL_VALUE_OPTS:
@@ -209,6 +217,10 @@ def parse_global_opts(tokens: list[str], base_dir: str) -> tuple[str, bool, list
             value = tokens[i + 1]
             if token == "-C":
                 dir_ = value if os.path.isabs(value) else os.path.join(dir_, value)
+            elif token == "-c" and (match := APPROVAL_VALUE.fullmatch(value)):
+                if approved_tip is not None:
+                    trusted = False
+                approved_tip = match.group(1)
             else:
                 trusted = False
             i += 2
@@ -232,12 +244,16 @@ def parse_global_opts(tokens: list[str], base_dir: str) -> tuple[str, bool, list
             value = token[2:]
             if token.startswith("-C"):
                 dir_ = value if os.path.isabs(value) else os.path.join(dir_, value)
+            elif match := APPROVAL_VALUE.fullmatch(value):
+                if approved_tip is not None:
+                    trusted = False
+                approved_tip = match.group(1)
             else:
                 trusted = False
             i += 1
             continue
         break
-    return dir_, trusted, tokens[i:]
+    return dir_, trusted, tokens[i:], approved_tip
 
 
 def is_short_force_cluster(arg: str) -> bool:
@@ -274,12 +290,15 @@ def classify(subcommand: str, args: list[str]) -> tuple[str, list[str] | str | N
     if subcommand == "branch":
         wants_force_delete = (
             "-D" in args
-            or ("--delete" in args and "--force" in args)
+            or (
+                any(a in ("-d", "--delete") for a in args)
+                and any(a in ("-f", "--force") for a in args)
+            )
             or any(is_branch_force_delete_cluster(a) for a in args)
         )
         if not wants_force_delete:
             return "safe", None
-        names = [a for a in args if a not in ("-D", "--delete", "--force")]
+        names = [a for a in args if a not in ("-D", "-d", "-f", "--delete", "--force")]
         if not names or any(a.startswith("-") for a in names):
             return "block", "git branch -D (unparseable arguments)"
         return "cleanup-branch", names
@@ -308,18 +327,26 @@ def classify(subcommand: str, args: list[str]) -> tuple[str, list[str] | str | N
     if subcommand == "worktree":
         if args[:1] != ["remove"]:
             return "safe", None
-        sub_args = args[1:]
+        sub_args = [a for a in args[1:] if not re.fullmatch(r"\d*[<>]{1,2}[^<>]+", a)]
         forces = [a for a in sub_args if a in ("-f", "--force")]
         paths = [a for a in sub_args if a not in ("-f", "--force")]
         if not forces:
-            return "safe", None
+            if len(paths) == 1 and not paths[0].startswith("-"):
+                return "cleanup-worktree", paths[0]
+            return "block", "git worktree remove (unparseable arguments)"
         # One force only: a second one overrides a worktree lock, and a
         # lock means someone asked for the worktree to stay.
         if len(forces) != 1 or len(paths) != 1 or paths[0].startswith("-"):
             return "block", "git worktree remove --force (unparseable arguments)"
         return "cleanup-worktree", paths[0]
     if subcommand == "push":
-        if any(a == "--force" or is_short_force_cluster(a) for a in args):
+        if any(
+            a == "--force"
+            or a.startswith("--force-with-lease")
+            or a == "--mirror"
+            or is_short_force_cluster(a)
+            for a in args
+        ):
             return "block", "git push --force"
         if any(a.startswith("+") for a in args):
             return "block", "git push +refspec"
@@ -337,28 +364,60 @@ def run_git(directory: str, *args: str) -> subprocess.CompletedProcess[str]:
 
 
 def remote_default_branch(directory: str) -> str | None:
-    result = run_git(directory, "symbolic-ref", "-q", "refs/remotes/origin/HEAD")
-    if result.returncode == 0:
-        return result.stdout.strip()
-    for ref in ("refs/remotes/origin/main", "refs/remotes/origin/master"):
+    remotes = run_git(directory, "remote").stdout.splitlines()
+    remotes.sort(key=lambda remote: (remote != "origin", remote))
+    for remote in remotes:
+        result = run_git(directory, "symbolic-ref", "-q", f"refs/remotes/{remote}/HEAD")
+        if result.returncode == 0:
+            return result.stdout.strip()
+    names = ("main", "master", "trunk", "develop", "dev")
+    candidates = [
+        f"refs/remotes/{remote}/{name}" for remote in remotes for name in names
+    ]
+    candidates.extend(f"refs/heads/{name}" for name in names)
+    for ref in candidates:
         if run_git(directory, "rev-parse", "--verify", "-q", ref).returncode == 0:
             return ref
     return None
 
 
+def base_remote_and_name(directory: str, base: str) -> tuple[str, str]:
+    for remote in run_git(directory, "remote").stdout.splitlines():
+        prefix = f"refs/remotes/{remote}/"
+        if base.startswith(prefix):
+            return remote, base.removeprefix(prefix)
+    return "origin", base.removeprefix("refs/heads/")
+
+
 def commit_is_merged(directory: str, rev: str) -> bool:
-    """True when <rev> is an ancestor of origin's default branch, or was
-    squash-merged into it (detected offline by patch-id via `git cherry`)."""
+    """Prove ancestry, a matching merged PR, or an equivalent squash patch."""
     base = remote_default_branch(directory)
     if base is None:
         return False
     if run_git(directory, "merge-base", "--is-ancestor", rev, base).returncode == 0:
         return True
+    branch = (
+        run_git(directory, "symbolic-ref", "--quiet", "--short", rev)
+        if rev == "HEAD"
+        else None
+    )
+    name = (
+        branch.stdout.strip()
+        if branch and branch.returncode == 0
+        else rev.removeprefix("refs/heads/")
+    )
+    proof = merged_pr_proof(directory, name, rev, base)
+    if proof is not None:
+        return proof
     merge_base = run_git(directory, "merge-base", base, rev)
     if merge_base.returncode != 0:
         return False
     probe = run_git(
         directory,
+        "-c",
+        "user.name=cleanup",
+        "-c",
+        "user.email=cleanup@localhost",
         "commit-tree",
         f"{rev}^{{tree}}",
         "-p",
@@ -400,7 +459,78 @@ def branch_checked_out_elsewhere(
     return False
 
 
-def branch_is_merged(directory: str, branch: str, removed_worktrees: set[str]) -> bool:
+def merged_pr_proof(directory: str, branch: str, rev: str, base: str) -> bool | None:
+    remote_name, base_name = base_remote_and_name(directory, base)
+    remote = run_git(directory, "remote", "get-url", remote_name)
+    if remote.returncode != 0:
+        return None
+    try:
+        result = subprocess.run(
+            [
+                "gh",
+                "pr",
+                "view",
+                branch,
+                "--repo",
+                remote.stdout.strip(),
+                "--json",
+                "state,headRefOid,baseRefName,mergeCommit",
+            ],
+            cwd=directory,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=3,
+        )
+        if result.returncode != 0:
+            return None
+        info = json.loads(result.stdout)
+        head = info.get("headRefOid", "")
+        merged = (info.get("mergeCommit") or {}).get("oid", "")
+        if not (
+            info.get("state") == "MERGED"
+            and info.get("baseRefName") == base_name
+            and bool(re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", merged))
+            and run_git(
+                directory, "merge-base", "--is-ancestor", merged, base
+            ).returncode
+            == 0
+        ):
+            return None
+        # A matching merged PR with missing head or newer local commits is
+        # not repaired by a coincidentally equivalent net patch.
+        return (
+            isinstance(head, str)
+            and bool(re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", head))
+            and run_git(directory, "merge-base", "--is-ancestor", rev, head).returncode
+            == 0
+        )
+    except (OSError, subprocess.TimeoutExpired, ValueError, AttributeError, TypeError):
+        return None
+
+
+def tip_is_approved(directory: str, rev: str, approved_tip: str | None) -> bool:
+    if approved_tip is None:
+        return False
+    actual = run_git(directory, "rev-parse", "--verify", rev)
+    return actual.returncode == 0 and actual.stdout.strip() == approved_tip
+
+
+def protected_branch(directory: str, branch: str) -> bool:
+    base = remote_default_branch(directory)
+    return branch in PROTECTED_BRANCHES or (
+        base is not None and branch == base_remote_and_name(directory, base)[1]
+    )
+
+
+def branch_is_merged(
+    directory: str,
+    branch: str,
+    removed_worktrees: set[str],
+    approved_tip: str | None = None,
+) -> bool:
+    if protected_branch(directory, branch):
+        return False
     exists = run_git(directory, "rev-parse", "--verify", "-q", f"refs/heads/{branch}")
     if exists.returncode != 0:
         return False
@@ -409,22 +539,75 @@ def branch_is_merged(directory: str, branch: str, removed_worktrees: set[str]) -
         return False
     if branch_checked_out_elsewhere(worktrees.stdout, branch, removed_worktrees):
         return False
-    return commit_is_merged(directory, f"refs/heads/{branch}")
+    return tip_is_approved(
+        directory, f"refs/heads/{branch}", approved_tip
+    ) or commit_is_merged(directory, f"refs/heads/{branch}")
 
 
-def worktree_is_merged(directory: str, path: str) -> str | None:
+def worktree_is_merged(
+    directory: str, path: str, approved_tip: str | None = None
+) -> str | None:
     """Returns the worktree's realpath when it is safe to remove (merged,
-    no tracked changes), so the caller can also treat it as already gone
+    no uncommitted files unless explicitly approved), so the caller can treat it as gone
     for a later `branch -D` in the same command. None otherwise."""
     full = path if os.path.isabs(path) else os.path.join(directory, path)
+    resolved = os.path.realpath(full)
+    worktrees = run_git(directory, "worktree", "list", "--porcelain")
+    blocks = worktrees.stdout.strip().split("\n\n")
+    if worktrees.returncode != 0 or not blocks:
+        return None
+    if not os.path.isdir(full) and not os.path.isabs(path):
+        matches = [
+            line[9:]
+            for line in worktrees.stdout.splitlines()
+            if line.startswith("worktree ") and line[9:].endswith("/" + path)
+        ]
+        if len(matches) == 1:
+            full = matches[0]
+            resolved = os.path.realpath(full)
     if not os.path.isdir(full):
         return None
-    status = run_git(full, "status", "--porcelain", "--untracked-files=no")
-    if status.returncode != 0 or status.stdout.strip():
+    # Never remove the main/current worktree, a foreign repo, or a locked entry.
+    current = run_git(directory, "rev-parse", "--show-toplevel")
+    if current.returncode != 0:
         return None
-    if not commit_is_merged(full, "HEAD"):
+    if resolved in (
+        os.path.realpath(current.stdout.strip()),
+        os.path.realpath(blocks[0].splitlines()[0].removeprefix("worktree ")),
+    ):
         return None
-    return os.path.realpath(full)
+    entry = next(
+        (
+            b
+            for b in blocks
+            if any(
+                line.startswith("worktree ") and os.path.realpath(line[9:]) == resolved
+                for line in b.splitlines()
+            )
+        ),
+        None,
+    )
+    if entry is None or any(line.startswith("locked") for line in entry.splitlines()):
+        return None
+    branch = next(
+        (
+            line.removeprefix("branch refs/heads/")
+            for line in entry.splitlines()
+            if line.startswith("branch ")
+        ),
+        None,
+    )
+    if branch is None or protected_branch(directory, branch):
+        return None
+    approved = tip_is_approved(full, "HEAD", approved_tip)
+    status = run_git(
+        full, "status", "--porcelain", "--untracked-files=all", "--ignored"
+    )
+    if status.returncode != 0 or (status.stdout.strip() and not approved):
+        return None
+    if not approved and not commit_is_merged(full, "HEAD"):
+        return None
+    return resolved
 
 
 # hook-config.json's block_patterns predate this rewrite and are documented
@@ -480,7 +663,7 @@ def evaluate_git_call(
     removed_worktrees: set[str],
 ) -> None:
     """git_tokens[0] == "git"; the rest runs to the end of its statement."""
-    directory, trusted, remaining = parse_global_opts(git_tokens, ctx.cwd)
+    directory, trusted, remaining, approved_tip = parse_global_opts(git_tokens, ctx.cwd)
     overall_trusted = ctx.trusted and trusted
     if not remaining:
         return
@@ -505,19 +688,46 @@ def evaluate_git_call(
         return
     if kind == "cleanup-branch":
         names = info if isinstance(info, list) else []
+        if approved_tip is not None and len(names) != 1:
+            blocks.append(("cleanup approval requires exactly one branch", True))
+            return
         if overall_trusted and all(
-            branch_is_merged(directory, name, removed_worktrees) for name in names
+            branch_is_merged(directory, name, removed_worktrees, approved_tip)
+            for name in names
         ):
             return
         blocks.append((f"git branch -D {' '.join(names)}", True))
         return
     if kind == "cleanup-worktree":
         path = str(info)
-        resolved = worktree_is_merged(directory, path) if overall_trusted else None
+        resolved = (
+            worktree_is_merged(directory, path, approved_tip)
+            if overall_trusted
+            else None
+        )
         if resolved is not None:
             removed_worktrees.add(resolved)
             return
-        blocks.append((f"git worktree remove --force {path}", True))
+        full = path if os.path.isabs(path) else os.path.join(directory, path)
+        worktrees = run_git(directory, "worktree", "list", "--porcelain")
+        suffix_match = any(
+            line.startswith("worktree ") and line[9:].endswith("/" + path)
+            for line in worktrees.stdout.splitlines()
+        )
+        if (
+            overall_trusted
+            and not any(c in path for c in "$*?[]`")
+            and not any(a in ("-f", "--force") for a in args)
+            and not os.path.exists(full)
+            and not suffix_match
+        ):
+            return  # Native git reports the missing target; no files can be lost.
+        blocks.append(
+            (
+                f"git worktree remove {path} (cleanup safety not verified)",
+                True,
+            )
+        )
         return
 
 

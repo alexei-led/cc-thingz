@@ -80,14 +80,14 @@ deny() {
 	local message="dangerous git command: $COMMAND"
 	if [[ "$PI_RUNTIME" == "1" ]]; then
 		printf '{"decision":"deny","reason":%s}\n' \
-			"$(printf '%s\nPattern: %s' "$message" "$rule" | jq -Rsa .)"
+			"$(printf '%s\nPattern: %s\n%s' "$message" "$rule" "Safe merged cleanup is automatic. For a cleanup exception, explain the commits/files at risk and ask once. After explicit user consent, retry that exact target with git -c cc-thingz.cleanupApproved=<full-tip-oid>. This does not authorize reset, clean, or force-push." | jq -Rsa .)"
 		exit 0
 	fi
 	echo "BLOCKED: $message" >&2
 	echo "Pattern: $rule" >&2
-	echo "Normal git push is allowed. Force/destructive git actions require explicit human execution." >&2
+	echo "Normal git push and verified merged cleanup are allowed. Other destructive git actions remain blocked." >&2
 	if [[ "$cleanup_hint" == "1" ]]; then
-		echo "Cleanup of merged work is allowed: git branch -D for branches merged into origin's default branch (squash merges included) that no worktree has checked out, and git worktree remove --force for a merged worktree without tracked changes. Run git fetch first." >&2
+		echo "Run git fetch first. Cleanup of merged work is allowed, including squash PRs and worktree removal followed by branch -D. Uncommitted files are kept. For an exception, show commits/files at risk and ask once; after explicit user consent, the agent can retry the exact target with git -c cc-thingz.cleanupApproved=<full-tip-oid>. Never set this in persistent config or use it without consent." >&2
 	fi
 	exit 2
 }

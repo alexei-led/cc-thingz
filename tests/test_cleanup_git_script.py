@@ -88,7 +88,7 @@ def make_gh_stub(
     script = bin_dir / "gh"
     lines = [
         "#!/usr/bin/env python3",
-        "import sys",
+        "import sys, subprocess",
         "states = {",
     ]
     for branch, value in states.items():
@@ -106,7 +106,9 @@ def make_gh_stub(
         "    if value is None:",
         "        sys.exit(1)",
         "    state, head = value",
-        "    sys.stdout.write(state + '\\t' + (head or ''))",
+        "    merge = subprocess.check_output("
+        "['git', 'rev-parse', 'main'], text=True).strip()",
+        "    sys.stdout.write(state + '\\t' + (head or '') + '\\tmain\\t' + merge)",
         "    sys.exit(0)",
         "sys.exit(1)",
     ]
@@ -169,7 +171,7 @@ def test_remote_default_branch_wins_over_local_fallback_order(tmp_path: Path) ->
     result = run([str(SCRIPT)], repo)
 
     assert result.returncode == 0, result.stdout
-    assert "base branch: master" in result.stdout
+    assert "base branch: origin/master" in result.stdout
 
 
 def test_removes_squash_merged_pr_worktree_when_gh_confirms_merged(
@@ -219,7 +221,7 @@ def test_removes_upstream_gone_branch(tmp_path: Path) -> None:
     result = run([str(SCRIPT)], repo)
 
     assert result.returncode == 0, result.stdout
-    assert "delete gone-branch (upstream gone)" in result.stdout
+    assert "delete gone-branch (merged)" in result.stdout
 
 
 def test_keeps_dirty_worktree(tmp_path: Path) -> None:
@@ -383,7 +385,7 @@ def test_locked_worktree_removal_failure_still_processes_branches(
     result = run([str(SCRIPT), "--apply"], repo)
 
     assert result.returncode == 0, result.stdout
-    assert "warning: failed to remove worktree" in result.stdout
+    assert f"KEEP {worktree} (wt-branch, locked)" in result.stdout
     assert "== branches ==" in result.stdout
     assert "Deleted branch branch-only" in result.stdout
     branches = git(repo, "branch", "--format=%(refname:short)").splitlines()
@@ -408,7 +410,7 @@ def test_unknown_ahead_with_force_goes_straight_to_D(tmp_path: Path) -> None:
     bogus_head = "e" * 40
     env = make_gh_stub(tmp_path, {branch: ("MERGED", bogus_head)})
 
-    result = run([str(SCRIPT), "--apply", "--force"], repo, env=env)
+    result = run([str(SCRIPT), "--apply", "--force", "--branch", branch], repo, env=env)
 
     assert result.returncode == 0, result.stdout
     assert "-d refused" not in result.stdout

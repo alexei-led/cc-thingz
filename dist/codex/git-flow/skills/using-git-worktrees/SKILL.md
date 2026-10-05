@@ -31,7 +31,7 @@ The script runs `git worktree add` from the main worktree root. It checks out an
 scripts/cleanup-worktree.sh [branch]
 ```
 
-It removes the worktree and deletes the branch only when `gh` confirms the PR is `MERGED`. It also refuses when the branch has commits past the merged PR head. Pass `--force` only after the user confirms the merge without `gh`, confirms those extra commits are throwaway, or abandons the branch; `--force` can remove a dirty worktree and force-delete the branch. For bulk or stale cleanup, use cleanup-git. Leave `git pull` out of cleanup; the user pulls the main worktree once it is clean on the integration branch.
+A cleanup request authorizes removal of a clean, verified merged worktree and its branch without another confirmation. The script fetches first and verifies Git ancestry, a merged PR bound to the repository/base/head, or an equivalent squash patch without `gh`. It preserves new commits and uncommitted files, including ignored files. For an exception, show the exact target, full tip OID, commits and files at risk, then ask once. After consent, recheck the tip and files and run `--force <branch>` yourself; never require the user to copy and run the command. Main, protected, and locked worktrees remain guarded even with force. For bulk or stale cleanup and command-local hook consent, use cleanup-git. Leave `git pull` out of cleanup; update the integration worktree separately only when clean and requested.
 
 For cases the scripts refuse or don't cover, read [workflow.md](references/workflow.md).
 
@@ -44,4 +44,4 @@ Path: <project>.worktrees/<slug>
 Next: cd <path>, or the script's refusal reason
 ```
 
-Report a cleanup as done only when the PR is confirmed `MERGED` or `--force` was deliberate.
+Report cleanup as done only after verifying the worktree and branch are gone. Name the merge proof or the explicitly approved exception.

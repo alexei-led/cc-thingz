@@ -190,6 +190,13 @@ inspect cached plugins without changing configuration or cloning this repository
 The checkout also retains `make doctor`. See [doctor usage and migration](docs/doctor.md) and
 [runtime defaults](docs/runtime-reliability.md) before upgrading older installations.
 
+## Git cleanup
+
+An explicit cleanup request lets the agent remove verified merged branches and
+clean worktrees, including squash merges, without a second confirmation. Risky
+objects stay until you approve their specific loss; the agent then runs the
+command itself. See [cleanup policy and consent limits](docs/git-cleanup.md).
+
 ## Target differences and gaps
 
 See [Agent Bundler port status](docs/agentbundler-gaps.md) for target-specific
