@@ -8,6 +8,30 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.20.1] - 2026-10-05
+
+### Changed
+
+- Tests reuse isolated Git fixtures and run parser matrices in-process.
+  Work stealing balances Python tests. Build-idempotence checks no longer
+  rewrite files while other tests read them.
+- CI reuses setup across related checks and runs Python, Bun, and Bats suites
+  concurrently. External Actions use current stable releases pinned by commit.
+
+### Fixed
+
+- CI now executes all 160 existing Bats cases instead of only linting them.
+- Shell formatter tests no longer depend on host-installed tools. Permission
+  tests cover empty input, and plan tests assert exact extracted items.
+
+### Upgrade
+
+Contributors need Bats installed before running `make ci` locally.
+See [test commands and isolation](tests/README.md) and
+[measured timings](docs/testing-performance.md).
+
+[Full Changelog](https://github.com/alexei-led/cc-thingz/compare/v6.20.0...v6.20.1)
+
 ## [6.20.0] - 2026-10-05
 
 ### Added
