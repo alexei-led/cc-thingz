@@ -340,10 +340,7 @@ SH
 
 @test "test-runner: TEST_RUNNER_FULL runs Bats when shell tests exist" {
 	mkdir -p bin tests
-	cat >tests/test_smoke.bats <<'BATS'
-#!/usr/bin/env bats
-@test "smoke" { true; }
-BATS
+	printf '%s\n' '#!/usr/bin/env bats' '@test "smoke" { true; }' >tests/test_smoke.bats
 	cat >bin/bats <<'SH'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >"$PWD/bats.args"

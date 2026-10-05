@@ -6,7 +6,7 @@
 - `make test PYTEST_WORKERS=4`: cap workers explicitly on a busy machine.
 - `make test PYTEST_ARGS='--durations=30 -k cleanup'`: focused selection with timings.
 - `make test-ts`: all Bun tests, with per-file isolation.
-- `make test-shell`: all 160 Bats cases, four suite files in parallel. Requires Bats.
+- `make test-shell`: all 160 Bats cases, four suite files in parallel. Uses Bats 1.14.0.
 - `make test-fast test-ts-fast`: pre-push subsets, not release coverage.
 - `make ci`: lint, validate, and check generated output before running Python
   Bun, and Bats tests concurrently.

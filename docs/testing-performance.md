@@ -41,7 +41,8 @@ in one job. TypeScript lint and tests share another. This removes repeated
 checkout, dependency, and Agent Bundler setup without dropping gates.
 The runtime smoke job uses one pytest session for its existing selections.
 The shell job now runs all 160 existing Bats cases instead of only linting them.
-They also run in `make ci`. This adds coverage, so end-to-end CI timing is not
+They also run in `make ci`. CI installs Bats 1.14.0 from its pinned release
+commit, not the older Ubuntu package. This adds coverage, so end-to-end CI timing is not
 an equal-work comparison with v6.20.0.
 
 External Actions are pinned to current stable release commits. Go caches in

@@ -93,13 +93,10 @@ jobs:
       - uses: luizm/action-sh-checker@883217215b11c1fabbf00eb1a9a041f62d74c744 # v0.10.0
         env:
           SHFMT_OPTS: -i 0
+      - name: Install Bats
+        run: scripts/setup/install-bats.sh "$RUNNER_TEMP/bats"
       - name: Run shell integration tests
-        run: |
-          if ! command -v bats >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install --yes bats
-          fi
-          make test-shell
+        run: make test-shell
   lint-markdown:
     name: Lint Markdown
     needs: changes

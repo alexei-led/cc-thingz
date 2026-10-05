@@ -614,10 +614,8 @@ def test_make_check_is_non_mutating_and_release_packages_artifacts() -> None:
     ]
     assert "make test-shell" in shell_job
     assert "test-shell" in makefile.split("ci:", 1)[1].split("\n\n", 1)[0]
-    assert (
-        "bats"
-        in release_workflow.split("Install shell tooling", 1)[1].split("- uses:", 1)[0]
-    )
+    assert "scripts/setup/install-bats.sh" in shell_job
+    assert "scripts/setup/install-bats.sh" in release_workflow
 
     assert "- name: Build target-native distributions" in release_workflow
     assert "run: agbun build --root ." in release_workflow

@@ -40,7 +40,7 @@ make check     # non-mutating agbun check --root .
 make validate  # Agent Bundler version, genericity, executable and hook-file checks
 make test      # pytest with work stealing and slow-test timings
 make test-ts   # Pi extension tests, including generated native-extension sources
-make test-shell # Bats hook integration tests (requires bats)
+make test-shell # Bats hook integration tests (Bats 1.14.0)
 make ci        # all local gates
 ```
 
