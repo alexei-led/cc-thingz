@@ -8,7 +8,9 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
-## [6.20.1] - 2026-10-05
+## [6.20.2] - 2026-10-05
+
+Includes the test and CI improvements from the unpublished 6.20.1 release.
 
 ### Changed
 
@@ -20,17 +22,25 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ### Fixed
 
+- CI pins Bats 1.14.0. Nested Bats fixtures no longer appear as extra tests
+  under older preprocessors.
+
 - CI now executes all 160 existing Bats cases instead of only linting them.
 - Shell formatter tests no longer depend on host-installed tools. Permission
   tests cover empty input, and plan tests assert exact extracted items.
 
 ### Upgrade
 
-Contributors need Bats installed before running `make ci` locally.
+Contributors need Bats 1.14.0 installed before running `make ci` locally.
 See [test commands and isolation](tests/README.md) and
 [measured timings](docs/testing-performance.md).
 
-[Full Changelog](https://github.com/alexei-led/cc-thingz/compare/v6.20.0...v6.20.1)
+[Full Changelog](https://github.com/alexei-led/cc-thingz/compare/v6.20.0...v6.20.2)
+
+## [6.20.1] - 2026-10-05
+
+Unpublished release preparation. CI rejected the older Bats runner.
+Superseded by 6.20.2; the original tag remains unchanged.
 
 ## [6.20.0] - 2026-10-05
 
