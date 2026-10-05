@@ -114,8 +114,10 @@ make release V=6.13.0
 make release-finalize V=6.13.0
 ```
 
-`release-finalize` requires a clean release commit, validates its notes, runs
-`make ci`, and creates only a local annotated tag. It does not push. External
+`release-finalize` requires a clean release commit, validates notes and versions,
+runs `make check` for generated drift, and creates only a local annotated tag.
+It does not repeat the full test suite; full CI and runtime smoke tests gate
+publication in the release workflow. It does not push. External
 publication requires explicit authorization. The tag-triggered
 `.github/workflows/release.yml` is the only GitHub release publisher for
 cc-thingz. Its `workflow_dispatch` repair requires the existing tag and a full

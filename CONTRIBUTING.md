@@ -137,8 +137,12 @@ and a blank version section; it does not commit, tag, or push. Write and review 
 then commit all release changes. Run
 `scripts/release/release-tag finalize vX.Y.Z` or
 `make release-finalize V=X.Y.Z` on that clean commit. Finalization validates the
-notes and version identity, runs `make ci`, and creates a local annotated tag; it
-does not push. It rejects an existing local or remote tag and never moves one.
+notes and version identity, runs the non-mutating `make check` generated-drift
+gate, and creates a local annotated tag; it does not push. It rejects an existing
+local or remote tag and never moves one. It does not rerun the full test suite:
+the tag-triggered publishing workflow requires full `make ci` and runtime smoke
+tests before creating the GitHub release. Local tagging alone is not evidence
+that tests passed; run `make ci` during development.
 
 The tag-triggered `.github/workflows/release.yml` is the only GitHub release
 publisher for cc-thingz. It validates tag, package-version identity, and notes

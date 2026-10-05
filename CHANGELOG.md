@@ -8,11 +8,12 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
-## [6.19.0] - 2026-10-05
+## [6.19.1] - 2026-10-05
 
-Git cleanup now completes verified safe work without repeated permission prompts.
-When an exception needs consent, the agent explains the loss and executes the
-approved cleanup itself instead of asking you to copy commands.
+This release includes the previously unpublished 6.19.0 cleanup changes.
+
+Git cleanup runs verified safe removals without repeated prompts. For an
+exception, the agent explains the loss and executes after scoped consent.
 
 ### Added
 
@@ -26,6 +27,9 @@ approved cleanup itself instead of asking you to copy commands.
 
 ### Fixed
 
+- Local release finalization checks notes, versions, generated drift, and tag
+  availability without rerunning the full test suite. Full CI and runtime smoke
+  tests remain required before the publishing workflow creates the release.
 - Cleanup prefers fetched remote integration refs over stale local branches.
 - Ordinary worktree removal followed by deletion of its merged branch passes
   the guardrail without requiring a force-remove workaround.
@@ -43,7 +47,11 @@ approval. Consent markers are agent attestations, not authenticated user grants
 or file snapshots; agents must recheck at-risk files before executing.
 See [cleanup policy](docs/git-cleanup.md).
 
-[Full Changelog](https://github.com/alexei-led/cc-thingz/compare/v6.18.1...v6.19.0)
+[Full Changelog](https://github.com/alexei-led/cc-thingz/compare/v6.18.1...v6.19.1)
+
+## [6.19.0] - 2026-10-05
+
+Unpublished release preparation, superseded by 6.19.1.
 
 
 ## [6.18.1] - 2026-10-04

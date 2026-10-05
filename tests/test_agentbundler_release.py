@@ -792,8 +792,11 @@ Path("uv.lock").write_text(
         "\t@mkdir -p dist .claude-plugin; "
         "echo generated > dist/build.txt; "
         "echo generated > .claude-plugin/marketplace.json\n"
+        "check:\n"
+        '\t@test "$$FAIL_RELEASE_CHECK" != 1\n'
+        "\t@echo fixture generated check passed\n"
         "ci:\n"
-        "\t@echo fixture ci passed\n"
+        "\t@echo full CI belongs to the publishing workflow; exit 99\n"
     )
 
     subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
@@ -938,6 +941,23 @@ Path("uv.lock").write_text(
         text=True,
     ).stdout.strip()
 
+    drift_rejected = subprocess.run(
+        ["bash", str(script), "finalize", "v1.2.3"],
+        cwd=tmp_path,
+        env=environment | {"FAIL_RELEASE_CHECK": "1"},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert drift_rejected.returncode != 0
+    assert not subprocess.run(
+        ["git", "tag", "--list", "v1.2.3"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+
     finalized = subprocess.run(
         ["bash", str(script), "finalize", "v1.2.3"],
         cwd=tmp_path,
@@ -947,7 +967,9 @@ Path("uv.lock").write_text(
         check=True,
     )
 
-    assert "fixture ci passed" in finalized.stdout
+    assert "fixture generated check passed" in finalized.stdout
+    assert "full CI belongs" not in finalized.stdout
+    assert release_commit in finalized.stdout
     assert (
         subprocess.run(
             ["git", "rev-parse", "HEAD"],

@@ -9,8 +9,9 @@ Usage:
   scripts/release/release-tag finalize vX.Y.Z
 
 prepare updates version metadata, CHANGELOG.md, and generated outputs without
-committing or tagging. Review and commit those changes, then finalize validates
-the clean release commit and creates a local annotated tag. Neither step pushes.
+committing or tagging. Review and commit those changes, then finalize checks
+notes, versions, generated drift, and tag availability before creating a local
+annotated tag. Full CI is the publishing workflow's gate. Neither step pushes.
 EOF
 }
 
@@ -191,7 +192,7 @@ fi
 
 python3 "$CHECKER" check-release --root . --tag "$TAG" --changelog CHANGELOG.md
 
-parent=$(git rev-parse --verify --quiet HEAD^) || {
+git rev-parse --verify --quiet HEAD^ >/dev/null || {
 	echo "ERROR: finalize requires a committed release revision" >&2
 	exit 1
 }
@@ -213,8 +214,8 @@ if ! grep -q '^dist/' <<<"$changed_files"; then
 	exit 1
 fi
 
-printf 'Validating clean release commit %s with make ci...\n' "$parent"
-make ci
+printf 'Validating clean release commit %s with make check...\n' "$(git rev-parse HEAD)"
+make check
 check_clean_tree
 check_tag_available
 
