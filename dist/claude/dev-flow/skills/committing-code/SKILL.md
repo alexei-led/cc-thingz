@@ -1,5 +1,5 @@
 ---
-{"allowed-tools":["Bash(git status *)","Bash(git diff *)","Bash(git log *)","Bash(git show *)","Bash(git branch *)","Bash(git add *)","Bash(git commit *)","Bash(scripts/commit-state.sh *)"],"context":"fork","description":"Create normal git commits with logical grouping. Use when committing, saving changes, creating commits, or grouping work into commits. NOT for amending, rebasing, force-pushing, or rewriting history.","name":"committing-code","user-invocable":true}
+{"allowed-tools":["Bash(git status *)","Bash(git diff *)","Bash(git log *)","Bash(git show *)","Bash(git branch *)","Bash(git add *)","Bash(git commit *)","Bash(scripts/commit-state.sh *)"],"context":"fork","description":"Create normal git commits with logical grouping. Use when committing, saving changes, creating commits, or grouping work into commits. For drafting or editing commit messages without committing, use writing-style. NOT for amending, rebasing, force-pushing, or rewriting history.","name":"committing-code","user-invocable":true}
 ---
 
 # Commit Changes
@@ -25,6 +25,9 @@ is not a git repository, HEAD is detached, or a rebase or merge is in progress.
   split.
 - Mixed changes: group by purpose (feature, fix, refactor, docs, CI or config)
   from diff evidence, not filenames. Keep a change and its tests together.
+- Use writing-style for message wording. Keep the repo's syntax and required
+  trailers; lead with the concrete change and add a body only for non-obvious
+  reasons, consequences, or migration steps.
 - Match the message style of recent commits. Read
   [conventions.md](references/conventions.md) when there is no history to match or
   the user asks for a specific format.

@@ -4,6 +4,8 @@ The committed release section, usually the version section in `CHANGELOG.md`, is
 
 ## Content
 
+- Lead with the changed behavior. Omit praise, process narration, repeated
+  summaries, and empty sections; preserve uncertainty and necessary context.
 - Explain each user-visible change and why it matters. Name affected users, behavior, or configuration when known.
 - Check claims against the commits and diffs since the verified previous release. Do not claim a fix for a bug that no published version had.
 - Aim for about 150 words for a patch and 250 for a minor release. These are review budgets, not truncation limits: keep migration steps, compatibility details, security notices, and known issues.
@@ -11,7 +13,6 @@ The committed release section, usually the version section in `CHANGELOG.md`, is
 - Keep generated package or distribution metadata out of the authored summary.
 - Append a full compare link only when the previous release tag is verified.
 - Use the exact release tag as the release title, for example `v1.4.0`.
-- Leave out empty sections.
 
 ## Structure
 

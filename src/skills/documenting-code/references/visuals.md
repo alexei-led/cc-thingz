@@ -5,6 +5,17 @@ human docs. A visual earns its place when it answers a question faster than
 prose. Every visual needs a render check, because a diagram that parses can
 still be hard to read.
 
+## Publication support
+
+Check what the destination renders, not just what the local preview supports.
+Use Mermaid only on a surface that renders it. Otherwise use a supported image
+with alt text and a text explanation, or a list or table. Avoid raw diagram
+source when readers would see it as code.
+
+Use the smallest visual that answers the question. Short notes rarely need a
+diagram. Verify the final destination's layout and theme when accessible;
+otherwise name that verification gap.
+
 ## Pick the form by the question
 
 - What talks to what: `flowchart LR` with the main component in the middle.

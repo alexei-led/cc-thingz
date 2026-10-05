@@ -1,5 +1,5 @@
 ---
-{"description":"Create, split, slim, or rewrite repository skills. Use when adding a new `src/skills/\u003cname\u003e/` skill, editing a skill description, frontmatter, references, overlays, or plugin placement, or tightening routing between neighboring skills. NOT for score-only instruction review; use reviewing-instructions. NOT for broad agent/package config audits; use evolving-config. NOT for ordinary docs; use documenting-code.","name":"writing-skills"}
+{"description":"Create, split, slim, or rewrite repository skills. Use when adding a new `src/skills/\u003cname\u003e/` skill, editing a skill description, frontmatter, references, overlays, or plugin placement, or tightening routing between neighboring skills. NOT for score-only instruction review; use reviewing-instructions. NOT for broad agent/package config audits; use evolving-config. NOT for ordinary docs; use documenting-code. NOT for engineering messages; use writing-style.","name":"writing-skills"}
 ---
 
 # Writing Skills
@@ -53,6 +53,9 @@ These follow the agentskills.io specification:
   preferences as positive statements.
 - Use plain statements. Skip ALL-CAPS emphasis, "MANDATORY", and "think step by
   step / carefully"; reasoning effort is a runtime setting.
+- Name the actor, trigger, action, and result where ambiguity changes behavior.
+  Use one term per concept and explicit referents. Shortening must preserve
+  conditions, exceptions, safety limits, and uncertainty.
 - State each rule once. The body does not restate the description's NOT-for
   list. Required checks appear once; after they pass, repeat them only after a
   change or failure.

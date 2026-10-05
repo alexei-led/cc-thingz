@@ -23,6 +23,7 @@
     "skills": [
       "committing-code",
       "documenting-code",
+      "writing-style",
       "releasing-code",
       "fixing-code",
       "improving-tests",
@@ -44,6 +45,9 @@
         "assets/examples/pipeline.mmd",
         "assets/examples/request-flow.mmd",
         "assets/examples/system-context.mmd"
+      ],
+      "writing-style": [
+        "SKILL.md"
       ],
       "releasing-code": [
         "SKILL.md",

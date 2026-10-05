@@ -55,6 +55,8 @@ cannot run, record `Structural pre-pass: skipped (<reason>)` and continue.
 Judge each file against its own job: a read-only reviewer needs different limits
 than an apply flow, and a reference file needs no routing description. Pick the
 band first, apply caps, and name the top one to three improvements by impact.
+Flag ambiguous actors, referents, overloaded terms, and missing conditions
+when they change behavior. Judge concision by preserved meaning, not word count.
 Local project rules win over vendor guidance; report the conflict. For repeated
 scoring or reranking, keep the scope, model context, and rubric version fixed.
 

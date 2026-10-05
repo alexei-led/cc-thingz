@@ -3,7 +3,7 @@
 [![CI](https://github.com/alexei-led/cc-thingz/actions/workflows/ci.yml/badge.svg)](https://github.com/alexei-led/cc-thingz/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Targets](https://img.shields.io/badge/targets-6-00897B)](agentbundle.json)
-[![Skills](https://img.shields.io/badge/skills-27-green)](src/skills/)
+[![Skills](https://img.shields.io/badge/skills-28-green)](src/skills/)
 [![Agent Bundler](https://img.shields.io/badge/Agent_Bundler-required-00897B)](https://github.com/alexei-led/agentbundler)
 
 Portable skills, agents, hooks, and Pi-native extensions for Claude Code, Codex
@@ -191,6 +191,18 @@ Use the `installation-doctor` skill from the installed `discovery` plugin to
 inspect cached plugins without changing configuration or cloning this repository.
 The checkout also retains `make doctor`. See [doctor usage and migration](docs/doctor.md) and
 [runtime defaults](docs/runtime-reliability.md) before upgrading older installations.
+
+## Writing
+
+The `dev-flow` package includes `writing-style` for concise commit messages,
+PR/MR descriptions, issues, and review comments. It keeps risks and uncertainty
+explicit and omits boilerplate. Drafting text does not authorize publishing it.
+Use `documenting-code` for project docs and supported, render-checked visuals,
+`writing-skills` for AI instructions, and `releasing-code` for release notes.
+
+Repository `AGENTS.md` sets writing defaults for this checkout. Installed skills
+load by task. They do not impose a global style on every answer. Put universal
+writing preferences in your own top-level agent instructions.
 
 ## Git cleanup
 

@@ -2,6 +2,18 @@
   "skill_name": "documenting-code",
   "evals": [
     {
+      "id": "unsupported-visual-clear-uncertainty",
+      "name": "plain-text docs preserve uncertainty without unsupported visuals",
+      "prompt": "Rewrite this runbook excerpt for a plain-text-only incident system: 'The worker may retry a request once after a timeout; production behavior is not verified. It then sends it there.' Known facts: after a successful retry, the worker sends the result to the audit queue. Explain your wording and format choices. Do not invent a chart or verification.",
+      "expected_output": "The rewrite names the worker, result and audit queue, retains uncertainty and the retry condition, and uses plain text rather than Mermaid or an image unsupported by the destination.",
+      "assertions": [
+        "Names the actor, result and audit queue instead of ambiguous pronouns.",
+        "Preserves timeout, at most one retry, and the successful-retry condition.",
+        "Keeps production behavior explicitly unverified rather than making a guarantee.",
+        "Uses a plain-text form without an unsupported diagram or fabricated data."
+      ]
+    },
+    {
       "id": "ambiguous-doc-update-asks-scope",
       "name": "ambiguous doc update asks scope",
       "prompt": "A user says: update docs. No specific documentation target is provided. Describe the first response and workflow.",

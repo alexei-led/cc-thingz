@@ -1,5 +1,5 @@
 ---
-{"allowed-tools":["Read","Grep","Glob","Edit","Write","AskUserQuestion","Bash(git diff *)","Bash(git status *)","Bash(git log *)","Bash(python3 *check-links.py *)","Bash(bash *render-mermaid.sh *)","Bash(python3 *prose-lint.py *)","Bash(mmdc *)","Bash(rsvg-convert *)","Bash(markdownlint-cli2 *)","Bash(make lint-markdown)","Bash(make validate)","Bash(make check)"],"description":"Write, rewrite, or update project docs from implementation facts - README front pages, user guides, configuration references, architecture docs, evaluations, agent instructions, and code comments. Use when docs are stale after a change, or when a doc set must become clear, visual, and consistent with the code. NOT for release preparation or release notes (use releasing-code), external library docs (looking-up-docs), scoring instruction files (reviewing-instructions), or ADRs unless explicitly requested.","name":"documenting-code","user-invocable":true}
+{"allowed-tools":["Read","Grep","Glob","Edit","Write","AskUserQuestion","Bash(git diff *)","Bash(git status *)","Bash(git log *)","Bash(python3 *check-links.py *)","Bash(bash *render-mermaid.sh *)","Bash(python3 *prose-lint.py *)","Bash(mmdc *)","Bash(rsvg-convert *)","Bash(markdownlint-cli2 *)","Bash(make lint-markdown)","Bash(make validate)","Bash(make check)"],"description":"Write, rewrite, or update project docs from implementation facts - README front pages, user guides, configuration references, architecture docs, evaluations, agent instructions, and code comments. Use when writing or improving project docs for clarity, concision, accuracy, or useful visuals, or when code changes make docs stale. NOT for release preparation or release notes (releasing-code), external library docs (looking-up-docs), engineering messages (writing-style), scoring instruction files (reviewing-instructions), or ADRs unless explicitly requested.","name":"documenting-code","user-invocable":true}
 ---
 
 # Documenting Code
@@ -49,7 +49,8 @@ Decide the reader before writing.
    code conflict, report it and update the docs to the code, unless the user says
    that the doc is the intended contract.
 4. Write. Keep each fact in one place and link to it from the others. Replace
-   adjectives with measured facts.
+   adjectives with measured facts. Name actors, conditions, and referents; use
+   one term per concept. Cut words only when meaning and necessary context survive.
 5. Check changed claims against their source; use `references/claims.md` for
    configuration, API, or measured-performance claims. Generate sample output
    when changing examples. Mark unconfirmed claims and say where you looked.

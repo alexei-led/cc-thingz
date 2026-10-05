@@ -2,6 +2,16 @@
 
 Portable skills, agents, and typed hooks for Pi, Claude Code, Codex CLI, Copilot, Cursor, and Grok. Agent Bundler (`agbun`) renders them from `src/` into per-target packages under `dist/`.
 
+## Writing and communication
+
+- Lead with the result, problem, or decision. Each sentence adds a fact, reason, or action. Omit routine narration, repeated questions, pleasantries, and empty sections.
+- Use the fewest words that preserve meaning. Keep conditions, risks, compatibility limits, and genuine uncertainty explicit.
+- Use one term per concept. Name the actor and the referent instead of ambiguous "this", "it", or "they".
+- Replace praise and quality adjectives with evidence. Distinguish observed facts, recommendations, and unverified claims.
+- For human readers, choose prose, lists, tables, or supported visuals by what explains fastest. For agent readers, use explicit operational rules, not decorative visuals.
+- Use `writing-style` for commits, PR/MR descriptions, issues, and review comments. Use `documenting-code` for docs and `writing-skills` for AI instructions.
+- These defaults apply to all generated text in the user's language. Explicit user or project requirements override them.
+
 ## Build and check
 
 ```bash

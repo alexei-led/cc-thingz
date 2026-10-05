@@ -1,0 +1,63 @@
+{
+  "skill_name": "writing-style",
+  "evals": [
+    {
+      "id": "commit-message-only",
+      "name": "draft a commit without creating it",
+      "prompt": "Draft only a conventional commit message for this change: parser.ts now rejects empty IDs instead of sending an empty ID to the API. The diff includes a regression test. Do not run git. Keep it minimal.",
+      "expected_output": "One concrete conventional commit subject with no unnecessary body or commentary; no git actions.",
+      "assertions": [
+        "The subject names rejecting empty IDs.",
+        "The output contains no boilerplate, praise, or extra headings.",
+        "The response does not claim tests passed or create a commit."
+      ]
+    },
+    {
+      "id": "pr-preserve-unknowns",
+      "name": "short PR retains verification limits",
+      "prompt": "Rewrite this PR description, keeping the facts: 'I am delighted to introduce a robust and comprehensive solution that seamlessly improves retries. GET requests retry once after a 503, but POST requests never retry. Unit tests passed. Integration tests were not run because credentials were unavailable. It is worth noting that the provider behavior in production is not yet verified. Hope this helps.'",
+      "expected_output": "A concise PR description stating GET-only retry on 503, no POST retry, unit test success, missing integration checks and unverified production behavior, without promotional language.",
+      "assertions": [
+        "Retains one retry after 503 for GET and no retries for POST.",
+        "Distinguishes passed unit tests from integration tests not run due to unavailable credentials.",
+        "Preserves uncertainty about production behavior.",
+        "Removes praise, filler, and sign-off."
+      ]
+    },
+    {
+      "id": "russian-review-comment",
+      "name": "Russian review is explicit and actionable",
+      "prompt": "Перепиши комментарий ревью без воды: 'Мне кажется, возможно, стоит подумать о том, что это может быть не очень хорошо. В cache.ts:42 ключ содержит только userId, поэтому два tenant с одинаковым userId получают один кэшированный ответ. Добавь tenantId в ключ. Спасибо за понимание!'",
+      "expected_output": "A short Russian review comment with cache.ts:42, the cross-tenant collision consequence and the concrete tenantId fix; no hedging or sign-off.",
+      "assertions": [
+        "Writes in Russian.",
+        "Names cache.ts:42 and the collision between tenants sharing userId.",
+        "Suggests adding tenantId to the cache key.",
+        "Removes empty hedging without deleting the security-relevant consequence."
+      ]
+    },
+    {
+      "id": "issue-template-and-literal",
+      "name": "preserve template and exact error",
+      "prompt": "Rewrite an issue using our required headings Observed, Expected, Reproduction. Facts: tool sync --dry-run deletes the local cache directory. Expected: dry-run must not modify files. Repro: create cache/, run tool sync --dry-run, see cache/ gone. Log: 'cache: removed 3 entries'. The cause is unknown. Only draft; do not post.",
+      "expected_output": "A concise issue in the required template preserving the command, literal log, destructive behavior, minimal reproduction and unknown cause; no posting.",
+      "assertions": [
+        "Keeps the three required headings.",
+        "Preserves tool sync --dry-run and the exact quoted log.",
+        "Reports deletion and expected no mutation, without inventing a cause.",
+        "Does not post the issue."
+      ]
+    },
+    {
+      "id": "small-pr-no-decoration",
+      "name": "small PR needs no forced visual",
+      "prompt": "Write a minimal PR description: --timeout previously accepted negative values; now rejects them with exit code 2. A focused regression test passed. The destination is plain text only. Do not add a diagram unless it explains more than a sentence.",
+      "expected_output": "One or two short sentences with the behavior and test evidence, without Mermaid, tables, boilerplate or invented risks.",
+      "assertions": [
+        "States rejection of negative --timeout values with exit code 2.",
+        "Reports the focused regression test passed.",
+        "Uses plain text with no diagram or unnecessary headings."
+      ]
+    }
+  ]
+}

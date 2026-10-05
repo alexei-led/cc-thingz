@@ -351,7 +351,7 @@ def test_generated_target_inventory_matches_supported_contract() -> None:
     source_skills = {
         path.parent.name for path in (REPO_ROOT / "src/skills").glob("*/SKILL.md")
     }
-    assert len(source_skills) == 27
+    assert len(source_skills) == 28
     assert f"skills-{len(source_skills)}-green" in (REPO_ROOT / "README.md").read_text()
 
     for target in TARGETS:

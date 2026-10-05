@@ -20,10 +20,16 @@ skill.
   the log."
 - Descriptions: 25 words or fewer for each sentence, one new fact for each
   sentence, six sentences or fewer for each paragraph.
+- Lead with the fact or action. Omit ceremonial openings, repeated summaries,
+  and narration of the writing process.
+- Name actors and referents; expand an unfamiliar abbreviation on first use.
+  Keep negation, conditions, risks, and genuine uncertainty when shortening.
+- These clarity rules apply in the reader's language. The English grammar and
+  word-count rules in this reference are not a compliance standard for other languages.
 - Active voice. Simple present, past, or future.
-- Use the modals "must", "can", and "will". Replace "should" with "must" for a
-  requirement, or state a recommendation as a fact. Replace "may", "might",
-  and "could" with "can".
+- Use "must" for requirements, "can" for ability or permission, and "will" for
+  known future behavior. State recommendations as recommendations. Preserve
+  uncertainty: do not turn "may fail" into "will fail" or a guarantee.
 - No contractions. Keep articles and the word "that".
 - No semicolons. Write two sentences.
 - No filler: leverage, utilize, seamlessly, robust, powerful, simply, just,
