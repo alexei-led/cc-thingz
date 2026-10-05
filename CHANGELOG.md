@@ -8,6 +8,44 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.19.0] - 2026-10-05
+
+Git cleanup now completes verified safe work without repeated permission prompts.
+When an exception needs consent, the agent explains the loss and executes the
+approved cleanup itself instead of asking you to copy commands.
+
+### Added
+
+- Command-local cleanup consent pinned to the target's full commit OID. It
+  permits a specifically approved branch/worktree deletion, not reset, clean,
+  force-push, protected branches, or lock overrides.
+- Offline squash-patch detection in both cleanup scripts, alongside Git ancestry
+  and GitHub PR verification. PR evidence checks the base, merged head, and
+  reachable merge commit, including conflict-resolved squash merges.
+- Target selection with `cleanup-git.sh --branch <name>`.
+
+### Fixed
+
+- Cleanup prefers fetched remote integration refs over stale local branches.
+- Ordinary worktree removal followed by deletion of its merged branch passes
+  the guardrail without requiring a force-remove workaround.
+- Automatic cleanup preserves ignored and untracked files as well as tracked
+  changes. Locked or uncertain objects stay without stopping safe removals.
+- Guardrails recognize split branch force-delete flags, lease/mirror force
+  pushes, and shell commands with options before `-c`.
+
+### Upgrade
+
+Before running existing cleanup automation after upgrading, add
+`--branch <name>` to any `cleanup-git.sh --force` invocation; unscoped force
+sweeps are now refused. Explicit safe-cleanup requests no longer need a second
+approval. Consent markers are agent attestations, not authenticated user grants
+or file snapshots; agents must recheck at-risk files before executing.
+See [cleanup policy](docs/git-cleanup.md).
+
+[Full Changelog](https://github.com/alexei-led/cc-thingz/compare/v6.18.1...v6.19.0)
+
+
 ## [6.18.1] - 2026-10-04
 
 ### Fixed
