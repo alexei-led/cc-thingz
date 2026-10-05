@@ -8,6 +8,24 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.20.0] - 2026-10-05
+
+### Added
+
+- `writing-style` in `dev-flow` for concise commit messages, PR/MR descriptions,
+  issues, and review comments. It removes boilerplate while preserving context,
+  risks, uncertainty, and required templates.
+
+### Changed
+
+- Documentation and AI-instruction skills now make actors, conditions, and
+  terminology explicit. Shorter wording must preserve the original meaning.
+- Documentation visuals must suit the publishing platform. Use supported
+  diagrams or images when they explain faster than text, otherwise lists or tables.
+- Release notes lead with changed behavior rather than praise or process narration.
+
+[Full Changelog](https://github.com/alexei-led/cc-thingz/compare/v6.19.1...v6.20.0)
+
 ## [6.19.1] - 2026-10-05
 
 This release includes the previously unpublished 6.19.0 cleanup changes.
