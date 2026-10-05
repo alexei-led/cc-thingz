@@ -38,10 +38,15 @@ agbun package --help # must support deterministic target archives
 make build     # agbun build --root .
 make check     # non-mutating agbun check --root .
 make validate  # Agent Bundler version, genericity, executable and hook-file checks
-make test      # pytest
+make test      # pytest with work stealing and slow-test timings
 make test-ts   # Pi extension tests, including generated native-extension sources
+make test-shell # Bats hook integration tests (requires bats)
 make ci        # all local gates
 ```
+
+See [test organization](tests/README.md) and [performance measurements](docs/testing-performance.md)
+for focused commands, fixture isolation, and CI setup reuse. `make ci` runs Python,
+Bun, and Bats suites concurrently after the shared validation gates.
 
 `agbun build` owns the complete `dist/` tree. Its output directory is not a
 staging area: the command replaces it. Keep the manifest output dedicated.

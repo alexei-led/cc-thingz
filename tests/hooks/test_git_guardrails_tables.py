@@ -5,13 +5,12 @@ of hook logs, or a bypass the rewrite must still catch.
 
 from __future__ import annotations
 
-import json
 import subprocess
 from pathlib import Path
 
 import pytest
+from git_helpers import run_hook
 
-HOOK = Path(__file__).resolve().parents[2] / "src/hooks/git-guardrails/hook.sh"
 DECIDE = Path(__file__).resolve().parents[2] / "src/hooks/git-guardrails/decide.py"
 
 RELEASE_SCRIPT = """\
@@ -173,14 +172,20 @@ MUST_ALLOW = [
 ]
 
 
-def run_hook(command: str, tmp_path: Path) -> subprocess.CompletedProcess[str]:
-    payload = json.dumps({"tool_input": {"command": command}, "cwd": str(tmp_path)})
-    return subprocess.run(
-        ["bash", str(HOOK), str(DECIDE)],
-        input=payload,
-        capture_output=True,
-        text=True,
-    )
+@pytest.fixture(scope="module")
+def decision_engine(load_script):
+    return load_script(str(DECIDE))
+
+
+@pytest.fixture
+def decide(decision_engine, monkeypatch):
+    # These are parser cases in a non-repository, not merge-proof integration.
+    def no_repository(args, **_kwargs):
+        assert args[0] == "git"
+        return subprocess.CompletedProcess(args, 128, "", "not a git repository")
+
+    monkeypatch.setattr(decision_engine.subprocess, "run", no_repository)
+    return decision_engine.decide
 
 
 BLOCK_IDS = [reason for _, reason in MUST_BLOCK]
@@ -188,12 +193,34 @@ ALLOW_IDS = [reason for _, reason in MUST_ALLOW]
 
 
 @pytest.mark.parametrize(("command", "reason"), MUST_BLOCK, ids=BLOCK_IDS)
-def test_must_block(command: str, reason: str, tmp_path: Path) -> None:
-    result = run_hook(command, tmp_path)
-    assert result.returncode == 2, f"{reason}: expected block, got {result.stderr}"
+def test_must_block(decide, command: str, reason: str, tmp_path: Path) -> None:
+    assert decide(command, str(tmp_path), False, []) is not None, reason
 
 
 @pytest.mark.parametrize(("command", "reason"), MUST_ALLOW, ids=ALLOW_IDS)
-def test_must_allow(command: str, reason: str, tmp_path: Path) -> None:
+def test_must_allow(decide, command: str, reason: str, tmp_path: Path) -> None:
+    assert decide(command, str(tmp_path), False, []) is None, reason
+
+
+@pytest.mark.parametrize(
+    ("command", "exit_code"),
+    [
+        ("ls /tmp", 0),
+        ('git commit -m "do not git push --force"', 0),
+        (HEREDOC_COMMAND, 0),
+        ("echo ok\ngit reset --hard", 2),
+        ("g\\it reset --hard", 2),
+        ('g""it push --force', 2),
+        ("g'i't clean -fdx", 2),
+        ("GIT reset --hard", 2),
+        ("$'git' reset --hard", 2),
+        ('$"git" clean -fdx', 2),
+    ],
+)
+def test_shell_payload_and_fast_path(
+    command: str, exit_code: int, tmp_path: Path
+) -> None:
     result = run_hook(command, tmp_path)
-    assert result.returncode == 0, f"{reason}: expected allow, got {result.stderr}"
+    assert result.returncode == exit_code, result.stderr
+    if exit_code == 2:
+        assert "BLOCKED:" in result.stderr

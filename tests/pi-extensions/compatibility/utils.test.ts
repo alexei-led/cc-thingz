@@ -93,35 +93,14 @@ describe("cleanStepText", () => {
 });
 
 describe("extractTodoItems", () => {
-	it("returns empty array when no Plan: header present", () => {
-		expect(extractTodoItems("Just some text\n1. Step one\n2. Step two")).toHaveLength(0);
-	});
-
-	it("extracts numbered steps after Plan: header", () => {
-		const msg = "**Plan:**\n1. First step here\n2. Second step here\n3. Third step here";
-		const items = extractTodoItems(msg);
-		expect(items).toHaveLength(3);
-		expect(items[0]).toMatchObject({ step: 1, completed: false });
-		expect(items[2]).toMatchObject({ step: 3, completed: false });
-	});
-
-	it("skips items shorter than 4 chars after cleaning", () => {
-		const msg = "Plan:\n1. ok\n2. A sufficiently long step description";
-		const items = extractTodoItems(msg);
-		expect(items.every((i) => i.text.length > 3)).toBe(true);
-	});
-
-	it("strips bold markers from step text", () => {
-		const msg = "Plan:\n1. **Write the tests**";
-		const items = extractTodoItems(msg);
-		expect(items[0]?.text).not.toContain("**");
-	});
-
-	it("stops at end of plan section", () => {
-		const msg = "**Plan:**\n1. First step\n\nSome unrelated paragraph\n\n2. Not a plan step";
-		const items = extractTodoItems(msg);
-		// Items after empty line are still matched if the regex finds them
-		expect(items.length).toBeGreaterThan(0);
+	it.each([
+		["no header", "Just some text\n1. Step one\n2. Step two", []],
+		["numbered steps", "**Plan:**\n1. First step here\n2. Second step here\n3. Third step here", ["First step here", "Second step here", "Third step here"]],
+		["short item", "Plan:\n1. ok\n2. A sufficiently long step description", ["A sufficiently long step description"]],
+		["bold text", "Plan:\n1. **Write the tests**", ["Tests"]],
+		["prose between steps", "**Plan:**\n1. First step\n\nContext for the next step\n\n2. Second step", ["First step", "Second step"]],
+	] satisfies [name: string, message: string, texts: string[]][])("extracts exact plan items: %s", (_name, message, texts) => {
+		expect(extractTodoItems(message)).toEqual(texts.map((text, index) => ({ step: index + 1, text, completed: false })));
 	});
 });
 

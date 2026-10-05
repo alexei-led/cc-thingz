@@ -454,7 +454,7 @@ exit 99
 SH
 	chmod +x bin/biome bin/oxlint bin/prettier bin/eslint
 
-	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_machine\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"src/app.ts\"}}" bash "$HOOK"
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_machine\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"src/app.ts\"}}" bash "$HOOK"
 	[ "$status" -eq 0 ]
 	[ "$(cat biome.args)" = "format --write src/app.ts" ]
 	[ "$(cat oxlint.args)" = "--fix src/app.ts" ]

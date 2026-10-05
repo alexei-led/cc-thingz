@@ -25,6 +25,19 @@ function isAlive(pid: number): boolean {
 	}
 }
 
+function isRunning(pid: number): boolean {
+	if (!isAlive(pid)) return false;
+	try {
+		// Orphans can remain zombies until PID 1 reaps them; they have exited.
+		return !execFileSync("ps", ["-o", "stat=", "-p", String(pid)], { encoding: "utf8" })
+			.trim()
+			.startsWith("Z");
+	} catch (error) {
+		if (!isAlive(pid)) return false;
+		throw error;
+	}
+}
+
 describe("async SessionEnd — independent supervisor", () => {
 	it("survives the launching process exiting and delivers stdin", async () => {
 		const dir = mkdtempSync(join(tmpdir(), "hook-runner-shutdown-"));
@@ -76,7 +89,7 @@ describe("async SessionEnd — independent supervisor", () => {
 			pid = Number(readFileSync(pidFile, "utf8").trim());
 			expect(pid).toBeGreaterThan(0);
 			const deadline = Date.now() + 7000;
-			while (isAlive(pid) && Date.now() < deadline) await Bun.sleep(20);
+			while (isRunning(pid) && Date.now() < deadline) await Bun.sleep(50);
 			let status = "";
 			try {
 				status = execFileSync("ps", ["-o", "stat=", "-p", String(pid)], { encoding: "utf8" }).trim();
@@ -158,7 +171,7 @@ describe("runHook — real subprocess timeout kill", () => {
 				expect(result.exitCode).toBe(mode === "timeout" ? 1 : 2);
 				expect(result.timedOut).toBe(mode === "timeout");
 				const deadline = Date.now() + 3000;
-				while (isAlive(pid) && Date.now() < deadline) await Bun.sleep(20);
+				while (isRunning(pid) && Date.now() < deadline) await Bun.sleep(50);
 				let status = "";
 				try {
 					status = execFileSync("ps", ["-o", "stat=", "-p", String(pid)], { encoding: "utf8" }).trim();

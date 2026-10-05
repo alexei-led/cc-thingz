@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 
 mock.module("@earendil-works/pi-coding-agent", () => ({}));
 
@@ -85,10 +85,15 @@ describe("permission-gate / tool_call", () => {
 		},
 	);
 
-	it("blocks invalid bash command input", async () => {
-		const { handlers } = setup();
+	it.each([42, null, undefined, "", " \t\n"])("blocks invalid bash command input: %j", async (command) => {
+		const { handlers, setResponder } = setup();
+		const responder = mock();
+		setResponder(responder);
 		const handler = handlers.get("tool_call")!;
-		const result = await handler({ toolName: "bash", input: { command: 42 } }, makeCtx(false));
+		const ctx = makeCtx(true);
+		const result = await handler({ toolName: "bash", input: { command } }, ctx);
+		expect(responder).not.toHaveBeenCalled();
+		expect(ctx.ui.select).not.toHaveBeenCalled();
 		expect(result).toEqual({
 			block: true,
 			reason: "Invalid bash command input",
@@ -102,13 +107,21 @@ describe("permission-gate / tool_call", () => {
 			// Intentionally do not call onResult, forcing timeout.
 		});
 
-		const started = Date.now();
-		const result = await handler({ toolName: "bash", input: { command: "sudo rm -rf /tmp" } }, makeCtx(false));
-		expect(Date.now() - started).toBeGreaterThanOrEqual(1900);
-		expect(result).toMatchObject({
-			block: true,
-			reason: "Permission request hook timed out.",
+		const schedule = globalThis.setTimeout;
+		const immediate = Object.assign((callback: (...args: unknown[]) => void, _delay?: number, ...args: unknown[]) => schedule(callback, 0, ...args), {
+			__promisify__: schedule.__promisify__,
 		});
+		const timer = spyOn(globalThis, "setTimeout").mockImplementation(immediate as typeof setTimeout);
+		try {
+			const result = await handler({ toolName: "bash", input: { command: "sudo rm -rf /tmp" } }, makeCtx(false));
+			expect(timer).toHaveBeenCalledWith(expect.any(Function), 2000);
+			expect(result).toMatchObject({
+				block: true,
+				reason: "Permission request hook timed out.",
+			});
+		} finally {
+			timer.mockRestore();
+		}
 	});
 
 	it("honors hook allow with updated command", async () => {
@@ -182,28 +195,25 @@ describe("permission-gate / tool_call", () => {
 		expect(ctx.ui.select).not.toHaveBeenCalled();
 	});
 
-	it("blocks dangerous command with no UI and no hook", async () => {
+	it.each([
+		"sudo rm -rf /var",
+		"rm -rf /tmp",
+		"rm -fr /tmp",
+		"rm -f -r /tmp",
+		"rm -R /tmp",
+		"rm --force --recursive /tmp",
+		"rm --recursive /tmp",
+		"sudo whoami",
+		"chmod 777 /tmp",
+	])("blocks %s without a UI", async (command) => {
 		const { handlers } = setup();
 		const handler = handlers.get("tool_call")!;
-		const result = await handler({ toolName: "bash", input: { command: "sudo rm -rf /var" } }, makeCtx(false));
+		const result = await handler({ toolName: "bash", input: { command } }, makeCtx(false));
 		expect(result).toMatchObject({
 			block: true,
 			reason: expect.stringContaining("no UI"),
 		});
 	});
-
-	it.each(["rm -rf /tmp", "rm -fr /tmp", "rm -f -r /tmp", "rm -R /tmp", "rm --force --recursive /tmp", "rm --recursive /tmp", "sudo whoami", "chmod 777 /tmp"])(
-		"blocks %s without a UI",
-		async (command) => {
-			const { handlers } = setup();
-			const handler = handlers.get("tool_call")!;
-			const result = await handler({ toolName: "bash", input: { command } }, makeCtx(false));
-			expect(result).toMatchObject({
-				block: true,
-				reason: expect.stringContaining("no UI"),
-			});
-		},
-	);
 
 	it("allows dangerous command when UI prompt answered Yes", async () => {
 		const { handlers } = setup();

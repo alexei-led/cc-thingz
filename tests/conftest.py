@@ -54,6 +54,19 @@ def load_script():
     return _load
 
 
+@pytest.fixture(scope="session")
+def cleanup_repo_template(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    from git_helpers import create_cleanup_clone
+
+    return create_cleanup_clone(tmp_path_factory.mktemp("cleanup-template"))
+
+
+@pytest.fixture
+def clone(cleanup_repo_template: Path, tmp_path: Path) -> Path:
+    """Copy an immutable seed; refs, worktrees, and config stay test-local."""
+    return Path(shutil.copytree(cleanup_repo_template, tmp_path / "work"))
+
+
 REPO_ROOT: Path = _REPO_ROOT
 
 
@@ -63,6 +76,11 @@ def dedent_md(s: str) -> str:
 
 
 def pytest_sessionstart(session: pytest.Session) -> None:
+    # Temporary repositories must not invoke the developer's signer or hooks.
+    isolation = pytest.MonkeyPatch()
+    isolation.setenv("GIT_CONFIG_GLOBAL", os.devnull)
+    isolation.setenv("GIT_CONFIG_NOSYSTEM", "1")
+    session.config.add_cleanup(isolation.undo)
     required = os.environ.get("CC_THINGZ_REQUIRED_CLIS", "").split(",")
     missing = [name for name in required if name and shutil.which(name) is None]
     if missing:

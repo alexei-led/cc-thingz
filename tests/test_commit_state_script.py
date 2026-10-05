@@ -1,70 +1,61 @@
 from __future__ import annotations
 
+import shutil
 import subprocess
 from pathlib import Path
+
+import pytest
 
 
 def run(cmd: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(cmd, cwd=cwd, text=True, capture_output=True, check=True)
 
 
-def test_commit_state_gather_reports_suspicious_paths(tmp_path: Path) -> None:
-    repo = tmp_path / "repo"
-    repo.mkdir()
+@pytest.fixture(scope="module")
+def committed_seed(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    repo = tmp_path_factory.mktemp("commit-state")
     run(["git", "init"], repo)
     run(["git", "config", "user.name", "Test User"], repo)
     run(["git", "config", "user.email", "test@example.com"], repo)
+    for name in ("app.ts", "tracked.txt"):
+        (repo / name).write_text("initial\n")
+    run(["git", "add", "."], repo)
+    run(["git", "-c", "commit.gpgsign=false", "commit", "-m", "feat: init"], repo)
+    return repo
 
-    (repo / "app.ts").write_text("console.log('v1')\n")
-    run(["git", "add", "app.ts"], repo)
-    run(["git", "commit", "-m", "feat: init"], repo)
 
-    (repo / "app.ts").write_text("console.log('v2')\n")
-    (repo / ".env").write_text("TOKEN=secret\n")
+@pytest.fixture
+def repo(committed_seed: Path, tmp_path: Path) -> Path:
+    return Path(shutil.copytree(committed_seed, tmp_path / "repo"))
 
+
+@pytest.mark.parametrize(
+    ("filename", "content", "secret"),
+    [
+        pytest.param(".env", "TOKEN=secret\n", "TOKEN=secret", id="secret-path"),
+        pytest.param(
+            "app.ts",
+            "const api_key = 'secret-value'\n",
+            "secret-value",
+            id="secret-content",
+        ),
+    ],
+)
+def test_gather_reports_suspicious_paths_without_values(
+    repo: Path, filename: str, content: str, secret: str
+) -> None:
+    (repo / filename).write_text(content)
     script = Path("src/skills/committing-code/scripts/commit-state.sh").resolve()
     out = run([str(script), "gather"], repo).stdout
 
     assert "REPO_STATE\nclean" in out
     assert "CHANGED_PATHS" in out
-    assert "app.ts" in out
-    assert ".env" in out
     assert "SUSPICIOUS_PATH_COUNT\n1" in out
-    assert "SUSPICIOUS_PATHS\n.env" in out
+    assert f"SUSPICIOUS_PATHS\n{filename}" in out
+    assert secret not in out
 
 
-def test_commit_state_gather_reports_suspicious_content_without_value(
-    tmp_path: Path,
-) -> None:
-    repo = tmp_path / "repo"
-    repo.mkdir()
-    run(["git", "init"], repo)
-    run(["git", "config", "user.name", "Test User"], repo)
-    run(["git", "config", "user.email", "test@example.com"], repo)
-
-    (repo / "app.ts").write_text("console.log('v1')\n")
-    run(["git", "add", "app.ts"], repo)
-    run(["git", "commit", "-m", "feat: init"], repo)
-
-    (repo / "app.ts").write_text("const api_key = 'secret-value'\n")
-
-    script = Path("src/skills/committing-code/scripts/commit-state.sh").resolve()
-    out = run([str(script), "gather"], repo).stdout
-
-    assert "SUSPICIOUS_PATHS\napp.ts" in out
-    assert "secret-value" not in out
-
-
-def test_commit_state_paths_includes_untracked_files(tmp_path: Path) -> None:
-    repo = tmp_path / "repo"
-    repo.mkdir()
-    run(["git", "init"], repo)
-    run(["git", "config", "user.name", "Test User"], repo)
-    run(["git", "config", "user.email", "test@example.com"], repo)
-
-    (repo / "tracked.txt").write_text("a\n")
-    run(["git", "add", "tracked.txt"], repo)
-    run(["git", "commit", "-m", "chore: init"], repo)
+def test_commit_state_paths_includes_untracked_files(repo: Path) -> None:
 
     (repo / "tracked.txt").write_text("b\n")
     (repo / "new.txt").write_text("c\n")

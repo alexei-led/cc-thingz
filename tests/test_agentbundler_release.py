@@ -552,6 +552,19 @@ def test_source_and_generated_versions_are_consistent() -> None:
     assert set(versions.values()) == {expected}, versions
 
 
+@pytest.mark.parametrize(
+    "workflow",
+    sorted((REPO_ROOT / ".github/workflows").glob("*.yml")),
+    ids=lambda path: path.name,
+)
+def test_external_actions_are_commit_pinned(workflow: Path) -> None:
+    actions = re.findall(r"uses: (\S+)", workflow.read_text())
+    assert actions
+    for action in actions:
+        if not action.startswith("./"):
+            assert re.fullmatch(r"[^@]+@[0-9a-f]{40}", action), action
+
+
 def test_ci_typescript_filter_covers_native_pi_extension_sources() -> None:
     workflow = (REPO_ROOT / ".github/workflows/ci.yml").read_text()
     assert "- 'src/plugins/**/*.ts'" in workflow
@@ -586,16 +599,25 @@ def test_make_check_is_non_mutating_and_release_packages_artifacts() -> None:
     assert "agbun build --root ." in generated_dry_run
     assert "git diff --exit-code -- dist" in generated_dry_run
     assert "agbun check --root ." in generated_dry_run
-    validation_job = ci_workflow[
-        ci_workflow.index("  validate:") : ci_workflow.index("  test:")
-    ]
     test_job = ci_workflow[
         ci_workflow.index("  test:") : ci_workflow.index("  test-typescript:")
     ]
-    for job in (validation_job, test_job):
-        assert "- uses: oven-sh/setup-bun@v2" in job
-        assert "- run: bun install --frozen-lockfile" in job
-    assert "- run: make validate check-generated" in validation_job
+    assert "- uses: oven-sh/setup-bun@" in test_job
+    assert "- run: bun install --frozen-lockfile" in test_job
+    assert (
+        "- run: make lint-python validate check-generated skill-evals-prepare test"
+        in test_job
+    )
+    assert test_job.index("check-generated") < test_job.rindex(" test")
+    shell_job = ci_workflow[
+        ci_workflow.index("  lint-shell:") : ci_workflow.index("  lint-markdown:")
+    ]
+    assert "make test-shell" in shell_job
+    assert "test-shell" in makefile.split("ci:", 1)[1].split("\n\n", 1)[0]
+    assert (
+        "bats"
+        in release_workflow.split("Install shell tooling", 1)[1].split("- uses:", 1)[0]
+    )
 
     assert "- name: Build target-native distributions" in release_workflow
     assert "run: agbun build --root ." in release_workflow
@@ -647,15 +669,6 @@ def test_make_check_is_non_mutating_and_release_packages_artifacts() -> None:
     assert release_workflow.count("\n          cache: false\n") == 2
     assert release_workflow.count("enable-cache: false") == 2
     assert "run: bun install --frozen-lockfile" in release_workflow
-    for revision in (
-        "d23441a48e516b6c34aea4fa41551a30e30af803",
-        "ece7cb06caefa5fff74198d8649806c4678c61a1",
-        "924ae3a1cded613372ab5595356fb5720e22ba16",
-        "37802adc94f370d6bfd71619e3f0bf239e1f3b78",
-        "efb35369e0ad2afab669f228072c1b0d510eae64",
-        "ea165f8d65b6e75b540449e92b4886f43607fa02",
-    ):
-        assert revision in release_workflow
     node_package = json.loads((REPO_ROOT / "package.json").read_text())
     assert "markdownlint-cli2" in node_package["devDependencies"]
     assert "bunx --no-install markdownlint-cli2" in makefile

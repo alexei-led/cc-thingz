@@ -11,6 +11,9 @@ on:
 permissions:
   contents: read
   pull-requests: read
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 jobs:
@@ -28,8 +31,10 @@ jobs:
       skill_evals: ${{ steps.filter.outputs.skill_evals }}
       typescript: ${{ steps.filter.outputs.typescript }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: dorny/paths-filter@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
           filters: |
@@ -39,10 +44,15 @@ jobs:
               - 'uv.lock'
             shell:
               - '**/*.sh'
+              - '**/*.bats'
+              - 'scripts/git-hooks/*'
+              - 'scripts/release/release-tag'
               - '.shellcheckrc'
+              - '.github/workflows/**'
             markdown:
               - '**/*.md'
               - '.markdownlint.yaml'
+              - '.github/workflows/**'
             config:
               - '**/*.json'
               - '**/*.toml'
@@ -68,104 +78,78 @@ jobs:
               - 'tests/pi-extensions/**/*.ts'
               - 'package.json'
               - 'tsconfig.json'
-  lint-python:
-    name: Lint Python
-    needs: changes
-    if: needs.changes.outputs.python == 'true' || github.event_name == 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: astral-sh/ruff-action@v3
-        with:
-          args: check --output-format=github
-      - uses: astral-sh/ruff-action@v3
-        with:
-          args: format --check
+              - 'bun.lock'
+              - 'Makefile'
+              - '.github/workflows/**'
   lint-shell:
     name: Lint Shell
     needs: changes
-    if: needs.changes.outputs.shell == 'true' || github.event_name == 'push'
+    if: needs.changes.outputs.shell == 'true' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: luizm/action-sh-checker@v0.10.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: luizm/action-sh-checker@883217215b11c1fabbf00eb1a9a041f62d74c744 # v0.10.0
         env:
           SHFMT_OPTS: -i 0
+      - name: Run shell integration tests
+        run: |
+          if ! command -v bats >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install --yes bats
+          fi
+          make test-shell
   lint-markdown:
     name: Lint Markdown
     needs: changes
-    if: needs.changes.outputs.markdown == 'true' || github.event_name == 'push'
+    if: needs.changes.outputs.markdown == 'true' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: DavidAnson/markdownlint-cli2-action@v23
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: DavidAnson/markdownlint-cli2-action@21c1be1b93ad9ed58fa840aacc3f279cde2a72ff # v24.2.0
         with:
           globs: |
             **/*.md
             !**/node_modules/**
-  lint-typescript:
-    name: Lint TypeScript
-    needs: changes
-    if: needs.changes.outputs.typescript == 'true' || github.event_name == 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile
-      - run: make lint-typescript
-  validate:
-    name: Config Validation
-    needs: changes
-    if: needs.changes.outputs.config == 'true' || needs.changes.outputs.python == 'true' || needs.changes.outputs.skill_evals == 'true' || github.event_name == 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
-          cache-dependency-glob: uv.lock
-      - uses: actions/setup-go@v6
-        with:
-          go-version: 1.26.x
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile
-      - name: Install Agent Bundler
-        run: |
-          scripts/setup/install-agbun.sh
-          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
-      - run: make validate check-generated
-      - run: make skill-evals-prepare
   test:
-    name: Tests
+    name: Python tests and package validation
     needs: changes
-    if: needs.changes.outputs.config == 'true' || needs.changes.outputs.python == 'true' || github.event_name == 'push'
+    if: needs.changes.outputs.config == 'true' || needs.changes.outputs.python == 'true' || needs.changes.outputs.skill_evals == 'true' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           enable-cache: true
           cache-dependency-glob: uv.lock
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: 1.26.x
-      - uses: oven-sh/setup-bun@v2
+          cache-dependency-path: .agentbundler-version
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
       - run: bun install --frozen-lockfile
       - name: Install Agent Bundler
         run: |
           scripts/setup/install-agbun.sh
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
-      - run: make test
+      - run: make lint-python validate check-generated skill-evals-prepare test
   test-typescript:
-    name: Test TypeScript
+    name: TypeScript lint and tests
     needs: changes
-    if: needs.changes.outputs.typescript == 'true' || github.event_name == 'push'
+    if: needs.changes.outputs.typescript == 'true' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
       - run: bun install --frozen-lockfile
-      - run: make test-ts
+      - run: make lint-typescript test-ts
   skill-evals:
     name: Skill Evals
     needs: changes
@@ -176,12 +160,14 @@ jobs:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       SKILL_EVAL_WORKSPACE: /tmp/skill-evals
     steps:
-      - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           enable-cache: true
           cache-dependency-glob: uv.lock
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
       - name: Run advisory skill evals
@@ -206,7 +192,7 @@ jobs:
             echo "::warning::Skill evals failed in advisory mode. See the job summary and artifact."
           fi
           exit 0
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: skill-eval-report
@@ -216,10 +202,11 @@ jobs:
     name: Secret Scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v3
+          persist-credentials: false
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   runtime-smoke:
@@ -227,11 +214,9 @@ jobs:
   ci-success:
     name: CI Success
     needs:
-      - lint-python
+      - changes
       - lint-shell
       - lint-markdown
-      - lint-typescript
-      - validate
       - test
       - test-typescript
       - secrets
@@ -240,8 +225,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check all jobs
+        env:
+          JOB_RESULTS: ${{ toJson(needs) }}
         run: |
-          results='${{ toJson(needs) }}'
+          results="$JOB_RESULTS"
           if echo "$results" | grep -qE '"result": "(failure|cancelled)"'; then
             echo "::error::One or more CI jobs failed or were cancelled"
             exit 1

@@ -10,17 +10,20 @@ jobs:
     env:
       CC_THINGZ_REQUIRED_CLIS: claude,codex,pi
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: 1.26.x
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+          cache-dependency-path: .agentbundler-version
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+          cache: npm
+          cache-dependency-path: tests/vendor-smoke/package-lock.json
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
       - run: bun install --frozen-lockfile
       - run: scripts/setup/install-agbun.sh
       - name: Install core runtimes
@@ -33,14 +36,10 @@ jobs:
           codex --version
           pi --version
       - run: make check-generated
-      - name: Exercise packaged core runtimes
-        run: >-
-          uv run --extra test python -m pytest tests/test_agentbundler_release.py
-          -k 'claude_release_hooks or pi_release_archive or (marketplace_registers and (claude or codex))'
-          -v
-      - name: Exercise generated hook adapters
-        run: uv run --extra test python -m pytest tests/test_agentbundler_hooks.py -v
-      - name: Load Pi extensions and skills
+      - name: Exercise packaged runtimes, adapters, and Pi loading
         run: >-
           uv run --extra test python -m pytest
-          tests/test_root_compatibility.py::test_repository_root_pi_package_loads_commands_from_local_path -v
+          tests/test_agentbundler_release.py tests/test_agentbundler_hooks.py
+          tests/test_root_compatibility.py::test_repository_root_pi_package_loads_commands_from_local_path
+          -k 'claude_release_hooks or pi_release_archive or (marketplace_registers and (claude or codex)) or test_agentbundler_hooks or loads_commands_from_local_path'
+          -v --durations=10

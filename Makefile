@@ -46,6 +46,10 @@ lint-typescript: ## Lint and type-check Pi extension TypeScript
 
 # --- Test ---
 
+PYTEST_WORKERS ?= auto
+PYTEST_ARGS ?= --durations=15
+PYTEST = uv run --extra test python -m pytest tests/ -n $(PYTEST_WORKERS) --dist worksteal $(PYTEST_ARGS)
+
 # Excludes two kinds of slow suite: real-git/worktree/package-install
 # end-to-end tests, and hook-validation suites that fork a subprocess (bash,
 # python3, git) per case, which account for most of this subset's wall time.
@@ -55,7 +59,6 @@ TEST_FAST_IGNORE = \
 	--ignore=tests/test_agentbundler_release.py \
 	--ignore=tests/hooks/test_git_guardrails_branch_cleanup.py \
 	--ignore=tests/hooks/test_git_guardrails_e2e.py \
-	--ignore=tests/hooks/test_git_guardrails_tables.py \
 	--ignore=tests/hooks/test_file_protector.py \
 	--ignore=tests/hooks/test_notify.py \
 	--ignore=tests/hooks/test_smart_lint_compat.py \
@@ -70,15 +73,20 @@ TEST_FAST_IGNORE = \
 	--ignore=tests/test_validate_hooks.py \
 	--ignore=tests/test_generate_release_notes.py
 
-.PHONY: test test-fast test-ts test-ts-fast skill-evals-prepare skill-evals skill-evals-fast skill-evals-summary plugin-evals-prepare plugin-evals
+.PHONY: test test-fast test-ts test-ts-fast test-shell skill-evals-prepare skill-evals skill-evals-fast skill-evals-summary plugin-evals-prepare plugin-evals
 test: ## Run pytest suite
-	uv run --extra test python -m pytest tests/ -n auto
+	$(PYTEST)
 
 test-fast: ## Run pytest, skipping the slow suites CI's full run also covers (used by pre-push; see CONTRIBUTING.md)
-	uv run --extra test python -m pytest tests/ -n auto $(TEST_FAST_IGNORE)
+	$(PYTEST) $(TEST_FAST_IGNORE)
 
 test-ts: ## Run Bun TypeScript tests (Pi extensions)
 	bun test tests/pi-extensions --isolate
+
+test-shell: ## Run all Bats hook suites in parallel, with isolated Git config
+	@command -v bats >/dev/null 2>&1 || { echo "bats not installed"; exit 1; }
+	@printf '%s\0' tests/hooks/*.bats | xargs -0 -n 1 -P 4 \
+		env GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 bats --timing
 
 test-ts-fast: ## Run Bun TypeScript tests, skipping the real-subprocess timeout suite (used by pre-push; see CONTRIBUTING.md)
 	bun test tests/pi-extensions --isolate --path-ignore-patterns='**/dispatch.timeout.test.ts'
@@ -191,7 +199,8 @@ check-generated: build ## Rebuild clean-checkout dependencies and fail if tracke
 # --- CI (runs everything) ---
 
 .PHONY: ci
-ci: lint validate check-generated test test-ts ## Run full CI pipeline locally (lint + validate + generated drift check + tests)
+ci: lint validate check-generated ## Validate generated output, then run Python and Bun suites together
+	$(MAKE) -j3 test test-ts test-shell
 
 .PHONY: doctor
 doctor: ## Inspect installed plugins without changing configuration

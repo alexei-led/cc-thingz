@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import shutil
 import subprocess
 import tomllib
 from pathlib import Path
@@ -52,10 +53,18 @@ def test_hash_tree_ignores_pycache_noise(tmp_path: Path) -> None:
     assert before == _hash_tree(tmp_path)
 
 
-def test_agbun_build_is_idempotent() -> None:
-    dist = _REPO_ROOT / "dist"
-    subprocess.run(["agbun", "build", "--root", str(_REPO_ROOT)], check=True)
+def test_agbun_build_is_idempotent(tmp_path: Path) -> None:
+    # Workers read the checkout's dist concurrently; build only in this sandbox.
+    shutil.copytree(
+        _REPO_ROOT / "src",
+        tmp_path / "src",
+        ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+    )
+    for name in ("agentbundle.json", "package.json"):
+        shutil.copy2(_REPO_ROOT / name, tmp_path / name)
+    dist = tmp_path / "dist"
+    subprocess.run(["agbun", "build", "--root", str(tmp_path)], check=True)
     before = _hash_tree(dist)
-    subprocess.run(["agbun", "build", "--root", str(_REPO_ROOT)], check=True)
+    subprocess.run(["agbun", "build", "--root", str(tmp_path)], check=True)
     assert before == _hash_tree(dist)
-    subprocess.run(["agbun", "check", "--root", str(_REPO_ROOT)], check=True)
+    subprocess.run(["agbun", "check", "--root", str(tmp_path)], check=True)

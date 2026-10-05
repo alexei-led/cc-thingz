@@ -336,6 +336,8 @@ def test_repository_root_pi_package_loads_from_git_checkout(tmp_path: Path) -> N
     # Background maintenance can expose temporary pack names to the HTTP clone.
     git_environment.update(
         {
+            "GIT_CONFIG_GLOBAL": os.devnull,
+            "GIT_CONFIG_NOSYSTEM": "1",
             "GIT_CONFIG_COUNT": "2",
             "GIT_CONFIG_KEY_0": "maintenance.auto",
             "GIT_CONFIG_VALUE_0": "false",
@@ -401,7 +403,16 @@ def test_repository_root_pi_package_loads_from_git_checkout(tmp_path: Path) -> N
         stderr=subprocess.DEVNULL,
     )
     try:
-        time.sleep(0.2)
+        deadline = time.monotonic() + 5
+        while True:
+            assert server.poll() is None, "Git HTTP server exited before becoming ready"
+            try:
+                with socket.create_connection(("127.0.0.1", port), timeout=0.1):
+                    break
+            except OSError:
+                if time.monotonic() >= deadline:
+                    pytest.fail("Git HTTP server did not become ready")
+                time.sleep(0.01)
         environment = _isolated_environment(tmp_path / "git-install")
         environment.pop("PI_OFFLINE")
         environment["GIT_TERMINAL_PROMPT"] = "0"

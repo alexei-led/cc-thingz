@@ -6,8 +6,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
-import test_git_guardrails_branch_cleanup as fixtures
-from test_git_guardrails_branch_cleanup import (
+from git_helpers import (
     ENV,
     add_worktree,
     git,
@@ -15,9 +14,6 @@ from test_git_guardrails_branch_cleanup import (
 )
 
 DECIDE = Path(__file__).resolve().parents[2] / "src/hooks/git-guardrails/decide.py"
-
-
-clone = fixtures.clone
 
 
 @pytest.mark.parametrize(
