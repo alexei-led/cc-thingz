@@ -1,6 +1,6 @@
 {
   "name": "browser-automation-scripts",
-  "version": "6.20.2",
+  "version": "6.20.3",
   "description": "Support runtime for browser-automation using Playwright with dev-server detection and helper utilities",
   "author": "lackeyjb",
   "main": "run.js",

@@ -8,6 +8,8 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.20.3] - 2026-10-10
+
 ### Added
 
 - Claude agents `engineer`, `reviewer`, and `runner` set `modelRouting: auto`,
