@@ -8,6 +8,13 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+### Added
+
+- Claude agents `engineer`, `reviewer`, and `runner` set `modelRouting: auto`,
+  so a model router such as claude-router 1.9.0+ can choose their model at
+  spawn. Without a router, Claude Code ignores the key and each agent keeps
+  its `model` (`runner` stays on `haiku`).
+
 ## [6.20.2] - 2026-10-05
 
 Includes the test and CI improvements from the unpublished 6.20.1 release.

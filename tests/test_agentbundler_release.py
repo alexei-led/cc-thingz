@@ -391,11 +391,18 @@ def test_generated_agent_frontmatter_preserves_target_envelopes() -> None:
         "color": "cyan",
         "description": source_description,
         "model": "inherit",
+        "modelRouting": "auto",
         "name": "reviewer",
         "tools": ["Read", "Grep", "Glob", "LS"],
     }
-    assert _metadata("dist/claude/dev-flow/agents/engineer.md")["model"] == "inherit"
-    assert _metadata("dist/claude/discovery/agents/runner.md")["model"] == "haiku"
+    claude_models = {
+        "dev-flow/agents/engineer.md": "inherit",
+        "discovery/agents/runner.md": "haiku",
+    }
+    for path, model in claude_models.items():
+        metadata = _metadata(f"dist/claude/{path}")
+        assert metadata["model"] == model
+        assert metadata["modelRouting"] == "auto"
     assert _metadata("dist/claude/discovery/agents/runner.md")["tools"] == [
         "Read",
         "Grep",

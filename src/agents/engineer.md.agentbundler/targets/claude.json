@@ -5,6 +5,7 @@
       "Bash(ctx7 *)", "Bash(npx ctx7@latest *)", "Bash(bunx ctx7@latest *)"
     ],
     "model": "inherit",
+    "modelRouting": "auto",
     "color": "green",
     "skills": ["looking-up-docs"]
   }

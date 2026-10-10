@@ -65,7 +65,7 @@ Three roles plus a utility lane. A role is a capability envelope plus a reasonin
 
 Envelope enforcement differs by target:
 
-- Claude: hard `tools:` allowlist. `engineer` and `reviewer` use `model: inherit`; `runner` uses `haiku`.
+- Claude: hard `tools:` allowlist. `engineer` and `reviewer` use `model: inherit`; `runner` uses `haiku`. All three set `modelRouting: auto`, which lets a model router pick the model at spawn; without a router, Claude Code ignores the key and `model` applies.
 - Codex: `sandbox_mode: read-only` on every shipped profile. Profiles carry no model or effort because Agent Bundler does not render those fields; `engineer` is excluded by package policy.
 - Pi: sidecar `tools` lists plus body directives; `advisor` and `runner` rely on the directive to keep `bash` read-only.
 - Copilot, Cursor, Grok: portable artifacts without a cc-thingz runtime envelope.

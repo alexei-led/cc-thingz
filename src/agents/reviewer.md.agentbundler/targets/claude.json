@@ -2,6 +2,7 @@
   "frontmatterPatch": {
     "tools": ["Read", "Grep", "Glob", "LS"],
     "model": "inherit",
+    "modelRouting": "auto",
     "color": "cyan"
   }
 }
