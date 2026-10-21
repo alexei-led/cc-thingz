@@ -8,6 +8,35 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.20.5] - 2026-10-21
+
+### Changed
+
+- `file-protector` warns instead of blocking edits to `.env`, `.env.*`, and
+  `.envrc`. Keys, certificates, SSH material, credentials, passwords, and
+  tokens still block. A new `warnPatterns` config key replaces the default
+  warn list.
+- `git-guardrails` accepts `cleanup_policy: "relaxed"` in
+  `~/.claude/hook-config.json`. Cleanup then skips merge proof for
+  `branch -D` and `worktree remove --force`, while protected branches, the
+  current or locked worktrees, `reset --hard`, `clean --force`, and
+  `push --force` stay blocked.
+- Bulk cleanup prunes worktree registrations whose directory is gone and
+  removes merged detached worktrees, so a stale entry no longer keeps its
+  branch.
+
+### Fixed
+
+- The guard now accepts an approved removal of a detached worktree; it
+  treated every detached worktree as unverifiable.
+- `git branch -q -D <name>` parses as a deletion instead of an unparseable
+  target.
+
+### Upgrade
+
+Relaxed cleanup discards uncommitted files in removed worktrees without a
+prompt. Leave `cleanup_policy` unset for the previous behaviour.
+
 ## [6.20.4] - 2026-10-21
 
 ### Changed
