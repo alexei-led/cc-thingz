@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import stat
 import subprocess
 from pathlib import Path
@@ -76,6 +77,13 @@ def set_upstream(repo: Path, branch: str, remote: str = "origin") -> None:
 def create_worktree(repo: Path, tmp_path: Path, branch: str) -> Path:
     worktree = tmp_path / f"wt-{branch.replace('/', '-')}"
     result = run(["git", "worktree", "add", str(worktree), branch], repo)
+    assert result.returncode == 0, result.stdout
+    return worktree
+
+
+def create_detached_worktree(repo: Path, tmp_path: Path, rev: str = "HEAD") -> Path:
+    worktree = tmp_path / f"wt-detached-{rev.replace('/', '-')}"
+    result = run(["git", "worktree", "add", "--detach", str(worktree), rev], repo)
     assert result.returncode == 0, result.stdout
     return worktree
 
@@ -416,3 +424,88 @@ def test_unknown_ahead_with_force_goes_straight_to_D(tmp_path: Path) -> None:
     assert "-d refused" not in result.stdout
     branches = git(repo, "branch", "--format=%(refname:short)").splitlines()
     assert branch not in branches
+
+
+def test_prunes_stale_worktree_and_deletes_its_branch(tmp_path: Path) -> None:
+    repo = init_repo(tmp_path, "main")
+    branch = "stale-branch"
+    git(repo, "checkout", "-b", branch)
+    write_commit(repo, f"{branch}.txt", "work\n", branch)
+    git(repo, "checkout", "main")
+    git(repo, "merge", "--squash", branch)
+    git(repo, "commit", "-m", f"squash {branch}")
+    worktree = create_worktree(repo, tmp_path, branch)
+    shutil.rmtree(worktree)
+
+    preview = run([str(SCRIPT)], repo)
+
+    assert preview.returncode == 0, preview.stdout
+    assert "prune worktrees/wt-stale-branch:" in preview.stdout
+    assert "would: git worktree prune" in preview.stdout
+    assert f"delete {branch} (squash merged)" in preview.stdout
+
+    result = run([str(SCRIPT), "--apply"], repo)
+
+    assert result.returncode == 0, result.stdout
+    branches = git(repo, "branch", "--format=%(refname:short)").splitlines()
+    assert branch not in branches
+    assert "prunable" not in git(repo, "worktree", "list", "--porcelain")
+
+
+def test_removes_clean_detached_worktree_at_merged_commit(tmp_path: Path) -> None:
+    repo = init_repo(tmp_path, "main")
+    worktree = create_detached_worktree(repo, tmp_path, "main")
+
+    preview = run([str(SCRIPT)], repo)
+
+    assert preview.returncode == 0, preview.stdout
+    assert f"remove {worktree} (DETACHED, merged)" in preview.stdout
+
+    result = run([str(SCRIPT), "--apply"], repo)
+
+    assert result.returncode == 0, result.stdout
+    assert not worktree.exists()
+    assert str(worktree) not in git(repo, "worktree", "list", "--porcelain")
+
+
+def test_removes_clean_detached_worktree_at_squash_merged_commit(
+    tmp_path: Path,
+) -> None:
+    repo = init_repo(tmp_path, "main")
+    branch = "squashed"
+    git(repo, "checkout", "-b", branch)
+    write_commit(repo, f"{branch}.txt", "work\n", branch)
+    git(repo, "checkout", "main")
+    git(repo, "merge", "--squash", branch)
+    git(repo, "commit", "-m", f"squash {branch}")
+    worktree = create_detached_worktree(repo, tmp_path, branch)
+
+    result = run([str(SCRIPT), "--apply"], repo)
+
+    assert result.returncode == 0, result.stdout
+    assert not worktree.exists()
+
+
+def test_keeps_detached_worktree_with_unmerged_commit(tmp_path: Path) -> None:
+    repo = init_repo(tmp_path, "main")
+    branch = "open-work"
+    git(repo, "checkout", "-b", branch)
+    write_commit(repo, "open.txt", "work\n", branch)
+    git(repo, "checkout", "main")
+    worktree = create_detached_worktree(repo, tmp_path, branch)
+
+    result = run([str(SCRIPT)], repo)
+
+    assert result.returncode == 0, result.stdout
+    assert f"KEEP {worktree} (DETACHED, unmerged)" in result.stdout
+
+
+def test_keeps_dirty_detached_worktree(tmp_path: Path) -> None:
+    repo = init_repo(tmp_path, "main")
+    worktree = create_detached_worktree(repo, tmp_path, "main")
+    (worktree / "scratch.txt").write_text("valuable\n")
+
+    result = run([str(SCRIPT)], repo)
+
+    assert result.returncode == 0, result.stdout
+    assert f"KEEP {worktree} (DETACHED, dirty)" in result.stdout

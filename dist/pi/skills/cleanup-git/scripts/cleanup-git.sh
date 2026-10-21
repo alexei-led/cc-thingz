@@ -232,6 +232,19 @@ is_ahead_or_unknown() {
 	[ "$1" = unknown ] || [ "$1" -gt 0 ]
 }
 
+# True when the net tree change of <rev> already exists on the base branch,
+# which is how a squash merge lands without sharing the branch history.
+squash_merged() {
+	local dir=$1 rev=$2 merge_base probe cherry
+	merge_base=$(git -C "$dir" merge-base "$BASE_REF" "$rev" 2>/dev/null || true)
+	[ -n "$merge_base" ] || return 1
+	probe=$(git -C "$dir" -c user.name=cleanup -c user.email=cleanup@localhost \
+		commit-tree "$rev^{tree}" -p "$merge_base" -m cleanup-squash-probe 2>/dev/null || true)
+	[ -n "$probe" ] || return 1
+	cherry=$(git -C "$dir" cherry "$BASE_REF" "$probe" 2>/dev/null || true)
+	[[ "$cherry" == "- "* ]]
+}
+
 cleanup_reason_for() {
 	local branch=$1 track pr_info pr_state pr_head pr_base pr_merge
 	CLEANUP_REASON=""
@@ -254,11 +267,7 @@ cleanup_reason_for() {
 		CLEANUP_AHEAD=0
 		return 0
 	fi
-	local merge_base probe cherry
-	merge_base=$(git merge-base "$BASE_REF" "$branch" 2>/dev/null || true)
-	probe=$(git -c user.name=cleanup -c user.email=cleanup@localhost commit-tree "$branch^{tree}" -p "$merge_base" -m cleanup-squash-probe 2>/dev/null || true)
-	cherry=$(git cherry "$BASE_REF" "$probe" 2>/dev/null || true)
-	if [[ "$cherry" == "- "* ]]; then
+	if squash_merged . "$branch"; then
 		CLEANUP_REASON="squash merged"
 		CLEANUP_AHEAD=0
 		return 0
@@ -274,10 +283,16 @@ cleanup_reason_for() {
 
 list_worktrees() {
 	git worktree list --porcelain | awk '
-		/^worktree / { path=substr($0, 10) }
-		/^branch / { branch=$2; sub(/^refs\/heads\//, "", branch); print path "\t" branch }
-		/^detached/ { print path "\tDETACHED" }
-		/^bare/ { print path "\tBARE" }
+		function flush() {
+			if (path != "" && !prunable) print path "\t" kind
+			path=""; kind=""; prunable=0
+		}
+		/^worktree / { flush(); path=substr($0, 10); next }
+		/^branch / { kind=$2; sub(/^refs\/heads\//, "", kind); next }
+		/^detached/ { kind="DETACHED"; next }
+		/^bare/ { kind="BARE"; next }
+		/^prunable/ { prunable=1; next }
+		END { flush() }
 	'
 }
 
@@ -300,24 +315,60 @@ delete_branch() {
 	fi
 	printf '+ git branch -d %q\n' "$branch"
 	git branch -d "$branch" 2>/dev/null || {
+		local tip
 		echo "  -d refused after cleanup proof ($CLEANUP_REASON, $ahead ahead); deleting with -D."
-		run git branch -D "$branch" || echo "  warning: failed to delete branch $branch" >&2
+		tip=$(git rev-parse --verify "refs/heads/$branch") || return 1
+		run git -c "cc-thingz.cleanupApproved=$tip" branch -D "$branch" ||
+			echo "  warning: failed to delete branch $branch" >&2
 	}
 }
 
 echo "base branch: $BASE_REF"
+echo "== stale worktrees =="
+stale_worktrees=$(git worktree prune --dry-run -v 2>&1 || true)
+if [ -z "$stale_worktrees" ]; then
+	echo "  none"
+else
+	while IFS= read -r line; do
+		[ -n "$line" ] || continue
+		echo "  prune ${line#Removing }"
+	done <<<"$stale_worktrees"
+	run git worktree prune
+fi
 echo "== worktrees =="
 list_worktrees | while IFS=$'\t' read -r path branch; do
 	[ -n "$path" ] || continue
 	[ -z "$TARGET_BRANCH" ] || [ "$branch" = "$TARGET_BRANCH" ] || continue
-	case "$branch" in
-	DETACHED | BARE)
+	if [ "$branch" = BARE ]; then
 		echo "  skip $path ($branch)"
 		continue
-		;;
-	esac
+	fi
 	if [ "$path" = "$CUR_WORKTREE" ]; then
 		echo "  skip $path ($branch, current worktree)"
+		continue
+	fi
+	if [ "$branch" = DETACHED ]; then
+		if git worktree list --porcelain | awk -v target="$path" '/^worktree /{p=substr($0,10)} /^locked/{if(p==target) found=1} END{exit !found}'; then
+			echo "  KEEP $path ($branch, locked)"
+			continue
+		fi
+		if ! status=$(git -C "$path" status --porcelain --untracked-files=all --ignored 2>/dev/null); then
+			echo "  KEEP $path ($branch, status unknown)"
+			continue
+		fi
+		if [ -n "$status" ]; then
+			echo "  KEEP $path ($branch, dirty)"
+			continue
+		fi
+		if ! git -C "$path" merge-base --is-ancestor HEAD "$BASE_REF" 2>/dev/null && ! squash_merged "$path" HEAD; then
+			echo "  KEEP $path ($branch, unmerged)"
+			continue
+		fi
+		echo "  remove $path ($branch, merged)"
+		run git worktree remove "$path" || {
+			echo "  warning: failed to remove worktree $path ($branch); leaving in place" >&2
+			continue
+		}
 		continue
 	fi
 	if is_current_branch "$branch"; then

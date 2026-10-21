@@ -29,6 +29,11 @@ Automatic cleanup preserves tracked changes, untracked files, and ignored
 files. Ignored files can contain local credentials or other valuable data;
 never treat them as disposable just because Git ignores them. Locked, current,
 main, and integration worktrees and protected branches remain guarded.
+
+The bulk script prunes worktree registrations whose directory is gone, so a
+stale entry no longer blocks its branch forever. A detached worktree is removed
+when its HEAD is merged or squash-merged into the integration branch and its
+tree is clean; unmerged, dirty, locked, and current detached worktrees stay.
 Bulk `--force` requires `--branch <name>` and does not remove dirty or locked
 worktrees. An unscoped force sweep is rejected.
 

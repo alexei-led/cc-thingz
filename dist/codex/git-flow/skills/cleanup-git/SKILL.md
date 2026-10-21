@@ -27,6 +27,8 @@ A branch or its worktree is a candidate when one of these holds:
 - `squash merged`: the complete branch patch is equivalent to a commit in the base. This works offline without `gh`; conflict resolution can prevent equivalence.
 - `upstream gone`: only a candidate signal, not merge proof. Unique commits still keep the branch.
 
+It prunes worktree registrations whose directory is gone (`git worktree prune`) before listing, so a stale entry does not keep its branch forever. It removes a detached worktree when its HEAD is merged or squash-merged into the base and the tree is clean; an unmerged, dirty, locked, or current detached worktree stays.
+
 It skips the current worktree, current branch, base, and `main`/`master`/`trunk`/`develop`/`dev`. It keeps locked worktrees and worktrees with tracked, untracked, or ignored files, or unknown status. It keeps candidates with ahead commits or unknown ahead counts unless `--force --branch <name>` is passed for one approved target. No proof prints `skip ... (active)`; do not treat that as proof of unmerged work.
 
 ## Workflow
