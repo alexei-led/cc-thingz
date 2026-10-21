@@ -67,12 +67,14 @@ def create_cleanup_clone(tmp_path: Path) -> Path:
     return work
 
 
-def run_hook(command: str, cwd: Path) -> subprocess.CompletedProcess[str]:
+def run_hook(
+    command: str, cwd: Path, env: dict[str, str] | None = None
+) -> subprocess.CompletedProcess[str]:
     payload = json.dumps({"tool_input": {"command": command}, "cwd": str(cwd)})
     return subprocess.run(
         ["bash", str(HOOK), str(DECIDE)],
         input=payload,
-        env=ENV,
+        env={**ENV, **(env or {})},
         capture_output=True,
         text=True,
     )

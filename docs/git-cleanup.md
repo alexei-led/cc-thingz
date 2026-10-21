@@ -67,6 +67,25 @@ target. Like the existing shell-command analyzer, this is a mistake guard, not
 a sandbox: scripts, Git aliases, environment manipulation, and concurrent
 repository changes are not a security boundary.
 
+## Relaxed cleanup policy
+
+`cleanup_policy` trades per-command merge proof for structural rails:
+
+```json
+{"git-guardrails": {"cleanup_policy": "relaxed"}}
+```
+
+Set it in `~/.claude/hook-config.json`, or export `GG_CLEANUP_POLICY=relaxed`
+for one harness session. The default is `strict`.
+
+In `relaxed` mode `git branch -D` and `git worktree remove --force` skip the
+merge proof and the one-shot marker. Structural rails still block: the current
+worktree, the main worktree, locked worktrees, protected branches (`main`,
+`master`, `trunk`, `develop`, `dev`, and the detected base), branches checked
+out elsewhere, `reset --hard`, `clean --force`, `push --force`, and every
+`block_patterns` entry. Uncommitted and ignored files in a removed worktree are
+discarded without a prompt in this mode.
+
 ## Sources and checks
 
 - Hook: `src/hooks/git-guardrails/{hook.sh,decide.py}`.

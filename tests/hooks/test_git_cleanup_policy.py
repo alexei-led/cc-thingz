@@ -2,6 +2,7 @@
 
 import json
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -256,3 +257,73 @@ def test_pr_proof_is_bound_to_head_and_base(
         text=True,
     )
     assert (result.returncode == 0) is allowed, result.stderr
+
+
+RELAXED = {"GG_CLEANUP_POLICY": "relaxed"}
+
+
+def test_relaxed_policy_allows_unmerged_branch(clone: Path) -> None:
+    assert run_hook("git branch -D unmerged", clone).returncode == 2
+    result = run_hook("git branch -D unmerged", clone, env=RELAXED)
+    assert result.returncode == 0, result.stderr
+
+
+def test_relaxed_policy_allows_dirty_worktree(clone: Path) -> None:
+    path = add_worktree(clone, "relaxed-dirty", "origin/unmerged")
+    (path / "draft.txt").write_text("discard me")
+    assert run_hook(f"git worktree remove --force {path}", clone).returncode == 2
+    result = run_hook(f"git worktree remove --force {path}", clone, env=RELAXED)
+    assert result.returncode == 0, result.stderr
+
+
+def test_relaxed_policy_keeps_branch_checked_out_elsewhere(clone: Path) -> None:
+    add_worktree(clone, "relaxed-in-use", "origin/unmerged")
+    assert run_hook("git branch -D relaxed-in-use", clone, env=RELAXED).returncode == 2
+
+
+def test_relaxed_policy_keeps_current_worktree(clone: Path) -> None:
+    path = add_worktree(clone, "relaxed-current", "origin/unmerged")
+    command = f"git worktree remove --force {path}"
+    assert run_hook(command, path, env=RELAXED).returncode == 2
+
+
+def test_relaxed_policy_keeps_locked_worktree(clone: Path) -> None:
+    path = add_worktree(clone, "relaxed-locked", "origin/unmerged")
+    git(clone, "worktree", "lock", str(path))
+    command = f"git worktree remove --force {path}"
+    assert run_hook(command, clone, env=RELAXED).returncode == 2
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "git branch -D main",
+        "git branch -D develop",
+        "git reset --hard",
+        "git clean -fdx",
+        "git push --force",
+        "git worktree remove --force -f",
+    ],
+)
+def test_relaxed_policy_keeps_hard_rails(clone: Path, command: str) -> None:
+    assert run_hook(command, clone, env=RELAXED).returncode == 2
+
+
+def test_config_file_selects_relaxed_policy(clone: Path, tmp_path: Path) -> None:
+    if shutil.which("jq") is None:
+        pytest.skip("jq is required to read hook config")
+    config = tmp_path / "hook-config.json"
+    config.write_text(json.dumps({"git-guardrails": {"cleanup_policy": "relaxed"}}))
+    result = run_hook(
+        "git branch -D unmerged",
+        clone,
+        env={"CLAUDE_HOOK_CONFIG": str(config), "GG_CLEANUP_POLICY": ""},
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_quiet_flag_does_not_hide_branch_target(clone: Path) -> None:
+    result = run_hook("git branch -q -D unmerged", clone)
+    assert result.returncode == 2
+    assert "unparseable" not in result.stderr
+    assert "git branch -D unmerged" in result.stderr

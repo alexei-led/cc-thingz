@@ -104,6 +104,7 @@ GLOBAL_FLAGS = {
     "--no-optional-locks",
 }
 CLEANUP_SUBCOMMANDS = {"branch", "worktree"}
+CLEANUP_POLICIES = {"strict", "relaxed"}
 PROTECTED_BRANCHES = {"main", "master", "trunk", "develop", "dev"}
 APPROVAL_VALUE = re.compile(r"^cc-thingz\.cleanupApproved=([0-9a-f]{40}|[0-9a-f]{64})$")
 
@@ -298,7 +299,11 @@ def classify(subcommand: str, args: list[str]) -> tuple[str, list[str] | str | N
         )
         if not wants_force_delete:
             return "safe", None
-        names = [a for a in args if a not in ("-D", "-d", "-f", "--delete", "--force")]
+        names = [
+            a
+            for a in args
+            if a not in ("-D", "-d", "-f", "--delete", "--force", "-q", "--quiet")
+        ]
         if not names or any(a.startswith("-") for a in names):
             return "block", "git branch -D (unparseable arguments)"
         return "cleanup-branch", names
@@ -526,12 +531,11 @@ def protected_branch(directory: str, branch: str) -> bool:
     )
 
 
-def branch_is_merged(
-    directory: str,
-    branch: str,
-    removed_worktrees: set[str],
-    approved_tip: str | None = None,
+def branch_is_removable(
+    directory: str, branch: str, removed_worktrees: set[str]
 ) -> bool:
+    """Structural rails only: the branch exists, is not protected, and no
+    other worktree still has it checked out."""
     if protected_branch(directory, branch):
         return False
     exists = run_git(directory, "rev-parse", "--verify", "-q", f"refs/heads/{branch}")
@@ -540,19 +544,25 @@ def branch_is_merged(
     worktrees = run_git(directory, "worktree", "list", "--porcelain")
     if worktrees.returncode != 0:
         return False
-    if branch_checked_out_elsewhere(worktrees.stdout, branch, removed_worktrees):
-        return False
-    return tip_is_approved(
-        directory, f"refs/heads/{branch}", approved_tip
-    ) or commit_is_merged(directory, f"refs/heads/{branch}")
+    return not branch_checked_out_elsewhere(worktrees.stdout, branch, removed_worktrees)
 
 
-def worktree_is_merged(
-    directory: str, path: str, approved_tip: str | None = None
-) -> str | None:
-    """Returns the worktree's realpath when it is safe to remove (merged,
-    no uncommitted files unless explicitly approved), so the caller can treat it as gone
-    for a later `branch -D` in the same command. None otherwise."""
+def branch_is_merged(
+    directory: str,
+    branch: str,
+    removed_worktrees: set[str],
+    approved_tip: str | None = None,
+) -> bool:
+    return branch_is_removable(directory, branch, removed_worktrees) and (
+        tip_is_approved(directory, f"refs/heads/{branch}", approved_tip)
+        or commit_is_merged(directory, f"refs/heads/{branch}")
+    )
+
+
+def worktree_candidate(directory: str, path: str) -> tuple[str, str | None] | None:
+    """(resolved path, branch) for a worktree that may be removed: it exists,
+    is not the current or main worktree, is unlocked, and is not on a
+    protected branch. None otherwise."""
     full = path if os.path.isabs(path) else os.path.join(directory, path)
     resolved = os.path.realpath(full)
     worktrees = run_git(directory, "worktree", "list", "--porcelain")
@@ -604,15 +614,34 @@ def worktree_is_merged(
     # merged into the base or match the approved tip.
     if branch is not None and protected_branch(directory, branch):
         return None
-    approved = tip_is_approved(full, "HEAD", approved_tip)
+    return resolved, branch
+
+
+def worktree_is_merged(
+    directory: str, path: str, approved_tip: str | None = None
+) -> str | None:
+    """Returns the worktree's realpath when it is safe to remove (merged,
+    no uncommitted files unless explicitly approved), so the caller can treat it as gone
+    for a later `branch -D` in the same command. None otherwise."""
+    candidate = worktree_candidate(directory, path)
+    if candidate is None:
+        return None
+    resolved, _branch = candidate
+    approved = tip_is_approved(resolved, "HEAD", approved_tip)
     status = run_git(
-        full, "status", "--porcelain", "--untracked-files=all", "--ignored"
+        resolved, "status", "--porcelain", "--untracked-files=all", "--ignored"
     )
     if status.returncode != 0 or (status.stdout.strip() and not approved):
         return None
-    if not approved and not commit_is_merged(full, "HEAD"):
+    if not approved and not commit_is_merged(resolved, "HEAD"):
         return None
     return resolved
+
+
+def worktree_is_removable(directory: str, path: str) -> str | None:
+    """Relaxed policy: only structural rails apply, not merge proof or dirt."""
+    candidate = worktree_candidate(directory, path)
+    return None if candidate is None else candidate[0]
 
 
 # hook-config.json's block_patterns predate this rewrite and are documented
@@ -664,6 +693,7 @@ def evaluate_git_call(
     ctx: Ctx,
     patterns: list[tuple[re.Pattern[str], str]],
     allow_force_push: bool,
+    cleanup_policy: str,
     blocks: list[tuple[str, bool]],
     removed_worktrees: set[str],
 ) -> None:
@@ -693,23 +723,32 @@ def evaluate_git_call(
         return
     if kind == "cleanup-branch":
         names = info if isinstance(info, list) else []
-        if approved_tip is not None and len(names) != 1:
+        if cleanup_policy != "relaxed" and approved_tip is not None and len(names) != 1:
             blocks.append(("cleanup approval requires exactly one branch", True))
             return
-        if overall_trusted and all(
-            branch_is_merged(directory, name, removed_worktrees, approved_tip)
-            for name in names
-        ):
-            return
+        if overall_trusted and names:
+            if cleanup_policy == "relaxed":
+                removable = all(
+                    branch_is_removable(directory, name, removed_worktrees)
+                    for name in names
+                )
+            else:
+                removable = all(
+                    branch_is_merged(directory, name, removed_worktrees, approved_tip)
+                    for name in names
+                )
+            if removable:
+                return
         blocks.append((f"git branch -D {' '.join(names)}", True))
         return
     if kind == "cleanup-worktree":
         path = str(info)
-        resolved = (
-            worktree_is_merged(directory, path, approved_tip)
-            if overall_trusted
-            else None
-        )
+        if not overall_trusted:
+            resolved = None
+        elif cleanup_policy == "relaxed":
+            resolved = worktree_is_removable(directory, path)
+        else:
+            resolved = worktree_is_merged(directory, path, approved_tip)
         if resolved is not None:
             removed_worktrees.add(resolved)
             return
@@ -757,6 +796,7 @@ def walk(
     ctx: Ctx,
     patterns: list[tuple[re.Pattern[str], str]],
     allow_force_push: bool,
+    cleanup_policy: str,
     depth: int,
     blocks: list[tuple[str, bool]],
     removed_worktrees: set[str],
@@ -807,7 +847,13 @@ def walk(
             # the filesystem), so it stays case-sensitive on purpose.
             if base.lower() == "git":
                 evaluate_git_call(
-                    span[j:], ctx, patterns, allow_force_push, blocks, removed_worktrees
+                    span[j:],
+                    ctx,
+                    patterns,
+                    allow_force_push,
+                    cleanup_policy,
+                    blocks,
+                    removed_worktrees,
                 )
                 break
             if depth == 0 and base == "eval":
@@ -819,6 +865,7 @@ def walk(
                         ctx.copy(),
                         patterns,
                         allow_force_push,
+                        cleanup_policy,
                         depth + 1,
                         blocks,
                         removed_worktrees,
@@ -833,6 +880,7 @@ def walk(
                         ctx.copy(),
                         patterns,
                         allow_force_push,
+                        cleanup_policy,
                         depth + 1,
                         blocks,
                         removed_worktrees,
@@ -845,11 +893,12 @@ def decide(
     cwd: str,
     allow_force_push: bool,
     patterns: list[tuple[re.Pattern[str], str]],
+    cleanup_policy: str = "strict",
 ) -> tuple[str, bool] | None:
     tokens = tokenize(strip_heredocs(command))
     ctx = Ctx(cwd, True)
     blocks: list[tuple[str, bool]] = []
-    walk(tokens, ctx, patterns, allow_force_push, 0, blocks, set())
+    walk(tokens, ctx, patterns, allow_force_push, cleanup_policy, 0, blocks, set())
     return blocks[0] if blocks else None
 
 
@@ -857,10 +906,13 @@ def main() -> None:
     command = os.environ.get("GG_COMMAND", "")
     cwd = os.environ.get("GG_CWD") or os.getcwd()
     allow_force_push = os.environ.get("GG_ALLOW_FORCE_PUSH") == "1"
+    cleanup_policy = os.environ.get("GG_CLEANUP_POLICY", "strict")
+    if cleanup_policy not in CLEANUP_POLICIES:
+        cleanup_policy = "strict"
     patterns = load_patterns(os.environ.get("GG_PATTERNS", ""))
 
     try:
-        result = decide(command, cwd, allow_force_push, patterns)
+        result = decide(command, cwd, allow_force_push, patterns, cleanup_policy)
     except ParseError:
         result = ("could not safely parse this command (failing closed)", False)
 
