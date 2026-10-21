@@ -8,6 +8,24 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [6.20.4] - 2026-10-21
+
+### Changed
+
+- `researching-web`, `looking-up-docs`, `evolving-config`, and
+  `brainstorming-ideas` prefer the built-in `WebSearch` and `WebFetch` tools and
+  no longer request `mcp__perplexity-ask__perplexity_ask`. Their Claude overlays
+  ask for whatever search or deep-research tool the runtime provides instead of
+  naming a provider.
+- The `skill-enforcer` hook no longer routes the word "perplexity" to
+  `researching-web`.
+
+### Upgrade
+
+No repository setting enables a replacement provider. If you relied on
+Perplexity through these skills, supply your own web search backend; the
+built-in tools cover the default path.
+
 ## [6.20.3] - 2026-10-10
 
 ### Added
