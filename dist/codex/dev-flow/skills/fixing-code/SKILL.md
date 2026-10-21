@@ -8,7 +8,10 @@
 # Fix and Diagnose Code
 
 Fix the requested defect or failing gate, one verified root cause at a time.
-Use the matching `writing-<lang>` skill for toolchain commands.
+Use the matching `writing-<lang>` skill for toolchain commands. The optional
+coding-posture plugin owns general debugging and fix procedure; this skill owns
+the defect evidence and regression contract. Do not load both just to repeat
+process steps.
 
 Without write access, return proposed changes (file, change, reason) instead of
 applying them.
@@ -22,11 +25,10 @@ applying them.
 
 ## Outcome
 
-- **Repro**: the fastest reliable failing signal, best a failing test at the behavior seam; otherwise a script, replayed payload, or small harness around the real path. Iterate on the narrowest command and run the broader project gate before reporting; keep coverage, race, browser, and end-to-end modes off the loop unless they are the failing signal.
-- **Root cause**: traced from the failing boundary to the first bad state or contract mismatch, with evidence (`file:line`, symptom, tool). For intermittent or unclear bugs, rank 3–5 falsifiable hypotheses and test them one at a time.
-- **Patch**: the smallest change to the root cause, without adjacent cleanup. If it causes a new failure, diagnose that before touching anything else.
+- **Repro**: the fastest reliable failing signal, best a failing test at the behavior seam; otherwise a script, replayed payload, or small harness around the real path.
+- **Root cause**: traced from the failing boundary to the first bad state or contract mismatch, with evidence (`file:line`, symptom, tool).
 - **Regression test** at the seam where the user saw the bug. If only a shallow seam exists, say so rather than adding a fake-confidence helper test.
-- **Cleanup**: temporary probes, tagged `[DEBUG-<id>]` while in use, are removed or promoted to real tests.
+- Remove temporary probes or promote them to regression tests.
 - Browser-only symptoms go to browser-automation unless a cheaper CLI or unit signal exists.
 - If a code-graph tool (GitNexus, codegraph) is installed and fresh, use it to find callers or impact before changing widely used code.
 

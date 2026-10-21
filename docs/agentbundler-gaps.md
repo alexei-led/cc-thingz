@@ -12,15 +12,14 @@ a portable hook schema:
 - `smart-lint` ships to Claude, Codex, Copilot, Grok, and Pi. Codex receives it
   through its native `PostToolUse` matcher. Cursor is excluded because its edit
   matcher would lose semantics.
-- Notifications: Claude and Copilot receive portable `notify`; Pi uses the native
-  compatibility runner. Codex, Cursor, and Grok receive no notification hook.
-- Pi receives `ccgram hook` at session start, stop, and session end.
+- Notifications: Claude and Copilot receive portable `notify`. Pi, Codex,
+  Cursor, and Grok receive no default notification hook.
 - Pi native assets register ask-user-question, hook-runner, permission-gate,
-  plan-mode, and todo. The structured-output demonstration is available as an
-  explicitly loaded example, not a default tool.
-- The Pi compatibility runner loads only Pi-specific defaults from
-  `extensions/hooks.json`: ExitPlanMode/revdiff review and notifications. It
-  does not repeat portable Agent Bundler hooks.
+  and plan-mode. Use pi-tasks for task tracking; no fixed-schema output demo
+  ships as a production extension.
+- The Pi compatibility runner ships an empty `extensions/hooks.json` and loads
+  user/project hooks. It does not repeat portable Agent Bundler hooks or add
+  personal messaging, desktop notification, or review integrations.
 - File protection and git guardrails render wherever the current target adapter
   can express their matcher and deny protocol. Source acknowledgments record
   targets where crash/timeout fail-closed behavior is advisory.

@@ -150,7 +150,7 @@ describe("plan-mode / ExitPlanMode hardening", () => {
 		expect(result).toEqual({ block: true, reason: "Plan mode: invalid bash command input." });
 	});
 
-	it("registers its todo list command as /plan-todos, not /todos (todo.ts owns /todos)", async () => {
+	it("registers its todo list command as /plan-todos, not /todos (reserved for external task tracking)", async () => {
 		const { commands } = makePi();
 		const ctx = makeCtx();
 

@@ -1,7 +1,7 @@
 ---
-description: Read-only adversarial evaluator — reviews, audits, locates, or plans.
+description: Read-only adversarial evaluator — reviews, audits, or evaluates existing plans.
   Reads files, searches, and inspects diffs with available read-only tools; never modifies code or runs builds/tests.
-  Use for code review, security audit, locating code, or planning. Not for applying
+  Use for code review, security audit, or reviewing an existing plan. Not for applying
   changes (engineer) or strategic risk verdicts (advisor).
 name: reviewer
 ---

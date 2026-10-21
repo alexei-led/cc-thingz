@@ -206,6 +206,7 @@ run_package_script_compact() {
 
 python_project_mentions_tool() {
 	local name="$1" file
+	if [[ "$name" == "ruff" && (-f ruff.toml || -f .ruff.toml) ]]; then return 0; fi
 	if [[ -f pyproject.toml ]] && command_exists python3; then
 		python3 -c '
 import re
@@ -240,6 +241,9 @@ def walk_deps(value):
         for nested in value.values():
             yield from walk_deps(nested)
 
+configured = data.get("tool", {})
+if isinstance(configured, dict) and tool in configured:
+    sys.exit(0)
 project = data.get("project", {})
 if tool in set(walk_deps(project.get("dependencies", []))):
     sys.exit(0)
@@ -266,120 +270,28 @@ init_hook_input() {
 	if [[ -z "$HOOK_INPUT_JSON" && ! -t 0 ]]; then
 		HOOK_INPUT_JSON=$(cat 2>/dev/null || true)
 	fi
-	local hook_cwd
+	SMART_LINT_PI_RUNTIME=0
+	SMART_LINT_OUTSIDE_PROJECT=0
+	SMART_LINT_SESSION_ID=default
 	if command_exists python3; then
-		hook_cwd=$(python3 -c 'import json,sys
-try:
-    data=json.loads(sys.stdin.read() or "{}")
-    if data.get("event") == "post-tool":
-        # Agent Bundler envelope: piEvent is the normalized {toolName, input}
-        # shape and never carries cwd; vendorEvent is the original host
-        # payload (Claude, Pi, …), which does.
-        source=data.get("piEvent", {}) if isinstance(data.get("piEvent"), dict) else {}
-        vendor=data.get("vendorEvent", {}) if isinstance(data.get("vendorEvent"), dict) else {}
-    else:
-        source=data
-        vendor={}
-    cwd=source.get("cwd")
-    if not isinstance(cwd, str):
-        cwd=vendor.get("cwd")
-    if isinstance(cwd, str):
-        print(cwd)
-except (ValueError, AttributeError):
-    pass
-' <<<"$HOOK_INPUT_JSON")
+		local hook_cwd file
+		{
+			# shellcheck disable=SC2034 # main.sh reserves stdout for the Pi decision.
+			IFS= read -r -d '' SMART_LINT_PI_RUNTIME
+			IFS= read -r -d '' hook_cwd
+			IFS= read -r -d '' SMART_LINT_SESSION_ID
+			IFS= read -r -d '' SMART_LINT_OUTSIDE_PROJECT
+			while IFS= read -r -d '' file; do HOOK_EDITED_FILES+=("$file"); done
+		} < <(python3 "$(dirname "${BASH_SOURCE[0]}")/normalize-input.py" <<<"$HOOK_INPUT_JSON")
 		if [[ -n "$hook_cwd" && -d "$hook_cwd" ]]; then
 			cd "$hook_cwd" || return 0
 		fi
+		HOOK_EDITED_FILES_LOADED=1
 	fi
 }
 
-# True (status 0) when every path the hook payload names -- file_path/path,
-# notebook_path, or the files touched by a unified-diff/apply-patch blob --
-# resolves outside the project root (already cd'd to by init_hook_input).
-# Catches scratchpad edits (e.g. under /tmp, which symlinks to /private/tmp
-# on macOS) before any linter runs, so an unrelated in-project file can't
-# block them. A payload that names no path at all, or names at least one
-# in-project path, is left to run normally.
 hook_edit_target_outside_project() {
-	[[ -n "$HOOK_INPUT_JSON" ]] || return 1
-	command_exists python3 || return 1
-	python3 -c '
-import json
-import re
-import sys
-from pathlib import Path
-
-try:
-    data = json.loads(sys.stdin.read() or "{}")
-except Exception:
-    sys.exit(1)
-if not isinstance(data, dict):
-    sys.exit(1)
-
-if data.get("event") == "post-tool":
-    tool_input = data.get("piEvent", {})
-    tool_input = tool_input.get("input") if isinstance(tool_input, dict) else None
-else:
-    tool_input = data.get("tool_input")
-if not isinstance(tool_input, dict):
-    sys.exit(1)
-
-candidates = []
-
-
-def add(raw):
-    if not isinstance(raw, str):
-        return
-    value = raw.strip()
-    if not value or value == "/dev/null":
-        return
-    if value.startswith(("a/", "b/")):
-        value = value[2:]
-    candidates.append(value)
-
-
-def scan_patch(text):
-    if not isinstance(text, str):
-        return
-    if "*** " not in text and "diff --git" not in text and "+++ " not in text:
-        return
-    patterns = [
-        r"^\*\*\* (?:Update|Add|Delete) File: (.+)$",
-        r"^\+\+\+ b/(.+)$",
-        r"^--- a/(.+)$",
-        r"^diff --git a/(.+?) b/.+$",
-    ]
-    for line in text.splitlines():
-        for pattern in patterns:
-            match = re.match(pattern, line)
-            if match:
-                add(match.group(1))
-
-
-for key in ("file_path", "path", "notebook_path", "filename", "source_file", "target_file"):
-    add(tool_input.get(key))
-for key in ("patch", "diff"):
-    scan_patch(tool_input.get(key))
-
-if not candidates:
-    sys.exit(1)
-
-cwd = Path.cwd().resolve()
-for raw in candidates:
-    target = Path(raw)
-    try:
-        full = target.resolve() if target.is_absolute() else (cwd / target).resolve()
-    except OSError:
-        sys.exit(1)
-    try:
-        full.relative_to(cwd)
-    except ValueError:
-        continue
-    sys.exit(1)  # this candidate is inside the project: do not skip
-
-sys.exit(0)  # every candidate resolved outside the project
-' <<<"$HOOK_INPUT_JSON"
+	[[ "${SMART_LINT_OUTSIDE_PROJECT:-0}" == "1" ]]
 }
 
 declare -a ERRORS=()
@@ -402,128 +314,13 @@ print_summary_and_exit() {
 			log_info "unsupported: no lint checks completed"
 			exit 0
 		fi
-		local total_words=0
-		local w
-		# CLAUDE.md + settings
-		for f in ~/.claude/CLAUDE.md ~/.claude/settings.json; do
-			[[ -f "$f" ]] && {
-				w=$(wc -w <"$f" 2>/dev/null | tr -d ' ')
-				total_words=$((total_words + w))
-			}
-		done
-		# Commands, skills, agents
-		# globstar needs bash >= 4; macOS bash 3.2 silently ignores it, so use find.
-		while IFS= read -r f; do
-			[[ -f "$f" ]] && {
-				w=$(wc -w <"$f" 2>/dev/null | tr -d ' ')
-				total_words=$((total_words + w))
-			}
-		done < <(
-			find ~/.claude/commands ~/.claude/agents -name '*.md' -type f 2>/dev/null
-			find ~/.claude/skills -mindepth 2 -maxdepth 2 -name 'SKILL.md' -type f 2>/dev/null
-		)
-		local approx_tokens=$((total_words * 4 / 3))
 		if [[ "$SMART_LINT_TIMEOUT_COUNT" -gt 0 ]]; then
-			echo -e "${PROJECT_TYPE} project ${YELLOW}⚠️ Style checks incomplete: ${SMART_LINT_TIMEOUT_COUNT} timed out${NC} ${CYAN}📊 ~${approx_tokens} tokens${NC}" >&2
+			echo -e "${PROJECT_TYPE} project ${YELLOW}⚠️ Style checks incomplete: ${SMART_LINT_TIMEOUT_COUNT} timed out${NC}" >&2
 		else
-			echo -e "${PROJECT_TYPE} project ${GREEN}✅ Style OK${NC} ${CYAN}📊 ~${approx_tokens} tokens${NC}" >&2
+			echo -e "${PROJECT_TYPE} project ${GREEN}✅ Style OK${NC}" >&2
 		fi
 		exit 0
 	fi
-}
-
-_extract_hook_files_python() {
-	command_exists python3 || return 0
-	python3 -c '
-import json
-import os
-import re
-import sys
-from pathlib import Path
-
-try:
-    data = json.loads(sys.stdin.read() or "{}")
-except Exception:
-    sys.exit(0)
-if not isinstance(data, dict):
-    sys.exit(0)
-
-cwd = Path(str(data.get("cwd") or os.getcwd())).resolve()
-seen = set()
-out = []
-
-
-def add(raw):
-    if not isinstance(raw, str):
-        return
-    value = raw.strip()
-    if not value or "\x00" in value or value == "/dev/null":
-        return
-    if value.startswith(("a/", "b/")):
-        value = value[2:]
-    p = Path(value)
-    try:
-        if p.is_absolute():
-            full = p.resolve()
-            try:
-                rel = full.relative_to(cwd)
-            except ValueError:
-                return
-        else:
-            rel = p
-            if ".." in rel.parts:
-                return
-            full = (cwd / rel).resolve()
-            try:
-                rel = full.relative_to(cwd)
-            except ValueError:
-                return
-    except Exception:
-        return
-    if not full.is_file():
-        return
-    text = rel.as_posix()
-    if text not in seen:
-        seen.add(text)
-        out.append(text)
-
-
-def scan_patch(text):
-    if not isinstance(text, str):
-        return
-    if "*** " not in text and "diff --git" not in text and "+++ " not in text:
-        return
-    patterns = [
-        r"^\*\*\* (?:Update|Add|Delete) File: (.+)$",
-        r"^\+\+\+ b/(.+)$",
-        r"^--- a/(.+)$",
-        r"^diff --git a/(.+?) b/.+$",
-    ]
-    for line in text.splitlines():
-        for pattern in patterns:
-            match = re.match(pattern, line)
-            if match:
-                add(match.group(1))
-
-
-def walk(obj):
-    if isinstance(obj, dict):
-        for key, value in obj.items():
-            if key in {"file_path", "path", "filename", "source_file", "target_file"}:
-                add(value)
-            elif key in {"patch", "diff"}:
-                scan_patch(value)
-            walk(value)
-    elif isinstance(obj, list):
-        for item in obj:
-            walk(item)
-    elif isinstance(obj, str):
-        scan_patch(obj)
-
-walk(data.get("tool_input", data))
-for path in out:
-    print(path)
-' <<<"$HOOK_INPUT_JSON"
 }
 
 _extract_hook_files_jq() {
@@ -533,33 +330,8 @@ _extract_hook_files_jq() {
 	done
 }
 
-_extract_hook_files() {
-	if command_exists python3; then
-		_extract_hook_files_python
-	else
-		_extract_hook_files_jq
-	fi
-}
-
 _hook_session_id() {
-	if [[ -n "$HOOK_INPUT_JSON" ]] && command_exists python3; then
-		local parsed
-		parsed=$(python3 -c 'import json,sys
-try:
-    data=json.loads(sys.stdin.read() or "{}")
-except Exception:
-    data={}
-if data.get("event") == "post-tool":
-    source = data.get("piEvent", {}) if isinstance(data.get("piEvent"), dict) else {}
-    vendor = data.get("vendorEvent", {}) if isinstance(data.get("vendorEvent"), dict) else {}
-else:
-    source = data
-    vendor = {}
-print(str(source.get("session_id") or vendor.get("session_id") or data.get("session_id") or "default"))
-' <<<"$HOOK_INPUT_JSON" 2>/dev/null || true)
-		[[ -n "$parsed" ]] && printf '%s\n' "$parsed" && return 0
-	fi
-	printf '%s\n' "default"
+	printf '%s\n' "${SMART_LINT_SESSION_ID:-default}"
 }
 
 _hook_state_path() {
@@ -579,7 +351,7 @@ load_hook_edited_files() {
 	local file
 	while IFS= read -r file; do
 		[[ -n "$file" ]] && HOOK_EDITED_FILES+=("$file")
-	done < <(_extract_hook_files | sort -u)
+	done < <(_extract_hook_files_jq | sort -u)
 	log_debug "Hook-scoped files: ${HOOK_EDITED_FILES[*]}"
 }
 

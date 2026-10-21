@@ -368,3 +368,36 @@ def test_kitty_via_socket_without_tmux(tmp_path: Path) -> None:
     finally:
         srv.close()
         shutil.rmtree(sock_dir, ignore_errors=True)
+
+
+def test_payload_parsed_once_preserves_empty_and_multiline_fields(
+    tmp_path: Path,
+) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    args_file = tmp_path / "args"
+    calls_file = tmp_path / "jq-calls"
+    jq = shutil.which("jq")
+    assert jq
+    _write_executable(
+        bin_dir / "jq",
+        f"#!/bin/sh\nprintf call >> {shlex.quote(str(calls_file))}\n"
+        f'exec {shlex.quote(jq)} "$@"\n',
+    )
+    _write_executable(
+        bin_dir / "terminal-notifier",
+        f"#!/bin/sh\nprintf '%s\\0' \"$@\" > {shlex.quote(str(args_file))}\n",
+    )
+    message = "one\ntwo\t'$(touch unsafe)'"
+    env = _tmux_env(os.environ.copy(), bin_dir)
+    env.pop("TMUX_PANE", None)
+    result = _run(
+        {"title": "Pi", "message": message, "cwd": "", "session_id": ""}, tmp_path, env
+    )
+    assert result.returncode == 0, result.stderr
+    args = args_file.read_bytes().decode().split("\0")
+    assert _arg_after(args, "-title") == "Pi"
+    assert _arg_after(args, "-message") == message
+    assert "-group" not in args
+    assert calls_file.read_text() == "call"
+    assert not (tmp_path / "unsafe").exists()

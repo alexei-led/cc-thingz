@@ -170,8 +170,9 @@ export function runHook(entry: HookEntryRuntime, stdinJson: string, optionsOrDef
 	const pending = new Promise<HookRunResult>((resolve) => {
 		let settled = false;
 		let stopReason: "timeout" | "cancelled" | "overflow" | undefined;
-		let stdout = Buffer.alloc(0);
-		let stderr = Buffer.alloc(0);
+		const stdout: Buffer[] = [];
+		const stderr: Buffer[] = [];
+		let outputBytes = 0;
 		let killTimer: ReturnType<typeof setTimeout> | undefined;
 		const child = spawn("bash", ["-c", entry.config.command], {
 			detached: true,
@@ -192,7 +193,7 @@ export function runHook(entry: HookEntryRuntime, stdinJson: string, optionsOrDef
 			clearTimeout(deadline);
 			clearTimeout(killTimer);
 			options.signal?.removeEventListener("abort", cancel);
-			const cleaned = extractProgress(stderr.toString("utf8")).stderr;
+			const cleaned = extractProgress(Buffer.concat(stderr).toString("utf8")).stderr;
 			const notice =
 				stopReason === "timeout"
 					? "Hook timed out"
@@ -201,7 +202,12 @@ export function runHook(entry: HookEntryRuntime, stdinJson: string, optionsOrDef
 						: stopReason === "overflow"
 							? `Hook output exceeded ${HOOK_OUTPUT_MAX_BYTES / (1024 * 1024)}MB cap`
 							: errorText;
-			const result = { exitCode, stdout: stdout.toString("utf8"), stderr: [notice, cleaned].filter(Boolean).join(": "), timedOut: stopReason === "timeout" };
+			const result = {
+				exitCode,
+				stdout: Buffer.concat(stdout).toString("utf8"),
+				stderr: [notice, cleaned].filter(Boolean).join(": "),
+				timedOut: stopReason === "timeout",
+			};
 			logHookTelemetry(entry, result, Date.now() - started);
 			resolve(result);
 		};
@@ -225,10 +231,10 @@ export function runHook(entry: HookEntryRuntime, stdinJson: string, optionsOrDef
 		const collect = (chunk: Buffer, stream: "stdout" | "stderr") => {
 			if (stopReason || settled) return;
 			const current = stream === "stdout" ? stdout : stderr;
-			const remaining = Math.max(0, HOOK_OUTPUT_MAX_BYTES - stdout.length - stderr.length);
-			const next = Buffer.concat([current, chunk.subarray(0, remaining)]);
-			if (stream === "stdout") stdout = next;
-			else stderr = next;
+			const remaining = Math.max(0, HOOK_OUTPUT_MAX_BYTES - outputBytes);
+			const retained = chunk.subarray(0, remaining);
+			if (retained.length > 0) current.push(retained);
+			outputBytes += retained.length;
 			if (chunk.length > remaining) stop("overflow");
 		};
 		child.stdout.on("data", (chunk: Buffer) => collect(chunk, "stdout"));

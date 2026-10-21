@@ -207,6 +207,19 @@ describe("runHook — real subprocess timeout kill", () => {
 		expect(result.timedOut).toBe(false);
 	}, 16000);
 
+	it("preserves ordered output across many chunks and both streams", async () => {
+		const result = await runHook(makeEntry("for ((i=0;i<2048;i++)); do printf abc; printf xyz >&2; done", 10), "");
+		expect(result).toEqual({ exitCode: 0, stdout: "abc".repeat(2048), stderr: "xyz".repeat(2048), timedOut: false });
+	}, 12000);
+
+	it("shares one byte cap across stdout and stderr", async () => {
+		const result = await runHook(makeEntry("head -c 6000000 /dev/zero; head -c 6000000 /dev/zero >&2", 15), "");
+		expect(result.exitCode).toBe(2);
+		expect(result.stderr).toContain("cap");
+		const payloadBytes = result.stdout.length + result.stderr.slice(result.stderr.indexOf(": ") + 2).length;
+		expect(payloadBytes).toBe(10 * 1024 * 1024);
+	}, 16000);
+
 	it("preserves hook stdin, stderr and blocking exit codes", async () => {
 		// Asserts exit-code/stream plumbing, not latency: a generous entry
 		// timeout keeps this from racing a CPU-starved runner.

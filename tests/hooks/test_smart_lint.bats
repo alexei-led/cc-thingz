@@ -815,3 +815,46 @@ SH
 	[ "$status" -eq 0 ]
 	[ "$(cat yarn.args)" = "run lint" ]
 }
+
+@test "smart-lint: project Ruff executable wins over system Ruff" {
+	cd "$WORK_DIR" || exit
+	git init -q
+	mkdir -p bin .venv/bin pkg
+	touch pyproject.toml pkg/one.py
+	cat >.venv/bin/ruff <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"$PWD/local-ruff.args"
+SH
+	cat >bin/ruff <<'SH'
+#!/usr/bin/env bash
+touch "$PWD/system-ruff-ran"
+SH
+	printf '#!/bin/sh\nexit 0\n' >bin/pyright
+	chmod +x .venv/bin/ruff bin/ruff bin/pyright
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"pkg/one.py\"}}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	grep -q 'pkg/one.py' local-ruff.args
+	[ ! -f system-ruff-ran ]
+}
+
+@test "smart-lint: adopted Black wins over unrelated system Ruff" {
+	cd "$WORK_DIR" || exit
+	git init -q
+	mkdir -p bin pkg
+	printf '[tool.black]\nline-length = 88\n' >pyproject.toml
+	touch pkg/one.py
+	cat >bin/ruff <<'SH'
+#!/usr/bin/env bash
+touch "$PWD/system-ruff-ran"
+SH
+	cat >bin/uv <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"$PWD/uv.args"
+SH
+	printf '#!/bin/sh\nexit 0\n' >bin/pyright
+	chmod +x bin/ruff bin/uv bin/pyright
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"pkg/one.py\"}}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	grep -q 'run --no-sync black pkg/one.py' uv.args
+	[ ! -f system-ruff-ran ]
+}

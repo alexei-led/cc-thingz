@@ -14,9 +14,8 @@ const capturedExecutables: string[] = [];
 const settingsFiles = new Map<string, string>();
 const commands = new Map<string, { handler: (args: string, ctx: ReturnType<typeof makeCtx>) => Promise<void> }>();
 const bundledHooksConfigPath = `${process.cwd()}/src/plugins/pi/extensions/extensions/hooks.json`;
-// Isolated runner fixture. Generated compatibility config deliberately contains
-// only Pi-specific revdiff and notification hooks; portable hooks run through
-// agentbundler-hooks.ts and must not be duplicated here.
+// Synthetic user-hook fixture. Shipped defaults are empty; portable hooks
+// run through agentbundler-hooks.ts and must not be duplicated there.
 const runnerFixtureConfig = JSON.stringify({
 	hooks: {
 		SessionStart: [
@@ -26,17 +25,6 @@ const runnerFixtureConfig = JSON.stringify({
 						type: "command",
 						command: "${PI_HOOKS_DIR}/session-start.py",
 						timeout: 5,
-					},
-				],
-			},
-		],
-		UserPromptSubmit: [
-			{
-				hooks: [
-					{
-						type: "command",
-						command: "${PI_HOOKS_DIR}/skill-enforcer.sh",
-						timeout: 15,
 					},
 				],
 			},
@@ -67,7 +55,7 @@ const runnerFixtureConfig = JSON.stringify({
 				hooks: [
 					{
 						type: "command",
-						command: "${PI_HOOKS_DIR}/revdiff-plan-review.py",
+						command: "${PI_HOOKS_DIR}/custom-plan-review.py",
 						timeout: 1740,
 					},
 				],
@@ -505,7 +493,7 @@ describe("tool_call → PreToolUse", () => {
 			});
 		});
 		expect(response.blocked).toBe(false);
-		expect(capturedCommands.some((cmd) => cmd.includes("revdiff-plan-review.py"))).toBe(true);
+		expect(capturedCommands.some((cmd) => cmd.includes("custom-plan-review.py"))).toBe(true);
 		expect(capturedCommands.some((cmd) => cmd.includes("${PI_HOOKS_DIR}"))).toBe(false);
 	});
 });
@@ -608,6 +596,14 @@ describe("input → UserPromptExpansion", () => {
 	});
 
 	it("stores non-JSON stdout as extra context for next turn", async () => {
+		settingsFiles.set(
+			bundledHooksConfigPath,
+			JSON.stringify({
+				hooks: {
+					UserPromptExpansion: [{ hooks: [{ type: "command", command: "custom-expansion" }] }],
+				},
+			}),
+		);
 		execQueue.push({
 			exitCode: 0,
 			stdout: "hook context from expansion",
@@ -627,6 +623,28 @@ describe("input → UserPromptExpansion", () => {
 
 describe("turn_end → PostToolBatch", () => {
 	const handler = handlers.get("turn_end") as EventHandler;
+
+	it("does not inspect tool payloads when no matching hooks exist", async () => {
+		const input = Object.defineProperty({}, "large", {
+			enumerable: true,
+			get() {
+				throw new Error("unused input inspected");
+			},
+		});
+		const content = [
+			{
+				type: "text",
+				get text() {
+					throw new Error("unused output inspected");
+				},
+			},
+		];
+		const ctx = makeCtx({ idle: false });
+		await (handlers.get("tool_call") as EventHandler)({ toolName: "read", input, toolCallId: "unused" }, ctx);
+		await (handlers.get("tool_result") as EventHandler)({ toolName: "read", input, toolCallId: "unused", content, isError: false }, ctx);
+		await handler({ toolResults: [{ toolName: "read", toolCallId: "unused", content, isError: false }] }, ctx);
+		expect(capturedCommands).toEqual([]);
+	});
 
 	it("runs without errors when no PostToolBatch hooks configured", async () => {
 		const result = await handler(

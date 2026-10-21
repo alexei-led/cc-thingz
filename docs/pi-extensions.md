@@ -16,9 +16,7 @@ the host version themselves. The lockfiles record the tested baseline.
 - `extensions/ask-user-question.ts`;
 - `extensions/hook-runner/index.ts`;
 - `extensions/permission-gate.ts`;
-- `extensions/plan-mode/index.ts`;
-- `extensions/structured-output.ts`;
-- `extensions/todo.ts`.
+- `extensions/plan-mode/index.ts`.
 
 cc-thingz does not bundle third-party Pi extensions. Install `pi-subagents`
 separately if you want the packaged `cc-thingz.*` agents:
@@ -118,22 +116,17 @@ The model-facing text contains the answer JSON, including machine values.
 ## Portable hooks
 
 `hooks/hooks.v1.json` and `agentbundler-hooks.ts` handle portable session-start,
-prompt-submit, pre-tool, post-tool, stop, file-protection, git-guardrail,
+pre-tool, post-tool, stop, file-protection, git-guardrail,
 smart-lint, and test-runner descriptors. Hook subprocesses receive Agent
 Bundler's safe baseline plus the hook's declared environment allowlist.
 
 ## Pi compatibility runner
 
-`src/plugins/pi/extensions/extensions/hooks.json` is intentionally small. The
-native `hook-runner` loads only Pi-specific defaults:
-
-- `SessionStart`, `Stop`, and `SessionEnd` → asynchronous `ccgram hook`;
-- `ExitPlanMode` → `hooks/revdiff-plan-review.py` for plan-mode review;
-- `Notification` → `hooks/notify.sh`.
-
-The runner also merges compatible global/project `.pi/{settings,hooks}.json`
-and package contributions. It must not list portable hooks already dispatched
-by `agentbundler-hooks.ts`; otherwise they run twice.
+The shipped `extensions/hooks.json` is empty. The native runner merges
+compatible global/project `.pi/{settings,hooks}.json` and package contributions.
+Configure personal messaging, notification, and review integrations at user
+scope. Portable hooks already dispatched by `agentbundler-hooks.ts` must not
+also be listed here, or they run twice.
 
 `permission-gate` uses the runner's synthetic PermissionRequest and
 PermissionDenied events. Recursive `rm` flags (`-rf`, `-fr`, split `-f -r`, `-R`,
@@ -158,35 +151,22 @@ files are created. Invalid or overflowing timer values are not launched.
 A missing Node executable logs a launch error and skips the async hook without
 blocking shutdown; compiled Pi users must also install Node for this flow.
 
-`plan-mode` supplies `/plan`, read-only tools, plan progress, and synthetic
-ExitPlanMode review. Revdiff denial, an updated plan, and timeout behavior flow
-through the compatibility runner.
+## Planning and task tracking
 
-### Revdiff plan review
+`plan-mode` supplies `/plan`, read-only tools, and plan progress. When the
+user selects **Execute the plan**, it invokes a synthetic `ExitPlanMode`
+`PreToolUse` hook. User-configured hooks may block, annotate, or update the
+plan; no Revdiff wrapper or other review integration is bundled.
 
-Pi has no native `ExitPlanMode` event. The `plan-mode` extension detects the
-last assistant plan on `agent_end`, then invokes a synthetic `ExitPlanMode`
-`PreToolUse` hook when the user selects **Execute the plan**.
+Use the separate `@tintinweb/pi-tasks` package for task tracking. cc-thingz no
+longer registers `todo` / `/todos` or the fixed-schema `structured_output`
+demonstration. Existing saved session entries are not deleted.
 
-Install the revdiff Pi package as well as the `revdiff` binary:
-
-```bash
-pi install git:github.com/umputun/revdiff
-```
-
-The review loop is:
-
-1. Run `/plan` and ask the agent to plan the work.
-2. Select **Execute the plan** after the agent emits a numbered `Plan:` block.
-3. Annotate the plan in revdiff and quit the review.
-4. With annotations, execution stays blocked and the annotations are sent back
-   to the agent so it revises the plan.
-5. Select **Execute the plan** again. Revdiff compares the revision with the
-   previous reviewed snapshot.
-6. Quit without annotations to approve the plan and start execution.
-
-If the revdiff package is absent, the optional wrapper fails open. A review
-subprocess timeout fails closed and leaves plan mode active.
+For durable plan execution, `@alexeiled/pi-plan-exec` uses native
+`pi-subagents`; it does not require cc-thingz, pi-tasks, or
+`pi-subagents-bridge`. Bridge may still serve a separate pi-tasks
+`TaskExecute` integration. Check consumers and unresolved operations before
+retiring it; never delete recovery records as package cleanup.
 
 ## Native source layout
 

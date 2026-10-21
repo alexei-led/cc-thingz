@@ -350,7 +350,7 @@ def validate_pi(pi_root: Path) -> list[str]:
                 if not isinstance(command, str) or not command.strip():
                     errors.append(f"{where}: missing 'command' string")
                     continue
-                # External commands such as `ccgram hook` carry no packaged path.
+                # External commands such as `custom-hook` carry no packaged path.
                 _check_references(
                     [command],
                     "PI_HOOKS_DIR",

@@ -5,8 +5,8 @@ decide where. `smart-lint` is excluded from Cursor, which lacks a lossless edit
 matcher. The notify and smart-lint target matrix is in
 `docs/agentbundler-gaps.md`.
 
-`revdiff-plan-review` is not a Claude-only loss. Pi ships it as a native
-compatibility-runner command for plan-mode's synthetic `ExitPlanMode` review.
+Pi supports user-configured plan review through the compatibility runner's
+synthetic `ExitPlanMode` event. No personal review integration is bundled.
 
 ## Guard coverage
 

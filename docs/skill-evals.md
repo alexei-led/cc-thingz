@@ -374,34 +374,11 @@ retried through another tool. Next attempt reframes the existing
 `tests/skill-evals/dev-flow/reviewing-code` cases the same way `using-git-worktrees`
 was done, instead of live transcripts.
 
-## Offline hook routing probes
+## Skill-routing fixtures
 
-Measure skill-enforcer suggestions against curated English/Russian prompts without
-calling any model:
-
-```bash
-uv run python scripts/evals/evaluate-skill-routing.py
-uv run python scripts/evals/evaluate-skill-routing.py --disabled
-```
-
-Use `--hook /path/to/previous/hook.sh` to compare a saved hook revision against
-the same fixtures. JSON includes hook and fixture hashes, per-case unexpected
-and missing hints, precision among allowed hints, recall of required hints,
-language breakdowns, and nonzero hook exits. Missing denominators are `null`,
-not perfect scores. A successful command means the probes executed; mismatches
-remain advisory data in the report.
-
-The dataset is `tests/skill-evals/routing/prompts.json`. It includes Slack channel
-and JavaScript async/await negatives, ordinary development positives, and Russian
-requests with and without English technical tokens. This measures hint matching
-on a small curated set. It does not measure actual skill activation, task quality,
-model cost, or representative multilingual performance. Required misses when the
-hook is disabled are expected and do not imply the model cannot select skills.
-
-The 2026-09-08 repair probe preserved in
-`tests/skill-evals/routing/results-2026-09-08.json` used 26 cases. Unexpected
-hints fell from eight to zero while required-hint recall stayed at 15/19.
-All four missing hints were Russian requests without English technical tokens.
-Native nonzero exits fell from 26 to zero. The fixes were informed by this
-dataset, so these numbers are regression evidence, not held-out performance.
-Keep the hook advisory; use native skill descriptions for broader intent routing.
+The curated English and Russian cases in `tests/skill-evals/routing/prompts.json`
+remain available for evaluation of native or installed-skill selection. The
+former hook-coupled evaluator and its generated results were retired with the
+skill-enforcer hook; they did not measure actual skill activation.
+The hook and its evaluator are removed. Use the native skill catalog; these
+fixtures alone do not demonstrate activation, latency, or task quality.

@@ -60,6 +60,7 @@ def test_wrapper_preserves_stdin_file_and_session(
         'if [[ -n "${HOOK_INPUT_JSON+x}" ]]; then\n'
         '  printf leaked > "$HOME/payload-exported"\n'
         "fi\n"
+        'printf "parse\\n" >> "$HOME/parser-calls"\n'
         f'exec {shlex.quote(sys.executable)} "$@"\n'
     )
     python.chmod(0o755)
@@ -83,8 +84,36 @@ def test_wrapper_preserves_stdin_file_and_session(
     )
     assert result.returncode == 0, result.stderr
     assert not (tmp_path / "payload-exported").exists()
+    assert (tmp_path / "parser-calls").read_text().splitlines() == ["parse"]
     state = tmp_path / ".git/cc-thingz/hook-files-stdin-session"
     assert state.read_text() == "one.py\n"
     assert not (state.parent / "hook-files-default").exists()
     if pi_runtime:
         assert json.loads(result.stdout) == {"decision": "allow"}
+
+
+@pytest.mark.parametrize("directory", ["a", "b"])
+@pytest.mark.parametrize("path_style", ["file", "unified", "apply_patch", "move"])
+def test_normalizer_preserves_real_diff_named_directories(
+    tmp_path: Path, directory: str, path_style: str
+) -> None:
+    relative = f"{directory}/module.py"
+    (tmp_path / directory).mkdir()
+    (tmp_path / relative).touch()
+    (tmp_path / "module.py").touch()
+    inputs = {
+        "file": {"file_path": relative},
+        "unified": {"patch": f"--- a/{relative}\n+++ b/{relative}\n"},
+        "apply_patch": {"patch": f"*** Update File: {relative}\n"},
+        "move": {"patch": f"*** Move to: {relative}\n"},
+    }
+    result = subprocess.run(
+        [sys.executable, str(SMART_LINT_ROOT / "smart-lint/normalize-input.py")],
+        input=json.dumps({"cwd": str(tmp_path), "tool_input": inputs[path_style]}),
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    fields = result.stdout.split("\0")
+    assert fields[3] == "0"
+    assert fields[4:-1] == [relative]

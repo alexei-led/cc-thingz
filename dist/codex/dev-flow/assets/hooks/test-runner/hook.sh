@@ -508,7 +508,11 @@ run_with_deadline() {
 		watchdog_pid=$!
 		wait "$cmd_pid"
 		cmd_status=$?
-		kill "$watchdog_pid" 2>/dev/null
+		# Cancel the entire watchdog job, including sleep, after normal completion.
+		# Once the deadline fires, let its KILL escalation finish for descendants.
+		if [[ ! -f "$timeout_flag" ]]; then
+			kill -TERM -- "-$watchdog_pid" 2>/dev/null
+		fi
 		wait "$watchdog_pid" 2>/dev/null
 		exit "$cmd_status"
 	) 2>/dev/null
@@ -805,24 +809,37 @@ pytest_runner_command() {
 }
 
 find_python_tests_for_source() {
-	local file="$1" dir base
+	local file="$1" index="$2" dir base candidate candidate_base
 	dir=$(dirname "$file")
-	base=$(basename "$file" .py)
+	base=${file##*/}
+	base=${base%.py}
 	add_existing_file "$dir/test_${base}.py"
 	add_existing_file "$dir/${base}_test.py"
-	for test_dir in tests test; do
-		[[ -d "$test_dir" ]] || continue
-		find "$test_dir" -type f \( -name "test_${base}.py" -o -name "${base}_test.py" \) 2>/dev/null
-	done
+	while IFS= read -r candidate; do
+		[[ -n "$candidate" ]] || continue
+		candidate_base=${candidate##*/}
+		if [[ "$candidate_base" == "test_${base}.py" || "$candidate_base" == "${base}_test.py" ]]; then
+			printf '%s\n' "$candidate"
+		fi
+	done <"$index"
 }
 
 run_python_tests() {
 	local focus_files=("$@")
 	local tests=()
-	local file base tmp runner=()
+	local file base tmp runner=() candidate_index
+	local has_python_source=0
+	for file in "${focus_files[@]}"; do
+		[[ "$file" == *.py ]] && has_python_source=1
+	done
+	[[ "$has_python_source" -eq 1 ]] || return 0
+	candidate_index=$(mktemp 2>/dev/null) || return 0
+	for test_dir in tests test; do
+		[[ -d "$test_dir" ]] && find "$test_dir" -type f \( -name 'test_*.py' -o -name '*_test.py' \) 2>/dev/null >>"$candidate_index"
+	done
 	for file in "${focus_files[@]}"; do
 		[[ "$file" == *.py ]] || continue
-		base=$(basename "$file")
+		base=${file##*/}
 		# Only genuine pytest test modules (test_*.py / *_test.py) are valid
 		# targets. Support files under a test dir — conftest.py, __init__.py,
 		# fixtures/helpers — are NOT test modules; passing them to pytest
@@ -833,9 +850,10 @@ run_python_tests() {
 		else
 			while IFS= read -r candidate; do
 				[[ -n "$candidate" ]] && tests+=("$candidate")
-			done < <(find_python_tests_for_source "$file")
+			done < <(find_python_tests_for_source "$file" "$candidate_index")
 		fi
 	done
+	rm -f "$candidate_index"
 	[[ "${#tests[@]}" -gt 0 ]] || return 0
 	tmp=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-python-tests.%s' "$$")
 	printf '%s\n' "${tests[@]}" | unique_lines >"$tmp"
@@ -1321,15 +1339,38 @@ js_file_has_tests() {
 }
 
 find_js_tests_for_source() {
-	local file="$1" dir stem
-	dir=$(dirname "$file")
-	stem=$(basename "$file")
+	local file="$1" stem="${1##*/}" candidate base dir candidate_dir
 	stem=${stem%.*}
-	find "$dir" -maxdepth 1 -type f \( -name "${stem}.test.*" -o -name "${stem}.spec.*" -o -name "test_${stem}.*" \) 2>/dev/null
+	dir=${file%/*}
+	[[ "$dir" == "$file" ]] && dir=.
+	shift
+	for candidate in "$@"; do
+		candidate_dir=${candidate%/*}
+		case "$candidate" in tests/* | test/* | src/*) ;; *) [[ "$candidate_dir" == "$dir" ]] || continue ;; esac
+		base=${candidate##*/}
+		if [[ "$base" == "$stem".test.* || "$base" == "$stem".spec.* || "$base" == test_"$stem".* ]]; then
+			printf '%s\n' "$candidate"
+		fi
+	done
+}
+
+index_js_test_candidates() {
+	local test_dir file dir
 	for test_dir in tests test src; do
 		[[ -d "$test_dir" ]] || continue
-		find "$test_dir" -type f \( -name "${stem}.test.*" -o -name "${stem}.spec.*" -o -name "test_${stem}.*" \) 2>/dev/null
+		find "$test_dir" -type f \( -name '*.test.*' -o -name '*.spec.*' -o -name 'test_*.*' \) 2>/dev/null
 	done
+	# Adjacent tests outside the recursively indexed roots need one scan per dir.
+	while IFS= read -r dir; do
+		find "$dir" -maxdepth 1 -type f \( -name '*.test.*' -o -name '*.spec.*' -o -name 'test_*.*' \) 2>/dev/null
+	done < <(
+		for file in "$@"; do
+			if [[ "$file" == tests/* || "$file" == test/* || "$file" == src/* ]]; then continue; fi
+			dir=${file%/*}
+			[[ "$dir" == "$file" ]] && dir=.
+			printf '%s\n' "$dir"
+		done | sort -u
+	)
 }
 
 js_runner_command() {
@@ -1374,9 +1415,6 @@ run_javascript_tests() {
 			tests+=("$file")
 		else
 			sources+=("$file")
-			while IFS= read -r candidate; do
-				[[ -n "$candidate" ]] && mapped_tests+=("$candidate")
-			done < <(find_js_tests_for_source "$file")
 		fi
 	done
 	[[ "${#sources[@]}" -gt 0 || "${#tests[@]}" -gt 0 || "${#mapped_tests[@]}" -gt 0 ]] || return 0
@@ -1385,6 +1423,14 @@ run_javascript_tests() {
 	if [[ -z "$runner" ]]; then
 		log_warn "No focused JS test runner found — skipping JS tests"
 		return 0
+	fi
+
+	if [[ "$runner" == bun\|* && "${#sources[@]}" -gt 0 ]]; then
+		local candidates=()
+		while IFS= read -r candidate; do candidates+=("$candidate"); done < <(index_js_test_candidates "${sources[@]}")
+		for file in "${sources[@]}"; do
+			while IFS= read -r candidate; do mapped_tests+=("$candidate"); done < <(find_js_tests_for_source "$file" "${candidates[@]}")
+		done
 	fi
 
 	tmp=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-js-tests.%s' "$$")

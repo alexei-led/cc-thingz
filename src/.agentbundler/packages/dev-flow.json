@@ -57,17 +57,6 @@
       ]
     },
     {
-      "path": "hooks/skill-enforcer",
-      "targets": [
-        "claude",
-        "codex",
-        "pi",
-        "copilot",
-        "cursor",
-        "grok"
-      ]
-    },
-    {
       "path": "hooks/release-guard",
       "targets": [
         "claude",

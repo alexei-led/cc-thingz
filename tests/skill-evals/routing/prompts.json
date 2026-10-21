@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Curated offline hint-routing probes, not model task-quality evaluations. Required hints measure omissions; allowed hints accommodate legitimate workflow composition. Negative cases permit no hints.",
+  "description": "Curated expectations for bundled skill selection. Not a native routing measurement; external skills are outside this catalog.",
   "cases": [
     {
       "id": "slack-channel",
@@ -330,6 +330,57 @@
       "allowed": [
         "looking-up-docs",
         "writing-python"
+      ]
+    },
+    {
+      "id": "plugin-manifest-audit",
+      "language": "en",
+      "prompt": "Review the plugin manifest and agent setup, not application code.",
+      "required": [
+        "evolving-config"
+      ],
+      "allowed": [
+        "evolving-config"
+      ]
+    },
+    {
+      "id": "hook-code-review",
+      "language": "en",
+      "prompt": "Review the code changes in the agent hooks for correctness.",
+      "required": [
+        "reviewing-code"
+      ],
+      "allowed": [
+        "reviewing-code"
+      ]
+    },
+    {
+      "id": "year-is-not-web-research",
+      "language": "en",
+      "prompt": "Fix bug 2026 in the parser.",
+      "required": [
+        "fixing-code"
+      ],
+      "allowed": [
+        "fixing-code"
+      ]
+    },
+    {
+      "id": "external-plan-controller",
+      "language": "en",
+      "prompt": "Use exec-plan to resume implementation; do not create .spec files.",
+      "required": [],
+      "allowed": []
+    },
+    {
+      "id": "brainstorm-no-implementation",
+      "language": "en",
+      "prompt": "Brainstorm two API designs; do not write code or files.",
+      "required": [
+        "brainstorming-ideas"
+      ],
+      "allowed": [
+        "brainstorming-ideas"
       ]
     }
   ]

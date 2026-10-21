@@ -28,12 +28,16 @@ if ! command -v jq >/dev/null 2>&1; then
 	exit 0
 fi
 
-title=$(echo "$json_input" | jq -r '.title // ""')
-message=$(echo "$json_input" | jq -r '.message // "Done"')
-cwd=$(echo "$json_input" | jq -r '.cwd // ""')
-notification_type=$(echo "$json_input" | jq -r '.notification_type // ""')
-session_id=$(echo "$json_input" | jq -r '.session_id // ""')
-permission_mode=$(echo "$json_input" | jq -r '.permission_mode // ""')
+title="" message="Done" cwd="" notification_type="" session_id="" permission_mode=""
+# NUL separators preserve empty fields, tabs and newlines without shell evaluation.
+{
+	IFS= read -r -d '' title
+	IFS= read -r -d '' message
+	IFS= read -r -d '' cwd
+	IFS= read -r -d '' notification_type
+	IFS= read -r -d '' session_id
+	IFS= read -r -d '' permission_mode
+} < <(jq -j '[.title // "", .message // "Done", .cwd // "", .notification_type // "", .session_id // "", .permission_mode // ""] | .[] | tostring | gsub("\u0000"; "") + "\u0000"' <<<"$json_input")
 
 # --- Agent name: JSON title → env detection → generic fallback ---
 if [[ -z "$title" ]]; then

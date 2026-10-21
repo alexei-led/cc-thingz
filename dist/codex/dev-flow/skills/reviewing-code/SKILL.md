@@ -25,6 +25,14 @@ semantics; do not read every reference merely because that language is in scope:
 Other languages: use the rubric alone; report reduced coverage if missing
 language guidance limits the review.
 
+## Workflow ownership
+
+This skill owns the finding rubric and domain references. Coding-posture owns the
+general review checklist. Use Revmux for explicitly requested multi-agent review
+when installed, and Revdiff for explicitly requested interactive annotations;
+neither is required for an ordinary review. Do not run several review workflows
+for one request unless the user asks.
+
 ## Scope
 
 Use the scope the user named. Otherwise ask one question offering:
@@ -50,7 +58,7 @@ Default is standard.
 
 ## Evidence
 
-- Read enough surrounding code to prove each claim. Run the project's checks when you can; a failing check in scope is evidence.
+- Prove each claim from source or observed checks. A read-only reviewer reports checks to run; the caller or engineer executes them. Do not present a proposed check as a passing result.
 - If a code-graph tool (GitNexus, codegraph) is installed, use it for caller, impact, and test-coverage questions on broad or public-API changes; a stale index is a coverage gap, not evidence.
 - Web research is for public facts only (CVEs, official docs). Never send private code or diffs to web tools.
 - Skip style that project tooling already enforces. List suspicious code outside scope as out of scope instead of widening the review.

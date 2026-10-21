@@ -32,8 +32,6 @@
       "./dist/pi/extensions/hook-runner/index.ts",
       "./dist/pi/extensions/permission-gate.ts",
       "./dist/pi/extensions/plan-mode/index.ts",
-      "./dist/pi/extensions/structured-output.ts",
-      "./dist/pi/extensions/todo.ts",
       "./dist/pi/extensions/agentbundler-hooks.ts"
     ],
     "skills": [

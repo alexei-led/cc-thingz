@@ -73,7 +73,7 @@ def _valid_pi(pi: Path) -> None:
         pi / "extensions/hooks.json",
         {
             "hooks": {
-                "Stop": [{"hooks": [{"type": "command", "command": "ccgram hook"}]}],
+                "Stop": [{"hooks": [{"type": "command", "command": "custom-hook"}]}],
                 "Notification": [
                     {
                         "hooks": [

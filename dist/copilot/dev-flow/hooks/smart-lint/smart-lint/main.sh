@@ -12,6 +12,11 @@ source "$SCRIPT_DIR/lib.sh"
 # --- MAIN EXECUTION ---
 [[ "$1" == "--debug" ]] && export CLAUDE_HOOKS_DEBUG=1
 init_hook_input
+if [[ "$SMART_LINT_PI_RUNTIME" == "1" ]]; then
+	# Reserve the original stdout for Pi's decision, including early exits.
+	exec 3>&1 1>&2
+	trap 'printf "{\"decision\":\"allow\"}\n" >&3' EXIT
+fi
 
 # The edited file lives outside the project root (e.g. a /tmp scratchpad
 # file): nothing here to lint, and falling through would let an unrelated

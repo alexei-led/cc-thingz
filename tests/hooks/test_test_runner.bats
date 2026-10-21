@@ -3,6 +3,7 @@
 HOOK="$BATS_TEST_DIRNAME/../../src/hooks/test-runner/hook.sh"
 
 setup() {
+	unset PI_SUBAGENT_CHILD
 	WORK_DIR="${BATS_TEST_TMPDIR:-$(mktemp -d)}"
 	mkdir -p "$WORK_DIR"
 	cd "$WORK_DIR" || exit
@@ -22,6 +23,30 @@ write_state() {
 	state_path=$(git rev-parse --git-path "cc-thingz/hook-files-$session_id")
 	mkdir -p "$(dirname "$state_path")"
 	printf '%s\n' "$@" >"$state_path"
+}
+
+@test "test-runner: fast test command does not wait for watchdog budget" {
+	mkdir -p bin pkg tests
+	cat >pyproject.toml <<'TOML'
+[project]
+name = "demo"
+version = "0.0.0"
+[project.optional-dependencies]
+test = ["pytest"]
+TOML
+	touch pkg/foo.py tests/test_foo.py
+	cat >bin/uv <<'SH'
+#!/usr/bin/env bash
+exit 0
+SH
+	chmod +x bin/uv
+	write_state s_watchdog pkg/foo.py
+
+	start=$SECONDS
+	run env PATH="$WORK_DIR/bin:$PATH" TEST_RUNNER_TIMEOUT_SECS=12 HOOK_INPUT_JSON="{\"session_id\":\"s_watchdog\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	elapsed=$((SECONDS - start))
+	[ "$status" -eq 0 ]
+	[ "$elapsed" -lt 8 ]
 }
 
 @test "test-runner: maps Python source file to focused pytest file" {
@@ -45,6 +70,28 @@ SH
 	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s1\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
 	[ "$(cat uv.args)" = "run --extra test pytest -q --maxfail=1 --tb=short tests/test_foo.py" ]
+}
+
+@test "test-runner: indexes Python candidates once for multiple changed sources" {
+	mkdir -p bin pkg tests
+	cat >pyproject.toml <<'TOML'
+[project]
+name = "demo"
+version = "0.0.0"
+[project.optional-dependencies]
+test = ["pytest"]
+TOML
+	touch pkg/foo.py pkg/bar.py tests/test_foo.py tests/test_bar.py
+	cat >bin/uv <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/uv.args"
+SH
+	chmod +x bin/uv
+	write_state s_multi pkg/foo.py pkg/bar.py
+
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_multi\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat uv.args)" = "run --extra test pytest -q --maxfail=1 --tb=short tests/test_bar.py tests/test_foo.py" ]
 }
 
 @test "test-runner: uses uv dependency group for pytest" {
@@ -1106,4 +1153,27 @@ SH
 	state_path=$(git rev-parse --git-path "cc-thingz/hook-files-s_keep")
 	[ -s "$state_path" ]
 	[ "$(cat "$state_path")" = "pkg/foo.go" ]
+}
+
+@test "test-runner: Bun indexes roots once and keeps adjacent tests scoped" {
+	mkdir -p bin src tests lib other
+	touch bun.lock src/foo.ts src/bar.ts lib/foo.ts other/bar.ts
+	touch tests/foo.test.ts tests/bar.spec.ts lib/foo.test.ts other/foo.test.ts
+	cat >bin/bun <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"$PWD/bun.args"
+SH
+	real_find=$(command -v find)
+	cat >bin/find <<SH
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >>"$WORK_DIR/find.args"
+exec "$real_find" "\$@"
+SH
+	chmod +x bin/bun bin/find
+	write_state s_bun_index src/foo.ts src/bar.ts lib/foo.ts other/bar.ts
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_bun_index\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat bun.args)" = "test --isolate lib/foo.test.ts tests/bar.spec.ts tests/foo.test.ts" ]
+	[ "$(grep -c '^tests -type f' find.args)" -eq 1 ]
+	[ "$(grep -c '^src -type f' find.args)" -eq 1 ]
 }

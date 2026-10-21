@@ -10,6 +10,8 @@ questions recorded, and no implementation task list produced.
 
 ## Session rules
 
+- Do not implement or change files until the user explicitly approves that scope.
+
 - Ask one question at a time, with a recommendation. Use the runtime's
   interactive question tool when available (single-select, multi-select, or
   free text) or short labeled options otherwise; always include an Other choice.

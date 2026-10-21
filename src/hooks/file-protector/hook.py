@@ -81,10 +81,19 @@ def _load_patterns(section: str, default: list[str]) -> list[str]:
         return default
     try:
         cfg = json.loads(_CONFIG_FILE.read_text())
-        patterns = cfg.get("fileProtector", {}).get(section, None)
-        return patterns if patterns is not None else default
-    except (json.JSONDecodeError, OSError):
+    except (json.JSONDecodeError, OSError, UnicodeDecodeError):
         return default
+    if not isinstance(cfg, dict):
+        return default
+    protector = cfg.get("fileProtector")
+    if not isinstance(protector, dict):
+        return default
+    patterns = protector.get(section)
+    if patterns is None:
+        return default
+    if isinstance(patterns, list) and all(isinstance(item, str) for item in patterns):
+        return patterns
+    return default
 
 
 def _extract_patch_paths(patch: str) -> list[str]:

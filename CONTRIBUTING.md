@@ -107,7 +107,7 @@ archives. It does not yet render:
 `src/hooks/UNSUPPORTED.md` records per-target hook boundaries. Pi-native extension trees live under `src/plugins/pi/<asset>/` and
 need an `.agentbundler/asset.json` that explicitly lists registered
 `piExtensions`. The extension tree also contains unregistered support modules,
-Pi-specific compatibility hooks, and revdiff's wrapper. Do not add a custom
+the generic Pi compatibility runner. Do not add a custom
 compiler or post-build copier.
 
 ## Git hooks and CI

@@ -400,6 +400,20 @@ def test_relative_paths_do_not_use_project_excludes(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.parametrize(
+    "config", [[], {"fileProtector": []}, {"fileProtector": {"protectedPatterns": 7}}]
+)
+def test_invalid_config_shapes_fall_back_to_defaults(config, tmp_path: Path) -> None:
+    config_path = tmp_path / ".claude" / "hook-config.json"
+    config_path.parent.mkdir()
+    config_path.write_text(json.dumps(config))
+
+    rc, err = _run({"tool_input": {"file_path": "secrets/token.txt"}}, tmp_path)
+    assert rc == 2
+    assert "BLOCKED" in err
+    assert "Traceback" not in err
+
+
 def test_custom_protected_patterns_override_defaults(tmp_path: Path) -> None:
     """Custom patterns replace defaults entirely — .env is no longer blocked."""
     config = tmp_path / ".claude" / "hook-config.json"

@@ -176,14 +176,29 @@ agbun package --root . --out /tmp/cc-thingz-release
 ```
 
 The generated Pi package includes its typed hook adapter, native
-`ask_user_question` and `todo` tools, plus `hook-runner`,
-`permission-gate`, and `plan-mode`. Its compatibility config contains only
-Pi-specific revdiff plan review and notifications, so portable Agent Bundler
-hooks do not run twice.
+`ask_user_question`, `hook-runner`, `permission-gate`, and `plan-mode`.
+Use the separate pi-tasks package for task tracking. The compatibility runner
+has no personal defaults; configure messaging, notifications, and plan review
+at user scope. Portable Agent Bundler hooks must not be registered twice.
 
 The package command, flat per-agent sidecars, safe Pi hook environments, native
 extension assets, and Codex project-agent profiles require a compatible
 installed Agent Bundler pinned in `.agentbundler-version`.
+
+## Workflow ownership
+
+Use [coding-posture](https://github.com/alexei-led/coding-posture) for the general
+debug, fix, review, test-first, refactor, and optimize procedure. cc-thingz keeps
+defect evidence contracts, review rubrics, test-design references, and language
+tooling. Do not load two skills just to repeat the same checklist.
+
+- Design exploration: `brainstorming-ideas`; implementation requires approval.
+- Releases: `releasing-code`, following the project's publication workflow.
+- Ordinary review: `reviewing-code`. Use Revmux for explicitly requested
+  multi-agent review and Revdiff for interactive annotations when installed.
+- Authoring: `writing-skills`; instruction scoring: `reviewing-instructions`;
+  behavioral evaluation: the [eval commands](docs/skill-evals.md).
+- Configuration audits: `evolving-config`; installation inventory: `installation-doctor`.
 
 ## Installation diagnostics
 

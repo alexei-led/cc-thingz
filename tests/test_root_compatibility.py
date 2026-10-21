@@ -279,7 +279,7 @@ def test_repository_root_pi_package_loads_commands_from_local_path(
     rpc, commands = _pi_rpc_commands(pi, environment, project)
     assert rpc.returncode == 0, rpc.stderr
     names = {command["name"] for command in commands}
-    assert {"plan", "todos", "skill:fixing-code"} <= names
+    assert {"plan", "skill:fixing-code"} <= names
     fixing_code = next(
         command for command in commands if command["name"] == "skill:fixing-code"
     )
@@ -312,7 +312,7 @@ def test_root_pi_package_coexists_with_standalone_subagents(tmp_path: Path) -> N
     rpc, commands = _pi_rpc_commands(pi, environment, project)
     assert rpc.returncode == 0, rpc.stderr
     by_name = {command["name"]: command for command in commands}
-    assert {"plan", "todos", "subagents-doctor", "skill:fixing-code"} <= by_name.keys()
+    assert {"plan", "subagents-doctor", "skill:fixing-code"} <= by_name.keys()
     assert (
         "/npm/node_modules/pi-subagents/"
         in by_name["subagents-doctor"]["sourceInfo"]["path"]
@@ -442,7 +442,6 @@ def test_repository_root_pi_package_loads_from_git_checkout(tmp_path: Path) -> N
         assert rpc.returncode == 0, rpc.stderr
         assert {
             "plan",
-            "todos",
             "subagents-doctor",
             "skill:fixing-code",
         } <= {command["name"] for command in commands}

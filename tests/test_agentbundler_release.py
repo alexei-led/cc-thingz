@@ -44,8 +44,6 @@ PI_NATIVE_EXTENSION_ENTRIES = {
     "./extensions/hook-runner/index.ts",
     "./extensions/permission-gate.ts",
     "./extensions/plan-mode/index.ts",
-    "./extensions/structured-output.ts",
-    "./extensions/todo.ts",
 }
 PI_NATIVE_EXTENSION_FILES = {
     entry.removeprefix("./") for entry in PI_NATIVE_EXTENSION_ENTRIES
@@ -366,8 +364,6 @@ def test_generated_target_inventory_matches_supported_contract() -> None:
         "extensions/agentbundler-hooks.ts",
         "extensions/ask-user-question.ts",
         "extensions/permission-gate.ts",
-        "extensions/structured-output.ts",
-        "extensions/todo.ts",
     }
 
     pi_manifest = json.loads((REPO_ROOT / "dist/pi/package.json").read_text())
@@ -375,13 +371,7 @@ def test_generated_target_inventory_matches_supported_contract() -> None:
     compatibility = json.loads(
         (REPO_ROOT / "dist/pi/extensions/hooks.json").read_text()
     )
-    assert set(compatibility["hooks"]) == {
-        "Notification",
-        "PreToolUse",
-        "SessionEnd",
-        "SessionStart",
-        "Stop",
-    }
+    assert compatibility == {"hooks": {}}
 
 
 def test_generated_agent_frontmatter_preserves_target_envelopes() -> None:

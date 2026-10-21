@@ -440,24 +440,23 @@ export default function (pi: ExtensionAPI): void {
 	// --- tool_call → PreToolUse ---
 	pi.on("tool_call", async (event: ToolCallEvent, ctx: ExtensionContext): Promise<ToolCallEventResult | undefined> => {
 		const ccName = toCcToolName(event.toolName);
-		const stdin = JSON.stringify({
-			...baseStdin("PreToolUse", ctx),
-			tool_name: ccName,
-			tool_input: event.input,
-			tool_use_id: event.toolCallId,
-		});
-
-		const result = await runPreToolUseGroups(resolvedConfig().PreToolUse ?? [], ccName, stdin, ctx, 10);
-		if (result.updatedInput) {
-			if (!isRecord(event.input)) {
-				return { block: true, reason: "Hook updatedInput rejected: tool input is not a mutable object" };
+		const config = resolvedConfig();
+		const groups = matchingGroups(config.PreToolUse ?? [], ccName);
+		if (groups.some((group) => group.hooks.length > 0)) {
+			const stdin = JSON.stringify({
+				...baseStdin("PreToolUse", ctx),
+				tool_name: ccName,
+				tool_input: event.input,
+				tool_use_id: event.toolCallId,
+			});
+			const result = await runPreToolUseGroups(groups, ccName, stdin, ctx, 10);
+			if (result.updatedInput) {
+				if (!isRecord(event.input)) return { block: true, reason: "Hook updatedInput rejected: tool input is not a mutable object" };
+				replaceInput(event.input, result.updatedInput);
 			}
-			replaceInput(event.input, result.updatedInput);
+			if (result.blocked) return { block: true, reason: result.reason || "Blocked by hook" };
 		}
-		if (result.blocked) {
-			return { block: true, reason: result.reason || "Blocked by hook" };
-		}
-		if (isRecord(event.input)) {
+		if (config.PostToolBatch?.some((group) => group.hooks.length > 0) && isRecord(event.input)) {
 			trackToolInput(toolInputByCallId, event.toolCallId, structuredClone(event.input));
 		}
 		return undefined;
@@ -467,9 +466,12 @@ export default function (pi: ExtensionAPI): void {
 	pi.on("tool_result", async (event: ToolResultEvent, ctx: ExtensionContext) => {
 		const ccName = toCcToolName(event.toolName);
 		const hookName: HookEventName = event.isError ? "PostToolUseFailure" : "PostToolUse";
-		if (isRecord(event.input) && !toolInputByCallId.has(event.toolCallId)) {
+		const config = resolvedConfig();
+		if (config.PostToolBatch?.some((group) => group.hooks.length > 0) && isRecord(event.input) && !toolInputByCallId.has(event.toolCallId)) {
 			trackToolInput(toolInputByCallId, event.toolCallId, structuredClone(event.input));
 		}
+		const groups = matchingGroups(config[hookName] ?? [], ccName);
+		if (!groups.some((group) => group.hooks.length > 0)) return undefined;
 		const stdin = JSON.stringify({
 			...baseStdin(hookName, ctx),
 			tool_name: ccName,
@@ -485,7 +487,6 @@ export default function (pi: ExtensionAPI): void {
 					}),
 		});
 
-		const groups = matchingGroups(resolvedConfig()[hookName] ?? [], ccName);
 		const feedbackLines: string[] = [];
 		const extraContexts: string[] = [];
 
@@ -531,6 +532,11 @@ export default function (pi: ExtensionAPI): void {
 	pi.on("turn_end", async (event: TurnEndEvent, ctx: ExtensionContext) => {
 		if (!event.toolResults || event.toolResults.length === 0) return;
 		const hookName: HookEventName = "PostToolBatch";
+		const groups = resolvedConfig()[hookName] ?? [];
+		if (!groups.some((group) => group.hooks.length > 0)) {
+			toolInputByCallId.clear();
+			return;
+		}
 		const toolCalls = event.toolResults.map((result) => ({
 			tool_name: toCcToolName(result.toolName),
 			tool_input: toolInputByCallId.get(result.toolCallId) ?? {},
@@ -545,7 +551,7 @@ export default function (pi: ExtensionAPI): void {
 			...baseStdin(hookName, ctx),
 			tool_calls: toolCalls,
 		});
-		const result = await runDecisionHooks(hookName, resolvedConfig()[hookName] ?? [], stdin, ctx);
+		const result = await runDecisionHooks(hookName, groups, stdin, ctx);
 		if (result.additionalContext) {
 			sendHookMessageToAgent(pi, ctx, result.additionalContext);
 		}

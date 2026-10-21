@@ -45,6 +45,17 @@ for line in lines:
 '
 }
 
+python_tool_command() {
+	local name="$1"
+	if [[ -x ".venv/bin/$name" ]]; then
+		printf '%s\n' ".venv/bin/$name"
+	elif command_exists uv && [[ -f pyproject.toml ]] && python_project_mentions_tool "$name"; then
+		printf '%s\n' uv run --no-sync "$name"
+	elif command_exists "$name"; then
+		printf '%s\n' "$name"
+	fi
+}
+
 lint_python() {
 	log_debug "python checks"
 
@@ -57,11 +68,10 @@ lint_python() {
 		return 0
 	fi
 
-	local ruff_runner=()
-	if command_exists ruff; then
-		ruff_runner=(ruff)
-	elif command_exists uv && [[ -f pyproject.toml ]] && python_project_mentions_tool ruff; then
-		ruff_runner=(uv run ruff)
+	local ruff_runner=() part
+	# An adopted Black configuration wins over an unrelated global Ruff install.
+	if ! python_project_mentions_tool black || python_project_mentions_tool ruff; then
+		while IFS= read -r part; do ruff_runner+=("$part"); done < <(python_tool_command ruff)
 	fi
 
 	if [[ "${#ruff_runner[@]}" -gt 0 ]]; then
@@ -72,18 +82,15 @@ lint_python() {
 		run_linter_compact "Python Linter (ruff)" "${ruff_runner[@]}" check --fix --unfixable=F401 "${files[@]}"
 	else
 		local black_runner=()
-		if command_exists black; then
-			black_runner=(black)
-		elif command_exists uv && [[ -f pyproject.toml ]] && python_project_mentions_tool black; then
-			black_runner=(uv run black)
-		fi
+		while IFS= read -r part; do black_runner+=("$part"); done < <(python_tool_command black)
+
 		if [[ "${#black_runner[@]}" -gt 0 ]]; then
 			run_formatter_on_files --format-only "Python Formatter (black)" "${black_runner[*]}" "" "${files[@]}"
 		fi
-		if command_exists flake8; then
-			run_linter_compact "Python Linter (flake8)" flake8 "${files[@]}"
-		elif command_exists uv && [[ -f pyproject.toml ]] && python_project_mentions_tool flake8; then
-			run_linter_compact "Python Linter (flake8)" uv run flake8 "${files[@]}"
+		local flake8_runner=()
+		while IFS= read -r part; do flake8_runner+=("$part"); done < <(python_tool_command flake8)
+		if [[ "${#flake8_runner[@]}" -gt 0 ]]; then
+			run_linter_compact "Python Linter (flake8)" "${flake8_runner[@]}" "${files[@]}"
 		fi
 	fi
 

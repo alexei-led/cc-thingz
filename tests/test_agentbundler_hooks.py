@@ -11,7 +11,6 @@ from conftest import REPO_ROOT
 
 PI_PORTABLE_HOOKS = {
     "hook/session-start",
-    "hook/skill-enforcer",
     "hook/file-protector",
     "hook/git-guardrails",
     "hook/release-guard",
@@ -57,30 +56,7 @@ def test_agentbundler_renders_pi_portable_and_compatibility_hook_contracts() -> 
     compatibility = json.loads(
         (REPO_ROOT / "dist/pi/extensions/hooks.json").read_text()
     )
-    assert set(compatibility["hooks"]) == {
-        "Notification",
-        "PreToolUse",
-        "SessionEnd",
-        "SessionStart",
-        "Stop",
-    }
-    assert compatibility["hooks"]["PreToolUse"][0]["matcher"] == "ExitPlanMode"
-    assert (
-        "revdiff-plan-review.py"
-        in compatibility["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
-    )
-    assert compatibility["hooks"]["Notification"][0]["hooks"][0]["async"] is True
-    for event in ("SessionStart", "SessionEnd", "Stop"):
-        assert compatibility["hooks"][event][0]["hooks"][0] == {
-            "type": "command",
-            "command": "ccgram hook",
-            "timeout": 5,
-            "async": True,
-        }
-    assert "file-protector" not in json.dumps(compatibility)
-    assert "git-guardrails" not in json.dumps(compatibility)
-    assert "smart-lint" not in json.dumps(compatibility)
-    assert "test-runner" not in json.dumps(compatibility)
+    assert compatibility == {"hooks": {}}
 
 
 def test_agentbundler_renders_target_hook_matrix() -> None:

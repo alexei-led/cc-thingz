@@ -50,13 +50,13 @@ Hook cancellation uses POSIX process groups on macOS/Linux and waits for cleanup
 Windows execution is explicitly unsupported by this runner rather than claiming
 that terminating one shell cleans up its descendants.
 
-The structured-output demonstration remains packaged for compatibility, but
-registers no tool by default. Set `CC_THINGZ_STRUCTURED_OUTPUT=1` before starting
-Pi to opt into its fixed headline/summary/actionItems schema.
+Personal messaging and plan-review integrations are user-owned. The fixed-schema
+structured-output example and todo extension are no longer shipped. Use pi-tasks
+for tracking; durable plan-exec uses native pi-subagents without Bridge.
 
-The regex skill suggestion hook can be disabled with `HOOK_SKILL_ENFORCER=0`.
-Offline routing fixtures measure its suggestions, not whether a model follows
-them or completes the task. See [skill evals](skill-evals.md).
+Skill selection uses the host's native catalog, not a keyword hook. Retained
+routing prompts are fixtures, not proof of native selection accuracy. See
+[skill evals](skill-evals.md).
 
 ## Helpers
 
@@ -102,3 +102,27 @@ installed compiler differs. The separate upstream canary does not alter the pin.
 CI/release require lockfile-pinned Claude/Codex/Pi install and Pi resource-loading
 smoke, plus generated hook-adapter checks. Credential-bound vendor events remain
 separate from those contracts.
+
+## Measurement
+
+Measure isolated hook startup/input handling without touching user config,
+invoking a model, or running project linters:
+
+```bash
+uv run python scripts/diagnostics/measure-hooks.py --runs 5
+```
+
+The JSON records median/min/max wall time for a safe file-protection check,
+a 1 MiB smart-lint payload with lint disabled, and test-runner with no mapped
+tests. Compare the same command on the same machine and input; process startup
+is included. These are not end-to-end agent latency or model-quality scores.
+CI checks the report contract, not a machine-dependent timing threshold.
+
+Regression tests separately verify one smart-lint payload parse, one notification
+parse, bounded Pi output aggregation, and no payload inspection when no hook
+matches. Use the existing doctor for disk inventory; cached copies do not prove
+which plugins are active. Native skill selection and model/effort comparisons
+need real host eval runs: see [skill evals](skill-evals.md). Change one variable
+at a time and record task success, scope adherence, verification quality, tool
+calls, cost and latency. Provider/model aliases are selected identities, not
+server-confirmed backends.

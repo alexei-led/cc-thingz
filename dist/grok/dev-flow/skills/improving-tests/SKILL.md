@@ -1,11 +1,15 @@
 ---
-{"description":"Improve test design, speed, and coverage with behavior-focused tests, useful seams, characterization tests, TDD, and test refactoring. Use when improving tests, optimizing slow suites, adding coverage, refactoring brittle tests, removing test waste, or working test-first. NOT for fixing production bugs (use fixing-code), or reviewing non-test code quality (use reviewing-code).","name":"improving-tests"}
+{"description":"Improve test design, speed, and coverage with behavior-focused tests, useful seams, characterization tests, TDD, and test refactoring. Use when improving tests, optimizing slow suites, adding coverage, refactoring brittle tests, or removing test waste. NOT for fixing production bugs (use fixing-code), or reviewing non-test code quality (use reviewing-code).","name":"improving-tests"}
 ---
 
 # Test Improvement
 
 Make tests catch real behavior regressions without blocking safe changes. Suite
 latency is a quality attribute; coverage is a signal, not the goal.
+
+The optional coding-posture plugin owns general test-first and refactoring
+procedure. This skill adds test-design and language-specific guidance; do not
+load both merely to repeat a checklist.
 
 Without write access, return proposed changes (file, change, reason) instead of
 applying them.
@@ -23,7 +27,7 @@ suite speed. Use the matching `writing-<lang>` skill for toolchain commands.
 
 ## Modes
 
-If the mode is missing, ask which one:
+Choose the mode from the request. Ask only when the choice changes the scope:
 
 - `review`: find weak, duplicate, brittle, missing, slow, or flaky tests.
 - `refactor`: simplify tests without changing covered behavior.
@@ -42,7 +46,6 @@ If the mode is missing, ask which one:
 - Parameterize cases that share setup and assertions; keep separate tests when that reads clearer.
 - Delete shallow or duplicate tests once stronger boundary tests cover the behavior.
 - Characterization tests before risky changes to legacy code capture current visible behavior, quirks included, at the public boundary.
-- TDD: each slice has one test that failed for the expected reason before the smallest passing code, and refactoring happens only while green. No bulk suites for imagined behavior.
 - If a code-graph tool (GitNexus, codegraph) is installed and fresh, use it to find affected flows and high fan-in code that needs regression coverage.
 
 ## Speed
