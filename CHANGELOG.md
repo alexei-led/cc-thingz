@@ -8,6 +8,52 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [7.0.0] - 2026-10-21
+
+### Removed
+
+- Removed `skill-enforcer` and its keyword-routing evaluator. Skill selection
+  now relies on the host's native catalog.
+- Removed Pi's `todo` / `/todos`, fixed-schema `structured_output` example,
+  and bundled ccgram, desktop-notification, and Revdiff plan-review defaults.
+  The generic hook runner and user-configured hooks remain available.
+
+### Changed
+
+- Pi skips unused hook payload construction and collects bounded output chunks
+  without repeatedly copying the accumulated output.
+- Smart-lint parses each event once and prefers project Python tooling over
+  system tools, including adopted Black over an unrelated global Ruff.
+- Focused Python and Bun test discovery reuses candidate lists instead of
+  repeatedly scanning test roots.
+- Specialized skills retain defect evidence, review rubrics, and test-design
+  guidance; the optional coding-posture plugin owns general coding procedure.
+  Brainstorming explicitly requires approval before implementation or file edits.
+- Added a repository command that reports isolated hook startup timings as JSON.
+
+### Fixed
+
+- Invalid file-protector configuration shapes fall back to default patterns
+  instead of crashing before sensitive-path checks.
+- Successful test commands no longer wait for their watchdog's timeout.
+  Timed-out commands retain forced cleanup of surviving descendants.
+- Smart-lint preserves real `a/` and `b/` directories when reading file paths
+  and patch headers.
+
+### Upgrade
+
+1. Before upgrading, remove explicit references to retired hook/tool paths;
+   those files and tool registrations will no longer exist.
+2. Record outstanding cc-thingz todos before upgrading. Use pi-tasks afterward
+   if you need task tracking; saved session entries are not migrated or deleted.
+3. Configure personal messaging, notification, and plan-review integrations at
+   user scope before upgrading if you depend on them. Pi no longer invokes
+   bundled integrations automatically. Replace the fixed-schema output example
+   with your caller's output contract.
+4. Restart the agent after updating. Plan-exec needs native pi-subagents, not
+   Bridge; preserve Bridge while another consumer or unresolved operation needs it.
+
+
 ## [6.20.5] - 2026-10-21
 
 ### Changed
