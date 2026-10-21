@@ -3,7 +3,7 @@
 from pathlib import Path
 
 import pytest
-from git_helpers import add_worktree, git, run_hook
+from git_helpers import add_detached_worktree, add_worktree, git, run_hook
 
 
 @pytest.mark.parametrize(
@@ -62,6 +62,11 @@ def test_worktree_force_remove(
         (path / "scratch.log").write_text("junk\n")
     result = run_hook(f"git worktree remove --force {path}", clone)
     assert (result.returncode == 0) is allowed, result.stderr
+
+
+def test_merged_detached_worktree_needs_no_consent(clone: Path) -> None:
+    path = add_detached_worktree(clone, "detached-merged", "origin/main")
+    assert run_hook(f"git worktree remove --force {path}", clone).returncode == 0
 
 
 def test_worktree_force_remove_needs_one_existing_path(clone: Path) -> None:

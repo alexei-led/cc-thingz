@@ -401,14 +401,17 @@ def commit_is_merged(directory: str, rev: str) -> bool:
         if rev == "HEAD"
         else None
     )
-    name = (
-        branch.stdout.strip()
-        if branch and branch.returncode == 0
-        else rev.removeprefix("refs/heads/")
-    )
-    proof = merged_pr_proof(directory, name, rev, base)
-    if proof is not None:
-        return proof
+    if rev == "HEAD" and (branch is None or branch.returncode != 0):
+        # A detached HEAD has no branch identity to look up in a pull request.
+        name = None
+    elif branch is not None:
+        name = branch.stdout.strip()
+    else:
+        name = rev.removeprefix("refs/heads/")
+    if name is not None:
+        proof = merged_pr_proof(directory, name, rev, base)
+        if proof is not None:
+            return proof
     merge_base = run_git(directory, "merge-base", base, rev)
     if merge_base.returncode != 0:
         return False
@@ -597,7 +600,9 @@ def worktree_is_merged(
         ),
         None,
     )
-    if branch is None or protected_branch(directory, branch):
+    # A detached worktree has no branch to protect; its HEAD still has to be
+    # merged into the base or match the approved tip.
+    if branch is not None and protected_branch(directory, branch):
         return None
     approved = tip_is_approved(full, "HEAD", approved_tip)
     status = run_git(

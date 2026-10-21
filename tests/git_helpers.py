@@ -82,3 +82,9 @@ def add_worktree(clone: Path, name: str, start: str) -> Path:
     path = clone.parent / f"wt-{name}"
     git(clone, "worktree", "add", "-q", "-b", name, str(path), start)
     return path
+
+
+def add_detached_worktree(clone: Path, name: str, start: str) -> Path:
+    path = clone.parent / f"wt-{name}"
+    git(clone, "worktree", "add", "-q", "--detach", str(path), start)
+    return path

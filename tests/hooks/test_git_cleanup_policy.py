@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 from git_helpers import (
     ENV,
+    add_detached_worktree,
     add_worktree,
     git,
     run_hook,
@@ -170,6 +171,37 @@ def test_consent_allows_specifically_approved_dirty_worktree(clone: Path) -> Non
         f"git -c cc-thingz.cleanupApproved={tip} worktree remove --force {path}", clone
     )
     assert result.returncode == 0, result.stderr
+
+
+def test_detached_worktree_needs_consent_and_then_is_removed(clone: Path) -> None:
+    path = add_detached_worktree(clone, "detached", "origin/unmerged")
+    tip = git(path, "rev-parse", "HEAD")
+    assert run_hook(f"git worktree remove --force {path}", clone).returncode == 2
+    result = run_hook(
+        f"git -c cc-thingz.cleanupApproved={tip} worktree remove --force {path}", clone
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_detached_dirty_worktree_needs_consent(clone: Path) -> None:
+    path = add_detached_worktree(clone, "detached-dirty", "origin/unmerged")
+    (path / "draft.txt").write_text("user agreed to discard")
+    tip = git(path, "rev-parse", "HEAD")
+    assert run_hook(f"git worktree remove --force {path}", clone).returncode == 2
+    result = run_hook(
+        f"git -c cc-thingz.cleanupApproved={tip} worktree remove --force {path}", clone
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_detached_worktree_consent_is_bound_to_its_tip(clone: Path) -> None:
+    path = add_detached_worktree(clone, "detached-stale", "origin/unmerged")
+    other = git(clone, "rev-parse", "origin/squashed")
+    result = run_hook(
+        f"git -c cc-thingz.cleanupApproved={other} worktree remove --force {path}",
+        clone,
+    )
+    assert result.returncode == 2
 
 
 def test_single_force_cannot_override_a_lock_even_with_consent(clone: Path) -> None:
