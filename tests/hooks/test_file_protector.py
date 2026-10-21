@@ -89,11 +89,6 @@ def test_safe_paths_allowed(path: str, home: Path) -> None:
 @pytest.mark.parametrize(
     "path",
     [
-        # .env variants
-        ".env",
-        "backend/.env",
-        ".env.local",
-        ".env.production",
         # secrets directory
         "secrets/api.json",
         "config/secrets/db.json",
@@ -132,6 +127,30 @@ def test_protected_paths_blocked(path: str, home: Path) -> None:
     assert "BLOCKED" in err
 
 
+@pytest.mark.parametrize(
+    "path",
+    [
+        ".env",
+        "backend/.env",
+        ".env.local",
+        ".env.production",
+        ".envrc",
+        "/home/user/project/.env",
+    ],
+)
+def test_environment_files_warn_and_allow(path: str, home: Path) -> None:
+    rc, err = _single(path, home)
+    assert rc == 0, f"expected warning-only for: {path}"
+    assert "WARNING" in err
+
+
+@pytest.mark.parametrize("path", ["secrets/.env", "auth_token.env", "secrets/.envrc"])
+def test_protected_pattern_wins_over_warning(path: str, home: Path) -> None:
+    rc, err = _single(path, home)
+    assert rc == 2, f"expected block for: {path}"
+    assert "BLOCKED" in err
+
+
 # ---------------------------------------------------------------------------
 # Default lock file patterns — must exit 0 with WARNING message
 # ---------------------------------------------------------------------------
@@ -165,7 +184,7 @@ def test_lock_files_warn_and_allow(path: str, home: Path) -> None:
 
 def test_path_field_alias_blocked(home: Path) -> None:
     """tool_input.path is accepted as fallback for file_path."""
-    rc, err = _run({"tool_input": {"path": ".env"}}, home)
+    rc, err = _run({"tool_input": {"path": "server.key"}}, home)
     assert rc == 2
     assert "BLOCKED" in err
 
@@ -206,9 +225,9 @@ def test_malformed_json_allowed(home: Path) -> None:
 @pytest.mark.parametrize(
     "header",
     [
-        "*** Update File: .env",
-        "*** Add File: .env",
-        "*** Delete File: .env",
+        "*** Update File: secrets/api.json",
+        "*** Add File: secrets/api.json",
+        "*** Delete File: secrets/api.json",
     ],
 )
 def test_codex_patch_header_types_blocked(header: str, home: Path) -> None:
@@ -219,10 +238,23 @@ def test_codex_patch_header_types_blocked(header: str, home: Path) -> None:
 
 
 def test_codex_unified_diff_format_blocked(home: Path) -> None:
-    patch = "--- a/.env\n+++ b/.env\n@@ -1 +1 @@\n-old\n+new\n"
+    patch = "--- a/server.key\n+++ b/server.key\n@@ -1 +1 @@\n-old\n+new\n"
     rc, err = _patch(patch, home)
     assert rc == 2
     assert "BLOCKED" in err
+
+
+def test_codex_patch_env_file_warns(home: Path) -> None:
+    patch = (
+        "*** Begin Patch\n"
+        "*** Update File: .env\n"
+        "@@ -1 +1 @@\n"
+        "-old\n+new\n"
+        "*** End Patch\n"
+    )
+    rc, err = _patch(patch, home)
+    assert rc == 0
+    assert "WARNING" in err
 
 
 def test_codex_patch_safe_file_allowed(home: Path) -> None:
@@ -307,7 +339,7 @@ def test_project_exclude_does_not_disable_other_protected_files(tmp_path: Path) 
     (project / ".claude" / "file-protector.json").write_text(
         json.dumps({"excludePatterns": [r"/api/deploy/credentials\.py$"]})
     )
-    rc, err = _single(str(project / ".env"), tmp_path)
+    rc, err = _single(str(project / "server.key"), tmp_path)
     assert rc == 2
     assert "BLOCKED" in err
 
@@ -438,6 +470,23 @@ def test_bad_regex_pattern_allows_non_matching_safe_path(tmp_path: Path) -> None
     assert "Traceback" not in err
 
 
+def test_custom_warn_patterns_override_defaults(tmp_path: Path) -> None:
+    """Custom warn patterns replace defaults; env files then need no warning."""
+    config = tmp_path / ".claude" / "hook-config.json"
+    config.parent.mkdir()
+    config.write_text(
+        json.dumps({"fileProtector": {"warnPatterns": [r"\.local\.cfg$"]}})
+    )
+
+    rc, err = _run({"tool_input": {"file_path": "app.local.cfg"}}, tmp_path)
+    assert rc == 0
+    assert "WARNING" in err
+
+    rc, err = _run({"tool_input": {"file_path": ".env"}}, tmp_path)
+    assert rc == 0
+    assert err == ""
+
+
 def test_custom_lock_patterns_override_defaults(tmp_path: Path) -> None:
     """Custom lock patterns replace defaults — go.sum is no longer a lock file."""
     config = tmp_path / ".claude" / "hook-config.json"
@@ -464,8 +513,8 @@ def test_custom_lock_patterns_override_defaults(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     "source,destination,blocked",
     [
-        ("src/app.py", ".env", True),
-        (".env", "src/app.py", True),
+        ("src/app.py", "secrets/app.key", True),
+        ("secrets/app.key", "src/app.py", True),
         ("src/app.py", "src/renamed.py", False),
     ],
 )

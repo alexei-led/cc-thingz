@@ -185,6 +185,14 @@ def test_pi_decision_guards_emit_runtime_protocol() -> None:
     file_protector = subprocess.run(
         ["python3", "src/hooks/file-protector/hook.py"],
         cwd=REPO_ROOT,
+        input='{"event":"pre-tool","piEvent":{"input":{"path":"server.key"}}}',
+        capture_output=True,
+        check=True,
+        text=True,
+    )
+    env_edit = subprocess.run(
+        ["python3", "src/hooks/file-protector/hook.py"],
+        cwd=REPO_ROOT,
         input='{"event":"pre-tool","piEvent":{"input":{"path":".env"}}}',
         capture_output=True,
         check=True,
@@ -204,6 +212,7 @@ def test_pi_decision_guards_emit_runtime_protocol() -> None:
     )
 
     assert json.loads(file_protector.stdout)["decision"] == "deny"
+    assert json.loads(env_edit.stdout)["decision"] == "allow"
     assert json.loads(git_guardrails.stdout)["decision"] == "deny"
 
 

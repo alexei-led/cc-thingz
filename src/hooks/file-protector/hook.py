@@ -6,7 +6,11 @@ patch-based tools (Codex apply_patch, which may touch multiple files per call).
 
 Configuration (~/.claude/hook-config.json, fileProtector section):
   protectedPatterns  — list of regex strings; matched files are blocked (exit 2)
+  warnPatterns       — list of regex strings; matched files emit a warning and
+                       are allowed. Defaults cover .env* and .envrc, which
+                       agents must edit during ordinary setup work
   lockFilePatterns   — list of regex strings; matched files emit a warning (exit 0)
+  A path matching both protectedPatterns and warnPatterns is blocked.
 
 Project-local configuration (nearest ancestor `.claude/file-protector.json`):
   excludePatterns    — regex strings exempted from the global protected patterns.
@@ -30,10 +34,14 @@ from pathlib import Path
 _CONFIG_FILE = Path.home() / ".claude" / "hook-config.json"
 _PROJECT_CONFIG_NAME = ".claude/file-protector.json"
 
-_DEFAULT_PROTECTED: list[str] = [
+_DEFAULT_WARN: list[str] = [
     r"\.env$",
     r"\.env\.",
     r"/\.env$",
+    r"\.envrc$",
+]
+
+_DEFAULT_PROTECTED: list[str] = [
     r"secrets/",
     r"secret[s]?\.",
     r"\.key$",
@@ -149,16 +157,28 @@ def _project_excludes(path: str) -> list[str]:
 def _check_path(
     path: str,
     protected: list[str],
+    warn: list[str],
     locks: list[str],
     pi_runtime: bool,
 ) -> None:
     """Check one path and emit the Agent Bundler Pi decision when needed."""
     excludes = _project_excludes(path)
-    for pattern in protected:
-        if _safe_search(pattern, path) and not any(
-            _safe_search(exclude, path) for exclude in excludes
-        ):
-            _deny(path, pattern, pi_runtime)
+    excluded = any(_safe_search(exclude, path) for exclude in excludes)
+    if not excluded:
+        for pattern in protected:
+            if _safe_search(pattern, path):
+                _deny(path, pattern, pi_runtime)
+        for pattern in warn:
+            if _safe_search(pattern, path):
+                print(
+                    f"WARNING: Modifying sensitive file: {path} (matched {pattern})",
+                    file=sys.stderr,
+                )
+                print(
+                    "Review the change before committing; never commit secrets.",
+                    file=sys.stderr,
+                )
+                break
 
     for pattern in locks:
         if _safe_search(pattern, path):
@@ -187,15 +207,16 @@ def main() -> None:
     if not isinstance(tool_input, dict):
         tool_input = {}
     protected = _load_patterns("protectedPatterns", _DEFAULT_PROTECTED)
+    warn = _load_patterns("warnPatterns", _DEFAULT_WARN)
     locks = _load_patterns("lockFilePatterns", _DEFAULT_LOCKS)
 
     path = tool_input.get("file_path") or tool_input.get("path") or ""
     if path:
-        _check_path(path, protected, locks, pi_runtime)
+        _check_path(path, protected, warn, locks, pi_runtime)
     else:
         patch = tool_input.get("patch") or ""
         for changed_path in _extract_patch_paths(patch):
-            _check_path(changed_path, protected, locks, pi_runtime)
+            _check_path(changed_path, protected, warn, locks, pi_runtime)
 
     if pi_runtime:
         print('{"decision":"allow"}')
