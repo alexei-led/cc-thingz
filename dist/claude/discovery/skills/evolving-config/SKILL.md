@@ -1,5 +1,5 @@
 ---
-{"allowed-tools":["Read","Edit","Write","Grep","Glob","WebFetch","AskUserQuestion","mcp__perplexity-ask__perplexity_ask"],"argument-hint":"[--fix] [scope]","context":"fork","description":"Audit and improve AI coding-agent configuration. Use when reviewing or changing Claude Code, Pi, Codex, Copilot, Cursor, Grok, skill, agent, hook, MCP, permission, package, or generated-export setup. Default is review-only; fixes require explicit user approval or --fix. NOT for score-only instruction review or prompt lint; use reviewing-instructions. NOT for application config, git hygiene, code bugs, ordinary docs, or generated files without their source.","name":"evolving-config","user-invocable":true}
+{"allowed-tools":["Read","Edit","Write","Grep","Glob","WebSearch","WebFetch","AskUserQuestion"],"argument-hint":"[--fix] [scope]","context":"fork","description":"Audit and improve AI coding-agent configuration. Use when reviewing or changing Claude Code, Pi, Codex, Copilot, Cursor, Grok, skill, agent, hook, MCP, permission, package, or generated-export setup. Default is review-only; fixes require explicit user approval or --fix. NOT for score-only instruction review or prompt lint; use reviewing-instructions. NOT for application config, git hygiene, code bugs, ordinary docs, or generated files without their source.","name":"evolving-config","user-invocable":true}
 ---
 
 # Evolving Agent Configuration
@@ -97,6 +97,6 @@ confidence, and name the gap.
 
 - Read, Glob, and Grep for local inventory.
 - WebFetch for official docs, changelogs, and exact source URLs.
-- `mcp__perplexity-ask__perplexity_ask` only when official docs do not answer a
-  current best-practice or ecosystem question.
+- WebSearch only when official docs do not answer a current best-practice or
+  ecosystem question.
 - AskUserQuestion for ambiguous scope and for fix approval.

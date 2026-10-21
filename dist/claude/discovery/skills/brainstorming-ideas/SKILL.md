@@ -1,5 +1,5 @@
 ---
-{"allowed-tools":["AskUserQuestion","Task","TaskCreate","TaskUpdate","TaskList","Read","Grep","Glob","Write","Edit","mcp__perplexity-ask__perplexity_ask","WebFetch","Bash(git status *)","Bash(git log *)","Bash(git diff *)","Bash(git show *)"],"argument-hint":"[idea|plan|grill|debate] \u003ctopic-or-plan\u003e","context":"fork","description":"Brainstorm ideas and stress-test draft plans before coding. Use when brainstorming, exploring approaches, designing a feature/API/flow, grilling or debating a bounded plan, challenging assumptions, or resolving design-blocking terminology. NOT for implementation task breakdown. NOT for generic technology comparisons or best-practice research; use researching-web. NOT for docs updates; use documenting-code.","name":"brainstorming-ideas","user-invocable":true}
+{"allowed-tools":["AskUserQuestion","Task","TaskCreate","TaskUpdate","TaskList","Read","Grep","Glob","Write","Edit","WebSearch","WebFetch","Bash(git status *)","Bash(git log *)","Bash(git diff *)","Bash(git show *)"],"argument-hint":"[idea|plan|grill|debate] \u003ctopic-or-plan\u003e","context":"fork","description":"Brainstorm ideas and stress-test draft plans before coding. Use when brainstorming, exploring approaches, designing a feature/API/flow, grilling or debating a bounded plan, challenging assumptions, or resolving design-blocking terminology. NOT for implementation task breakdown. NOT for generic technology comparisons or best-practice research; use researching-web. NOT for docs updates; use documenting-code.","name":"brainstorming-ideas","user-invocable":true}
 ---
 
 # Brainstorming Ideas
@@ -82,6 +82,6 @@ Domain docs: <updates or none>
 - Ask each question in its own `AskUserQuestion` call: single-select for one path, multi-select for several risks, constraints, or goals, and `allowOther` for custom answers.
 - Track sessions longer than two steps with `TaskCreate` and `TaskUpdate`.
 - For a broad scan, spawn one read-only subagent: "Quick scan only. Find structure, conventions, and tests for: <idea>. Return 5 bullets with file paths. Do not edit." Otherwise use `Read`, `Grep`, `Glob` directly.
-- For research the user asked for, use `mcp__perplexity-ask__perplexity_ask` or `WebFetch` with a scoped query. If neither works, say so and continue from local context.
+- For research the user asked for, use `WebSearch` and `WebFetch` with a scoped query. If web access is unavailable, say so and continue from local context.
 - Use `Write` or `Edit` only after the user approves the exact design note, `CONTEXT.md` entry, or ADR.
 - At the end, offer the next step: create a worktree, create a plan, save the design note, or stop.

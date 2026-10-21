@@ -7,7 +7,6 @@
       "Bash(ctx7 *)",
       "Bash(npx ctx7@latest *)",
       "Bash(bunx ctx7@latest *)",
-      "mcp__perplexity-ask__perplexity_ask",
       "WebSearch",
       "WebFetch"
     ],

@@ -4,7 +4,7 @@
     "sections": [
       {
         "headingPath": ["Evolving Agent Configuration", "Platform additions"],
-        "body": "\n- Read, Glob, and Grep for local inventory.\n- WebFetch for official docs, changelogs, and exact source URLs.\n- `mcp__perplexity-ask__perplexity_ask` only when official docs do not answer a\n  current best-practice or ecosystem question.\n- AskUserQuestion for ambiguous scope and for fix approval.\n"
+        "body": "\n- Read, Glob, and Grep for local inventory.\n- WebFetch for official docs, changelogs, and exact source URLs.\n- WebSearch only when official docs do not answer a current best-practice or\n  ecosystem question.\n- AskUserQuestion for ambiguous scope and for fix approval.\n"
       }
     ]
   },
@@ -15,9 +15,9 @@
       "Write",
       "Grep",
       "Glob",
+      "WebSearch",
       "WebFetch",
-      "AskUserQuestion",
-      "mcp__perplexity-ask__perplexity_ask"
+      "AskUserQuestion"
     ],
     "argument-hint": "[--fix] [scope]",
     "context": "fork",

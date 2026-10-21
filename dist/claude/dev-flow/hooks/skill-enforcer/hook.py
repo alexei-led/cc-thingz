@@ -174,7 +174,6 @@ RULES = [
             r"|current.*(version|best)|what.?s\s*new\s*in|best\s*practice"
             r"|up[\s-]?to[\s-]?date|\b20[0-9]{2}\b|industry\s*standard"
             r"|owasp|recommended\s*(practice|approach|pattern)"
-            r"|perplexity"
         ),
         None,
     ),

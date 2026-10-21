@@ -1,5 +1,5 @@
 ---
-{"allowed-tools":["Task","Read","Grep","Glob","WebSearch","WebFetch","mcp__perplexity-ask__perplexity_ask"],"argument-hint":"\u003cresearch question\u003e","context":"fork","description":"Web research via platform web tools. Use for technical comparisons, current-state and release-behavior questions, recent facts, ecosystem news, best practices, standards, or questions needing grounded web evidence. NOT for exact API syntax, config keys, or code examples — use looking-up-docs for those. NOT for repo-specific questions — search local files first.","name":"researching-web","user-invocable":true}
+{"allowed-tools":["Task","Read","Grep","Glob","WebSearch","WebFetch"],"argument-hint":"\u003cresearch question\u003e","context":"fork","description":"Web research via platform web tools. Use for technical comparisons, current-state and release-behavior questions, recent facts, ecosystem news, best practices, standards, or questions needing grounded web evidence. NOT for exact API syntax, config keys, or code examples — use looking-up-docs for those. NOT for repo-specific questions — search local files first.","name":"researching-web","user-invocable":true}
 ---
 
 # Web Research
@@ -42,11 +42,11 @@ The research question is `$ARGUMENTS`.
 
 Prefer tools in this order when they are available:
 
-1. `mcp__perplexity-ask__perplexity_ask` for broad questions, comparisons, and
-   source discovery.
-2. `WebSearch` for source discovery when Perplexity is unavailable or too
-   coarse.
-3. `WebFetch` to read the primary sources you cite.
+1. `WebSearch` for broad questions, comparisons, and source discovery.
+2. `WebFetch` to read the primary sources you cite.
+3. A search or deep-research tool the runtime provides, when the first two are
+   unavailable, too coarse, or too narrow. Discover which tools exist instead
+   of assuming a name.
 
 Use `Task` only for broad background research that can run independently; ask
 it for cited facts, not a final recommendation.

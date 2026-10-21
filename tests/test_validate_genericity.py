@@ -42,7 +42,7 @@ def test_clean_base_passes(vg, tmp_path: Path) -> None:
 def test_claude_restricted_list_form_opts_out(vg, tmp_path: Path) -> None:
     skill = _skill(
         tmp_path,
-        "Use Task() and $ARGUMENTS freely.\nmcp__perplexity__ask is fine.\n",
+        "Use Task() and $ARGUMENTS freely.\nmcp__vendor_tool__search is fine.\n",
         "targets: [claude]\n",
     )
     assert vg.scan_file(skill) == []
