@@ -2,7 +2,8 @@
 # test-runner.sh - Focused test execution at agent-finish time.
 #
 # Runs tests causally related to edited files. Never runs a full project test
-# suite unless TEST_RUNNER_FULL=1 is set explicitly.
+# suite unless TEST_RUNNER_FULL=1 is set explicitly. Python, Go, and JS tests
+# run from their nearest project manifest directory, bounded by the hook cwd.
 
 set +e
 
@@ -808,6 +809,64 @@ pytest_runner_command() {
 	return 1
 }
 
+# Inputs are hook-relative paths. Never inherit a project above the hook cwd.
+nearest_project_root() {
+	local file="$1" manifest="$2" dir
+	dir=$(dirname "$file")
+	while [[ "$dir" != "." && "$dir" != "/" ]]; do
+		if [[ -f "$dir/$manifest" ]]; then
+			printf '%s\n' "$dir"
+			return 0
+		fi
+		dir=$(dirname "$dir")
+	done
+	printf '.\n'
+}
+
+# Keep execution in this shell: test counters and timeout state must survive
+# each project. Only nested groups add a label, preserving root-only output.
+run_project_test_groups() {
+	local manifest="$1"
+	shift
+	local files=("$@") roots=() owners=() group=()
+	local file root owner old_pwd="$PWD" i status=0
+	[[ "${#files[@]}" -gt 0 ]] || return 0
+	for file in "${files[@]}"; do
+		root=$(nearest_project_root "$file" "$manifest")
+		owners+=("$root")
+		roots+=("$root")
+	done
+	while IFS= read -r root; do
+		group=()
+		for ((i = 0; i < ${#files[@]}; i++)); do
+			owner=${owners[i]}
+			[[ "$owner" == "$root" ]] || continue
+			file=${files[i]}
+			[[ "$root" == "." ]] || file=${file#"$root/"}
+			group+=("$file")
+		done
+		if ! cd "$old_pwd/$root"; then
+			status=2
+			continue
+		fi
+		case "$manifest" in
+		pyproject.toml) run_python_project_tests "$root" "${group[@]}" || status=2 ;;
+		go.mod) run_go_project_tests "$root" "${group[@]}" || status=2 ;;
+		package.json) run_javascript_project_tests "$root" "${group[@]}" || status=2 ;;
+		esac
+		cd "$old_pwd" || return 2
+	done < <(printf '%s\n' "${roots[@]}" | unique_lines)
+	return "$status"
+}
+
+run_python_tests() {
+	local files=() file
+	for file in "$@"; do
+		[[ "$file" == *.py ]] && files+=("$file")
+	done
+	run_project_test_groups pyproject.toml "${files[@]}"
+}
+
 find_python_tests_for_source() {
 	local file="$1" index="$2" dir base candidate candidate_base
 	dir=$(dirname "$file")
@@ -824,7 +883,12 @@ find_python_tests_for_source() {
 	done <"$index"
 }
 
-run_python_tests() {
+run_python_project_tests() {
+	local root="$1"
+	shift
+	[[ "$root" == "." ]] || log_info "Python tests in $root"
+	# uv may select an existing environment, but must never sync/install into it.
+	local -x UV_NO_SYNC=1
 	local focus_files=("$@")
 	local tests=()
 	local file base tmp runner=() candidate_index
@@ -835,7 +899,9 @@ run_python_tests() {
 	[[ "$has_python_source" -eq 1 ]] || return 0
 	candidate_index=$(mktemp 2>/dev/null) || return 0
 	for test_dir in tests test; do
-		[[ -d "$test_dir" ]] && find "$test_dir" -type f \( -name 'test_*.py' -o -name '*_test.py' \) 2>/dev/null >>"$candidate_index"
+		[[ -d "$test_dir" ]] || continue
+		find "$test_dir" -type d -exec test -f '{}/pyproject.toml' \; -prune -o \
+			-type f \( -name 'test_*.py' -o -name '*_test.py' \) -print 2>/dev/null >>"$candidate_index"
 	done
 	for file in "${focus_files[@]}"; do
 		[[ "$file" == *.py ]] || continue
@@ -872,6 +938,17 @@ run_python_tests() {
 }
 
 run_go_tests() {
+	local files=() file
+	for file in "$@"; do
+		[[ "$file" == *.go ]] && files+=("$file")
+	done
+	run_project_test_groups go.mod "${files[@]}"
+}
+
+run_go_project_tests() {
+	local root="$1"
+	shift
+	[[ "$root" == "." ]] || log_info "Go tests in $root"
 	local focus_files=("$@")
 	local dirs=()
 	local file dir tmp pkg
@@ -1358,7 +1435,8 @@ index_js_test_candidates() {
 	local test_dir file dir
 	for test_dir in tests test src; do
 		[[ -d "$test_dir" ]] || continue
-		find "$test_dir" -type f \( -name '*.test.*' -o -name '*.spec.*' -o -name 'test_*.*' \) 2>/dev/null
+		find "$test_dir" -type d -exec test -f '{}/package.json' \; -prune -o \
+			-type f \( -name '*.test.*' -o -name '*.spec.*' -o -name 'test_*.*' \) -print 2>/dev/null
 	done
 	# Adjacent tests outside the recursively indexed roots need one scan per dir.
 	while IFS= read -r dir; do
@@ -1375,7 +1453,7 @@ index_js_test_candidates() {
 
 js_runner_command() {
 	local bin has_test_config=0
-	if find . -maxdepth 3 -name 'vitest.config.*' -print -quit 2>/dev/null | grep -q .; then
+	if find . -maxdepth 3 -type d ! -path . -exec test -f '{}/package.json' \; -prune -o -name 'vitest.config.*' -print -quit 2>/dev/null | grep -q .; then
 		has_test_config=1
 		bin=$(resolve_node_tool vitest || true)
 		if [[ -n "$bin" ]]; then
@@ -1383,7 +1461,7 @@ js_runner_command() {
 			return 0
 		fi
 	fi
-	if find . -maxdepth 3 -name 'jest.config.*' -print -quit 2>/dev/null | grep -q .; then
+	if find . -maxdepth 3 -type d ! -path . -exec test -f '{}/package.json' \; -prune -o -name 'jest.config.*' -print -quit 2>/dev/null | grep -q .; then
 		has_test_config=1
 		bin=$(resolve_node_tool jest || true)
 		if [[ -n "$bin" ]]; then
@@ -1400,6 +1478,19 @@ js_runner_command() {
 }
 
 run_javascript_tests() {
+	local files=() file
+	for file in "$@"; do
+		case "$file" in
+		*.js | *.jsx | *.ts | *.tsx | *.mjs | *.cjs | *.mts | *.cts) files+=("$file") ;;
+		esac
+	done
+	run_project_test_groups package.json "${files[@]}"
+}
+
+run_javascript_project_tests() {
+	local root="$1"
+	shift
+	[[ "$root" == "." ]] || log_info "JS tests in $root"
 	local focus_files=("$@")
 	local tests=()
 	local mapped_tests=()

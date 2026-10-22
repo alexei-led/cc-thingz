@@ -1174,6 +1174,160 @@ SH
 	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_bun_index\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
 	[ "$(cat bun.args)" = "test --isolate lib/foo.test.ts tests/bar.spec.ts tests/foo.test.ts" ]
-	[ "$(grep -c '^tests -type f' find.args)" -eq 1 ]
-	[ "$(grep -c '^src -type f' find.args)" -eq 1 ]
+	[ "$(grep -c '^tests ' find.args)" -eq 1 ]
+	[ "$(grep -c '^src ' find.args)" -eq 1 ]
+}
+
+setup_python_monorepo() {
+	mkdir -p .venv/bin tests api/.venv/bin api/.venv/lib api/tests api/src bin
+	printf '[project]\nname = "root"\nversion = "0.0.0"\n' >pyproject.toml
+	printf '[project]\nname = "api"\nversion = "0.0.0"\n' >api/pyproject.toml
+	touch tests/test_widget.py api/tests/test_widget.py api/src/widget.py
+	printf 'import reflex_api\n' >api/tests/conftest.py
+	touch api/.venv/lib/reflex_api.py
+	cat >.venv/bin/pytest <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$PWD|$*" >>"$PWD/pytest.calls"
+exit "${ROOT_PYTEST_EXIT:-0}"
+SH
+	cat >api/.venv/bin/pytest <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$PWD|$*" >>"$PWD/pytest.calls"
+PYTHONPATH="$PWD/.venv/lib" python3 -c 'import runpy; runpy.run_path("tests/conftest.py")' || exit 1
+exit "${API_PYTEST_EXIT:-0}"
+SH
+	chmod +x .venv/bin/pytest api/.venv/bin/pytest
+}
+
+@test "test-runner: nested Python tests use their owning venv and relative paths" {
+	setup_python_monorepo
+	write_state s_nested tests/test_widget.py api/tests/test_widget.py
+	run env HOOK_INPUT_JSON="{\"session_id\":\"s_nested\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat pytest.calls)" = "$WORK_DIR|-q --maxfail=1 --tb=short tests/test_widget.py" ]
+	[ "$(cat api/pytest.calls)" = "$WORK_DIR/api|-q --maxfail=1 --tb=short tests/test_widget.py" ]
+	[[ "$output" == *"Python tests in api"* ]]
+}
+
+@test "test-runner: Python source mapping stays inside its owning project" {
+	setup_python_monorepo
+	write_state s_nested_source api/src/widget.py
+	run env HOOK_INPUT_JSON="{\"session_id\":\"s_nested_source\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ ! -f pytest.calls ]
+	[ "$(cat api/pytest.calls)" = "$WORK_DIR/api|-q --maxfail=1 --tb=short tests/test_widget.py" ]
+}
+
+@test "test-runner: Python groups continue after failure and preserve pending state" {
+	setup_python_monorepo
+	for failing_project in root api; do
+		write_state s_nested_failure tests/test_widget.py api/tests/test_widget.py
+		root_exit=0 api_exit=0
+		if [[ "$failing_project" == root ]]; then root_exit=1; else api_exit=1; fi
+		run env ROOT_PYTEST_EXIT="$root_exit" API_PYTEST_EXIT="$api_exit" HOOK_INPUT_JSON="{\"session_id\":\"s_nested_failure\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+		[ "$status" -eq 2 ]
+		[ -f pytest.calls ]
+		[ -f api/pytest.calls ]
+		[ -s "$(git rev-parse --git-path cc-thingz/hook-files-s_nested_failure)" ]
+		rm pytest.calls api/pytest.calls
+	done
+}
+
+@test "test-runner: nested Python exit 5 is skipped without hiding another group failure" {
+	setup_python_monorepo
+	write_state s_nested_empty tests/test_widget.py api/tests/test_widget.py
+	run env API_PYTEST_EXIT=5 ROOT_PYTEST_EXIT=1 HOOK_INPUT_JSON="{\"session_id\":\"s_nested_empty\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 2 ]
+	[[ "$output" == *"collected no tests"* ]]
+	[ -f api/pytest.calls ]
+}
+
+@test "test-runner: uv keeps single-project command and output without syncing the venv" {
+	mkdir -p bin tests
+	printf '[dependency-groups]\ntest = ["pytest"]\n' >pyproject.toml
+	touch tests/test_widget.py
+	cat >bin/uv <<'SH'
+#!/usr/bin/env bash
+[[ "${UV_NO_SYNC:-}" == 1 ]] || exit 99
+printf '%s\n' "$*" >>"$PWD/uv.calls"
+SH
+	chmod +x bin/uv
+	write_state s_no_sync tests/test_widget.py
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_no_sync\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(tail -n 1 uv.calls)" = "run --group test pytest -q --maxfail=1 --tb=short tests/test_widget.py" ]
+	[[ "$output" == *"Running: uv run --group test pytest -q --maxfail=1 --tb=short tests/test_widget.py"* ]]
+	[[ "$output" != *"Python tests in"* ]]
+}
+
+@test "test-runner: nested Python uv detection uses the nested dependency group without syncing" {
+	setup_python_monorepo
+	printf '\n[dependency-groups]\ntest = ["pytest"]\n' >>api/pyproject.toml
+	cat >bin/uv <<'SH'
+#!/usr/bin/env bash
+[[ "${UV_NO_SYNC:-}" == 1 && -f tests/conftest.py ]] || exit 99
+printf '%s\n' "$*" >>"$PWD/uv.calls"
+[[ "$*" == 'run --group test python -c import pytest' ]] && exit 0
+[[ "$*" == 'run --group test pytest -q --maxfail=1 --tb=short tests/test_widget.py' ]] || exit 99
+exec .venv/bin/pytest "${@:5}"
+SH
+	chmod +x bin/uv
+	write_state s_nested_uv api/tests/test_widget.py
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_nested_uv\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ -f api/uv.calls ]
+	[ ! -f pytest.calls ]
+	[ "$(tail -n 1 api/uv.calls)" = "run --group test pytest -q --maxfail=1 --tb=short tests/test_widget.py" ]
+}
+
+@test "test-runner: nested Go modules run relative packages from each module" {
+	mkdir -p bin pkg api/pkg
+	touch go.mod api/go.mod pkg/foo.go api/pkg/foo.go
+	cat >bin/go <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$PWD|$*" >>"$PWD/go.calls"
+[[ "$PWD" != */api ]]
+SH
+	chmod +x bin/go
+	write_state s_nested_go pkg/foo.go api/pkg/foo.go
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_nested_go\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 2 ]
+	[ "$(cat go.calls)" = "$WORK_DIR|test -failfast ./pkg" ]
+	[ "$(cat api/go.calls)" = "$WORK_DIR/api|test -failfast ./pkg" ]
+	[[ "$output" == *"Go tests in api"* ]]
+}
+
+@test "test-runner: nested JS packages use their own runner and relative targets" {
+	mkdir -p node_modules/.bin src web/node_modules/.bin web/tests
+	printf '{}\n' >package.json
+	printf '{}\n' >web/package.json
+	touch jest.config.js web/vitest.config.ts src/foo.ts
+	printf 'test("works", () => {})\n' >web/tests/foo.test.ts
+	cat >node_modules/.bin/jest <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$PWD|$*" >>"$PWD/jest.calls"
+SH
+	cat >web/node_modules/.bin/vitest <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$PWD|$*" >>"$PWD/vitest.calls"
+exit 1
+SH
+	chmod +x node_modules/.bin/jest web/node_modules/.bin/vitest
+	write_state s_nested_js src/foo.ts web/tests/foo.test.ts
+	run env PATH="/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_nested_js\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 2 ]
+	[ "$(cat jest.calls)" = "$WORK_DIR|--findRelatedTests src/foo.ts --passWithNoTests" ]
+	[ "$(cat web/vitest.calls)" = "$WORK_DIR/web|run tests/foo.test.ts --passWithNoTests" ]
+	[[ "$output" == *"JS tests in web"* ]]
+}
+
+@test "test-runner: source mapping prunes child projects under test directories" {
+	setup_python_monorepo
+	mkdir -p pkg tests/child/tests
+	touch pkg/widget.py tests/child/pyproject.toml tests/child/tests/test_widget.py
+	write_state s_child_tests pkg/widget.py api/tests/test_widget.py
+	run env HOOK_INPUT_JSON="{\"session_id\":\"s_child_tests\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat pytest.calls)" = "$WORK_DIR|-q --maxfail=1 --tb=short tests/test_widget.py" ]
+	[ -f api/pytest.calls ]
 }
