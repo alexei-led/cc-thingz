@@ -193,5 +193,10 @@ tn_args=(
 [[ ${#sound_flag[@]} -gt 0 ]] && tn_args+=("${sound_flag[@]}")
 [[ -n "$execute_cmd" ]] && tn_args+=(-execute "$execute_cmd")
 
-terminal-notifier "${tn_args[@]}" 2>/dev/null ||
+terminal-notifier "${tn_args[@]}" 2>/dev/null
+notification_status=$?
+if [[ "$notification_status" -ne 0 ]]; then
+	printf 'Notification delivery failed (exit %s); text fallback follows.\n' "$notification_status" >&2
 	echo "📢 $title: $message" >&2
+fi
+exit 0

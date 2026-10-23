@@ -52,14 +52,16 @@ def normalize(data: object, default_cwd: Path) -> list[str]:
         if not isinstance(value, str):
             return []
         return [
-            next(group for group in match.groups() if group is not None)
+            next(group for group in match.groups() if group is not None).removesuffix(
+                "\r"
+            )
             for match in PATCH_PATH.finditer(value)
         ]
 
     def clean(raw: object) -> str | None:
         if not isinstance(raw, str):
             return None
-        value = raw.strip()
+        value = raw
         if not value or "\x00" in value or "\n" in value or value == "/dev/null":
             return None
         return value
@@ -69,25 +71,6 @@ def normalize(data: object, default_cwd: Path) -> list[str]:
             return (cwd / raw).resolve()
         except (OSError, ValueError, RuntimeError):
             return None
-
-    if isinstance(tool_input, dict):
-        for key in PATH_KEYS:
-            value = clean(tool_input.get(key))
-            if value is not None:
-                candidates.append(value)
-        for key in ("patch", "diff"):
-            candidates.extend(
-                value
-                for raw in paths(tool_input.get(key))
-                if (value := clean(raw)) is not None
-            )
-
-    outside = bool(candidates)
-    for raw in candidates:
-        full = resolve(raw)
-        if full is None or full.is_relative_to(cwd):
-            outside = False
-            break
 
     def add(raw: object) -> None:
         value = clean(raw)
@@ -100,30 +83,82 @@ def normalize(data: object, default_cwd: Path) -> list[str]:
         if full is not None and full.is_relative_to(cwd) and full.is_file():
             files.add(full.relative_to(cwd).as_posix())
 
-    def walk(value: object) -> None:
+    payload = tool_input if isinstance(tool_input, (dict, list, str)) else data
+
+    def explicit_paths(value: object) -> list[str]:
+        result: list[str] = []
         if isinstance(value, dict):
             for key, child in value.items():
-                if key in PATH_KEYS:
-                    add(child)
-                walk(child)
+                if key in PATH_KEYS and (path := clean(child)) is not None:
+                    result.append(path)
+                if isinstance(child, (dict, list)):
+                    result.extend(explicit_paths(child))
         elif isinstance(value, list):
             for child in value:
-                walk(child)
-        elif isinstance(value, str):
-            for raw in paths(value):
-                add(raw)
+                result.extend(explicit_paths(child))
+        return result
 
-    walk(tool_input if isinstance(tool_input, dict) else data)
-    return [str(int(pi)), str(cwd), session, str(int(outside)), *sorted(files)]
+    candidates = explicit_paths(payload)
+    if candidates:
+        for candidate in candidates:
+            add(candidate)
+    else:
+
+        def patches(value: object, raw_patch: bool = False) -> None:
+            if isinstance(value, dict):
+                for key, child in value.items():
+                    patches(
+                        child,
+                        key in {"patch", "patches", "diff", "input", "tool_input"},
+                    )
+            elif isinstance(value, list):
+                for child in value:
+                    patches(child, raw_patch)
+            elif isinstance(value, str) and raw_patch:
+                for raw in paths(value):
+                    if (candidate := clean(raw)) is not None:
+                        candidates.append(candidate)
+                        add(candidate)
+
+        patches(payload, isinstance(payload, (str, list)))
+
+    outside = bool(candidates) and all(
+        (full := resolve(raw)) is not None and not full.is_relative_to(cwd)
+        for raw in candidates
+    )
+    targeted = bool(candidates) or tool_input is not None or pi
+    unavailable = targeted and not files and not outside
+    status = "1" if outside else "2" if unavailable else "0"
+    return [str(int(pi)), str(cwd), session, status, *sorted(files)]
 
 
-def main() -> None:
+def main() -> int:
     try:
-        data = json.load(sys.stdin)
+        raw = sys.stdin.read()
+        data = json.loads(raw if raw.strip() else "{}")
+        if not isinstance(data, dict):
+            raise ValueError("hook input must be an object")
+        pi = data.get("event") == "post-tool" and "piEvent" in data
+        if pi and not isinstance(data["piEvent"], dict):
+            raise ValueError("invalid Pi event")
+        source = data["piEvent"] if pi else data
+        vendor = data.get("vendorEvent")
+        vendor = vendor if pi and isinstance(vendor, dict) else {}
+        cwd = source.get("cwd")
+        if cwd is None:
+            cwd = vendor.get("cwd")
+        if cwd is not None and (
+            not isinstance(cwd, str)
+            or "\x00" in cwd
+            or (cwd and not Path(cwd).is_dir())
+        ):
+            raise ValueError("invalid project cwd")
     except (ValueError, UnicodeError):
-        data = {}
+        print("smart-lint: invalid hook input; checks skipped", file=sys.stderr)
+        return 1
     sys.stdout.write("\0".join(normalize(data, Path.cwd())) + "\0")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

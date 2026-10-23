@@ -263,3 +263,47 @@ def test_stdout_reaches_eof_promptly(tmp_path: Path) -> None:
     ready, _, _ = select.select([proc.stdout], [], [], 2)
     assert ready, "stdout not at EOF within 2s of the hook process exiting"
     assert proc.stdout.read() == ""
+
+
+@pytest.mark.parametrize("pi_runtime", [False, True])
+def test_malformed_spec_task_entry_is_reported_without_crashing(
+    tmp_path: Path, monkeypatch, pi_runtime: bool
+) -> None:
+    (tmp_path / ".spec").mkdir()
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    cli = bin_dir / "specctl"
+    cli.write_text(
+        '#!/bin/sh\ncase "$1" in\n'
+        'ready) printf \'["bad-task", {"id":"T-1","title":"Valid"}]\\n\' ;;\n'
+        "*) printf '{}\\n' ;;\nesac\n"
+    )
+    cli.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{bin_dir}:/usr/bin:/bin")
+    payload = {"cwd": str(tmp_path)}
+    if pi_runtime:
+        payload = {"event": "session-start", "piEvent": payload}
+    code, out, err = _run(payload)
+    assert code == 0
+    assert "Traceback" not in err
+    assert "incomplete" in err
+    assert "T-1" in out + err
+    if pi_runtime:
+        assert json.loads(out) == {"decision": "allow"}
+
+
+def test_specctl_output_overflow_stops_before_the_query_timeout(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    hook = _load_hook_module()
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    cli = bin_dir / "specctl"
+    cli.write_text(
+        f"#!{sys.executable}\nimport time\n"
+        'print("x" * 100_000, flush=True)\ntime.sleep(30)\n'
+    )
+    cli.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{bin_dir}:/usr/bin:/bin")
+    assert hook._specctl_json(["status"], tmp_path) is None
+    assert "exceeds 64 KiB" in capsys.readouterr().err

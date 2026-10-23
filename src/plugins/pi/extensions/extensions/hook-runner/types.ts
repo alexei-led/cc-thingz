@@ -102,6 +102,8 @@ export interface HooksConfig {
 }
 
 export interface HookRunResult {
+	/** Runner failure, not a hook-authored exit-2 decision. */
+	executionError?: true;
 	exitCode: number;
 	stdout: string;
 	stderr: string;

@@ -12,6 +12,7 @@ import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { spawn } from "node:child_process";
 import { appendFileSync, mkdirSync, renameSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { stripVTControlCharacters } from "node:util";
 
 import type { SyntheticHookInvocationResult } from "../shared/hook-bridge.js";
 import {
@@ -49,6 +50,39 @@ export function extractProgress(stderr: string): { stderr: string } {
 		if (!PROGRESS_LINE_RE.test(line)) keep.push(line);
 	}
 	return { stderr: keep.join("\n") };
+}
+
+function boundedHookMessage(text: string): string {
+	const message = stripVTControlCharacters(text).trim();
+	const limit = 2000;
+	const marker = "\n…\n";
+	const head = Math.floor((limit - marker.length) / 2);
+	return message.length <= limit ? message : `${message.slice(0, head)}${marker}${message.slice(-(limit - marker.length - head))}`;
+}
+
+/** Reporting must never change a hook-authored control decision. */
+export function notifyHookMessage(ctx: ExtensionContext | undefined, text: string, level: "info" | "warning" | "error"): void {
+	const message = boundedHookMessage(text);
+	if (!message) return;
+	try {
+		if (ctx?.hasUI) {
+			ctx.ui.notify(message, level);
+			return;
+		}
+	} catch {
+		/* Fall through to the headless/stale-UI reporter. */
+	}
+	try {
+		console.error(message);
+	} catch {
+		/* Reporting is best-effort. */
+	}
+}
+
+export function reportHookDiagnostic(ctx: ExtensionContext, label: string, result: HookRunResult): void {
+	const detail = result.stderr.trim();
+	if (!detail && !result.executionError) return;
+	notifyHookMessage(ctx, `${label}: ${detail || "hook execution failed"}`, result.executionError || result.exitCode !== 0 ? "error" : "info");
 }
 
 // ---------------------------------------------------------------------------
@@ -162,9 +196,10 @@ export function runHook(entry: HookEntryRuntime, stdinJson: string, optionsOrDef
 	const options: RunHookOptions = typeof optionsOrDefault === "number" ? { defaultTimeoutSec: optionsOrDefault } : (optionsOrDefault ?? {});
 	const timeoutSec = entry.config.timeout ?? options.defaultTimeoutSec ?? 30;
 	if (process.platform === "win32")
-		return Promise.resolve({ exitCode: 2, stdout: "", stderr: "Hook process-group cleanup requires a POSIX platform", timedOut: false });
-	if (options.signal?.aborted) return Promise.resolve({ exitCode: 2, stdout: "", stderr: "Hook cancelled", timedOut: false });
-	if (!Number.isFinite(timeoutSec) || timeoutSec <= 0) return Promise.resolve({ exitCode: 2, stdout: "", stderr: "Invalid hook timeout", timedOut: false });
+		return Promise.resolve({ exitCode: 2, stdout: "", stderr: "Hook process-group cleanup requires a POSIX platform", timedOut: false, executionError: true });
+	if (options.signal?.aborted) return Promise.resolve({ exitCode: 2, stdout: "", stderr: "Hook cancelled", timedOut: false, executionError: true });
+	if (!Number.isFinite(timeoutSec) || timeoutSec <= 0 || timeoutSec * 1000 > MAX_TIMER_DELAY_MS)
+		return Promise.resolve({ exitCode: 2, stdout: "", stderr: "Invalid hook timeout", timedOut: false, executionError: true });
 	const started = Date.now();
 	let cancel = () => {};
 	const pending = new Promise<HookRunResult>((resolve) => {
@@ -202,7 +237,8 @@ export function runHook(entry: HookEntryRuntime, stdinJson: string, optionsOrDef
 						: stopReason === "overflow"
 							? `Hook output exceeded ${HOOK_OUTPUT_MAX_BYTES / (1024 * 1024)}MB cap`
 							: errorText;
-			const result = {
+			const result: HookRunResult = {
+				...(stopReason || errorText ? { executionError: true } : {}),
 				exitCode,
 				stdout: Buffer.concat(stdout).toString("utf8"),
 				stderr: [notice, cleaned].filter(Boolean).join(": "),
@@ -296,15 +332,19 @@ export function runShutdownHookAsync(entry: HookEntryRuntime, stdinJson: string)
 export function runHookAsync(
 	entry: HookEntryRuntime,
 	stdinJson: string,
-	notifyFn: (msg: string, level: "error" | "warning") => void,
+	notifyFn: (msg: string, level: "info" | "error" | "warning") => void,
 	defaultTimeoutSec = 60,
 ): void {
 	runHook(entry, stdinJson, defaultTimeoutSec)
 		.then((result) => {
-			if (result.exitCode === 2 && result.stderr.trim()) {
+			if (result.executionError) {
+				notifyFn(`Hook runtime error (${commandLabel(entry)}): ${result.stderr}`, "error");
+			} else if (result.exitCode === 2 && result.stderr.trim()) {
 				notifyFn(result.stderr.trim(), "warning");
 			} else if (result.exitCode !== 0) {
 				notifyFn(`Hook error (${commandLabel(entry)}): ${result.stderr || "non-zero exit"}`, "error");
+			} else if (result.stderr.trim()) {
+				notifyFn(boundedHookMessage(result.stderr), "info");
 			}
 		})
 		.catch(() => {
@@ -355,7 +395,7 @@ export async function runPreToolUseGroups(
 				return { blocked: true, reason: blocked, decision: "deny" };
 			}
 			if (result.exitCode !== 0) {
-				ctx?.ui.notify(`Pre-tool hook error (${commandLabel(entry)}): ${result.stderr}`, "error");
+				notifyHookMessage(ctx, `Pre-tool hook error (${commandLabel(entry)}): ${result.stderr}`, "error");
 				continue;
 			}
 			const decoded = decodePreToolUse(result.stdout);
@@ -417,7 +457,7 @@ export async function runPermissionRequestGroups(
 				return { blocked: true, reason: blocked, behavior: "deny" };
 			}
 			if (result.exitCode !== 0) {
-				ctx?.ui.notify(`PermissionRequest hook error (${commandLabel(entry)}): ${result.stderr}`, "error");
+				notifyHookMessage(ctx, `PermissionRequest hook error (${commandLabel(entry)}): ${result.stderr}`, "error");
 				continue;
 			}
 			const decoded = decodePermissionRequest(result.stdout);
@@ -448,7 +488,7 @@ export async function runPermissionDeniedGroups(
 		for (const entry of group.hooks) {
 			const result = await runHook(entry, stdin, 10);
 			if (result.exitCode !== 0) {
-				ctx?.ui.notify(`PermissionDenied hook error (${commandLabel(entry)}): ${result.stderr}`, "error");
+				notifyHookMessage(ctx, `PermissionDenied hook error (${commandLabel(entry)}): ${result.stderr}`, "error");
 				continue;
 			}
 			const decoded = decodePermissionDenied(result.stdout);
@@ -502,6 +542,10 @@ export async function runDecisionHooks(
 	for (const group of groups) {
 		for (const entry of group.hooks) {
 			const result = await runHook(entry, stdin, 15);
+			if (result.executionError) {
+				notifyHookMessage(ctx, `${hookName} runtime error (${commandLabel(entry)}): ${result.stderr}`, "error");
+				continue;
+			}
 			const blockingMsg = blockingError(result);
 			if (blockingMsg !== undefined) {
 				// Record the block but keep iterating: callers of runDecisionHooks
@@ -514,7 +558,7 @@ export async function runDecisionHooks(
 				continue;
 			}
 			if (result.exitCode !== 0) {
-				ctx?.ui.notify(`${hookName} hook error (${commandLabel(entry)}): ${result.stderr}`, "error");
+				notifyHookMessage(ctx, `${hookName} hook error (${commandLabel(entry)}): ${result.stderr}`, "error");
 				continue;
 			}
 			const decoded = decodeGeneric(result.stdout, hookName);

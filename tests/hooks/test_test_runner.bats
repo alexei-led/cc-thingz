@@ -19,10 +19,21 @@ teardown() {
 write_state() {
 	local session_id="$1"
 	shift
-	local state_path
-	state_path=$(git rev-parse --git-path "cc-thingz/hook-files-$session_id")
+	local state_path scope
+	scope=$(git rev-parse --show-prefix)
+	state_path=$(git rev-parse --git-path "cc-thingz/hooks-v2/${scope}hook-files-$session_id")
 	mkdir -p "$(dirname "$state_path")"
 	printf '%s\n' "$@" >"$state_path"
+}
+
+assert_js_args() {
+	local file="$1" kind="$2" expected="$3" flag
+	case "$kind" in
+	vitest) flag='--reporter=json --outputFile=' ;;
+	jest) flag='--json --outputFile=' ;;
+	bun) flag='--reporter=junit --reporter-outfile=' ;;
+	esac
+	[[ "$(cat "$file")" == "$expected $flag"* ]]
 }
 
 @test "test-runner: fast test command does not wait for watchdog budget" {
@@ -172,7 +183,7 @@ SH
 	[ "$(cat pytest.args)" = "-q --maxfail=1 --tb=short tests/test_foo.py" ]
 }
 
-@test "test-runner: exits 2 on focused test failure" {
+@test "test-runner: reports focused test failure without blocking" {
 	mkdir -p bin pkg tests
 	cat >pyproject.toml <<'TOML'
 [project]
@@ -194,7 +205,7 @@ SH
 	write_state s_fail pkg/foo.py
 
 	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_fail\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
-	[ "$status" -eq 2 ]
+	[ "$status" -eq 0 ]
 	[[ "$output" == *"focused-failure"* ]]
 }
 
@@ -205,7 +216,7 @@ SH
 
 	run env PI_SUBAGENT_CHILD=1 HOOK_INPUT_JSON="{\"session_id\":\"s_child\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"skipped: no changed code files with focused test support"* ]]
+	[ -z "$output" ]
 }
 
 @test "test-runner: uses nearest non-root Makefile target as fallback" {
@@ -368,7 +379,7 @@ SH
 
 	run env PATH="$WORK_DIR/node_modules/.bin:/usr/bin:/bin" TEST_RUNNER_FULL=1 HOOK_INPUT_JSON="{\"session_id\":\"s_full_vitest\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
-	[ "$(cat vitest.args)" = "run --passWithNoTests" ]
+	assert_js_args vitest.args vitest "run --passWithNoTests"
 }
 
 @test "test-runner: TEST_RUNNER_FULL runs Jest when no package script exists" {
@@ -382,7 +393,7 @@ SH
 
 	run env PATH="$WORK_DIR/node_modules/.bin:/usr/bin:/bin" TEST_RUNNER_FULL=1 HOOK_INPUT_JSON="{\"session_id\":\"s_full_jest\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
-	[ "$(cat jest.args)" = "--passWithNoTests" ]
+	assert_js_args jest.args jest "--passWithNoTests"
 }
 
 @test "test-runner: TEST_RUNNER_FULL runs Bats when shell tests exist" {
@@ -439,7 +450,7 @@ SH
 
 	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_go\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
-	[ "$(cat go.args)" = "test -failfast ./pkg" ]
+	[ "$(cat go.args)" = "test -json -failfast ./pkg" ]
 }
 
 @test "test-runner: Rust tests use nearest Cargo manifest" {
@@ -600,7 +611,7 @@ SH
 
 	run env HOOK_INPUT_JSON="{\"session_id\":\"s_vitest\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
-	[ "$(cat vitest.args)" = "related src/foo.ts --run --passWithNoTests" ]
+	assert_js_args vitest.args vitest "related src/foo.ts --run --passWithNoTests"
 }
 
 @test "test-runner: Vitest treats JS support files in tests as related sources" {
@@ -616,7 +627,7 @@ SH
 
 	run env HOOK_INPUT_JSON="{\"session_id\":\"s_vitest_helper\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
-	[ "$(cat vitest.args)" = "related tests/helper.ts --run --passWithNoTests" ]
+	assert_js_args vitest.args vitest "related tests/helper.ts --run --passWithNoTests"
 }
 
 @test "test-runner: keeps Vitest test files with test declarations as direct targets" {
@@ -632,7 +643,7 @@ SH
 
 	run env HOOK_INPUT_JSON="{\"session_id\":\"s_vitest_direct\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
-	[ "$(cat vitest.args)" = "run tests/foo.ts --passWithNoTests" ]
+	assert_js_args vitest.args vitest "run tests/foo.ts --passWithNoTests"
 }
 
 @test "test-runner: Jest uses findRelatedTests for source files" {
@@ -650,7 +661,7 @@ SH
 
 	run env HOOK_INPUT_JSON="{\"session_id\":\"s_jest\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
-	[ "$(cat jest.args)" = "--findRelatedTests src/foo.ts --passWithNoTests" ]
+	assert_js_args jest.args jest "--findRelatedTests src/foo.ts --passWithNoTests"
 }
 
 @test "test-runner: does not fall back to Bun when Vitest config exists without Vitest" {
@@ -687,7 +698,7 @@ SH
 
 	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_bun_isolate\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
-	[ "$(cat bun.args)" = "test --isolate tests/foo.test.ts" ]
+	assert_js_args bun.args bun "test --isolate tests/foo.test.ts"
 }
 
 @test "test-runner: TEST_RUNNER_FULL runs Bun with --isolate" {
@@ -701,7 +712,7 @@ SH
 
 	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" TEST_RUNNER_FULL=1 HOOK_INPUT_JSON="{\"session_id\":\"s_full_bun\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
-	[ "$(cat bun.args)" = "test --isolate" ]
+	assert_js_args bun.args bun "test --isolate"
 }
 
 @test "test-runner: default disables package and Makefile fallback" {
@@ -757,20 +768,22 @@ SH
 	write_state s_npm_fail src/foo.ts
 
 	run env HOOK_PROJECT_FALLBACK=1 PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_npm_fail\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
-	[ "$status" -eq 2 ]
+	[ "$status" -eq 0 ]
 	[[ "$output" == *"npm-failure"* ]]
 	[[ "$output" == *"npm test failed with exit 7"* ]]
 }
 
-@test "test-runner: package script detection uses node when python3 is unusable" {
+@test "test-runner: package script detection uses node when the Python package lookup fails" {
 	mkdir -p bin src
 	cat >package.json <<'JSON'
 {"scripts":{"test":"echo test"}}
 JSON
 	touch package-lock.json src/foo.ts
-	cat >bin/python3 <<'SH'
+	real_python=$(command -v python3)
+	cat >bin/python3 <<SH
 #!/usr/bin/env bash
-exit 1
+[[ "\$*" == *'Path("package.json")'* ]] && exit 1
+exec "$real_python" "\$@"
 SH
 	cat >bin/node <<'SH'
 #!/usr/bin/env bash
@@ -866,7 +879,7 @@ SH
 	# same tests a second time.
 	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_noop\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"no changed code files"* ]]
+	[ -z "$output" ]
 	[ "$(wc -l <uv.calls)" -eq "$calls_after_first" ]
 }
 
@@ -924,7 +937,7 @@ SH
 	[ ! -f "$WORK_DIR/should-not-exist" ]
 }
 
-@test "test-runner: a real failure inside the timeout budget still exits 2" {
+@test "test-runner: a real failure inside the timeout budget is reported without blocking" {
 	mkdir -p bin pkg tests
 	cat >pyproject.toml <<'TOML'
 [project]
@@ -946,7 +959,7 @@ SH
 	write_state s_fail_budget pkg/foo.py
 
 	run env PATH="$WORK_DIR/bin:$PATH" TEST_RUNNER_TIMEOUT_SECS=30 HOOK_INPUT_JSON="{\"session_id\":\"s_fail_budget\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
-	[ "$status" -eq 2 ]
+	[ "$status" -eq 0 ]
 	[[ "$output" == *"focused-failure"* ]]
 	[[ "$output" != *"skipped: timeout"* ]]
 }
@@ -1060,7 +1073,7 @@ SH
 
 	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_fp\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"no changed code files"* ]]
+	[ -z "$output" ]
 	[ "$(wc -l <uv.calls)" -eq "$calls_after_first" ]
 }
 
@@ -1150,7 +1163,7 @@ SH
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"skipped: timeout"* ]]
 
-	state_path=$(git rev-parse --git-path "cc-thingz/hook-files-s_keep")
+	state_path=$(git rev-parse --git-path "cc-thingz/hooks-v2/hook-files-s_keep")
 	[ -s "$state_path" ]
 	[ "$(cat "$state_path")" = "pkg/foo.go" ]
 }
@@ -1173,7 +1186,7 @@ SH
 	write_state s_bun_index src/foo.ts src/bar.ts lib/foo.ts other/bar.ts
 	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_bun_index\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	[ "$status" -eq 0 ]
-	[ "$(cat bun.args)" = "test --isolate lib/foo.test.ts tests/bar.spec.ts tests/foo.test.ts" ]
+	assert_js_args bun.args bun "test --isolate lib/foo.test.ts tests/bar.spec.ts tests/foo.test.ts"
 	[ "$(grep -c '^tests ' find.args)" -eq 1 ]
 	[ "$(grep -c '^src ' find.args)" -eq 1 ]
 }
@@ -1221,14 +1234,15 @@ SH
 @test "test-runner: Python groups continue after failure and preserve pending state" {
 	setup_python_monorepo
 	for failing_project in root api; do
+		printf '# fail %s\n' "$failing_project" >tests/test_widget.py
 		write_state s_nested_failure tests/test_widget.py api/tests/test_widget.py
 		root_exit=0 api_exit=0
 		if [[ "$failing_project" == root ]]; then root_exit=1; else api_exit=1; fi
 		run env ROOT_PYTEST_EXIT="$root_exit" API_PYTEST_EXIT="$api_exit" HOOK_INPUT_JSON="{\"session_id\":\"s_nested_failure\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
-		[ "$status" -eq 2 ]
+		[ "$status" -eq 0 ]
 		[ -f pytest.calls ]
 		[ -f api/pytest.calls ]
-		[ -s "$(git rev-parse --git-path cc-thingz/hook-files-s_nested_failure)" ]
+		[ -s "$(git rev-parse --git-path cc-thingz/hooks-v2/hook-files-s_nested_failure)" ]
 		rm pytest.calls api/pytest.calls
 	done
 }
@@ -1237,7 +1251,7 @@ SH
 	setup_python_monorepo
 	write_state s_nested_empty tests/test_widget.py api/tests/test_widget.py
 	run env API_PYTEST_EXIT=5 ROOT_PYTEST_EXIT=1 HOOK_INPUT_JSON="{\"session_id\":\"s_nested_empty\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
-	[ "$status" -eq 2 ]
+	[ "$status" -eq 0 ]
 	[[ "$output" == *"collected no tests"* ]]
 	[ -f api/pytest.calls ]
 }
@@ -1291,34 +1305,10 @@ SH
 	chmod +x bin/go
 	write_state s_nested_go pkg/foo.go api/pkg/foo.go
 	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_nested_go\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
-	[ "$status" -eq 2 ]
-	[ "$(cat go.calls)" = "$WORK_DIR|test -failfast ./pkg" ]
-	[ "$(cat api/go.calls)" = "$WORK_DIR/api|test -failfast ./pkg" ]
+	[ "$status" -eq 0 ]
+	[ "$(cat go.calls)" = "$WORK_DIR|test -json -failfast ./pkg" ]
+	[ "$(cat api/go.calls)" = "$WORK_DIR/api|test -json -failfast ./pkg" ]
 	[[ "$output" == *"Go tests in api"* ]]
-}
-
-@test "test-runner: nested JS packages use their own runner and relative targets" {
-	mkdir -p node_modules/.bin src web/node_modules/.bin web/tests
-	printf '{}\n' >package.json
-	printf '{}\n' >web/package.json
-	touch jest.config.js web/vitest.config.ts src/foo.ts
-	printf 'test("works", () => {})\n' >web/tests/foo.test.ts
-	cat >node_modules/.bin/jest <<'SH'
-#!/usr/bin/env bash
-printf '%s\n' "$PWD|$*" >>"$PWD/jest.calls"
-SH
-	cat >web/node_modules/.bin/vitest <<'SH'
-#!/usr/bin/env bash
-printf '%s\n' "$PWD|$*" >>"$PWD/vitest.calls"
-exit 1
-SH
-	chmod +x node_modules/.bin/jest web/node_modules/.bin/vitest
-	write_state s_nested_js src/foo.ts web/tests/foo.test.ts
-	run env PATH="/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_nested_js\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
-	[ "$status" -eq 2 ]
-	[ "$(cat jest.calls)" = "$WORK_DIR|--findRelatedTests src/foo.ts --passWithNoTests" ]
-	[ "$(cat web/vitest.calls)" = "$WORK_DIR/web|run tests/foo.test.ts --passWithNoTests" ]
-	[[ "$output" == *"JS tests in web"* ]]
 }
 
 @test "test-runner: source mapping prunes child projects under test directories" {
@@ -1330,4 +1320,469 @@ SH
 	[ "$status" -eq 0 ]
 	[ "$(cat pytest.calls)" = "$WORK_DIR|-q --maxfail=1 --tb=short tests/test_widget.py" ]
 	[ -f api/pytest.calls ]
+}
+
+@test "test-runner: absolute focus paths are normalized before project grouping" {
+	setup_python_monorepo
+	write_state s_absolute "$WORK_DIR/api/src/widget.py" api/tests/test_widget.py
+	run env HOOK_INPUT_JSON="{\"session_id\":\"s_absolute\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ ! -f pytest.calls ]
+	[ "$(cat api/pytest.calls)" = "$WORK_DIR/api|-q --maxfail=1 --tb=short tests/test_widget.py" ]
+}
+
+@test "test-runner: focus paths cannot select projects above the hook cwd" {
+	setup_python_monorepo
+	(cd api && write_state s_outside ../tests/test_widget.py "$WORK_DIR/tests/test_widget.py" tests/test_widget.py)
+	run env HOOK_INPUT_JSON="{\"session_id\":\"s_outside\",\"cwd\":\"$WORK_DIR/api\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ ! -f pytest.calls ]
+	[ "$(cat api/pytest.calls)" = "$WORK_DIR/api|-q --maxfail=1 --tb=short tests/test_widget.py" ]
+}
+
+@test "test-runner: all pytest failures are advisory for native and Pi Stop events" {
+	setup_python_monorepo
+	for runtime in native pi; do
+		input="{\"session_id\":\"s_advisory\",\"cwd\":\"$WORK_DIR\"}"
+		[[ "$runtime" == native ]] || input="{\"event\":\"stop\",\"piEvent\":$input}"
+		for code in 1 2 3 4 126 127; do
+			printf '# %s %s\n' "$runtime" "$code" >tests/test_widget.py
+			write_state s_advisory tests/test_widget.py api/tests/test_widget.py
+			run env ROOT_PYTEST_EXIT="$code" HOOK_INPUT_JSON="$input" bash "$HOOK"
+			[ "$status" -eq 0 ]
+			[[ "$output" == *"exit $code"* ]]
+			[[ "$output" != *"Focused tests passed"* ]]
+			[ -s "$(git rev-parse --git-path cc-thingz/hooks-v2/hook-files-s_advisory)" ]
+			[ -f api/pytest.calls ]
+			if [[ "$runtime" == pi ]]; then [[ "$output" == *'{"decision":"allow"}'* ]]; fi
+			rm pytest.calls api/pytest.calls
+		done
+	done
+}
+
+@test "test-runner: failed full-suite override is advisory and retains pending state" {
+	mkdir -p pkg
+	touch pkg/foo.go
+	write_state s_advisory_full pkg/foo.go
+	printf 'test:\n\t@echo full-suite-problem; exit 7\n' >Makefile
+	run env TEST_RUNNER_FULL=1 HOOK_INPUT_JSON="{\"session_id\":\"s_advisory_full\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"full-suite-problem"* ]]
+	[[ "$output" == *"failed with exit"* ]]
+	[ -s "$(git rev-parse --git-path cc-thingz/hooks-v2/hook-files-s_advisory_full)" ]
+}
+
+@test "test-runner: missing Python environment cannot turn a partial run into a pass" {
+	setup_python_monorepo
+	rm .venv/bin/pytest
+	real_python=$(command -v python3)
+	cat >bin/python3 <<SH
+#!/usr/bin/env bash
+[[ "\$*" == '-c import pytest' ]] && exit 1
+exec "$real_python" "\$@"
+SH
+	chmod +x bin/python3
+	write_state s_partial tests/test_widget.py api/tests/test_widget.py
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_partial\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"pytest not found"* ]]
+	[[ "$output" != *"Focused tests passed"* ]]
+	[ -f api/pytest.calls ]
+	[ -s "$(git rev-parse --git-path cc-thingz/hooks-v2/hook-files-s_partial)" ]
+}
+
+@test "test-runner: missing mapped tests are reported without clearing pending source edits" {
+	setup_python_monorepo
+	mkdir -p pkg
+	touch pkg/unmapped.py
+	write_state s_unmapped pkg/unmapped.py api/tests/test_widget.py
+	run env HOOK_INPUT_JSON="{\"session_id\":\"s_unmapped\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"No focused Python tests found"* ]]
+	[[ "$output" != *"Focused tests passed"* ]]
+	[ -f api/pytest.calls ]
+	[ -s "$(git rev-parse --git-path cc-thingz/hooks-v2/hook-files-s_unmapped)" ]
+}
+
+@test "test-runner: a hung uv environment probe is bounded and advisory" {
+	setup_python_monorepo
+	printf '\n[dependency-groups]\ntest = ["pytest"]\n' >>api/pyproject.toml
+	cat >bin/uv <<'SH'
+#!/usr/bin/env bash
+sleep 30
+printf 'probe escaped timeout\n' >probe.finished
+SH
+	chmod +x bin/uv
+	write_state s_probe_timeout api/tests/test_widget.py
+	start=$SECONDS
+	run env PATH="$WORK_DIR/bin:$PATH" TEST_RUNNER_TIMEOUT_SECS=4 HOOK_INPUT_JSON="{\"session_id\":\"s_probe_timeout\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	elapsed=$((SECONDS - start))
+	[ "$status" -eq 0 ]
+	[ "$elapsed" -lt 12 ]
+	[[ "$output" == *"timeout"* ]]
+	[ ! -f api/probe.finished ]
+	[ ! -f api/pytest.calls ]
+	[ -s "$(git rev-parse --git-path cc-thingz/hooks-v2/hook-files-s_probe_timeout)" ]
+}
+
+@test "test-runner: a signalled test runner is reported but cannot block" {
+	mkdir -p .venv/bin tests
+	touch tests/test_signal.py
+	printf '#!/usr/bin/env bash\nkill -TERM "$$"\n' >.venv/bin/pytest
+	chmod +x .venv/bin/pytest
+	write_state s_runner_signal tests/test_signal.py
+	run env HOOK_INPUT_JSON="{\"session_id\":\"s_runner_signal\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"exit 143"* ]]
+	[[ "$output" != *"Focused tests passed"* ]]
+	[ -s "$(git rev-parse --git-path cc-thingz/hooks-v2/hook-files-s_runner_signal)" ]
+}
+
+@test "test-runner: unchanged failed attempts do not repeat, but changed untracked code retries" {
+	setup_python_monorepo
+	write_state s_attempt api/tests/test_widget.py
+	input="{\"session_id\":\"s_attempt\",\"cwd\":\"$WORK_DIR\"}"
+	run env API_PYTEST_EXIT=1 HOOK_INPUT_JSON="$input" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(wc -l <api/pytest.calls)" -eq 1 ]
+	run env API_PYTEST_EXIT=1 HOOK_INPUT_JSON="$input" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(wc -l <api/pytest.calls)" -eq 1 ]
+	[ -z "$output" ]
+	[ -s "$(git rev-parse --git-path cc-thingz/hooks-v2/hook-files-s_attempt)" ]
+	printf '# changed untracked test\n' >>api/tests/test_widget.py
+	run env API_PYTEST_EXIT=1 HOOK_INPUT_JSON="$input" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(wc -l <api/pytest.calls)" -eq 2 ]
+}
+
+@test "test-runner: Python source maps to test directories nested inside its project" {
+	setup_python_monorepo
+	mkdir -p api/components/tests
+	mv api/tests/test_widget.py api/components/tests/test_widget.py
+	write_state s_deep_python api/src/widget.py
+	run env HOOK_INPUT_JSON="{\"session_id\":\"s_deep_python\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$(cat api/pytest.calls)" = "$WORK_DIR/api|-q --maxfail=1 --tb=short components/tests/test_widget.py" ]
+}
+
+@test "test-runner: nested JS projects use local config and workspace config inheritance" {
+	mkdir -p node_modules/.bin web/node_modules/.bin web/tests
+	printf '{}\n' >package.json
+	printf '{}\n' >web/package.json
+	touch vitest.config.ts web/vitest.config.ts
+	printf 'test("works", () => {})\n' >web/tests/foo.test.ts
+	for runner in node_modules/.bin/vitest web/node_modules/.bin/vitest; do
+		printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$PWD|$*" >>vitest.calls\n' >"$runner"
+		chmod +x "$runner"
+	done
+	write_state s_js_local web/tests/foo.test.ts
+	run env HOOK_INPUT_JSON="{\"session_id\":\"s_js_local\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	assert_js_args web/vitest.calls vitest "$WORK_DIR/web|run tests/foo.test.ts --passWithNoTests"
+	[ ! -f vitest.calls ]
+	rm web/vitest.config.ts
+	write_state s_js_workspace web/tests/foo.test.ts
+	run env HOOK_INPUT_JSON="{\"session_id\":\"s_js_workspace\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	assert_js_args vitest.calls vitest "$WORK_DIR|run web/tests/foo.test.ts --passWithNoTests"
+}
+
+@test "test-runner: workspace Bun maps source to tests in its nested package" {
+	mkdir -p bin web/src web/tests
+	printf '{}\n' >package.json
+	printf '{}\n' >web/package.json
+	touch bun.lock web/src/foo.ts
+	printf 'test("works", () => {})\n' >web/tests/foo.test.ts
+	printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$*" >bun.calls\n' >bin/bun
+	chmod +x bin/bun
+	write_state s_bun_workspace web/src/foo.ts
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_bun_workspace\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	assert_js_args bun.calls bun 'test --isolate web/tests/foo.test.ts'
+}
+
+@test "test-runner: real pytest covers nested imports, failed assertions, and collection errors" {
+	setup_python_monorepo
+	integration_python="$(cd "$BATS_TEST_DIRNAME/../.." && pwd -P)/.venv/bin/python"
+	[ -x "$integration_python" ]
+	cat >.venv/bin/pytest <<'SH'
+#!/usr/bin/env bash
+exec "$INTEGRATION_PYTHON" -m pytest "$@"
+SH
+	cat >api/.venv/bin/pytest <<'SH'
+#!/usr/bin/env bash
+export PYTHONPATH="$PWD/.venv/lib"
+exec "$INTEGRATION_PYTHON" -m pytest "$@"
+SH
+	printf 'def test_root():\n    assert True\n' >tests/test_widget.py
+	printf 'import reflex_api\ndef test_nested():\n    assert reflex_api.VALUE == 42\n' >api/tests/test_widget.py
+	printf 'VALUE = 42\n' >api/.venv/lib/reflex_api.py
+	input="{\"session_id\":\"s_real_pytest\",\"cwd\":\"$WORK_DIR\"}"
+	write_state s_real_pytest tests/test_widget.py api/tests/test_widget.py
+	run env INTEGRATION_PYTHON="$integration_python" HOOK_INPUT_JSON="$input" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Focused tests passed"* ]]
+	printf 'def test_failure():\n    assert False, "actual-assertion-failure"\n' >api/tests/test_widget.py
+	write_state s_real_pytest api/tests/test_widget.py
+	run env INTEGRATION_PYTHON="$integration_python" HOOK_INPUT_JSON="$input" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"actual-assertion-failure"* ]]
+	[[ "$output" != *"Focused tests passed"* ]]
+	printf 'import absent_fixture_dependency\n' >api/tests/conftest.py
+	write_state s_real_pytest api/tests/test_widget.py
+	run env INTEGRATION_PYTHON="$integration_python" HOOK_INPUT_JSON="$input" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"ModuleNotFoundError"* ]]
+	[[ "$output" != *"Focused tests passed"* ]]
+	[ -s "$(git rev-parse --git-path cc-thingz/hooks-v2/hook-files-s_real_pytest)" ]
+}
+
+@test "test-runner: unavailable temporary storage is advisory and never starts tests" {
+	setup_python_monorepo
+	printf '#!/usr/bin/env bash\nprintf "attempt\\n" >>mktemp.calls\nexit 1\n' >bin/mktemp
+	chmod +x bin/mktemp
+	write_state s_no_temp api/tests/test_widget.py
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_no_temp\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"incomplete"* ]]
+	[ ! -f api/pytest.calls ]
+	[ -s "$(git rev-parse --git-path cc-thingz/hooks-v2/hook-files-s_no_temp)" ]
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_no_temp\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+	[ "$(wc -l <mktemp.calls)" -eq 1 ]
+}
+
+@test "test-runner: zero Go test execution is incomplete, not passed" {
+	mkdir -p bin pkg
+	touch go.mod pkg/one.go
+	cat >bin/go <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' '{"Action":"skip","Package":"demo/pkg"}'
+SH
+	chmod +x bin/go
+	write_state s_zero_go pkg/one.go
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_zero_go\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" != *"Focused tests passed"* ]]
+	[[ "$output" == *"no tests executed"* ]]
+	[ -s "$(git rev-parse --git-path cc-thingz/hooks-v2/hook-files-s_zero_go)" ]
+}
+
+@test "test-runner: zero JS test execution is incomplete, not passed" {
+	mkdir -p node_modules/.bin src
+	touch vitest.config.ts src/one.ts
+	cat >node_modules/.bin/vitest <<'SH'
+#!/usr/bin/env bash
+for arg in "$@"; do
+	case "$arg" in --outputFile=*) printf '%s\n' '{"numPassedTests":0,"numFailedTests":0}' >"${arg#*=}" ;; esac
+done
+SH
+	chmod +x node_modules/.bin/vitest
+	write_state s_zero_js src/one.ts
+	run env HOOK_INPUT_JSON="{\"session_id\":\"s_zero_js\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" != *"Focused tests passed"* ]]
+	[[ "$output" == *"no tests executed"* ]]
+	[ -s "$(git rev-parse --git-path cc-thingz/hooks-v2/hook-files-s_zero_js)" ]
+}
+
+@test "test-runner: adding an untracked Bun lockfile retries an incomplete attempt" {
+	mkdir -p bin src tests
+	touch src/one.ts tests/one.test.ts
+	printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$*" >bun.calls\n' >bin/bun
+	chmod +x bin/bun
+	write_state s_new_lock src/one.ts
+	input="{\"session_id\":\"s_new_lock\",\"cwd\":\"$WORK_DIR\"}"
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="$input" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ ! -f bun.calls ]
+	touch bun.lock
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="$input" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ -f bun.calls ]
+}
+
+@test "test-runner: real Go reports distinguish absent, skipped, and executed tests" {
+	mkdir -p pkg
+	printf 'module hookfixture\n\ngo 1.22\n' >go.mod
+	printf 'package pkg\n' >pkg/one.go
+	input="{\"session_id\":\"s_real_go\",\"cwd\":\"$WORK_DIR\"}"
+	write_state s_real_go pkg/one.go
+	run env GOTOOLCHAIN=local GOPROXY=off GOWORK=off HOOK_INPUT_JSON="$input" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"no tests executed"* ]]
+	[[ "$output" != *"Focused tests passed"* ]]
+	printf 'package pkg\nimport "testing"\nfunc TestSkipped(t *testing.T) { t.Skip("intentional") }\n' >pkg/one_test.go
+	write_state s_real_go pkg/one.go
+	run env GOTOOLCHAIN=local GOPROXY=off GOWORK=off HOOK_INPUT_JSON="$input" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"no tests executed"* ]]
+	printf 'package pkg\nimport "testing"\nfunc TestWorks(t *testing.T) { if 1 != 1 { t.Fatal("bad") } }\n' >pkg/one_test.go
+	write_state s_real_go pkg/one.go
+	run env GOTOOLCHAIN=local GOPROXY=off GOWORK=off HOOK_INPUT_JSON="$input" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Focused tests passed"* ]]
+	printf 'package pkg\nimport "testing"\nfunc TestFails(t *testing.T) { t.Fatal("actual-go-failure") }\n' >pkg/one_test.go
+	write_state s_real_go pkg/one.go
+	run env GOTOOLCHAIN=local GOPROXY=off GOWORK=off HOOK_INPUT_JSON="$input" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"actual-go-failure"* ]]
+	[[ "$output" != *"Focused tests passed"* ]]
+}
+
+@test "test-runner: real Bun reports distinguish skipped and executed tests" {
+	mkdir -p tests
+	touch bun.lock
+	printf 'import {test} from "bun:test"; test.skip("skipped", () => {})\n' >tests/one.test.ts
+	input="{\"session_id\":\"s_real_bun\",\"cwd\":\"$WORK_DIR\"}"
+	write_state s_real_bun tests/one.test.ts
+	run env HOOK_INPUT_JSON="$input" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"no tests executed"* ]]
+	[[ "$output" != *"Focused tests passed"* ]]
+	printf 'import {test,expect} from "bun:test"; test("works", () => { expect(1).toBe(1) })\n' >tests/one.test.ts
+	write_state s_real_bun tests/one.test.ts
+	run env HOOK_INPUT_JSON="$input" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Focused tests passed"* ]]
+	printf 'import {test,expect} from "bun:test"; test("actual-bun-failure", () => { expect(1).toBe(2) })\n' >tests/one.test.ts
+	write_state s_real_bun tests/one.test.ts
+	run env HOOK_INPUT_JSON="$input" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"actual-bun-failure"* ]]
+	[[ "$output" != *"Focused tests passed"* ]]
+}
+
+@test "test-runner: JS report evidence distinguishes valid and invalid successful exits" {
+	mkdir -p node_modules/.bin src
+	touch src/one.ts
+	input="{\"session_id\":\"s_json_evidence\",\"cwd\":\"$WORK_DIR\"}"
+	for kind in vitest jest; do
+		touch "$kind.config.js"
+		cat >"node_modules/.bin/$kind" <<'SH'
+#!/usr/bin/env bash
+for arg in "$@"; do
+	case "$arg" in --outputFile=*) printf '%s\n' "$TEST_RUNNER_REPORT" >"${arg#*=}" ;; esac
+done
+SH
+		chmod +x "node_modules/.bin/$kind"
+		for outcome in passed malformed inconsistent; do
+			printf '// %s %s\n' "$kind" "$outcome" >src/one.ts
+			case "$outcome" in
+			passed) report='{"numPassedTests":1,"numFailedTests":0}' ;;
+			malformed) report='invalid json' ;;
+			inconsistent) report='{"numPassedTests":0,"numFailedTests":1}' ;;
+			esac
+			write_state s_json_evidence src/one.ts
+			run env TEST_RUNNER_REPORT="$report" HOOK_INPUT_JSON="$input" bash "$HOOK"
+			[ "$status" -eq 0 ]
+			if [[ "$outcome" == passed ]]; then
+				[[ "$output" == *"Focused tests passed"* ]]
+			else
+				[[ "$output" != *"Focused tests passed"* ]]
+				[ -s "$(git rev-parse --git-path cc-thingz/hooks-v2/hook-files-s_json_evidence)" ]
+			fi
+		done
+		rm "$kind.config.js"
+	done
+}
+
+@test "test-runner: invalid input or a broken metadata runtime never runs unrelated tests" {
+	mkdir -p bin pkg
+	touch go.mod pkg/one.go
+	printf '#!/usr/bin/env bash\ntouch wrong-project-test.used\n' >bin/go
+	chmod +x bin/go
+	write_state s_bad_metadata pkg/one.go
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON='{' bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ ! -f wrong-project-test.used ]
+	[[ "$output" == *"metadata"* ]]
+	printf '#!/usr/bin/env bash\nexit 1\n' >bin/python3
+	chmod +x bin/python3
+	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"cwd\":\"$WORK_DIR\",\"session_id\":\"s_bad_metadata\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ ! -f wrong-project-test.used ]
+	[[ "$output" == *"metadata"* ]]
+	[ -s "$(git rev-parse --git-path cc-thingz/hooks-v2/hook-files-s_bad_metadata)" ]
+}
+
+@test "test-runner: explicit skips retain unverified files for a later enabled run" {
+	setup_python_monorepo
+	input="{\"session_id\":\"s_explicit_skip\",\"cwd\":\"$WORK_DIR\"}"
+	write_state s_explicit_skip api/tests/test_widget.py
+	run env SKIP_TESTS=1 HOOK_INPUT_JSON="$input" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ ! -f api/pytest.calls ]
+	[ -s "$(git rev-parse --git-path cc-thingz/hooks-v2/hook-files-s_explicit_skip)" ]
+	run env HOOK_INPUT_JSON="$input" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ -f api/pytest.calls ]
+}
+
+@test "test-runner: increasing the time budget retries a timed-out attempt" {
+	mkdir -p bin pkg
+	touch go.mod pkg/one.go
+	cat >bin/go <<'SH'
+#!/usr/bin/env bash
+sleep 2
+printf '%s\n' '{"Action":"pass","Package":"demo/pkg","Test":"TestWorks"}' '{"Action":"pass","Package":"demo/pkg"}'
+SH
+	chmod +x bin/go
+	write_state s_retry_budget pkg/one.go
+	input="{\"session_id\":\"s_retry_budget\",\"cwd\":\"$WORK_DIR\"}"
+	run env PATH="$WORK_DIR/bin:$PATH" TEST_RUNNER_TIMEOUT_SECS=1 HOOK_INPUT_JSON="$input" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"timeout"* ]]
+	run env PATH="$WORK_DIR/bin:$PATH" TEST_RUNNER_TIMEOUT_SECS=15 HOOK_INPUT_JSON="$input" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Focused tests passed"* ]]
+}
+
+@test "test-runner: diff fallback is relative to a nested hook cwd" {
+	setup_python_monorepo
+	git add pyproject.toml api tests .venv
+	git commit -q -m 'fixture baseline'
+	printf '# changed\n' >>api/tests/test_widget.py
+	run env HOOK_INPUT_JSON="{\"session_id\":\"s_nested_diff\",\"cwd\":\"$WORK_DIR/api\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ -f api/pytest.calls ]
+	[ ! -f pytest.calls ]
+}
+
+@test "test-runner: the same session cannot reuse pending files from a different cwd" {
+	setup_python_monorepo
+	mkdir -p admin/tests admin/.venv/bin
+	printf '[project]\nname = "admin"\nversion = "0.0.0"\n' >admin/pyproject.toml
+	touch admin/tests/test_widget.py
+	printf '#!/usr/bin/env bash\ntouch pytest.calls\n' >admin/.venv/bin/pytest
+	chmod +x admin/.venv/bin/pytest
+	git add pyproject.toml api admin tests .venv
+	git commit -q -m 'fixture baseline'
+	printf '# changed in api\n' >>api/tests/test_widget.py
+	run env SKIP_LINT=1 bash "$BATS_TEST_DIRNAME/../../src/hooks/smart-lint/hook.sh" <<JSON
+{"cwd":"$WORK_DIR/api","session_id":"same_session","tool_input":{"file_path":"tests/test_widget.py"}}
+JSON
+	[ "$status" -eq 0 ]
+	run env HOOK_INPUT_JSON="{\"session_id\":\"same_session\",\"cwd\":\"$WORK_DIR/admin\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[ ! -f admin/pytest.calls ]
+	[ -s "$(git rev-parse --git-path cc-thingz/hooks-v2/api/hook-files-same_session)" ]
+}
+
+@test "test-runner: a uv workspace member uses its prepared shared environment" {
+	mkdir -p api/tests
+	printf '[project]\nname = "workspace"\nversion = "0.0.0"\nrequires-python = ">=3.12"\n[tool.uv.workspace]\nmembers = ["api"]\n[dependency-groups]\ndev = ["pytest"]\n' >pyproject.toml
+	printf '[project]\nname = "api"\nversion = "0.0.0"\nrequires-python = ">=3.12"\n' >api/pyproject.toml
+	prepared_env="$(cd "$BATS_TEST_DIRNAME/../.." && pwd -P)/.venv"
+	ln -s "$prepared_env" .venv
+	printf 'from pathlib import Path\ndef test_workspace():\n    assert Path.cwd().name == "api"\n' >api/tests/test_workspace.py
+	write_state s_uv_workspace api/tests/test_workspace.py
+	run env UV_PYTHON_DOWNLOADS=never HOOK_INPUT_JSON="{\"session_id\":\"s_uv_workspace\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Running: uv run pytest -q --maxfail=1 --tb=short tests/test_workspace.py"* ]]
+	[[ "$output" == *"Focused tests passed"* ]]
+	[ ! -f uv.lock ]
+	[ ! -d api/.venv ]
 }

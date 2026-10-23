@@ -15,7 +15,7 @@ lint_shell() {
 
 	# Filter out hook config files — they are sourced, not executed, and
 	# users routinely write them without shebangs (one-liners like
-	# `export SKIP_ARCH=1`). Linting them would block edits.
+	# `export SKIP_ARCH=1`). Linting them would add irrelevant diagnostics.
 	local filtered=()
 	for file in "${files[@]}"; do
 		if [[ "$(basename "$file")" == ".claude-hooks-config.sh" ]]; then

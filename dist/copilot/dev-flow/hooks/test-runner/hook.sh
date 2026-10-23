@@ -2,8 +2,9 @@
 # test-runner.sh - Focused test execution at agent-finish time.
 #
 # Runs tests causally related to edited files. Never runs a full project test
-# suite unless TEST_RUNNER_FULL=1 is set explicitly. Python, Go, and JS tests
+# suite unless TEST_RUNNER_FULL=1 is set explicitly. Python and Go tests
 # run from their nearest project manifest directory, bounded by the hook cwd.
+# Automatic feedback is advisory; explicit test commands and CI remain strict.
 
 set +e
 
@@ -14,8 +15,12 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
+export -n HOOK_INPUT_JSON
 HOOK_INPUT_JSON="${HOOK_INPUT_JSON:-}"
+HOOK_PROJECT_CWD=""
+HOOK_SESSION_ID=default
 PI_RUNTIME=0
+HOOK_STATE_NAMESPACE=cc-thingz/hooks-v2
 TEST_RUNNER_DIFF_FALLBACK_LIMIT="${TEST_RUNNER_DIFF_FALLBACK_LIMIT:-50}"
 TEST_RUNNER_FULL="${TEST_RUNNER_FULL:-0}"
 TEST_RUNNER_DEBUG="${TEST_RUNNER_DEBUG:-0}"
@@ -26,35 +31,42 @@ TEST_RUNNER_DEBUG="${TEST_RUNNER_DEBUG:-0}"
 # falls back to the default; anything out of [1, 110] is clamped so a
 # misconfigured value can't disable the budget or exceed the harness timeout.
 TEST_RUNNER_TIMEOUT_SECS="${TEST_RUNNER_TIMEOUT_SECS:-90}"
-case "$TEST_RUNNER_TIMEOUT_SECS" in
-'' | *[!0-9]*) TEST_RUNNER_TIMEOUT_SECS=90 ;;
-esac
-# Force base-10: a digits-only value with a leading zero (e.g. "008") is
-# otherwise read as octal by bash arithmetic, and "008" isn't even valid
-# octal, so the -lt/-gt comparisons below would error out instead of
-# clamping.
-TEST_RUNNER_TIMEOUT_SECS=$((10#$TEST_RUNNER_TIMEOUT_SECS))
-[[ "$TEST_RUNNER_TIMEOUT_SECS" -lt 1 ]] && TEST_RUNNER_TIMEOUT_SECS=1
-[[ "$TEST_RUNNER_TIMEOUT_SECS" -gt 110 ]] && TEST_RUNNER_TIMEOUT_SECS=110
 TEST_RUNNER_COMPACT_LINES=120
+TEST_RUNNER_OUTPUT_BYTES=1048576
 HOOK_PROJECT_FALLBACK="${HOOK_PROJECT_FALLBACK:-0}"
 TESTS_RAN=0
 TESTS_PASSED=0
+TESTS_COMMANDS_COMPLETED=0
+TESTS_INCOMPLETE=0
+RUN_TREE_FINGERPRINT=""
+RUN_ATTEMPT_FINGERPRINT=""
+TEST_REPORT_FILES=()
 # Set when any test command was skipped for exceeding the timeout budget.
 # main() must not clear the pending session state in that case — the
 # untested files are still pending and must be retried on the next Stop.
 TESTS_TIMED_OUT=0
-# Set by collect_focus_files when it found zero files because the tree's
-# fingerprint still matches the last successful conclusion. The state file
-# and fingerprint are already correct on disk in that case, so main() skips
-# clear_hook_state's recompute instead of paying its cost on every repeated
-# no-op Stop.
-FOCUS_TREE_UNCHANGED=0
-
 log_debug() { [[ "$TEST_RUNNER_DEBUG" == "1" ]] && echo -e "${CYAN}[DEBUG]${NC} $*" >&2; }
 log_info() { echo -e "${BLUE}[INFO]${NC} $*" >&2; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $*" >&2; }
 command_exists() { command -v "$1" &>/dev/null; }
+report_incomplete() {
+	TESTS_INCOMPLETE=1
+	log_warn "$*"
+}
+
+normalize_timeout() {
+	case "$TEST_RUNNER_TIMEOUT_SECS" in
+	'' | *[!0-9]*) TEST_RUNNER_TIMEOUT_SECS=90 ;;
+	esac
+	# Force base-10: a digits-only value with a leading zero (e.g. "008") is
+	# otherwise read as octal by bash arithmetic, and "008" isn't even valid
+	# octal, so the -lt/-gt comparisons below would error out instead of
+	# clamping.
+	TEST_RUNNER_TIMEOUT_SECS=$((10#$TEST_RUNNER_TIMEOUT_SECS))
+	[[ "$TEST_RUNNER_TIMEOUT_SECS" -lt 1 ]] && TEST_RUNNER_TIMEOUT_SECS=1
+	[[ "$TEST_RUNNER_TIMEOUT_SECS" -gt 110 ]] && TEST_RUNNER_TIMEOUT_SECS=110
+}
+
 project_fallback_enabled() { [[ "$HOOK_PROJECT_FALLBACK" == "1" && ! -f ".nohooks-project" ]]; }
 
 find_local_node_bin() {
@@ -157,67 +169,89 @@ package_script_runner() {
 
 init_hook_input() {
 	if [[ -z "$HOOK_INPUT_JSON" && ! -t 0 ]]; then
-		HOOK_INPUT_JSON=$(cat 2>/dev/null || true)
+		if ! HOOK_INPUT_JSON=$(cat 2>/dev/null); then
+			report_incomplete "Cannot read hook input; tests skipped"
+			return 1
+		fi
 	fi
-	if command_exists python3 && python3 -c 'import json,sys
+	if ! command_exists python3; then
+		report_incomplete "Cannot read hook metadata: python3 unavailable; tests skipped"
+		return 1
+	fi
+	{
+		if ! IFS= read -r -d '' PI_RUNTIME ||
+			! IFS= read -r -d '' HOOK_PROJECT_CWD ||
+			! IFS= read -r -d '' HOOK_SESSION_ID; then
+			report_incomplete "Cannot read hook metadata: invalid input or unusable python3; tests skipped"
+			return 1
+		fi
+	} < <(python3 -I -S -c 'import json,os,sys
 try:
-    data=json.loads(sys.stdin.read() or "{}")
+    raw=sys.stdin.read()
+    data=json.loads(raw if raw.strip() else "{}")
+    if not isinstance(data, dict):
+        sys.exit(1)
+    pi=data.get("event") == "stop" and isinstance(data.get("piEvent"), dict)
+    if data.get("event") == "stop" and "piEvent" in data and not pi:
+        sys.exit(1)
+    source=data["piEvent"] if pi else data
+    vendor=data.get("vendorEvent") if isinstance(data.get("vendorEvent"), dict) else {}
+    def field(name):
+        value=source.get(name)
+        return vendor.get(name) if value is None else value
+    cwd=field("cwd")
+    if cwd is not None and (not isinstance(cwd, str) or "\x00" in cwd or (cwd and not os.path.isdir(cwd))):
+        sys.exit(1)
+    sid=field("session_id")
+    sid=str(sid) if sid is not None else "default"
+    sid=sid.replace("\x00", "_") or "default"
+    sys.stdout.write("\0".join([str(int(pi)), cwd or "", sid]) + "\0")
 except Exception:
     sys.exit(1)
-sys.exit(0 if data.get("event") == "stop" and isinstance(data.get("piEvent"), dict) else 1)
-' <<<"$HOOK_INPUT_JSON" 2>/dev/null; then
-		PI_RUNTIME=1
-	fi
-}
-
-json_field() {
-	local field="$1"
-	[[ -n "$HOOK_INPUT_JSON" ]] || return 1
-	command_exists python3 || return 1
-	python3 -c 'import json,sys
-field=sys.argv[1]
-try:
-    data=json.loads(sys.stdin.read() or "{}")
-except Exception:
-    sys.exit(1)
-if not isinstance(data, dict):
-    sys.exit(1)
-source=data.get("piEvent", {}) if data.get("event") == "stop" else data
-value=source.get(field) if isinstance(source, dict) else None
-if value is None and isinstance(data.get("vendorEvent"), dict):
-    value=data["vendorEvent"].get(field)
-if value is None:
-    sys.exit(1)
-print(str(value))
-' "$field" <<<"$HOOK_INPUT_JSON" 2>/dev/null
+' <<<"$HOOK_INPUT_JSON" 2>/dev/null)
+	case "$PI_RUNTIME" in
+	0 | 1) ;;
+	*)
+		report_incomplete "Invalid hook metadata response; tests skipped"
+		return 1
+		;;
+	esac
+	return 0
 }
 
 finish_hook() {
-	local status="$1"
+	trap - EXIT
+	[[ "${#TEST_REPORT_FILES[@]}" -eq 0 ]] || rm -f -- "${TEST_REPORT_FILES[@]}"
 	[[ "$PI_RUNTIME" == "1" ]] && echo '{"decision":"allow"}'
-	exit "$status"
+	exit 0
+}
+
+# shellcheck disable=SC2329 # Invoked by the EXIT trap, including unexpected failures.
+unexpected_hook_exit() {
+	local code="$1"
+	[[ "$code" -eq 0 ]] || log_warn "Test hook internal error (exit $code); results incomplete, agent may continue"
+	finish_hook
 }
 
 maybe_cd_to_hook_cwd() {
-	local hook_cwd
-	hook_cwd=$(json_field cwd || true)
-	if [[ -n "$hook_cwd" && -d "$hook_cwd" ]]; then
-		cd "$hook_cwd" || return 0
+	if [[ -n "$HOOK_PROJECT_CWD" ]] && ! cd "$HOOK_PROJECT_CWD"; then
+		report_incomplete "Cannot enter hook project cwd; tests skipped"
+		return 1
 	fi
+	return 0
 }
 
 hook_session_id() {
-	local sid
-	sid=$(json_field session_id || true)
-	[[ -n "$sid" ]] && printf '%s\n' "$sid" || printf '%s\n' default
+	printf '%s\n' "$HOOK_SESSION_ID"
 }
 
 hook_state_path() {
 	git rev-parse --git-dir >/dev/null 2>&1 || return 1
-	local session_id safe_session_id
+	local session_id safe_session_id scope
+	scope=$(git rev-parse --show-prefix 2>/dev/null) || return 1
 	session_id=$(hook_session_id)
 	safe_session_id=$(printf '%s' "$session_id" | tr -c 'A-Za-z0-9_.-' '_')
-	git rev-parse --git-path "cc-thingz/hook-files-${safe_session_id:-default}" 2>/dev/null
+	git rev-parse --git-path "$HOOK_STATE_NAMESPACE/${scope}hook-files-${safe_session_id:-default}" 2>/dev/null
 }
 
 # Separate from hook_state_path: a snapshot of the working tree at the moment
@@ -227,42 +261,35 @@ hook_state_path() {
 # blindly. See tree_fingerprint() and tree_unchanged_since_last_run().
 hook_fingerprint_path() {
 	git rev-parse --git-dir >/dev/null 2>&1 || return 1
-	local session_id safe_session_id
+	local session_id safe_session_id scope
+	scope=$(git rev-parse --show-prefix 2>/dev/null) || return 1
 	session_id=$(hook_session_id)
 	safe_session_id=$(printf '%s' "$session_id" | tr -c 'A-Za-z0-9_.-' '_')
-	git rev-parse --git-path "cc-thingz/hook-tree-${safe_session_id:-default}" 2>/dev/null
+	git rev-parse --git-path "$HOOK_STATE_NAMESPACE/${scope}hook-tree-${safe_session_id:-default}" 2>/dev/null
 }
 
 is_subagent_child() {
 	[[ "${PI_SUBAGENT_CHILD:-}" == "1" ]]
 }
 
-# A cheap, order-independent summary of the working tree: the content of
-# every tracked change since HEAD, plus the sorted list of untracked file
-# names. Bounded to a handful of git forks regardless of repo size (no
-# per-file subprocess). A new, removed, or renamed untracked file changes
-# the name list and is caught; an in-place content edit to an untracked
-# file that keeps its name is the one gap this doesn't catch — narrower
-# than the pre-fix state, where an empty session state silently skipped
-# every such edit for the rest of the session.
-#
-# No --binary: a changed binary blob still changes the diff's "index
-# old..new" line, so the fingerprint still moves, at a fraction of the
-# cost (--binary was ~8x slower against a 20MB blob). --no-ext-diff avoids
-# running a project's configured external diff driver, which could be
-# arbitrarily expensive or have side effects.
-#
-# Known limits: this runs a full `git diff HEAD` on most Stops (roughly
-# 120ms per 100k changed lines on a typical repo) — cheap next to a real
-# test command, but not free. And it's a snapshot taken once per Stop: an
-# edit made by something else while the hook itself is still running (rare)
-# can get folded into the "last tested" fingerprint instead of triggering a
-# retest on the next Stop.
+# Snapshot code/config changes, including untracked file contents. An attempt
+# is not a pass: keep pending files after problems but don't repeat unchanged
+# failures on every Stop. Explicit TEST_RUNNER_FULL bypasses attempt suppression.
 tree_fingerprint() {
 	git rev-parse --git-dir >/dev/null 2>&1 || return 1
 	{
-		git diff --no-ext-diff HEAD 2>/dev/null || true
-		git ls-files --others --exclude-standard 2>/dev/null | sort
+		git diff --relative --no-ext-diff HEAD 2>/dev/null || true
+		git ls-files --others --exclude-standard 2>/dev/null | sort | while IFS= read -r file; do
+			path_is_excluded "$file" && continue
+			if ! has_code_extension "$file"; then
+				case "${file##*/}" in
+				pyproject.toml | uv.lock | package.json | go.mod | go.sum | go.work | go.work.sum | bun.lock | bun.lockb | yarn.lock | package-lock.json | pnpm-lock.yaml | pnpm-workspace.yaml) ;;
+				*) continue ;;
+				esac
+			fi
+			printf '%s\n' "$file"
+			[[ -f "$file" ]] && cksum <"$file"
+		done
 	} | cksum 2>/dev/null
 }
 
@@ -279,13 +306,46 @@ tree_unchanged_since_last_run() {
 	[[ -n "$current" && "$current" == "$stored" ]]
 }
 
+hook_attempt_path() {
+	local state
+	state=$(hook_state_path) || return 1
+	printf '%s.attempt\n' "$state"
+}
+
+attempt_fingerprint() {
+	local state
+	{
+		printf '%s\n' "$RUN_TREE_FINGERPRINT" "$HOOK_PROJECT_FALLBACK" "$TEST_RUNNER_TIMEOUT_SECS" "$TEST_RUNNER_DIFF_FALLBACK_LIMIT"
+		state=$(hook_state_path 2>/dev/null || true)
+		[[ -z "$state" || ! -f "$state" ]] || cksum <"$state"
+	} | cksum
+}
+
+previous_attempt_matches() {
+	local path previous
+	path=$(hook_attempt_path) || return 1
+	[[ -f "$path" && -n "$RUN_ATTEMPT_FINGERPRINT" ]] || return 1
+	IFS= read -r previous <"$path"
+	[[ "$previous" == "$RUN_ATTEMPT_FINGERPRINT" ]]
+}
+
+record_incomplete_attempt() {
+	local path
+	path=$(hook_attempt_path) || return 0
+	[[ -n "$RUN_ATTEMPT_FINGERPRINT" ]] || return 0
+	mkdir -p "$(dirname "$path")" 2>/dev/null || return 0
+	printf '%s\n' "$RUN_ATTEMPT_FINGERPRINT" >"$path"
+}
+
 clear_hook_state() {
 	# Truncate rather than remove the file list: an empty state file tells
 	# the next Stop "nothing recorded as pending", so collect_focus_files
 	# falls through to the fingerprint check below instead of trusting an
 	# absent file straight into a git diff fallback that would re-run tests
 	# for every still-dirty file.
-	local state_path state_dir fp_path
+	local state_path state_dir fp_path attempt_path
+	attempt_path=$(hook_attempt_path 2>/dev/null || true)
+	[[ -z "$attempt_path" ]] || rm -f "$attempt_path"
 	state_path=$(hook_state_path 2>/dev/null || true)
 	if [[ -n "$state_path" ]]; then
 		state_dir=$(dirname "$state_path")
@@ -296,7 +356,11 @@ clear_hook_state() {
 	fp_path=$(hook_fingerprint_path 2>/dev/null || true)
 	[[ -n "$fp_path" ]] || return 0
 	mkdir -p "$(dirname "$fp_path")" 2>/dev/null || return 0
-	tree_fingerprint >"$fp_path" 2>/dev/null
+	if [[ -n "$RUN_TREE_FINGERPRINT" ]]; then
+		printf '%s\n' "$RUN_TREE_FINGERPRINT" >"$fp_path"
+	else
+		tree_fingerprint >"$fp_path" 2>/dev/null
+	fi
 }
 
 path_is_excluded() {
@@ -341,18 +405,40 @@ has_code_extension() {
 diff_fallback_files() {
 	git rev-parse --git-dir >/dev/null 2>&1 || return 0
 	{
-		git diff --name-only --diff-filter=ACMRTUXB --cached HEAD 2>/dev/null || true
-		git diff --name-only --diff-filter=ACMRTUXB 2>/dev/null || true
+		git diff --relative --name-only --diff-filter=ACMRTUXB --cached HEAD 2>/dev/null || true
+		git diff --relative --name-only --diff-filter=ACMRTUXB 2>/dev/null || true
 		git ls-files --others --exclude-standard 2>/dev/null || true
 	} | sort -u
 }
 
+# Canonicalize the parent directory so absolute paths and ../ aliases cannot
+# select a project above the hook cwd, including through directory symlinks.
+hook_relative_file() {
+	local root="$1" file="$2" dir relative_dir
+	dir=$(cd -P -- "$(dirname "$file")" 2>/dev/null && pwd -P) || return 1
+	case "$dir/" in
+	"$root/"*) ;;
+	*) return 1 ;;
+	esac
+	relative_dir=${dir#"$root"}
+	relative_dir=${relative_dir#/}
+	printf '%s\n' "${relative_dir:+$relative_dir/}${file##*/}"
+}
+
 collect_focus_files() {
-	local state_path file count source="session state"
+	local state_path file count hook_root source="session state"
+	hook_root=$(pwd -P)
 	local tmp_raw tmp_filtered
 	state_path=$(hook_state_path 2>/dev/null || true)
-	tmp_raw=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-focus-raw.%s' "$$")
-	tmp_filtered=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-focus-filtered.%s' "$$")
+	tmp_raw=$(mktemp 2>/dev/null) || {
+		log_warn "Temporary file unavailable; checks incomplete"
+		return 2
+	}
+	tmp_filtered=$(mktemp 2>/dev/null) || {
+		rm -f "$tmp_raw"
+		log_warn "Temporary file unavailable; checks incomplete"
+		return 2
+	}
 	if [[ -n "$state_path" && -s "$state_path" ]]; then
 		# Recorded edits take precedence over the fingerprint check below.
 		cat "$state_path" >"$tmp_raw"
@@ -362,7 +448,6 @@ collect_focus_files() {
 		# changed since, including edits smart-lint doesn't track (Bash
 		# tool: sed -i, git apply, codegen). Genuinely nothing to test.
 		source="session state (tree unchanged since last run)"
-		FOCUS_TREE_UNCHANGED=1
 		: >"$tmp_raw"
 	elif is_subagent_child; then
 		source="subagent child without hook state"
@@ -372,20 +457,23 @@ collect_focus_files() {
 		diff_fallback_files >"$tmp_raw"
 	fi
 	while IFS= read -r file; do
-		[[ -n "$file" && -f "$file" ]] || continue
+		[[ -n "$file" ]] || continue
+		file=$(hook_relative_file "$hook_root" "$file") || continue
+		[[ -f "$file" ]] || continue
 		path_is_excluded "$file" && continue
 		has_code_extension "$file" || continue
 		printf '%s\n' "$file"
 	done <"$tmp_raw" | sort -u >"$tmp_filtered"
 	count=$(wc -l <"$tmp_filtered" 2>/dev/null | tr -d ' ')
 	if [[ "$source" == "git diff fallback" && "$count" -gt "$TEST_RUNNER_DIFF_FALLBACK_LIMIT" ]]; then
-		log_warn "Skipping focused tests: diff fallback exceeded TEST_RUNNER_DIFF_FALLBACK_LIMIT=$TEST_RUNNER_DIFF_FALLBACK_LIMIT"
+		report_incomplete "Skipping focused tests: diff fallback exceeded TEST_RUNNER_DIFF_FALLBACK_LIMIT=$TEST_RUNNER_DIFF_FALLBACK_LIMIT"
 		rm -f "$tmp_raw" "$tmp_filtered"
-		return 0
+		return 2
 	fi
 	cat "$tmp_filtered"
 	rm -f "$tmp_raw" "$tmp_filtered"
 	log_debug "Focus-file source: $source"
+	return 0
 }
 
 unique_lines() {
@@ -400,9 +488,9 @@ run_package_test_script() {
 	kind=${runner%%|*}
 	bin=${runner#*|}
 	case "$kind" in
-	yarn) run_test_compact "yarn $script" "$bin" run "$script" ;;
-	bun) run_test_compact "bun $script" "$bin" run "$script" ;;
-	npm) run_test_compact "npm $script" "$bin" run --silent "$script" ;;
+	yarn) run_and_capture "yarn $script" "$bin" run "$script" ;;
+	bun) run_and_capture "bun $script" "$bin" run "$script" ;;
+	npm) run_and_capture "npm $script" "$bin" run --silent "$script" ;;
 	*) return 1 ;;
 	esac
 }
@@ -467,15 +555,18 @@ run_nearest_makefile_tests() {
 }
 
 compact_output() {
-	local max_lines="$TEST_RUNNER_COMPACT_LINES"
-	awk -v max="$max_lines" '
+	local max_lines="$TEST_RUNNER_COMPACT_LINES" max_bytes=8000
+	LC_ALL=C awk -v max="$max_lines" -v budget="$max_bytes" '
 		/^[[:space:]]*$/ { next }
-		{ lines[++count] = $0 }
-		END {
-			limit = count < max ? count : max
-			for (i = 1; i <= limit; i++) print lines[i]
-			if (count > max) printf("... truncated %d line(s) ...\n", count - max)
+		{
+			count++
+			if (count > max || used >= budget) { truncated=1; next }
+			line=$0
+			if (length(line) > budget-used) { line=substr(line, 1, budget-used); truncated=1 }
+			print line
+			used+=length(line)+1
 		}
+		END { if (truncated) print "... output truncated ..." }
 	' <<<"$1"
 }
 
@@ -487,19 +578,74 @@ compact_output() {
 run_with_deadline() {
 	local budget="$1"
 	shift
-	local outfile timeout_flag code
-	outfile=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-run.%s' "$$")
-	timeout_flag=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-run-timeout.%s' "$$")
-	rm -f "$timeout_flag"
+	local outfile timeout_flag overflow_flag code
+	command_exists python3 || {
+		echo "Cannot safely capture test output: python3 unavailable"
+		return 125
+	}
+	outfile=$(mktemp 2>/dev/null) || {
+		echo "Cannot create test output file"
+		return 125
+	}
+	timeout_flag=$(mktemp 2>/dev/null) || {
+		rm -f "$outfile"
+		echo "Cannot create test deadline file"
+		return 125
+	}
+	overflow_flag="$timeout_flag.overflow"
+	rm -f "$timeout_flag" "$overflow_flag"
 	(
+		cmd_pid="" watchdog_pid=""
+		# shellcheck disable=SC2329 # Invoked by the cancellation traps in this subshell.
+		cancel_test_jobs() {
+			# These jobs have separate process groups, outside the adapter's
+			# hook group. An adapter cancellation must not orphan them.
+			if [[ -n "$watchdog_pid" ]]; then kill -KILL -- "-$watchdog_pid" 2>/dev/null; fi
+			if [[ -n "$cmd_pid" ]]; then
+				kill -TERM -- "-$cmd_pid" 2>/dev/null
+				kill -KILL -- "-$cmd_pid" 2>/dev/null
+			fi
+			rm -f "$outfile" "$timeout_flag" "$overflow_flag"
+			exit 143
+		}
+		trap cancel_test_jobs HUP INT TERM
 		# set -m gives "$@" its own process group so the watchdog can kill
 		# the whole tree; it also makes bash announce job state changes
 		# ("[1]+ Terminated ...") on this subshell's stderr, which is not
 		# part of the command's own output — redirected away below.
 		set -m
-		"$@" >"$outfile" 2>&1 &
+		(
+			set +m
+			"$@" 2>&1 | python3 -I -S -c '
+import os
+import signal
+import sys
+
+limit = int(sys.argv[1])
+written = 0
+while True:
+    chunk = os.read(0, 8192)
+    if not chunk:
+        break
+    sys.stdout.buffer.write(chunk[:max(0, limit - written)])
+    sys.stdout.buffer.flush()
+    written += len(chunk)
+    if written > limit:
+        try:
+            with open(sys.argv[2], "x"):
+                pass
+        except OSError:
+            pass
+        os.killpg(os.getpgrp(), signal.SIGKILL)
+
+' "$TEST_RUNNER_OUTPUT_BYTES" "$overflow_flag"
+			codes=("${PIPESTATUS[@]}")
+			[[ "${codes[1]}" -eq 0 ]] || exit 125
+			exit "${codes[0]}"
+		) >"$outfile" 2>/dev/null &
 		cmd_pid=$!
 		(
+			set +m
 			sleep "$budget"
 			: >"$timeout_flag"
 			kill -TERM -- "-$cmd_pid" 2>/dev/null
@@ -526,8 +672,12 @@ run_with_deadline() {
 	if [[ -f "$timeout_flag" && "$code" -gt 128 ]]; then
 		code=124
 	fi
+	if [[ -e "$overflow_flag" ]]; then
+		printf '\nTest command output exceeded %s bytes\n' "$TEST_RUNNER_OUTPUT_BYTES"
+		code=125
+	fi
 	cat "$outfile" 2>/dev/null
-	rm -f "$outfile" "$timeout_flag"
+	rm -f "$outfile" "$timeout_flag" "$overflow_flag"
 	return "$code"
 }
 
@@ -539,8 +689,8 @@ remaining_budget() {
 }
 
 run_test_compact() {
-	local label="$1"
-	shift
+	local label="$1" report_kind="$2" report_file="$3"
+	shift 3
 	local remaining
 	remaining=$(remaining_budget)
 	if [[ "$remaining" -le 0 ]]; then
@@ -550,27 +700,106 @@ run_test_compact() {
 	fi
 	TESTS_RAN=1
 	log_info "Running: $*"
-	local output code
-	output=$(run_with_deadline "$remaining" "$@")
-	code=$?
+	local output="" code
+	if [[ "$report_kind" == go-json ]]; then
+		report_file=$(mktemp 2>/dev/null) || {
+			report_incomplete "Cannot create Go test report file"
+			return 0
+		}
+		TEST_REPORT_FILES+=("$report_file")
+		run_with_deadline "$remaining" "$@" >"$report_file"
+		code=$?
+	else
+		output=$(run_with_deadline "$remaining" "$@")
+		code=$?
+	fi
 	if [[ "$code" -eq 124 ]]; then
 		TESTS_TIMED_OUT=1
-		[[ -n "$output" ]] && compact_output "$output" >&2
 		log_warn "skipped: timeout — $label exceeded ${TEST_RUNNER_TIMEOUT_SECS}s budget"
+		[[ -n "$output" ]] && compact_output "$output" >&2
 		return 0
 	fi
+	if [[ "$code" -eq 125 ]]; then
+		report_incomplete "$label: command capture unavailable or output limit exceeded (exit 125)"
+		if [[ "$report_kind" == go-json ]]; then output=$(head -c 8192 "$report_file"); fi
+		[[ -z "$output" ]] || compact_output "$output" >&2
+		return 0
+	fi
+
+	if [[ -n "$report_kind" ]]; then
+		local summary summary_code executed failed diagnostics
+		remaining=$(remaining_budget)
+		if [[ "$remaining" -le 0 ]]; then
+			TESTS_TIMED_OUT=1
+			report_incomplete "$label: timeout before test results could be verified"
+			return 0
+		fi
+		summary=$(run_with_deadline "$remaining" python3 -I -S "$HOOK_SCRIPT_DIR/parse-report.py" "$report_kind" "$report_file" <<<"$output")
+		summary_code=$?
+		if [[ "$summary_code" -ne 0 ]]; then
+			[[ "$summary_code" -ne 124 ]] || TESTS_TIMED_OUT=1
+			report_incomplete "$label: $(compact_output "$summary")"
+			if [[ "$report_kind" == go-json ]]; then output=$(head -c 8192 "$report_file"); fi
+			[[ -z "$output" ]] || compact_output "$output" >&2
+			[[ "$code" -eq 0 ]] && return 0 || return 2
+		fi
+		read -r executed failed <<<"${summary%%$'\n'*}"
+		diagnostics=""
+		[[ "$summary" != *$'\n'* ]] || diagnostics=${summary#*$'\n'}
+		if [[ "$report_kind" == go-json ]]; then
+			output="$diagnostics"
+		elif [[ -n "$diagnostics" ]]; then
+			output+=$'\n'"$diagnostics"
+		fi
+		if [[ "$code" -eq 0 && "$failed" -gt 0 ]]; then
+			report_incomplete "$label: report contains failed tests despite exit 0"
+			[[ -z "$output" ]] || compact_output "$output" >&2
+			return 0
+		fi
+		if [[ "$code" -eq 0 && "$executed" -eq 0 ]]; then
+			report_incomplete "$label: no tests executed"
+			return 0
+		fi
+	fi
+
 	if [[ "$code" -eq 0 ]]; then
-		TESTS_PASSED=1
-		log_debug "$label passed"
+		if [[ -z "$report_kind" ]]; then
+			TESTS_COMMANDS_COMPLETED=1
+			report_incomplete "$label completed with exit 0; test collection is not verified for this runner"
+		else
+			TESTS_PASSED=1
+		fi
+		log_debug "$label completed"
 		return 0
 	fi
-	[[ -n "$output" ]] && compact_output "$output" >&2
 	log_warn "$label failed with exit $code"
+	[[ -n "$output" ]] && compact_output "$output" >&2
 	return 2
 }
 
 run_and_capture() {
-	run_test_compact "$@"
+	local label="$1" kind=""
+	shift
+	if [[ "$1" == go && "${2:-}" == test ]]; then kind=go-json; fi
+	run_test_compact "$label" "$kind" "" "$@"
+}
+
+run_js_reported_tests() {
+	local label="$1" kind="$2" report code
+	shift 2
+	report=$(mktemp 2>/dev/null) || {
+		report_incomplete "Cannot create JS test report file"
+		return 0
+	}
+	TEST_REPORT_FILES+=("$report")
+	case "$kind" in
+	vitest) run_test_compact "$label" js-json "$report" "$@" --reporter=json "--outputFile=$report" ;;
+	jest) run_test_compact "$label" js-json "$report" "$@" --json "--outputFile=$report" ;;
+	bun) run_test_compact "$label" bun-junit "$report" "$@" --reporter=junit "--reporter-outfile=$report" ;;
+	esac
+	code=$?
+	rm -f "$report"
+	return "$code"
 }
 
 # Like run_test_compact, but treats pytest exit code 5 ("no tests collected")
@@ -592,11 +821,12 @@ run_pytest_compact() {
 	code=$?
 	if [[ "$code" -eq 124 ]]; then
 		TESTS_TIMED_OUT=1
-		[[ -n "$output" ]] && compact_output "$output" >&2
 		log_warn "skipped: timeout — $label exceeded ${TEST_RUNNER_TIMEOUT_SECS}s budget"
+		[[ -n "$output" ]] && compact_output "$output" >&2
 		return 0
 	fi
 	if [[ "$code" -eq 5 ]]; then
+		TESTS_INCOMPLETE=1
 		log_info "skipped: $label collected no tests"
 		return 0
 	fi
@@ -605,8 +835,8 @@ run_pytest_compact() {
 		log_debug "$label passed"
 		return 0
 	fi
-	[[ -n "$output" ]] && compact_output "$output" >&2
 	log_warn "$label failed with exit $code"
+	[[ -n "$output" ]] && compact_output "$output" >&2
 	return 2
 }
 
@@ -615,6 +845,7 @@ add_existing_file() {
 	[[ -f "$candidate" ]] && printf '%s\n' "$candidate"
 }
 
+# shellcheck disable=SC2329 # Invoked as a function command by run_with_deadline.
 uv_pytest_prefix_args() {
 	[[ -f pyproject.toml ]] || return 1
 	command_exists python3 || return 1
@@ -783,28 +1014,71 @@ if isinstance(groups, dict):
         print(group)
         sys.exit(0)
 
+# Workspace dev dependencies may live only at the workspace root. Detect an
+# existing workspace environment, then let uv itself confirm membership and
+# interpreter selection in the bounded no-sync import probe. Never guess globs.
+for directory in Path.cwd().parents:
+    manifest = directory / "pyproject.toml"
+    try:
+        text = manifest.read_text()
+    except OSError:
+        continue
+    parent = parse_with_toml(text)
+    if isinstance(parent, dict):
+        tools = parent.get("tool", {})
+        uv = tools.get("uv", {}) if isinstance(tools, dict) else {}
+        workspace = uv.get("workspace") if isinstance(uv, dict) else None
+        is_workspace = isinstance(workspace, dict)
+    else:
+        is_workspace = bool(re.search(r"(?m)^\s*\[tool\.uv\.workspace\]", text))
+    if is_workspace and (directory / ".venv" / "bin" / "pytest").is_file():
+        print("run")
+        sys.exit(0)
+
 sys.exit(1)
 PY
 }
 
 pytest_runner_command() {
-	local arg uv_args=()
+	local -x UV_NO_SYNC=1
+	local arg prefix probe_code remaining uv_args=()
 	if command_exists uv && [[ -f pyproject.toml ]]; then
+		remaining=$(remaining_budget)
+		[[ "$remaining" -gt 0 ]] || return 124
+		prefix=$(run_with_deadline "$remaining" uv_pytest_prefix_args)
+		probe_code=$?
+		[[ "$probe_code" -ne 124 ]] || return 124
+		[[ "$probe_code" -ne 125 ]] || return 125
+		[[ "$probe_code" -eq 0 ]] || prefix=""
 		while IFS= read -r arg; do
 			[[ -n "$arg" ]] && uv_args+=("$arg")
-		done < <(uv_pytest_prefix_args)
-		if [[ "${#uv_args[@]}" -gt 0 ]] && uv "${uv_args[@]}" python -c 'import pytest' >/dev/null 2>&1; then
-			printf '%s\n' uv "${uv_args[@]}" pytest
-			return 0
+		done <<<"$prefix"
+		if [[ "${#uv_args[@]}" -gt 0 ]]; then
+			remaining=$(remaining_budget)
+			[[ "$remaining" -gt 0 ]] || return 124
+			run_with_deadline "$remaining" uv "${uv_args[@]}" python -c 'import pytest' >/dev/null 2>&1
+			probe_code=$?
+			[[ "$probe_code" -ne 124 ]] || return 124
+			if [[ "$probe_code" -eq 0 ]]; then
+				printf '%s\n' uv "${uv_args[@]}" pytest
+				return 0
+			fi
 		fi
 	fi
 	if [[ -x .venv/bin/pytest ]]; then
 		printf '%s\n' .venv/bin/pytest
 		return 0
 	fi
-	if command_exists python3 && python3 -c "import pytest" 2>/dev/null; then
-		printf '%s\n' python3 -m pytest
-		return 0
+	if command_exists python3; then
+		remaining=$(remaining_budget)
+		[[ "$remaining" -gt 0 ]] || return 124
+		run_with_deadline "$remaining" python3 -c "import pytest" >/dev/null 2>&1
+		probe_code=$?
+		[[ "$probe_code" -ne 124 ]] || return 124
+		if [[ "$probe_code" -eq 0 ]]; then
+			printf '%s\n' python3 -m pytest
+			return 0
+		fi
 	fi
 	return 1
 }
@@ -832,7 +1106,11 @@ run_project_test_groups() {
 	local file root owner old_pwd="$PWD" i status=0
 	[[ "${#files[@]}" -gt 0 ]] || return 0
 	for file in "${files[@]}"; do
-		root=$(nearest_project_root "$file" "$manifest")
+		if [[ "$manifest" == package.json ]]; then
+			root=$(js_effective_project_root "$file")
+		else
+			root=$(nearest_project_root "$file" "$manifest")
+		fi
 		owners+=("$root")
 		roots+=("$root")
 	done
@@ -883,6 +1161,18 @@ find_python_tests_for_source() {
 	done <"$index"
 }
 
+# shellcheck disable=SC2329 # Invoked under the shared command deadline.
+index_python_tests() (
+	set -o pipefail
+	find . -type d \( -name .git -o -name .venv -o -name venv -o -name node_modules -o -name vendor -o -name dist -o -name build -o -name .tox -o -name __pycache__ \) -prune -o \
+		-type d ! -path . -exec test -f '{}/pyproject.toml' \; -prune -o \
+		-type f \( -name 'test_*.py' -o -name '*_test.py' \) -print |
+		while IFS= read -r candidate; do
+			candidate=${candidate#./}
+			case "$candidate" in tests/* | test/* | */tests/* | */test/*) printf '%s\n' "$candidate" ;; esac
+		done
+)
+
 run_python_project_tests() {
 	local root="$1"
 	shift
@@ -891,18 +1181,33 @@ run_python_project_tests() {
 	local -x UV_NO_SYNC=1
 	local focus_files=("$@")
 	local tests=()
-	local file base tmp runner=() candidate_index
-	local has_python_source=0
+	local file base tmp runner=() candidate_index selection selection_code before
+	local needs_mapping=0 remaining discovery_code
 	for file in "${focus_files[@]}"; do
-		[[ "$file" == *.py ]] && has_python_source=1
+		base=${file##*/}
+		case "$base" in test_*.py | *_test.py) ;; *) needs_mapping=1 ;; esac
 	done
-	[[ "$has_python_source" -eq 1 ]] || return 0
-	candidate_index=$(mktemp 2>/dev/null) || return 0
-	for test_dir in tests test; do
-		[[ -d "$test_dir" ]] || continue
-		find "$test_dir" -type d -exec test -f '{}/pyproject.toml' \; -prune -o \
-			-type f \( -name 'test_*.py' -o -name '*_test.py' \) -print 2>/dev/null >>"$candidate_index"
-	done
+	candidate_index=$(mktemp 2>/dev/null) || {
+		report_incomplete "Cannot index Python tests: temporary file unavailable"
+		return 0
+	}
+	if [[ "$needs_mapping" -eq 1 ]]; then
+		remaining=$(remaining_budget)
+		if [[ "$remaining" -le 0 ]]; then
+			TESTS_TIMED_OUT=1
+			report_incomplete "Python test discovery skipped: timeout in $root"
+			rm -f "$candidate_index"
+			return 0
+		fi
+		run_with_deadline "$remaining" index_python_tests >"$candidate_index"
+		discovery_code=$?
+		if [[ "$discovery_code" -ne 0 ]]; then
+			[[ "$discovery_code" -ne 124 ]] || TESTS_TIMED_OUT=1
+			report_incomplete "Python test discovery incomplete in $root (exit $discovery_code)"
+			rm -f "$candidate_index"
+			return 0
+		fi
+	fi
 	for file in "${focus_files[@]}"; do
 		[[ "$file" == *.py ]] || continue
 		base=${file##*/}
@@ -914,23 +1219,39 @@ run_python_project_tests() {
 		if [[ "$base" == test_*.py || "$base" == *_test.py ]]; then
 			tests+=("$file")
 		else
+			before=${#tests[@]}
 			while IFS= read -r candidate; do
 				[[ -n "$candidate" ]] && tests+=("$candidate")
 			done < <(find_python_tests_for_source "$file" "$candidate_index")
+			[[ "${#tests[@]}" -gt "$before" ]] || report_incomplete "No focused Python tests found for $file in $root"
 		fi
 	done
 	rm -f "$candidate_index"
 	[[ "${#tests[@]}" -gt 0 ]] || return 0
-	tmp=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-python-tests.%s' "$$")
+	tmp=$(mktemp 2>/dev/null) || {
+		log_warn "Temporary file unavailable; checks incomplete"
+		return 2
+	}
 	printf '%s\n' "${tests[@]}" | unique_lines >"$tmp"
 	tests=()
 	while IFS= read -r file; do tests+=("$file"); done <"$tmp"
 	rm -f "$tmp"
+	selection=$(pytest_runner_command)
+	selection_code=$?
+	if [[ "$selection_code" -ne 0 && "$selection_code" -ne 1 && "$selection_code" -ne 124 ]]; then
+		report_incomplete "Cannot select Python environment in $root (exit $selection_code)"
+		return 0
+	fi
+	if [[ "$selection_code" -eq 124 ]]; then
+		TESTS_TIMED_OUT=1
+		report_incomplete "skipped: timeout selecting Python environment in $root"
+		return 0
+	fi
 	while IFS= read -r file; do
 		[[ -n "$file" ]] && runner+=("$file")
-	done < <(pytest_runner_command)
+	done <<<"$selection"
 	if [[ "${#runner[@]}" -eq 0 ]]; then
-		log_warn "pytest not found — skipping focused Python tests"
+		report_incomplete "pytest not found — skipping focused Python tests"
 		return 0
 	fi
 	runner+=(-q --maxfail=1 --tb=short)
@@ -959,15 +1280,18 @@ run_go_project_tests() {
 	done
 	[[ "${#dirs[@]}" -gt 0 ]] || return 0
 	command_exists go || {
-		log_warn "go not found — skipping focused Go tests"
+		report_incomplete "go not found — skipping focused Go tests"
 		return 0
 	}
-	tmp=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-go-tests.%s' "$$")
+	tmp=$(mktemp 2>/dev/null) || {
+		log_warn "Temporary file unavailable; checks incomplete"
+		return 2
+	}
 	printf '%s\n' "${dirs[@]}" | unique_lines >"$tmp"
 	local status=0
 	while IFS= read -r pkg; do
 		[[ -n "$pkg" ]] || continue
-		run_and_capture "Go tests" go test -failfast "$pkg" || status=2
+		run_and_capture "Go tests" go test -json -failfast "$pkg" || status=2
 	done <"$tmp"
 	rm -f "$tmp"
 	return "$status"
@@ -1001,10 +1325,13 @@ run_rust_tests() {
 	done
 	[[ "${#manifests[@]}" -gt 0 ]] || return 0
 	command_exists cargo || {
-		log_warn "cargo not found — skipping focused Rust tests"
+		report_incomplete "cargo not found — skipping focused Rust tests"
 		return 0
 	}
-	tmp=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-rust-tests.%s' "$$")
+	tmp=$(mktemp 2>/dev/null) || {
+		log_warn "Temporary file unavailable; checks incomplete"
+		return 2
+	}
 	printf '%s\n' "${manifests[@]}" | unique_lines >"$tmp"
 	while IFS= read -r manifest; do
 		[[ -n "$manifest" ]] || continue
@@ -1143,10 +1470,13 @@ run_csharp_tests() {
 	done
 	[[ "${#targets[@]}" -gt 0 ]] || return 0
 	command_exists dotnet || {
-		log_warn "dotnet not found — skipping focused C# tests"
+		report_incomplete "dotnet not found — skipping focused C# tests"
 		return 0
 	}
-	tmp=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-csharp-tests.%s' "$$")
+	tmp=$(mktemp 2>/dev/null) || {
+		log_warn "Temporary file unavailable; checks incomplete"
+		return 2
+	}
 	printf '%s\n' "${targets[@]}" | unique_lines >"$tmp"
 	while IFS= read -r target; do
 		[[ -n "$target" ]] || continue
@@ -1302,7 +1632,7 @@ jvm_run_gradle_tests() {
 			run_and_capture "JVM tests (Gradle)" gradle -p "$root" "$task"
 		fi
 	else
-		log_warn "gradle not found — skipping focused JVM Gradle tests"
+		report_incomplete "gradle not found — skipping focused JVM Gradle tests"
 		return 0
 	fi
 }
@@ -1329,7 +1659,7 @@ jvm_run_maven_tests() {
 			run_and_capture "JVM tests (Maven)" mvn -q -f "$pom" test
 		fi
 	else
-		log_warn "mvn not found — skipping focused JVM Maven tests"
+		report_incomplete "mvn not found — skipping focused JVM Maven tests"
 		return 0
 	fi
 }
@@ -1337,7 +1667,10 @@ jvm_run_maven_tests() {
 run_jvm_tests() {
 	local focus_files=("$@")
 	local tmp file root project_dir task filter pom status=0
-	tmp=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-jvm-tests.%s' "$$")
+	tmp=$(mktemp 2>/dev/null) || {
+		log_warn "Temporary file unavailable; checks incomplete"
+		return 2
+	}
 	for file in "${focus_files[@]}"; do
 		case "$file" in
 		*.java | *.kt | *.kts | pom.xml | build.gradle | settings.gradle | gradle.properties) ;;
@@ -1383,7 +1716,7 @@ run_full_jvm_tests() {
 			jvm_run_gradle_tests "$root" test
 			return $?
 		fi
-		log_warn "gradle not found — skipping full JVM Gradle tests"
+		report_incomplete "gradle not found — skipping full JVM Gradle tests"
 	fi
 	pom=$(find . -maxdepth 4 -type f -name pom.xml | sort | head -n 1)
 	if [[ -n "$pom" ]]; then
@@ -1391,7 +1724,7 @@ run_full_jvm_tests() {
 			jvm_run_maven_tests "$pom"
 			return $?
 		fi
-		log_warn "mvn not found — skipping full JVM Maven tests"
+		report_incomplete "mvn not found — skipping full JVM Maven tests"
 	fi
 	return 1
 }
@@ -1416,14 +1749,19 @@ js_file_has_tests() {
 }
 
 find_js_tests_for_source() {
-	local file="$1" stem="${1##*/}" candidate base dir candidate_dir
+	local file="$1" stem="${1##*/}" candidate base dir candidate_dir owner candidate_owner relative
 	stem=${stem%.*}
 	dir=${file%/*}
 	[[ "$dir" == "$file" ]] && dir=.
+	owner=$(nearest_project_root "$file" package.json)
 	shift
 	for candidate in "$@"; do
+		candidate_owner=$(nearest_project_root "$candidate" package.json)
+		[[ "$candidate_owner" == "$owner" ]] || continue
+		relative="$candidate"
+		[[ "$owner" == "." ]] || relative=${candidate#"$owner/"}
 		candidate_dir=${candidate%/*}
-		case "$candidate" in tests/* | test/* | src/*) ;; *) [[ "$candidate_dir" == "$dir" ]] || continue ;; esac
+		case "$relative" in tests/* | test/* | src/*) ;; *) [[ "$candidate_dir" == "$dir" ]] || continue ;; esac
 		base=${candidate##*/}
 		if [[ "$base" == "$stem".test.* || "$base" == "$stem".spec.* || "$base" == test_"$stem".* ]]; then
 			printf '%s\n' "$candidate"
@@ -1432,10 +1770,14 @@ find_js_tests_for_source() {
 }
 
 index_js_test_candidates() {
-	local test_dir file dir
-	for test_dir in tests test src; do
+	local test_dir file dir root
+	local search_dirs=(tests test src)
+	while IFS= read -r root; do
+		[[ "$root" == "." ]] || search_dirs+=("$root/tests" "$root/test" "$root/src")
+	done < <(for file in "$@"; do nearest_project_root "$file" package.json; done | sort -u)
+	for test_dir in "${search_dirs[@]}"; do
 		[[ -d "$test_dir" ]] || continue
-		find "$test_dir" -type d -exec test -f '{}/package.json' \; -prune -o \
+		find "$test_dir" -type d ! -path "$test_dir" -exec test -f '{}/package.json' \; -prune -o \
 			-type f \( -name '*.test.*' -o -name '*.spec.*' -o -name 'test_*.*' \) -print 2>/dev/null
 	done
 	# Adjacent tests outside the recursively indexed roots need one scan per dir.
@@ -1474,7 +1816,21 @@ js_runner_command() {
 		printf '%s\n' "bun|bun"
 		return 0
 	fi
-	return 1
+	return 2
+}
+
+js_effective_project_root() {
+	local file="$1" root runner code
+	root=$(nearest_project_root "$file" package.json)
+	while :; do
+		runner=$(cd "$root" && js_runner_command)
+		code=$?
+		if [[ -n "$runner" || "$code" -eq 1 || "$root" == "." ]]; then
+			printf '%s\n' "$root"
+			return 0
+		fi
+		root=$(dirname "$root")
+	done
 }
 
 run_javascript_tests() {
@@ -1512,7 +1868,7 @@ run_javascript_project_tests() {
 
 	runner=$(js_runner_command || true)
 	if [[ -z "$runner" ]]; then
-		log_warn "No focused JS test runner found — skipping JS tests"
+		report_incomplete "No focused JS test runner found — skipping JS tests"
 		return 0
 	fi
 
@@ -1524,7 +1880,10 @@ run_javascript_project_tests() {
 		done
 	fi
 
-	tmp=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-js-tests.%s' "$$")
+	tmp=$(mktemp 2>/dev/null) || {
+		log_warn "Temporary file unavailable; checks incomplete"
+		return 2
+	}
 	printf '%s\n' "${sources[@]}" | unique_lines >"$tmp.sources"
 	printf '%s\n' "${tests[@]}" | unique_lines >"$tmp.tests"
 	printf '%s\n' "${mapped_tests[@]}" | unique_lines >"$tmp.mapped"
@@ -1542,18 +1901,18 @@ run_javascript_project_tests() {
 	case "$kind" in
 	vitest)
 		if [[ "${#sources[@]}" -gt 0 ]]; then
-			run_and_capture "JS related tests (vitest)" "$bin" related "${sources[@]}" --run --passWithNoTests || status=2
+			run_js_reported_tests "JS related tests (vitest)" vitest "$bin" related "${sources[@]}" --run --passWithNoTests || status=2
 		fi
 		if [[ "${#tests[@]}" -gt 0 ]]; then
-			run_and_capture "JS tests (vitest)" "$bin" run "${tests[@]}" --passWithNoTests || status=2
+			run_js_reported_tests "JS tests (vitest)" vitest "$bin" run "${tests[@]}" --passWithNoTests || status=2
 		fi
 		;;
 	jest)
 		if [[ "${#sources[@]}" -gt 0 ]]; then
-			run_and_capture "JS related tests (jest)" "$bin" --findRelatedTests "${sources[@]}" --passWithNoTests || status=2
+			run_js_reported_tests "JS related tests (jest)" jest "$bin" --findRelatedTests "${sources[@]}" --passWithNoTests || status=2
 		fi
 		if [[ "${#tests[@]}" -gt 0 ]]; then
-			run_and_capture "JS tests (jest)" "$bin" "${tests[@]}" --passWithNoTests || status=2
+			run_js_reported_tests "JS tests (jest)" jest "$bin" "${tests[@]}" --passWithNoTests || status=2
 		fi
 		;;
 	bun)
@@ -1561,7 +1920,7 @@ run_javascript_project_tests() {
 		[[ "${#tests[@]}" -gt 0 ]] || return 0
 		while IFS= read -r file; do deduped+=("$file"); done < <(printf '%s\n' "${tests[@]}" | unique_lines)
 		tests=("${deduped[@]}")
-		run_and_capture "JS tests (bun)" bun test --isolate "${tests[@]}" || status=2
+		run_js_reported_tests "JS tests (bun)" bun bun test --isolate "${tests[@]}" || status=2
 		;;
 	esac
 	return "$status"
@@ -1584,9 +1943,9 @@ run_full_javascript_tests() {
 	kind=${runner%%|*}
 	bin=${runner#*|}
 	case "$kind" in
-	vitest) run_and_capture "vitest" "$bin" run --passWithNoTests ;;
-	jest) run_and_capture "jest" "$bin" --passWithNoTests ;;
-	bun) run_and_capture "bun test" bun test --isolate ;;
+	vitest) run_js_reported_tests "vitest" vitest "$bin" run --passWithNoTests ;;
+	jest) run_js_reported_tests "jest" jest "$bin" --passWithNoTests ;;
+	bun) run_js_reported_tests "bun test" bun bun test --isolate ;;
 	*) return 1 ;;
 	esac
 }
@@ -1607,10 +1966,13 @@ run_shell_tests() {
 	done
 	[[ "${#tests[@]}" -gt 0 ]] || return 0
 	command_exists bats || {
-		log_warn "bats not found — skipping focused shell tests"
+		report_incomplete "bats not found — skipping focused shell tests"
 		return 0
 	}
-	tmp=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-shell-tests.%s' "$$")
+	tmp=$(mktemp 2>/dev/null) || {
+		log_warn "Temporary file unavailable; checks incomplete"
+		return 2
+	}
 	printf '%s\n' "${tests[@]}" | unique_lines >"$tmp"
 	tests=()
 	while IFS= read -r file; do tests+=("$file"); done <"$tmp"
@@ -1629,10 +1991,13 @@ run_full_shell_tests() {
 	done
 	[[ "${#tests[@]}" -gt 0 ]] || return 1
 	command_exists bats || {
-		log_warn "bats not found — skipping full shell tests"
+		report_incomplete "bats not found — skipping full shell tests"
 		return 0
 	}
-	tmp=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-full-shell-tests.%s' "$$")
+	tmp=$(mktemp 2>/dev/null) || {
+		log_warn "Temporary file unavailable; checks incomplete"
+		return 2
+	}
 	printf '%s\n' "${tests[@]}" | unique_lines >"$tmp"
 	tests=()
 	while IFS= read -r file; do tests+=("$file"); done <"$tmp"
@@ -1641,6 +2006,7 @@ run_full_shell_tests() {
 }
 
 run_full_override() {
+	local -x UV_NO_SYNC=1
 	log_warn "TEST_RUNNER_FULL=1 set — running project-level tests"
 	local full_status
 	if [[ -f "Makefile" ]]; then
@@ -1653,7 +2019,7 @@ run_full_override() {
 		done
 	fi
 	if [[ -f go.mod ]] && command_exists go; then
-		run_and_capture "go test" go test -failfast ./...
+		run_and_capture "go test" go test -json -failfast ./...
 		return $?
 	fi
 	if [[ -f Cargo.toml ]]; then
@@ -1661,7 +2027,7 @@ run_full_override() {
 			run_and_capture "cargo test" cargo test --all-targets
 			return $?
 		fi
-		log_warn "cargo not found — skipping full Rust tests"
+		report_incomplete "cargo not found — skipping full Rust tests"
 	fi
 	run_full_jvm_tests
 	full_status=$?
@@ -1675,12 +2041,19 @@ run_full_override() {
 			run_and_capture "dotnet test" dotnet test "$csharp_target"
 			return $?
 		fi
-		log_warn "dotnet not found — skipping full C# tests"
+		report_incomplete "dotnet not found — skipping full C# tests"
 	fi
-	local pytest_runner=() pytest_arg
+	local pytest_runner=() pytest_arg selection selection_code
+	selection=$(pytest_runner_command)
+	selection_code=$?
+	if [[ "$selection_code" -eq 124 ]]; then
+		TESTS_TIMED_OUT=1
+		report_incomplete "skipped: timeout selecting Python environment"
+		return 0
+	fi
 	while IFS= read -r pytest_arg; do
 		[[ -n "$pytest_arg" ]] && pytest_runner+=("$pytest_arg")
-	done < <(pytest_runner_command)
+	done <<<"$selection"
 	if [[ "${#pytest_runner[@]}" -gt 0 ]]; then
 		pytest_runner+=(-q --maxfail=1 --tb=short)
 		run_pytest_compact "pytest" "${pytest_runner[@]}"
@@ -1704,17 +2077,55 @@ run_full_override() {
 	case "$full_status" in
 	0 | 2) return "$full_status" ;;
 	esac
-	log_warn "No full project test runner found"
+	report_incomplete "No full project test runner found"
 	return 0
 }
 
 main() {
-	init_hook_input
-	maybe_cd_to_hook_cwd
+	if ! init_hook_input; then finish_hook; fi
+	normalize_timeout
+	if ! maybe_cd_to_hook_cwd; then finish_hook; fi
+	RUN_TREE_FINGERPRINT=$(tree_fingerprint)
+	RUN_ATTEMPT_FINGERPRINT=$(attempt_fingerprint)
 	log_debug "TEST_RUNNER_TIMEOUT_SECS=$TEST_RUNNER_TIMEOUT_SECS"
 
 	if [[ "${SKIP_TESTS:-}" == "1" ]] || [[ -f ".notests" ]]; then
 		echo -e "${CYAN}⏭ Tests skipped${NC}" >&2
+		# An explicit skip is not verification; leave pending work intact.
+		finish_hook 0
+	fi
+
+	if [[ "$TEST_RUNNER_FULL" == "1" ]]; then
+		echo "" >&2
+		echo "🧪 Running focused tests..." >&2
+		echo "─────────────────────────" >&2
+		run_full_override
+		status=$?
+		if [[ "$status" -eq 0 && "$TESTS_TIMED_OUT" -eq 0 && "$TESTS_INCOMPLETE" -eq 0 ]]; then
+			clear_hook_state
+		else
+			record_incomplete_attempt
+		fi
+		finish_hook "$status"
+	fi
+
+	if previous_attempt_matches; then
+		log_debug "skipped: unchanged since previous incomplete or failed attempt; retry the reported command explicitly"
+		finish_hook
+	fi
+	local focus_files=()
+	local file selection
+	if ! selection=$(collect_focus_files); then
+		report_incomplete "Could not discover focused tests; agent may continue"
+		record_incomplete_attempt
+		finish_hook
+	fi
+	while IFS= read -r file; do
+		[[ -n "$file" ]] && focus_files+=("$file")
+	done <<<"$selection"
+
+	if [[ "${#focus_files[@]}" -eq 0 ]]; then
+		log_debug "skipped: no changed code files with focused test support"
 		clear_hook_state
 		finish_hook 0
 	fi
@@ -1722,33 +2133,6 @@ main() {
 	echo "" >&2
 	echo "🧪 Running focused tests..." >&2
 	echo "─────────────────────────" >&2
-
-	if [[ "$TEST_RUNNER_FULL" == "1" ]]; then
-		run_full_override
-		status=$?
-		if [[ "$status" -eq 0 && "$TESTS_TIMED_OUT" -eq 0 ]]; then
-			clear_hook_state
-		fi
-		finish_hook "$status"
-	fi
-
-	local focus_files=()
-	local file
-	while IFS= read -r file; do
-		[[ -n "$file" ]] && focus_files+=("$file")
-	done < <(collect_focus_files)
-
-	if [[ "${#focus_files[@]}" -eq 0 ]]; then
-		log_info "skipped: no changed code files with focused test support"
-		# When the tree's fingerprint already matched, state and fingerprint
-		# on disk are already correct — skip re-deriving them on every
-		# repeated no-op Stop. Any other empty-result path (fresh session,
-		# subagent child, a diff fallback with no code-extension matches)
-		# still needs a fresh baseline written.
-		[[ "$FOCUS_TREE_UNCHANGED" -eq 1 ]] || clear_hook_state
-		finish_hook 0
-	fi
-
 	log_debug "Focus files: ${focus_files[*]}"
 	local status=0
 	run_nearest_makefile_tests "${focus_files[@]}" || status=2
@@ -1765,7 +2149,7 @@ main() {
 		[[ "$is_covered" -eq 1 ]] || uncovered_files+=("$file")
 	done
 
-	if [[ "$status" -eq 0 && "${#uncovered_files[@]}" -gt 0 ]]; then
+	if [[ "${#uncovered_files[@]}" -gt 0 ]]; then
 		run_python_tests "${uncovered_files[@]}" || status=2
 		run_go_tests "${uncovered_files[@]}" || status=2
 		run_rust_tests "${uncovered_files[@]}" || status=2
@@ -1781,21 +2165,28 @@ main() {
 	echo "" >&2
 	if [[ "$status" -eq 0 ]]; then
 		if [[ "$TESTS_RAN" -eq 0 ]]; then
+			TESTS_INCOMPLETE=1
 			log_info "unsupported: no targeted tests ran; project fallback requires HOOK_PROJECT_FALLBACK=1"
-		elif [[ "$TESTS_PASSED" -eq 0 ]]; then
+		elif [[ "$TESTS_PASSED" -eq 0 && "$TESTS_COMMANDS_COMPLETED" -eq 0 ]]; then
 			log_info "skipped: no tests completed"
+		elif [[ "$TESTS_INCOMPLETE" -eq 1 || "$TESTS_TIMED_OUT" -eq 1 ]]; then
+			log_warn "Focused tests incomplete; not all selected checks completed"
 		else
 			echo -e "${GREEN}✅ Focused tests passed${NC}" >&2
 		fi
-		if [[ "$TESTS_TIMED_OUT" -eq 0 ]]; then
+		if [[ "$TESTS_TIMED_OUT" -eq 0 && "$TESTS_INCOMPLETE" -eq 0 ]]; then
 			clear_hook_state
 		else
-			log_debug "keeping pending state: a test command timed out, its files are still untested"
+			record_incomplete_attempt
+			log_debug "keeping pending state: checks are incomplete"
 		fi
 	else
-		echo -e "${RED}❌ Focused tests failed${NC}" >&2
+		echo -e "${RED}❌ Focused test command failed (advisory; agent may continue)${NC}" >&2
+		record_incomplete_attempt
 	fi
 	finish_hook "$status"
 }
 
+trap 'unexpected_hook_exit "$?"' EXIT
+HOOK_SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 main "$@"

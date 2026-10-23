@@ -7,7 +7,7 @@ import { HOOK_RUNNER_INVOKE_CHANNEL } from "../../../src/plugins/pi/extensions/e
 // Module mocks — must be established before the first import of hook-runner
 // ---------------------------------------------------------------------------
 
-const execQueue: Array<{ exitCode: number; stdout: string; stderr: string }> = [];
+const execQueue: Array<{ exitCode: number; stdout: string; stderr: string; spawnError?: string }> = [];
 const capturedCommands: string[] = [];
 const capturedSpawnOptions: unknown[] = [];
 const capturedExecutables: string[] = [];
@@ -119,6 +119,10 @@ mock.module("node:child_process", () => ({
 			unref: () => {},
 		});
 		setTimeout(() => {
+			if (resp.spawnError) {
+				child.emit("error", new Error(resp.spawnError));
+				return;
+			}
 			child.stdout.emit("data", Buffer.from(resp.stdout));
 			child.stderr.emit("data", Buffer.from(resp.stderr));
 			child.emit("close", resp.exitCode);
@@ -224,6 +228,7 @@ beforeEach(() => {
 		process.env.PI_CODING_AGENT_DIR = originalPiCodingAgentDir;
 	}
 	capturedStdin = "";
+	fakePi.sendUserMessage.mockClear();
 });
 
 // ---------------------------------------------------------------------------
@@ -944,4 +949,76 @@ describe("agent_end → StopFailure", () => {
 		);
 		expect(result).toBeUndefined();
 	});
+});
+
+describe("advisory hook feedback", () => {
+	it("shows successful Stop diagnostics without scheduling an agent turn", async () => {
+		const ctx = makeCtx();
+		execQueue.push({ exitCode: 0, stdout: "", stderr: "Tests incomplete: environment missing" });
+		await handlers.get("agent_end")!({ messages: [] }, ctx);
+		expect(ctx.ui.notify).toHaveBeenCalledWith(expect.stringContaining("environment missing"), "info");
+		expect(fakePi.sendUserMessage).not.toHaveBeenCalled();
+	});
+
+	it("reports a Stop launch failure without treating it as hook-authored feedback", async () => {
+		const ctx = makeCtx();
+		execQueue.push({ exitCode: 0, stdout: "", stderr: "", spawnError: "spawn bash ENOENT" });
+		await handlers.get("agent_end")!({ messages: [] }, ctx);
+		expect(ctx.ui.notify).toHaveBeenCalledWith(expect.stringContaining("ENOENT"), "error");
+		expect(fakePi.sendUserMessage).not.toHaveBeenCalled();
+	});
+
+	it("preserves explicit exit-2 Stop decisions in user-configured hooks", async () => {
+		const ctx = makeCtx();
+		execQueue.push({ exitCode: 2, stdout: "", stderr: "User requested continuation" });
+		await handlers.get("agent_end")!({ messages: [] }, ctx);
+		expect(fakePi.sendUserMessage).toHaveBeenCalledWith("User requested continuation");
+	});
+
+	it("still blocks pre-tool actions when the safety hook cannot launch", async () => {
+		execQueue.push({ exitCode: 0, stdout: "", stderr: "", spawnError: "spawn bash ENOENT" });
+		const result = await handlers.get("tool_call")!({ toolName: "write", input: { path: "server.key" }, toolCallId: "safety" }, makeCtx());
+		expect(result).toMatchObject({ block: true, reason: expect.stringContaining("ENOENT") });
+	});
+});
+
+it("a broken diagnostic UI cannot bypass a later authored expansion deny", async () => {
+	settingsFiles.set(
+		bundledHooksConfigPath,
+		JSON.stringify({
+			hooks: {
+				UserPromptExpansion: [
+					{
+						hooks: [
+							{ type: "command", command: "first" },
+							{ type: "command", command: "second" },
+						],
+					},
+				],
+			},
+		}),
+	);
+	const ctx = makeCtx();
+	ctx.ui.notify.mockImplementation(() => {
+		throw new Error("stale UI");
+	});
+	execQueue.push({ exitCode: 0, stdout: "", stderr: "", spawnError: "spawn failed" });
+	execQueue.push({ exitCode: 2, stdout: "", stderr: "explicit expansion deny" });
+	const result = await handlers.get("input")!({ text: "/skill:demo", source: "interactive" }, ctx);
+	expect(result).toEqual({ action: "handled" });
+	expect(capturedCommands).toHaveLength(2);
+});
+
+it("bounded Stop diagnostics retain the final outcome without terminal controls", async () => {
+	const ctx = makeCtx();
+	execQueue.push({ exitCode: 0, stdout: "", stderr: `\x1b[31m${"diagnostic\n".repeat(1000)}FINAL: incomplete\x1b[0m` });
+	await handlers.get("agent_end")!({ messages: [] }, ctx);
+	expect(ctx.ui.notify).toHaveBeenCalledWith(expect.stringContaining("FINAL: incomplete"), "info");
+	const message = ctx.ui.notify.mock.calls[0]?.[0];
+	expect(typeof message).toBe("string");
+	if (typeof message === "string") {
+		expect(message.length).toBeLessThanOrEqual(2000);
+		expect(message.includes("\x1b")).toBe(false);
+	}
+	expect(fakePi.sendUserMessage).not.toHaveBeenCalled();
 });

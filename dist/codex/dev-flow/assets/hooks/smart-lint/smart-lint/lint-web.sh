@@ -17,9 +17,10 @@ lint_yaml() {
 		mark_format_ran
 		# Process each file individually to prevent content merging
 		for file in "${files[@]}"; do
-			if ! yq eval -P -i "$file" 2>/dev/null; then
-				add_error "YAML Formatter (yq)" "Failed to format $file"
-			fi
+			local output status
+			output=$(run_with_timeout "$SMART_LINT_CMD_TIMEOUT_SECONDS" yq eval -P -i "$file")
+			status=$?
+			[[ "$status" -eq 0 ]] || report_check_problem "YAML Formatter (yq)" "$status" "$output"
 		done
 	fi
 	if command_exists yamllint; then

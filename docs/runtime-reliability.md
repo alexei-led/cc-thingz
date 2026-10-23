@@ -8,25 +8,63 @@ todos, or logs. Retention belongs to user-managed maintenance.
 Post-edit lint and Stop tests use focused checks by default. Missing support is
 reported as skipped or unsupported rather than passing or silently running a
 whole-project command. Set `HOOK_PROJECT_FALLBACK=1` to opt into existing project
-Make/package fallback commands; `TEST_RUNNER_FULL=1` explicitly requests full
-tests. These options are declared in the portable hook environment.
+Make/package fallback commands; `TEST_RUNNER_FULL=1` explicitly requests full tests.
+These options are declared in the portable hook environment.
 
-Stop tests carry a wall-clock budget (`TEST_RUNNER_TIMEOUT_SECS`, default 90s,
-kept below the hook's 120s harness timeout) shared across every test command
-in the run. A command that would exceed it is killed, along with any children
-it spawned, and reported as `skipped: timeout` rather than left to hang until
-the harness force-kills the hook with no output. A Stop with nothing new to
-test (no state since the last run, an unchanged working tree) exits immediately
-instead of re-running the same tests. The kill targets the test command's
-process group; a process that detaches into its own session (`setsid`, a
-Gradle daemon left running in the background) is not reached by it.
-"Unchanged" is decided by a tree fingerprint (tracked diff content plus
-untracked file names), recomputed with a full `git diff HEAD` on most
-Stops. Known limits: an in-place edit to an untracked file that keeps its
-name isn't detected, and an edit made by something else while the hook is
-still running can get folded into the fingerprint instead of triggering a
-retest on the next Stop.
+Automatic lint and test hooks are advisory. A failed assertion, lint diagnostic,
+missing runtime, collection error, timeout, or runner crash is reported without
+blocking an edit, agent completion, or requesting another model turn. A partial run
+is incomplete, never passed. Explicit test commands, pre-commit/pre-push checks, CI,
+and release validation retain their normal failing exit codes. File-protection, Git,
+release, and permission guards retain their deny behavior; advisory feedback is not
+a replacement for those guards.
 
+Python tests use the nearest `pyproject.toml` at or below the hook cwd. Go uses its
+nearest module. JS tests prefer package-local configuration and may inherit an
+applicable workspace runner/configuration. Each test group runs with paths relative
+to its execution directory. Go, Jest, Vitest, and Bun execution counts come from
+machine-readable reports, so zero/all-skipped runs are not called passes. Other
+runners report successful command completion without claiming verified test
+collection. Pytest retains its exit-5 no-collection handling. Python/Go/JS lint
+checks also run from the owning project. Hooks do not run dependency installers; uv
+selection/execution uses no-sync behavior rather than repairing an environment
+automatically.
+
+Stop tests carry a shared wall-clock budget (`TEST_RUNNER_TIMEOUT_SECS`, default
+90s, below the 120s harness timeout), including Python environment probes. Slow test
+processes and their children are terminated and reported as incomplete. Lint has
+per-command and whole-hook budgets. If its watchdog cannot run safely, the check is
+skipped rather than run without a deadline. Captured command output is capped at 1
+MiB and displayed diagnostics are byte- and line-bounded. Process groups cannot
+reach a descendant that deliberately detaches into a separate session.
+
+With usable project/session metadata, unchanged Stops are quiet and do not rerun
+tests. Failed/incomplete attempts and explicit skips retain pending files but are
+also suppressed for unchanged inputs, avoiding a failure loop after every turn.
+Tracking state is scoped by Git worktree, session, and hook cwd. Legacy ambiguous
+relative-path caches are not reused. Concurrent edit events append atomically
+instead of overwriting each other's pending files. The snapshot includes tracked
+diffs and untracked code/config contents; it is taken before execution so concurrent
+later edits remain detectable. After repairing an external environment without
+editing code, retry the reported command directly, or use `TEST_RUNNER_FULL=1` to
+bypass attempt suppression and explicitly request full tests. An attempted check is
+not recorded as a pass.
+
+The portable Pi adapter supplies trusted project/session metadata and displays
+bounded diagnostics without scheduling a model turn, with stderr fallback in
+headless mode. Long messages keep both their beginning and final outcome;
+terminal-control sequences are removed. The optional compatibility runner also
+separates launch/cancellation errors from hook-authored decisions. Explicit exit-2
+control decisions in user-configured hooks keep their existing semantics; shipped
+advisory hooks do not emit them. Other vendor adapters retain the runtime limits
+documented in [portable hook boundaries](../src/hooks/UNSUPPORTED.md).
+
+Malformed hook input and unavailable edit targets are skipped rather than falling
+back to unrelated dirty files. File contents are not parsed as extra patch targets
+when explicit edit paths are present. Session context tolerates malformed helper
+results and reports unavailable queries without a traceback or blocking startup.
+Notifications remain best-effort and asynchronous; failed desktop delivery reports
+its exit status and uses text fallback.
 JavaScript and TypeScript tooling is selected without per-tool environment flags.
 Project configs and package declarations win. Without them, smart-lint uses the
 available formatter in `Oxfmt -> Biome -> Prettier` order and linter in

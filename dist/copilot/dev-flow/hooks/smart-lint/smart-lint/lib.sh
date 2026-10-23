@@ -11,6 +11,7 @@ CLAUDE_HOOKS_DEBUG="${CLAUDE_HOOKS_DEBUG:-0}"
 PROJECT_TYPE="${PROJECT_TYPE:-unknown}"
 SMART_LINT_DIFF_FALLBACK_LIMIT="${SMART_LINT_DIFF_FALLBACK_LIMIT:-5}"
 SMART_LINT_COMPACT_LINES=80
+SMART_LINT_OUTPUT_BYTES=1048576
 # Per-command cap so one slow/cold tool (pyright's first node spin-up,
 # golangci-lint's first cache build, …) can't eat the whole hook budget. A
 # value that isn't a plain positive integer (empty, non-numeric, zero, or
@@ -29,7 +30,11 @@ SMART_LINT_HOOK_BUDGET_SECONDS=100
 HOOK_PROJECT_FALLBACK="${HOOK_PROJECT_FALLBACK:-0}"
 SMART_LINT_FORMAT_RAN=0
 SMART_LINT_LINT_RAN=0
+SMART_LINT_LINT_RUNS=0
+SMART_LINT_UNSUPPORTED=()
+SMART_LINT_STATE_NAMESPACE=cc-thingz/hooks-v2
 SMART_LINT_TIMEOUT_COUNT=0
+SMART_LINT_INCOMPLETE_COUNT=0
 export -n HOOK_INPUT_JSON
 HOOK_INPUT_JSON="${HOOK_INPUT_JSON:-}"
 HOOK_EDITED_FILES_LOADED=0
@@ -37,9 +42,16 @@ HOOK_EDITED_FILES=()
 
 log_debug() { [[ "$CLAUDE_HOOKS_DEBUG" == "1" ]] && echo -e "${CYAN}[DEBUG]${NC} $*" >&2; }
 log_info() { echo -e "${BLUE}[INFO]${NC} $*" >&2; }
+report_incomplete() {
+	SMART_LINT_INCOMPLETE_COUNT=$((SMART_LINT_INCOMPLETE_COUNT + 1))
+	log_info "incomplete: $*"
+}
 command_exists() { command -v "$1" &>/dev/null; }
 mark_format_ran() { SMART_LINT_FORMAT_RAN=1; }
-mark_lint_ran() { SMART_LINT_LINT_RAN=1; }
+mark_lint_ran() {
+	SMART_LINT_LINT_RAN=1
+	SMART_LINT_LINT_RUNS=$((SMART_LINT_LINT_RUNS + 1))
+}
 project_fallback_enabled() { [[ "$HOOK_PROJECT_FALLBACK" == "1" && ! -f ".nohooks-project" ]]; }
 
 find_local_node_bin() {
@@ -271,27 +283,39 @@ init_hook_input() {
 		HOOK_INPUT_JSON=$(cat 2>/dev/null || true)
 	fi
 	SMART_LINT_PI_RUNTIME=0
-	SMART_LINT_OUTSIDE_PROJECT=0
+	SMART_LINT_TARGET_STATUS=0
 	SMART_LINT_SESSION_ID=default
 	if command_exists python3; then
 		local hook_cwd file
 		{
 			# shellcheck disable=SC2034 # main.sh reserves stdout for the Pi decision.
-			IFS= read -r -d '' SMART_LINT_PI_RUNTIME
+			if ! IFS= read -r -d '' SMART_LINT_PI_RUNTIME; then
+				report_incomplete "Cannot read hook input metadata; checks skipped"
+				return 1
+			fi
 			IFS= read -r -d '' hook_cwd
 			IFS= read -r -d '' SMART_LINT_SESSION_ID
-			IFS= read -r -d '' SMART_LINT_OUTSIDE_PROJECT
+			IFS= read -r -d '' SMART_LINT_TARGET_STATUS
 			while IFS= read -r -d '' file; do HOOK_EDITED_FILES+=("$file"); done
-		} < <(python3 "$(dirname "${BASH_SOURCE[0]}")/normalize-input.py" <<<"$HOOK_INPUT_JSON")
-		if [[ -n "$hook_cwd" && -d "$hook_cwd" ]]; then
-			cd "$hook_cwd" || return 0
+		} < <(python3 -I -S "$(dirname "${BASH_SOURCE[0]}")/normalize-input.py" <<<"$HOOK_INPUT_JSON")
+		if [[ -n "$hook_cwd" ]] && ! cd "$hook_cwd"; then
+			report_incomplete "Cannot enter hook project cwd"
+			return 1
 		fi
 		HOOK_EDITED_FILES_LOADED=1
+	else
+		report_incomplete "Cannot read hook input metadata: python3 unavailable"
+		return 1
 	fi
+	return 0
 }
 
 hook_edit_target_outside_project() {
-	[[ "${SMART_LINT_OUTSIDE_PROJECT:-0}" == "1" ]]
+	[[ "${SMART_LINT_TARGET_STATUS:-0}" == "1" ]]
+}
+
+hook_edit_target_unavailable() {
+	[[ "${SMART_LINT_TARGET_STATUS:-0}" == "2" ]]
 }
 
 declare -a ERRORS=()
@@ -300,27 +324,94 @@ add_error() {
 }
 
 print_summary_and_exit() {
-	if [ ${#ERRORS[@]} -gt 0 ]; then
-		echo -e "${RED}❌ ${#ERRORS[@]} blocking issue(s):${NC}" >&2
-		for err in "${ERRORS[@]}"; do
-			echo -e "$err" >&2
-		done
-		# Exit code 2 = blocking error in Claude Code hooks
-		# Sends stderr to Claude for automatic processing and fixing
-		# See: https://docs.claude.com/en/docs/claude-code/hooks
-		exit 2
-	else
+	local unsupported
+	for unsupported in "${SMART_LINT_UNSUPPORTED[@]}"; do report_incomplete "$unsupported"; done
+	if [[ "${#ERRORS[@]}" -gt 0 ]]; then
+		echo -e "${RED}❌ ${#ERRORS[@]} check problem(s) (advisory):${NC}" >&2
+		for err in "${ERRORS[@]}"; do echo -e "$err" >&2; done
+	fi
+	if [[ "$SMART_LINT_TIMEOUT_COUNT" -gt 0 || "$SMART_LINT_INCOMPLETE_COUNT" -gt 0 ]]; then
+		echo -e "${YELLOW}⚠️ Style checks incomplete: ${SMART_LINT_TIMEOUT_COUNT} timed out, ${SMART_LINT_INCOMPLETE_COUNT} unavailable or failed${NC}" >&2
+	elif [[ "${#ERRORS[@]}" -eq 0 ]]; then
 		if [[ "$SMART_LINT_LINT_RAN" -eq 0 ]]; then
 			log_info "unsupported: no lint checks completed"
-			exit 0
-		fi
-		if [[ "$SMART_LINT_TIMEOUT_COUNT" -gt 0 ]]; then
-			echo -e "${PROJECT_TYPE} project ${YELLOW}⚠️ Style checks incomplete: ${SMART_LINT_TIMEOUT_COUNT} timed out${NC}" >&2
 		else
 			echo -e "${PROJECT_TYPE} project ${GREEN}✅ Style OK${NC}" >&2
 		fi
-		exit 0
 	fi
+	exit 0
+}
+
+# Run selected files from their owning package, leaving state tracking at the
+# original hook root. Node tools may still inherit workspace config/binaries.
+lint_project_groups() {
+	local manifest="$1"
+	shift
+	local original_files=("${HOOK_EDITED_FILES[@]}") files=() roots=() owners=() group=()
+	local file dir root old_pwd="$PWD" i before
+	while IFS= read -r file; do files+=("$file"); done < <(get_changed_files "$@")
+	[[ "${#files[@]}" -gt 0 ]] || return 0
+	for file in "${files[@]}"; do
+		dir=$(dirname "$file")
+		root=.
+		while [[ "$dir" != "." && "$dir" != "/" ]]; do
+			if [[ -f "$dir/$manifest" ]]; then
+				root="$dir"
+				break
+			fi
+			dir=$(dirname "$dir")
+		done
+		roots+=("$root")
+		owners+=("$root")
+	done
+	while IFS= read -r root; do
+		group=()
+		for ((i = 0; i < ${#files[@]}; i++)); do
+			[[ "${owners[i]}" == "$root" ]] || continue
+			file=${files[i]}
+			[[ "$root" == "." ]] || file=${file#"$root/"}
+			group+=("$file")
+		done
+		if ! cd "$old_pwd/$root"; then
+			report_incomplete "Cannot enter project $root"
+			continue
+		fi
+		HOOK_EDITED_FILES=("${group[@]}")
+		before="$SMART_LINT_LINT_RUNS"
+		case "$manifest" in
+		pyproject.toml) lint_python ;;
+		go.mod) lint_go ;;
+		package.json) lint_typescript ;;
+		esac
+		if [[ "$SMART_LINT_LINT_RUNS" -eq "$before" ]]; then
+			SMART_LINT_UNSUPPORTED+=("No focused lint check completed in $root ($manifest)")
+		fi
+		cd "$old_pwd" || {
+			report_incomplete "Cannot restore hook cwd"
+			return 0
+		}
+	done < <(printf '%s\n' "${roots[@]}" | sort -u)
+	HOOK_EDITED_FILES=("${original_files[@]}")
+}
+
+lint_scope_has_input() {
+	local type="$1" file extensions=()
+	case "$type" in
+	csharp) extensions=(.cs .csproj .sln .props .targets) ;;
+	rust) extensions=(.rs Cargo.toml Cargo.lock rust-toolchain rust-toolchain.toml) ;;
+	jvm) extensions=(.java .kt .kts pom.xml build.gradle settings.gradle gradle.properties) ;;
+	yaml | github_actions) extensions=(.yml .yaml) ;;
+	json) extensions=(.json) ;;
+	shell) extensions=(.sh .bash) ;;
+	terraform) extensions=(.tf .tfvars) ;;
+	markdown) extensions=(.md) ;;
+	*) return 1 ;;
+	esac
+	while IFS= read -r file; do
+		if [[ "$type" == github_actions && "$file" != .github/workflows/* ]]; then continue; fi
+		[[ -z "$file" ]] || return 0
+	done < <(get_changed_files "${extensions[@]}")
+	return 1
 }
 
 _extract_hook_files_jq() {
@@ -336,10 +427,11 @@ _hook_session_id() {
 
 _hook_state_path() {
 	git rev-parse --git-dir >/dev/null 2>&1 || return 1
-	local session_id safe_session_id
+	local session_id safe_session_id scope
+	scope=$(git rev-parse --show-prefix 2>/dev/null) || return 1
 	session_id=$(_hook_session_id)
 	safe_session_id=$(printf '%s' "$session_id" | tr -c 'A-Za-z0-9_.-' '_')
-	git rev-parse --git-path "cc-thingz/hook-files-${safe_session_id:-default}" 2>/dev/null
+	git rev-parse --git-path "$SMART_LINT_STATE_NAMESPACE/${scope}hook-files-${safe_session_id:-default}" 2>/dev/null
 }
 
 load_hook_edited_files() {
@@ -359,16 +451,33 @@ record_hook_edited_files() {
 	load_hook_edited_files
 	[[ "${#HOOK_EDITED_FILES[@]}" -gt 0 ]] || return 0
 
-	local state_path state_dir tmp
+	local state_path state_dir
 	state_path=$(_hook_state_path) || return 0
 	state_dir=$(dirname "$state_path")
-	mkdir -p "$state_dir" 2>/dev/null || return 0
-	tmp="${state_path}.$$"
-	{
-		[[ -f "$state_path" ]] && cat "$state_path"
-		printf '%s\n' "${HOOK_EDITED_FILES[@]}"
-	} | sort -u >"$tmp" 2>/dev/null && mv "$tmp" "$state_path"
-	rm -f "$tmp"
+	if ! mkdir -p "$state_dir" 2>/dev/null; then
+		report_incomplete "Cannot create pending-file tracking directory"
+		return 0
+	fi
+	# A single O_APPEND write cannot overwrite another concurrent edit event.
+	# Stop normalizes/deduplicates records, so no read/merge/rename is needed.
+	if ! printf '%s\0' "${HOOK_EDITED_FILES[@]}" | python3 -I -S -c '
+import os
+import sys
+try:
+    data = sys.stdin.buffer.read().replace(b"\0", b"\n")
+    flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(sys.argv[1], flags, 0o600)
+    try:
+        if os.write(fd, data) != len(data):
+            raise OSError("incomplete pending-file append")
+    finally:
+        os.close(fd)
+except OSError as error:
+    print(f"Cannot record pending files: {error}", file=sys.stderr)
+    sys.exit(1)
+' "$state_path"; then
+		report_incomplete "Pending-file tracking failed; verification is incomplete"
+	fi
 }
 
 path_is_excluded() {
@@ -422,8 +531,8 @@ _diff_fallback_files() {
 		return
 	fi
 	{
-		git diff --name-only --diff-filter=ACMRTUXB --cached HEAD 2>/dev/null || true
-		git diff --name-only --diff-filter=ACMRTUXB 2>/dev/null || true
+		git diff --relative --name-only --diff-filter=ACMRTUXB --cached HEAD 2>/dev/null || true
+		git diff --relative --name-only --diff-filter=ACMRTUXB 2>/dev/null || true
 		git ls-files --others --exclude-standard 2>/dev/null || true
 	} | sort -u | while IFS= read -r file; do
 		[[ -n "$file" && -f "$file" ]] || continue
@@ -463,15 +572,18 @@ get_changed_files() {
 }
 
 compact_output() {
-	local max_lines="$SMART_LINT_COMPACT_LINES"
-	awk -v max="$max_lines" '
+	local max_lines="$SMART_LINT_COMPACT_LINES" max_bytes=8000
+	LC_ALL=C awk -v max="$max_lines" -v budget="$max_bytes" '
 		/^[[:space:]]*$/ { next }
-		{ lines[++count] = $0 }
-		END {
-			limit = count < max ? count : max
-			for (i = 1; i <= limit; i++) print lines[i]
-			if (count > max) printf("... truncated %d line(s) ...\n", count - max)
+		{
+			count++
+			if (count > max || used >= budget) { truncated=1; next }
+			line=$0
+			if (length(line) > budget-used) { line=substr(line, 1, budget-used); truncated=1 }
+			print line
+			used+=length(line)+1
 		}
+		END { if (truncated) print "... output truncated ..." }
 	' <<<"$1"
 }
 
@@ -482,26 +594,10 @@ compact_output() {
 # $(...) capture would, and exits 124 (matching GNU timeout) when it had to
 # kill the command.
 #
-# No `timeout`/`gtimeout` on stock macOS. Instead: put the command in its own
-# process group via python3's os.setpgid before exec-ing into it, so a
-# timeout can kill its whole tree -- compilers, language servers, etc. -- not
-# just the direct child. (Bash job control (`set -m`) can do the same, but
-# killing a job it tracks then breaks `wait $pid` after a `disown`, and
-# prints "Terminated" job-status lines to stderr otherwise -- both avoided by
-# doing the grouping with a plain syscall instead.) Without python3 there is
-# no way here to group the process, and killing only the direct child would
-# be fake protection -- its own children would simply survive as orphans --
-# so this runs the command directly with no timeout at all in that case,
-# same as the mktemp-failure fallback below.
-#
-# The watcher subshell gets its own /dev/null stdio *before* it forks
-# `sleep`, so an orphaned `sleep` (e.g. after we stop the watcher early
-# because the command finished fast) never inherits this function's stdout
-# pipe -- otherwise, since every caller here captures output via $(...),
-# that orphaned `sleep` would keep the pipe open and the caller blocked
-# until it ran out, for the *entire* configured timeout, regardless of how
-# fast the real command finished.
-run_with_timeout() {
+# Bash job control owns each tool process group. The bounded Python reader
+# lives inside that group, so overflow and cancellation stop its descendants.
+# If capture cannot run safely, skip instead of launching an unbounded tool.
+run_with_timeout() (
 	local secs="$1"
 	shift
 
@@ -513,67 +609,84 @@ run_with_timeout() {
 	[[ "$secs" -gt "$remaining" ]] && secs="$remaining"
 
 	command_exists python3 || {
-		"$@"
-		return $?
+		echo "Cannot establish safe deadline: python3 unavailable"
+		return 125
 	}
 
 	local tmp
 	tmp=$(mktemp 2>/dev/null) || {
-		"$@"
-		return $?
+		echo "Cannot establish safe deadline: temporary file unavailable"
+		return 125
 	}
-	local marker="${tmp}.timedout"
+	local marker="${tmp}.timedout" overflow="${tmp}.overflow" pid="" watcher=""
+	# shellcheck disable=SC2329 # Invoked by cancellation traps in this subshell.
+	cancel_lint_command() {
+		[[ -z "$watcher" ]] || kill -KILL -- "-$watcher" 2>/dev/null
+		if [[ -n "$pid" ]]; then
+			kill -TERM -- "-$pid" 2>/dev/null
+			kill -KILL -- "-$pid" 2>/dev/null
+		fi
+		rm -f "$tmp" "$marker" "$overflow"
+		exit 143
+	}
+	trap cancel_lint_command HUP INT TERM
 
-	python3 -c '
+	set -m
+	(
+		set +m
+		"$@" 2>&1 | python3 -I -S -c '
 import os
+import signal
 import sys
 
-os.setpgid(0, 0)
-os.execvp(sys.argv[1], sys.argv[1:])
-' "$@" >"$tmp" 2>&1 &
-	local pid=$!
+limit = int(sys.argv[1])
+written = 0
+while True:
+    chunk = os.read(0, 8192)
+    if not chunk:
+        break
+    sys.stdout.buffer.write(chunk[:max(0, limit - written)])
+    sys.stdout.buffer.flush()
+    written += len(chunk)
+    if written > limit:
+        try:
+            with open(sys.argv[2], "x"):
+                pass
+        except OSError:
+            pass
+        os.killpg(os.getpgrp(), signal.SIGKILL)
 
-	# Only sleeps, marks the timeout, and TERMs the group; SIGKILL
-	# escalation happens below in this function, not here, so the watcher
-	# can exit the instant we stop it (a trapped TERM interrupts `wait`,
-	# unlike a plain foreground `sleep`) instead of leaving its own `sleep`
-	# to run out.
+' "$SMART_LINT_OUTPUT_BYTES" "$overflow"
+		codes=("${PIPESTATUS[@]}")
+		[[ "${codes[1]}" -eq 0 ]] || exit 125
+		exit "${codes[0]}"
+	) >"$tmp" 2>/dev/null &
+	pid=$!
 	(
-		trap 'kill "$s" 2>/dev/null; exit 0' TERM
-		sleep "$secs" &
-		s=$!
-		wait "$s"
+		set +m
+		sleep "$secs"
 		: >"$marker" 2>/dev/null
 		kill -TERM -- "-$pid" 2>/dev/null
+		sleep 2
+		kill -KILL -- "-$pid" 2>/dev/null
 	) </dev/null >/dev/null 2>&1 &
-	local watcher=$!
-
+	watcher=$!
 	local status=0
 	wait "$pid" 2>/dev/null || status=$?
-
-	kill "$watcher" 2>/dev/null
+	if [[ ! -f "$marker" ]]; then kill -KILL -- "-$watcher" 2>/dev/null; fi
 	wait "$watcher" 2>/dev/null
 
 	local timed_out=0
-	if [[ -e "$marker" ]]; then
-		timed_out=1
-		# Give the tree a couple of seconds to honor TERM before SIGKILL;
-		# catches grandchildren (gradle, node, a compiler) that ignore it.
-		# Check the *group*, not just the leader: the leader can exit while
-		# a grandchild it spawned is still alive in the same group.
-		local grace=0
-		while [[ "$grace" -lt 2 ]] && kill -0 -- "-$pid" 2>/dev/null; do
-			sleep 1
-			grace=$((grace + 1))
-		done
-		kill -0 -- "-$pid" 2>/dev/null && kill -KILL -- "-$pid" 2>/dev/null
+	[[ ! -e "$marker" ]] || timed_out=1
+	if [[ -e "$overflow" ]]; then
+		printf '\nLinter output exceeded %s bytes\n' "$SMART_LINT_OUTPUT_BYTES"
+		status=125
 	fi
-
 	cat "$tmp"
-	rm -f "$tmp" "$marker"
+	rm -f "$tmp" "$marker" "$overflow"
 	[[ "$timed_out" -eq 1 ]] && return 124
 	return "$status"
-}
+) 2>/dev/null
 
 # A run_with_timeout kill means the tool didn't finish in time -- not that
 # its output showed a real problem. Turning that into a blocking error would
@@ -584,6 +697,17 @@ report_timeout() {
 	local name="$1"
 	SMART_LINT_TIMEOUT_COUNT=$((SMART_LINT_TIMEOUT_COUNT + 1))
 	log_info "$name timed out and was skipped (not treated as a lint failure)"
+}
+
+report_check_problem() {
+	local name="$1" code="$2" output="$3"
+	if [[ "$code" -eq 124 ]]; then
+		report_timeout "$name"
+	elif [[ "$code" -eq 1 && -n "$output" ]]; then
+		add_error "$name reported problems (exit $code)" "$(compact_output "$output")"
+	else
+		report_incomplete "$name exited $code: $(compact_output "$output")"
+	fi
 }
 
 run_formatter_on_files() {
@@ -615,7 +739,7 @@ run_formatter_on_files() {
 		report_timeout "$name"
 		return 0
 	elif [[ "$status" -ne 0 ]]; then
-		add_error "$name failed" "$(compact_output "$output")"
+		report_check_problem "$name" "$status" "$output"
 		return 2
 	fi
 
@@ -631,7 +755,7 @@ run_formatter_on_files() {
 	elif [[ "$status" -eq 124 ]]; then
 		report_timeout "$name"
 	else
-		add_error "$name needs fixing" "$(compact_output "$output")"
+		report_check_problem "$name" "$status" "$output"
 	fi
 }
 
@@ -648,7 +772,7 @@ run_command_compact() {
 		report_timeout "$name"
 		return 0
 	else
-		add_error "$name found issues" "$(compact_output "$output")"
+		report_check_problem "$name" "$status" "$output"
 		return 2
 	fi
 }
@@ -706,8 +830,13 @@ run_lint_fallbacks() {
 		fi
 		return 0
 	fi
+	local before="$SMART_LINT_LINT_RUNS" errors="${#ERRORS[@]}" incomplete="$SMART_LINT_INCOMPLETE_COUNT" timed_out="$SMART_LINT_TIMEOUT_COUNT"
 	run_package_lint_fallback
 	run_make_lint_fallback
+	# An explicitly opted-in project lint command may cover missing focused tools.
+	if [[ "$SMART_LINT_LINT_RUNS" -gt "$before" && "${#ERRORS[@]}" -eq "$errors" && "$SMART_LINT_INCOMPLETE_COUNT" -eq "$incomplete" && "$SMART_LINT_TIMEOUT_COUNT" -eq "$timed_out" ]]; then
+		SMART_LINT_UNSUPPORTED=()
+	fi
 }
 
 # Hash the exact content string (not the file) so the caller can verify and

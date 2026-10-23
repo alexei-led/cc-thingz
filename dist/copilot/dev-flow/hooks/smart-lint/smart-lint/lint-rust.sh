@@ -136,7 +136,10 @@ rust_lint_manifests() {
 	command_exists cargo || return 0
 
 	local manifests=() manifest tmp
-	tmp=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-rust-manifests.%s' "$$")
+	tmp=$(mktemp 2>/dev/null) || {
+		report_incomplete "Cannot create lint discovery file"
+		return 0
+	}
 	for file in "${files[@]}"; do
 		manifest=$(rust_nearest_manifest "$file" || true)
 		[[ -n "$manifest" ]] && printf '%s\n' "$manifest"

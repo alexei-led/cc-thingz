@@ -13,6 +13,8 @@ try:
 except json.JSONDecodeError:
     sys.exit(2)
 
+if not isinstance(data, dict):
+    sys.exit(2)
 diagnostics = data.get("generalDiagnostics", [])
 if not isinstance(diagnostics, list):
     sys.exit(2)
@@ -94,15 +96,20 @@ lint_python() {
 		fi
 	fi
 
-	local pyright_runner=()
-	local pyright_bin
-	pyright_bin=$(resolve_node_tool pyright || true)
-	if [[ -n "$pyright_bin" ]]; then
+	local pyright_runner=() pyright_bin
+	if [[ -x .venv/bin/pyright ]]; then
+		pyright_runner=(.venv/bin/pyright)
+	elif pyright_bin=$(find_local_node_bin pyright); then
 		pyright_runner=("$pyright_bin")
 	elif command_exists uv && [[ -f pyproject.toml ]] && python_project_mentions_tool pyright; then
-		pyright_runner=(uv run pyright)
+		pyright_runner=(uv run --no-sync pyright)
+	elif command_exists pyright; then
+		pyright_runner=(pyright)
+	elif python_project_mentions_tool pyright; then
+		report_incomplete "Declared Python type checker pyright is unavailable"
 	fi
 	if [[ "${#pyright_runner[@]}" -gt 0 ]]; then
+		mark_lint_ran
 		# Filter out reportMissingImports — missing stubs, not real errors
 		local pyright_output pyright_status
 		pyright_output=$(run_with_timeout "$SMART_LINT_CMD_TIMEOUT_SECONDS" "${pyright_runner[@]}" --outputjson "${files[@]}")
@@ -118,13 +125,13 @@ lint_python() {
 			if [[ "$parse_status" -eq 0 && -n "$filtered" ]]; then
 				add_error "Python Type Checker (pyright)" "$(compact_output "$filtered")"
 			elif [[ "$parse_status" -eq 1 ]]; then
-				log_debug "pyright: only missing stubs warnings (filtered)"
+				report_incomplete "pyright reported only excluded missing imports/stubs"
 			else
 				filtered=$(printf '%s\n' "$pyright_output" | grep -v 'reportMissingImports')
 				if printf '%s\n' "$filtered" | grep -qE ' error: '; then
 					add_error "Python Type Checker (pyright)" "$(compact_output "$filtered")"
 				else
-					log_debug "pyright: only missing stubs warnings (filtered)"
+					report_incomplete "Python Type Checker (pyright) exited $pyright_status: $(compact_output "$pyright_output")"
 				fi
 			fi
 		fi

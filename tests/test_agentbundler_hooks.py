@@ -289,6 +289,143 @@ console.log(JSON.stringify(result));
     assert outcome["exitCode"] == 0, outcome["stderr"]
     assert json.loads(outcome["stdout"]) == {"decision": "allow"}
     assert "Linting skipped" in outcome["stderr"]
-    state = tmp_path / ".git/cc-thingz/hook-files-generated-stdin"
+    state = tmp_path / ".git/cc-thingz/hooks-v2/hook-files-generated-stdin"
     assert state.read_text() == "one.py\n"
     assert not (state.parent / "hook-files-default").exists()
+
+
+def test_generated_pi_advisories_are_visible_without_model_continuation() -> None:
+    script = r"""
+import { readFileSync } from "node:fs";
+import { createPiHookRuntime } from "./dist/pi/extensions/_agentbundler-hooks/index.ts";
+const manifest = JSON.parse(readFileSync("./dist/pi/hooks/hooks.v1.json", "utf8"));
+const cases = [
+  ["hook/test-runner", "advisory"],
+  ["hook/test-runner", "runtime-error"],
+  ["hook/file-protector", "runtime-error"],
+  ["hook/file-protector", "deny"],
+];
+for (const [identity, mode] of cases) {
+  const hook = manifest.hooks.find((value) => value.identity === identity);
+  const handlers = new Map();
+  const notices = [];
+  let modelTurns = 0;
+  const pi = {
+    on: (event, handler) => handlers.set(event, handler),
+    sendUserMessage: () => { modelTurns++; },
+    sendMessage: () => { modelTurns++; },
+  };
+  createPiHookRuntime(pi, { version: 1, hooks: [hook] }, {
+    packageRoot: "./dist/pi",
+    runner: async () => {
+      if (mode === "runtime-error") throw new Error("runtime unavailable");
+      return {
+        exitCode: 0, signal: null,
+        stdout: mode === "deny"
+      ? '{"decision":"deny","reason":"protected"}'
+      : '{"decision":"allow"}',
+        stderr: mode === "advisory" ? "tests incomplete: missing environment" : "",
+      };
+    },
+  });
+  const eventName = hook.event === "stop" ? "agent_end" : "tool_call";
+  const result = await handlers.get(eventName)(
+    { toolName: "write", input: { path: "server.key" } },
+    { hasUI: true, ui: { notify: (message, type) => notices.push({ message, type }) } },
+  );
+  console.log(JSON.stringify({ identity, mode, result, notices, modelTurns }));
+}
+"""
+    proc = subprocess.run(
+        ["bun", "-e", script],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=30,
+    )
+    advisory, unavailable, closed, denied = [
+        json.loads(line) for line in proc.stdout.splitlines()
+    ]
+    assert len(advisory["notices"]) == 1
+    assert "missing environment" in advisory["notices"][0]["message"]
+    assert len(unavailable["notices"]) == 1
+    assert "runtime unavailable" in unavailable["notices"][0]["message"]
+    assert "result" not in advisory
+    assert "result" not in unavailable
+    assert closed["result"]["block"] is True
+    assert "runtime unavailable" in closed["result"]["reason"]
+    assert denied["result"] == {"block": True, "reason": "protected"}
+    assert all(
+        item["modelTurns"] == 0 for item in (advisory, unavailable, closed, denied)
+    )
+
+
+def test_generated_pi_adapter_uses_project_context_and_session_state(
+    tmp_path: Path,
+) -> None:
+    env = os.environ.copy()
+    env["HOME"] = str(tmp_path / "home")
+    Path(env["HOME"]).mkdir()
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True, env=env)
+    project = tmp_path / "api"
+    tests = project / "tests"
+    tests.mkdir(parents=True)
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "root"\nversion = "0.0.0"\n'
+    )
+    (project / "pyproject.toml").write_text(
+        '[project]\nname = "api"\nversion = "0.0.0"\n'
+    )
+    (tests / "test_widget.py").write_text("def test_widget(): pass\n")
+    tools = project / ".venv/bin"
+    tools.mkdir(parents=True)
+    for name in ("ruff", "pyright", "pytest"):
+        tool = tools / name
+        tool.write_text(
+            f'#!/bin/sh\nprintf "%s\\n" "$PWD|$*" >>"{project}/{name}.calls"\n'
+        )
+        tool.chmod(0o755)
+    env["HOOK_AUDIT_PROJECT"] = str(tmp_path)
+    script = r"""
+import adapter from "./dist/pi/extensions/agentbundler-hooks.ts";
+const handlers = new Map();
+const notices = [];
+let modelTurns = 0;
+adapter({
+  on: (event, handler) => handlers.set(event, handler),
+  sendUserMessage: () => { modelTurns++; },
+  sendMessage: () => { modelTurns++; },
+});
+const context = {
+  cwd: process.env.HOOK_AUDIT_PROJECT,
+  sessionManager: { getSessionId: () => "pi-runtime-session" },
+  hasUI: true,
+  ui: { notify: (message, type) => notices.push({ message, type }) },
+};
+await handlers.get("tool_result")({
+  toolName: "edit", input: { path: "api/tests/test_widget.py" }, isError: false,
+}, context);
+await handlers.get("agent_end")({ messages: [] }, context);
+console.log(JSON.stringify({ notices, modelTurns }));
+"""
+    proc = subprocess.run(
+        ["bun", "-e", script],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=60,
+    )
+    result = json.loads(proc.stdout)
+    assert result["modelTurns"] == 0
+    assert (project / "pytest.calls").read_text().strip() == (
+        f"{project}|-q --maxfail=1 --tb=short tests/test_widget.py"
+    )
+    assert "tests/test_widget.py" in (project / "ruff.calls").read_text()
+    state = tmp_path / ".git/cc-thingz/hooks-v2/hook-files-pi-runtime-session"
+    assert state.is_file()
+    assert state.read_text() == ""
+    assert not (tmp_path / ".git/cc-thingz/hooks-v2/hook-files-default").exists()
+    assert any("Focused tests passed" in item["message"] for item in result["notices"])

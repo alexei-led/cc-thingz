@@ -181,7 +181,10 @@ lint_java_kotlin() {
 	fi
 
 	local roots=() poms=() tmp root pom
-	tmp=$(mktemp 2>/dev/null || printf '/tmp/cc-thingz-jvm-lint.%s' "$$")
+	tmp=$(mktemp 2>/dev/null) || {
+		report_incomplete "Cannot create lint discovery file"
+		return 0
+	}
 	for file in "${files[@]}"; do
 		root=$(jvm_nearest_gradle_root "$file" || true)
 		[[ -n "$root" ]] && printf 'g|%s\n' "$root"

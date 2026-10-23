@@ -3,6 +3,7 @@
 
 set -o pipefail
 set +e
+export UV_NO_SYNC=1
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -11,18 +12,22 @@ source "$SCRIPT_DIR/lib.sh"
 
 # --- MAIN EXECUTION ---
 [[ "$1" == "--debug" ]] && export CLAUDE_HOOKS_DEBUG=1
-init_hook_input
+if ! init_hook_input; then exit 0; fi
 if [[ "$SMART_LINT_PI_RUNTIME" == "1" ]]; then
 	# Reserve the original stdout for Pi's decision, including early exits.
 	exec 3>&1 1>&2
-	trap 'printf "{\"decision\":\"allow\"}\n" >&3' EXIT
 fi
 
 # The edited file lives outside the project root (e.g. a /tmp scratchpad
 # file): nothing here to lint, and falling through would let an unrelated
-# in-project file's errors block an edit that never touched the project.
+# in-project files get linted or fixed after an edit outside the project.
 if hook_edit_target_outside_project; then
 	log_debug "Edited file is outside the project root, skipping."
+	exit 0
+fi
+
+if hook_edit_target_unavailable; then
+	report_incomplete "Edit target unavailable; focused lint skipped"
 	exit 0
 fi
 
@@ -153,13 +158,14 @@ fi
 # Run linters based on detected types
 IFS=',' read -ra types <<<"${PROJECT_TYPE#mixed:}"
 for type in "${types[@]}"; do
+	before_lint_runs="$SMART_LINT_LINT_RUNS"
 	case "$type" in
 	csharp) lint_csharp ;;
-	go) lint_go ;;
+	go) lint_project_groups go.mod .go ;;
 	jvm) lint_java_kotlin ;;
-	python) lint_python ;;
+	python) lint_project_groups pyproject.toml .py ;;
 	rust) lint_rust ;;
-	javascript) lint_typescript ;;
+	javascript) lint_project_groups package.json .js .jsx .ts .tsx .mjs .cjs .mts .cts ;;
 	yaml) lint_yaml ;;
 	json) lint_json ;;
 	shell) lint_shell ;;
@@ -167,6 +173,9 @@ for type in "${types[@]}"; do
 	terraform) lint_terraform ;;
 	markdown) lint_markdown ;;
 	esac
+	if [[ "$SMART_LINT_LINT_RUNS" -eq "$before_lint_runs" ]] && lint_scope_has_input "$type"; then
+		SMART_LINT_UNSUPPORTED+=("No focused $type lint check completed")
+	fi
 done
 
 run_lint_fallbacks

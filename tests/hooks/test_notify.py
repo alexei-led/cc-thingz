@@ -401,3 +401,16 @@ def test_payload_parsed_once_preserves_empty_and_multiline_fields(
     assert "-group" not in args
     assert calls_file.read_text() == "call"
     assert not (tmp_path / "unsafe").exists()
+
+
+def test_notifier_failure_is_reported_without_failing_hook(tmp_path: Path) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    _write_executable(bin_dir / "terminal-notifier", "#!/bin/sh\nexit 7\n")
+    env = os.environ.copy()
+    env["PATH"] = f"{bin_dir}:{env['PATH']}"
+    env.pop("TMUX_PANE", None)
+    proc = _run({"title": "Agent", "message": "Ready"}, tmp_path, env)
+    assert proc.returncode == 0
+    assert "delivery failed (exit 7)" in proc.stderr
+    assert "Ready" in proc.stderr

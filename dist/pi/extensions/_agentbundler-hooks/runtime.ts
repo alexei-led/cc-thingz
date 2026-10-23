@@ -1,9 +1,16 @@
+import { stripVTControlCharacters } from "node:util";
 import { matchesTool } from "./matcher.js";
 import { runProcess, type ProcessRunner } from "./process.js";
 import { decodeConfig, type HookConfigV1, type HookDescriptor, type HookEvent } from "./schema.js";
 
 export interface PiEventContext {
   signal?: AbortSignal;
+  cwd?: string;
+  sessionManager?: { getSessionId(): string | undefined };
+  hasUI?: boolean;
+  ui?: {
+    notify(message: string, type?: "info" | "warning" | "error"): void;
+  };
 }
 
 export type PiEventHandler = (event: Record<string, unknown>, context: PiEventContext) => Promise<unknown> | unknown;
@@ -60,9 +67,15 @@ export function createPiHookRuntime(pi: PiExtensionAPI, value: unknown, options:
     const invocation = { controller, done };
     active.add(invocation);
     try {
+      // Native events do not carry project/session metadata. Use trusted
+      // context values and keep the event snapshot independent of callers.
+      const piEvent = { ...event };
+      if (context.cwd !== undefined) piEvent.cwd = context.cwd;
+      const sessionId = context.sessionManager?.getSessionId();
+      if (sessionId !== undefined) piEvent.session_id = sessionId;
       const result = await runner(hook.handler, {
         packageRoot: options.packageRoot,
-        input: { event: hook.event, hook: hook.identity, piEvent: event },
+        input: { event: hook.event, hook: hook.identity, piEvent },
         timeoutMilliseconds: hook.timeoutMilliseconds,
         signal: controller.signal,
         ...(options.outputLimitBytes === undefined ? {} : { outputLimitBytes: options.outputLimitBytes }),
@@ -72,6 +85,8 @@ export function createPiHookRuntime(pi: PiExtensionAPI, value: unknown, options:
         const detail = result.stderr.trim();
         throw new Error(`hook exited with code ${String(result.exitCode)}${detail === "" ? "" : `: ${detail}`}`);
       }
+      const stderr = result.stderr.trim();
+      if (stderr !== "") reportAdvisory(hook, stderr, context);
       return decodeOutput(result.stdout);
     } finally {
       context.signal?.removeEventListener("abort", cancel);
@@ -95,7 +110,7 @@ export function createPiHookRuntime(pi: PiExtensionAPI, value: unknown, options:
           !matchesTool(hook, toolName)) continue;
 
       if (hook.asynchronous) {
-        void invoke(hook, snapshot(event), context).catch((error: unknown) => report(error, hook, options.onError));
+        void invoke(hook, snapshot(event), context).catch((error: unknown) => report(error, hook, options.onError, context));
         continue;
       }
 
@@ -103,7 +118,7 @@ export function createPiHookRuntime(pi: PiExtensionAPI, value: unknown, options:
       try {
         decision = await invoke(hook, snapshot(event), context);
       } catch (error) {
-        report(error, hook, options.onError);
+        report(error, hook, options.onError, context);
         if (hook.failurePolicy === "open") continue;
         if (hook.event === "pre-tool") return { block: true, reason: `hook execution failed: ${errorMessage(error)}` };
         throw error;
@@ -112,7 +127,7 @@ export function createPiHookRuntime(pi: PiExtensionAPI, value: unknown, options:
       if (hook.event !== "pre-tool") {
         if (decision.decision !== "allow") {
           const error = new Error(`${decision.decision} is only valid for pre-tool hooks`);
-          report(error, hook, options.onError);
+          report(error, hook, options.onError, context);
           if (hook.failurePolicy === "closed") throw error;
         }
         continue;
@@ -122,7 +137,7 @@ export function createPiHookRuntime(pi: PiExtensionAPI, value: unknown, options:
         const input = event.input;
         if (!isPlainRecord(input)) {
           const error = new Error("Pi tool input is not a plain object; refusing rewrite");
-          report(error, hook, options.onError);
+          report(error, hook, options.onError, context);
           if (hook.failurePolicy === "closed") return { block: true, reason: error.message };
           continue;
         }
@@ -249,9 +264,36 @@ function snapshot(event: Record<string, unknown>): Record<string, unknown> {
   catch { return { type: event.type }; }
 }
 
-function report(error: unknown, hook: HookDescriptor, reporter: RuntimeOptions["onError"]): void {
-  reporter?.(error instanceof Error ? error : new Error(String(error)), hook);
+const MAX_REPORT_MESSAGE_LENGTH = 2_000;
+
+function report(error: unknown, hook: HookDescriptor, reporter: RuntimeOptions["onError"], context: PiEventContext): void {
+  const normalizedError = error instanceof Error ? error : new Error(String(error));
+  try { void Promise.resolve(reporter?.(normalizedError, hook)).catch(() => {}); }
+  catch { /* Reporting must not change hook decisions. */ }
+  notify(context, `Pi hook "${hook.identity}" failed: ${normalizedError.message}`, "error");
 }
+
+function reportAdvisory(hook: HookDescriptor, stderr: string, context: PiEventContext): void {
+  notify(context, `Pi hook "${hook.identity}" wrote to stderr: ${stderr}`, "warning");
+}
+
+function notify(context: PiEventContext, message: string, type: "warning" | "error"): void {
+  const plain = stripVTControlCharacters(message).trim();
+  const marker = "\n…\n";
+  const head = Math.floor((MAX_REPORT_MESSAGE_LENGTH - marker.length) / 2);
+  const boundedMessage = plain.length <= MAX_REPORT_MESSAGE_LENGTH
+    ? plain
+    : `${plain.slice(0, head)}${marker}${plain.slice(-(MAX_REPORT_MESSAGE_LENGTH - marker.length - head))}`;
+  if (boundedMessage === "") return;
+  try {
+    if (context.hasUI !== false && context.ui !== undefined) {
+      context.ui.notify(boundedMessage, type);
+      return;
+    }
+  } catch { /* Fall back to stderr if the UI reporter is unavailable. */ }
+  try { console.error(boundedMessage); } catch { /* Reporting is best-effort. */ }
+}
+
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }

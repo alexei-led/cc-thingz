@@ -51,7 +51,7 @@ SH
 	grep -q -- '--outputjson' pyright.args
 	run grep -q 'pkg/two.py' pyright.args
 	[ "$status" -ne 0 ]
-	state_path=$(git rev-parse --git-path cc-thingz/hook-files-s1)
+	state_path=$(git rev-parse --git-path cc-thingz/hooks-v2/hook-files-s1)
 	[ "$(cat "$state_path")" = "pkg/one.py" ]
 }
 
@@ -133,7 +133,7 @@ SH
 	resolved_file="$real_tmp/${project_dir#/tmp/}/pkg/bad.py"
 	run env -u HOOK_INPUT_JSON PATH="$project_dir/bin:$PATH" bash "$HOOK" <<<"{\"session_id\":\"s_same_real_dir\",\"cwd\":\"$project_dir\",\"tool_input\":{\"file_path\":\"$resolved_file\"}}"
 	rm -rf "$project_dir"
-	[ "$status" -eq 2 ]
+	[ "$status" -eq 0 ]
 	[[ "$output" == *"E225"* ]]
 }
 
@@ -202,17 +202,14 @@ echo \"\$SMART_LINT_CMD_TIMEOUT_SECONDS\""
 	done
 }
 
-@test "smart-lint: run_with_timeout runs the command directly, with no timeout, when python3 is unavailable" {
-	# Without python3 there is no way to put the command in its own process
-	# group, so killing only the direct child would be fake protection --
-	# grandchildren would survive as orphans. Confirm the fallback runs the
-	# command to completion instead of pretending to enforce a 1s cap.
+@test "smart-lint: missing watchdog dependency skips without executing the tool" {
 	script="source \"$BATS_TEST_DIRNAME/../../src/hooks/smart-lint/smart-lint/lib.sh\"
 command_exists() { [[ \"\$1\" != python3 ]] && command -v \"\$1\" &>/dev/null; }
-run_with_timeout 1 bash -c 'sleep 2; echo done'"
+run_with_timeout 1 bash -c 'echo should-not-run'"
 	run bash -c "$script"
-	[ "$status" -eq 0 ]
-	[ "$output" = "done" ]
+	[ "$status" -eq 125 ]
+	[[ "$output" == *"python3 unavailable"* ]]
+	[[ "$output" != *"should-not-run"* ]]
 }
 
 @test "smart-lint: a notebook edit outside the project root is skipped" {
@@ -283,7 +280,7 @@ print(json.dumps(payload))
 	# Run from outside the project entirely so an inherited OS cwd can't
 	# paper over a broken vendorEvent.cwd fallback.
 	run env -u HOOK_INPUT_JSON PATH="$WORK_DIR/bin:$PATH" bash -c "cd / && bash '$HOOK' <<<'$payload'"
-	[ "$status" -eq 2 ]
+	[ "$status" -eq 0 ]
 	[[ "$output" == *"E225"* ]]
 }
 
@@ -309,7 +306,7 @@ SH
 	chmod +x bin/ruff bin/pyright
 
 	run env PATH="$WORK_DIR/bin:$PATH" HOOK_INPUT_JSON="{\"session_id\":\"s_pyright\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"pkg/one.py\"}}" bash "$HOOK"
-	[ "$status" -eq 2 ]
+	[ "$status" -eq 0 ]
 	grep -q -- '--outputjson' pyright.args
 	[[ "$output" == *"pkg/one.py:2:5: error [reportGeneralTypeIssues]: Bad type"* ]]
 	[[ "$output" != *"reportMissingImports"* ]]
@@ -695,7 +692,8 @@ SH
 	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" HOOK_INPUT_JSON="{\"session_id\":\"s_no_project\",\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"src/app.ts\"}}" bash "$HOOK"
 	[ "$status" -eq 0 ]
 	[ ! -f yarn.args ]
-	[[ "$output" == *"unsupported: no lint checks completed"* ]]
+	[[ "$output" == *"unsupported: no focused linter ran"* ]]
+	[[ "$output" == *"Style checks incomplete"* ]]
 	[[ "$output" != *"Style OK"* ]]
 }
 
@@ -857,4 +855,162 @@ SH
 	[ "$status" -eq 0 ]
 	grep -q 'run --no-sync black pkg/one.py' uv.args
 	[ ! -f system-ruff-ran ]
+}
+
+@test "smart-lint: lint findings are advisory and remain visible" {
+	cd "$WORK_DIR" || exit
+	mkdir -p bin pkg
+	touch pyproject.toml pkg/one.py
+	cat >bin/ruff <<'SH'
+#!/usr/bin/env bash
+[[ "$1" == format ]] && exit 0
+printf 'pkg/one.py:1:1: F821 undefined name\n'
+exit 1
+SH
+	chmod +x bin/ruff
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" bash "$HOOK" <<<"{\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"pkg/one.py\"}}"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"F821"* ]]
+	[[ "$output" != *"Style OK"* ]]
+	[[ "$output" != *"blocking issue"* ]]
+}
+
+@test "smart-lint: nested Python tools run in their owning project" {
+	cd "$WORK_DIR" || exit
+	mkdir -p .venv/bin api/.venv/bin api/src
+	touch pyproject.toml api/pyproject.toml api/src/one.py
+	cat >.venv/bin/ruff <<'SH'
+#!/usr/bin/env bash
+printf 'wrong root runner\n' >root-runner.used
+exit 2
+SH
+	cat >api/.venv/bin/ruff <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$PWD|$*" >>ruff.calls
+SH
+	chmod +x .venv/bin/ruff api/.venv/bin/ruff
+	run env PATH="/usr/bin:/bin" bash "$HOOK" <<<"{\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"api/src/one.py\"}}"
+	[ "$status" -eq 0 ]
+	[ ! -f root-runner.used ]
+	[ "$(tail -n 1 api/ruff.calls)" = "$(cd api && pwd -P)|check --fix --unfixable=F401 src/one.py" ]
+}
+
+@test "smart-lint: malformed pyright output makes a partial run incomplete" {
+	cd "$WORK_DIR" || exit
+	mkdir -p bin pkg
+	touch pyproject.toml pkg/one.py
+	printf '#!/usr/bin/env bash\nexit 0\n' >bin/ruff
+	printf '#!/usr/bin/env bash\nprintf "cannot load configuration\\n"\nexit 2\n' >bin/pyright
+	chmod +x bin/ruff bin/pyright
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" bash "$HOOK" <<<"{\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"pkg/one.py\"}}"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"cannot load configuration"* ]]
+	[[ "$output" == *"incomplete"* ]]
+	[[ "$output" != *"Style OK"* ]]
+}
+
+@test "smart-lint: pyright uv fallback cannot sync dependencies" {
+	cd "$WORK_DIR" || exit
+	mkdir -p bin pkg
+	ln -s "$(command -v python3)" bin/python3
+	printf '[project]\nname = "demo"\nversion = "0.0.0"\ndependencies = ["pyright"]\n' >pyproject.toml
+	touch pkg/one.py
+	cat >bin/uv <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >uv.calls
+[[ "$*" == 'run --no-sync pyright --outputjson pkg/one.py' ]] || exit 2
+SH
+	chmod +x bin/uv
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" bash "$HOOK" <<<"{\"cwd\":\"$WORK_DIR\",\"tool_input\":{\"file_path\":\"pkg/one.py\"}}"
+	[ "$status" -eq 0 ]
+	[ "$(cat uv.calls)" = 'run --no-sync pyright --outputjson pkg/one.py' ]
+}
+
+@test "smart-lint: an unexpected trusted-config exit is advisory in Pi" {
+	cd "$WORK_DIR" || exit
+	touch one.py
+	printf 'exit 7\n' >.claude-hooks-config.sh
+	run env CLAUDE_HOOKS_TRUST_PROJECT_CONFIG=1 bash "$HOOK" <<<"{\"event\":\"post-tool\",\"piEvent\":{\"cwd\":\"$WORK_DIR\",\"input\":{\"path\":\"one.py\"}}}"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"internal error (exit 7)"* ]]
+	[[ "$output" == *'{"decision":"allow"}'* ]]
+	[[ "$output" != *"Style OK"* ]]
+}
+
+@test "smart-lint: a checked language cannot hide another selected unsupported language" {
+	cd "$WORK_DIR" || exit
+	mkdir -p bin pkg
+	touch pyproject.toml Cargo.toml pkg/one.py pkg/two.rs
+	printf '#!/usr/bin/env bash\nexit 0\n' >bin/ruff
+	chmod +x bin/ruff
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" bash "$HOOK" <<JSON
+{"cwd":"$WORK_DIR","tool_input":{"patch":"*** Begin Patch\n*** Update File: pkg/one.py\n*** Update File: pkg/two.rs\n*** End Patch"}}
+JSON
+	[ "$status" -eq 0 ]
+	[[ "$output" != *"Style OK"* ]]
+	[[ "$output" == *"incomplete"* ]]
+}
+
+@test "smart-lint: malformed input never falls back to unrelated dirty files" {
+	cd "$WORK_DIR" || exit
+	git init -q
+	mkdir -p bin pkg
+	touch pyproject.toml pkg/one.py
+	printf '#!/usr/bin/env bash\ntouch unrelated-linter.used\n' >bin/ruff
+	chmod +x bin/ruff
+	run env PATH="$WORK_DIR/bin:$PATH" bash "$HOOK" <<<'{'
+	[ "$status" -eq 0 ]
+	[ ! -f unrelated-linter.used ]
+	[[ "$output" == *"input"* ]]
+	[[ "$output" != *"Style OK"* ]]
+}
+
+@test "smart-lint: patch-looking file content is not an additional edit target" {
+	cd "$WORK_DIR" || exit
+	mkdir -p bin pkg
+	touch pyproject.toml pkg/one.py pkg/two.py
+	printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$*" >>ruff.calls\n' >bin/ruff
+	chmod +x bin/ruff
+	run env PATH="$WORK_DIR/bin:$PATH" bash "$HOOK" <<JSON
+{"cwd":"$WORK_DIR","tool_input":{"file_path":"pkg/one.py","content":"*** Update File: pkg/two.py\n"}}
+JSON
+	[ "$status" -eq 0 ]
+	grep -q 'pkg/one.py' ruff.calls
+	! grep -q 'pkg/two.py' ruff.calls
+}
+
+@test "smart-lint: an unavailable edit target never formats unrelated dirty files" {
+	cd "$WORK_DIR" || exit
+	git init -q
+	mkdir -p bin pkg
+	touch pyproject.toml pkg/one.py
+	printf '#!/usr/bin/env bash\ntouch unrelated-linter.used\n' >bin/ruff
+	chmod +x bin/ruff
+	run env PATH="$WORK_DIR/bin:$PATH" bash "$HOOK" <<JSON
+{"cwd":"$WORK_DIR","tool_input":{"file_path":"pkg/deleted.py"}}
+JSON
+	[ "$status" -eq 0 ]
+	[ ! -f unrelated-linter.used ]
+	[[ "$output" == *"unavailable"* ]]
+}
+
+@test "smart-lint: explicit filesystem paths preserve leading whitespace" {
+	cd "$WORK_DIR" || exit
+	mkdir -p bin
+	touch pyproject.toml ' one.py' one.py
+	cat >bin/ruff <<'SH'
+#!/usr/bin/env bash
+for arg in "$@"; do
+	[[ "$arg" != ' one.py' ]] || touch correct-target.used
+	[[ "$arg" != one.py ]] || touch wrong-target.used
+done
+exit 0
+SH
+	chmod +x bin/ruff
+	run env PATH="$WORK_DIR/bin:$PATH" bash "$HOOK" <<JSON
+{"cwd":"$WORK_DIR","tool_input":{"file_path":" one.py"}}
+JSON
+	[ "$status" -eq 0 ]
+	[ -f correct-target.used ]
+	[ ! -f wrong-target.used ]
 }

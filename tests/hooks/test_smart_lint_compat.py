@@ -60,7 +60,9 @@ def test_wrapper_preserves_stdin_file_and_session(
         'if [[ -n "${HOOK_INPUT_JSON+x}" ]]; then\n'
         '  printf leaked > "$HOME/payload-exported"\n'
         "fi\n"
-        'printf "parse\\n" >> "$HOME/parser-calls"\n'
+        'case "$*" in *normalize-input.py*)\n'
+        '  printf "parse\\n" >> "$HOME/parser-calls" ;;\n'
+        "esac\n"
         f'exec {shlex.quote(sys.executable)} "$@"\n'
     )
     python.chmod(0o755)
@@ -85,7 +87,7 @@ def test_wrapper_preserves_stdin_file_and_session(
     assert result.returncode == 0, result.stderr
     assert not (tmp_path / "payload-exported").exists()
     assert (tmp_path / "parser-calls").read_text().splitlines() == ["parse"]
-    state = tmp_path / ".git/cc-thingz/hook-files-stdin-session"
+    state = tmp_path / ".git/cc-thingz/hooks-v2/hook-files-stdin-session"
     assert state.read_text() == "one.py\n"
     assert not (state.parent / "hook-files-default").exists()
     if pi_runtime:

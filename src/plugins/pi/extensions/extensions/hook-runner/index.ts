@@ -44,6 +44,8 @@ import {
 	runDecisionHooks,
 	cancelRunningHooks,
 	runHook,
+	notifyHookMessage,
+	reportHookDiagnostic,
 	runHookAsync,
 	runShutdownHookAsync,
 	runPermissionDeniedGroups,
@@ -98,7 +100,7 @@ function sendHookMessageToAgent(pi: ExtensionAPI, ctx: ExtensionContext, text: s
 		try {
 			pi.sendUserMessage(payload, { deliverAs: "followUp" });
 		} catch {
-			ctx.ui.notify(payload, "warning");
+			notifyHookMessage(ctx, payload, "warning");
 		}
 	}
 }
@@ -214,16 +216,16 @@ export default function (pi: ExtensionAPI): void {
 		for (const group of resolvedConfig()[hookName] ?? []) {
 			for (const entry of group.hooks) {
 				if (entry.config.async) {
-					runHookAsync(entry, stdin, (msg, lvl) => ctx.ui.notify(msg, lvl));
+					runHookAsync(entry, stdin, (msg, lvl) => notifyHookMessage(ctx, msg, lvl));
 					continue;
 				}
 				const result = await runHook(entry, stdin);
 				if (result.exitCode === 0 && result.stdout.trim()) {
-					ctx.ui.notify(result.stdout.trim(), "info");
+					notifyHookMessage(ctx, result.stdout.trim(), "info");
 				} else if (result.timedOut) {
-					ctx.ui.notify(`Session hook timed out: ${entry.config.command.split("/").at(-1)}`, "error");
+					notifyHookMessage(ctx, `Session hook timed out: ${entry.config.command.split("/").at(-1)}`, "error");
 				} else if (result.exitCode !== 0) {
-					ctx.ui.notify(`Session hook error: ${result.stderr || "non-zero exit"}`, "error");
+					notifyHookMessage(ctx, `Session hook error: ${result.stderr || "non-zero exit"}`, "error");
 				}
 			}
 		}
@@ -239,7 +241,7 @@ export default function (pi: ExtensionAPI): void {
 			const groups = matchingGroups(resolvedConfig()[instructionsHookName] ?? [], file.load_reason);
 			for (const group of groups) {
 				for (const entry of group.hooks) {
-					runHookAsync(entry, fileStdin, (msg, lvl) => ctx.ui.notify(msg, lvl));
+					runHookAsync(entry, fileStdin, (msg, lvl) => notifyHookMessage(ctx, msg, lvl));
 				}
 			}
 		}
@@ -287,7 +289,7 @@ export default function (pi: ExtensionAPI): void {
 			});
 			for (const group of resolvedConfig()[hookName] ?? []) {
 				for (const entry of group.hooks) {
-					runHookAsync(entry, failureStdin, (msg, lvl) => ctx.ui.notify(msg, lvl));
+					runHookAsync(entry, failureStdin, (msg, lvl) => notifyHookMessage(ctx, msg, lvl));
 				}
 			}
 		} else {
@@ -295,14 +297,16 @@ export default function (pi: ExtensionAPI): void {
 			for (const group of resolvedConfig().Stop ?? []) {
 				for (const entry of group.hooks) {
 					if (entry.config.async) {
-						runHookAsync(entry, stdin, (msg, lvl) => ctx.ui.notify(msg, lvl));
+						runHookAsync(entry, stdin, (msg, lvl) => notifyHookMessage(ctx, msg, lvl));
 						continue;
 					}
 					const result = await runHook(entry, stdin);
-					if (result.exitCode === 2 && result.stderr.trim()) {
+					if (result.executionError) {
+						reportHookDiagnostic(ctx, "Stop hook runtime error", result);
+					} else if (result.exitCode === 2 && result.stderr.trim()) {
 						sendHookMessageToAgent(pi, ctx, result.stderr.trim());
-					} else if (result.exitCode !== 0) {
-						ctx.ui.notify(`Stop hook error: ${result.stderr}`, "error");
+					} else {
+						reportHookDiagnostic(ctx, "Stop hook", result);
 					}
 				}
 			}
@@ -319,7 +323,7 @@ export default function (pi: ExtensionAPI): void {
 		});
 		for (const group of resolvedConfig().Notification ?? []) {
 			for (const entry of group.hooks) {
-				runHookAsync(entry, notifStdin, (msg, lvl) => ctx.ui.notify(msg, lvl));
+				runHookAsync(entry, notifStdin, (msg, lvl) => notifyHookMessage(ctx, msg, lvl));
 			}
 		}
 	});
@@ -333,8 +337,12 @@ export default function (pi: ExtensionAPI): void {
 		for (const group of resolvedConfig().PreCompact ?? []) {
 			for (const entry of group.hooks) {
 				const result = await runHook(entry, stdin);
+				if (result.executionError) {
+					reportHookDiagnostic(ctx, "PreCompact hook runtime error", result);
+					continue;
+				}
 				if (result.exitCode === 2) return { cancel: true };
-				if (result.exitCode !== 0) ctx.ui.notify(`PreCompact hook error: ${result.stderr}`, "error");
+				if (result.exitCode !== 0) notifyHookMessage(ctx, `PreCompact hook error: ${result.stderr}`, "error");
 			}
 		}
 		return undefined;
@@ -349,11 +357,11 @@ export default function (pi: ExtensionAPI): void {
 		for (const group of resolvedConfig().PostCompact ?? []) {
 			for (const entry of group.hooks) {
 				if (entry.config.async) {
-					runHookAsync(entry, stdin, (msg, lvl) => ctx.ui.notify(msg, lvl));
+					runHookAsync(entry, stdin, (msg, lvl) => notifyHookMessage(ctx, msg, lvl));
 					continue;
 				}
 				const result = await runHook(entry, stdin);
-				if (result.exitCode !== 0) ctx.ui.notify(`PostCompact hook error: ${result.stderr}`, "error");
+				if (result.exitCode !== 0) notifyHookMessage(ctx, `PostCompact hook error: ${result.stderr}`, "error");
 			}
 		}
 	});
@@ -379,7 +387,7 @@ export default function (pi: ExtensionAPI): void {
 			pendingPromptExpansionContext = [pendingPromptExpansionContext, result.additionalContext].filter(Boolean).join("\n").trim();
 		}
 		if (result.blocked) {
-			ctx.ui.notify(result.reason ?? "Command expansion blocked by hook", "warning");
+			notifyHookMessage(ctx, result.reason ?? "Command expansion blocked by hook", "warning");
 			return { action: "handled" };
 		}
 		return undefined;
@@ -411,12 +419,14 @@ export default function (pi: ExtensionAPI): void {
 		for (const group of resolvedConfig().UserPromptSubmit ?? []) {
 			for (const entry of group.hooks) {
 				const result = await runHook(entry, stdin, 15);
-				if (result.exitCode === 2 && result.stderr.trim()) {
+				if (result.executionError) {
+					reportHookDiagnostic(ctx, "Prompt hook runtime error", result);
+				} else if (result.exitCode === 2 && result.stderr.trim()) {
 					injected += result.stderr.trim() + "\n";
 				} else if (result.exitCode === 0 && result.stdout.trim()) {
 					injected += result.stdout.trim() + "\n";
 				} else if (result.exitCode !== 0) {
-					ctx.ui.notify(`Prompt hook error: ${result.stderr}`, "error");
+					notifyHookMessage(ctx, `Prompt hook error: ${result.stderr}`, "error");
 				}
 			}
 		}
@@ -493,18 +503,23 @@ export default function (pi: ExtensionAPI): void {
 		for (const group of groups) {
 			for (const entry of group.hooks) {
 				if (entry.config.async) {
-					runHookAsync(entry, stdin, (msg, lvl) => ctx.ui.notify(msg, lvl), entry.config.timeout ?? 120);
+					runHookAsync(entry, stdin, (msg, lvl) => notifyHookMessage(ctx, msg, lvl), entry.config.timeout ?? 120);
 					continue;
 				}
 				const result = await runHook(entry, stdin, entry.config.timeout ?? 60);
+				if (result.executionError) {
+					reportHookDiagnostic(ctx, "Post-tool hook runtime error", result);
+					continue;
+				}
 				if (result.exitCode === 2 && result.stderr.trim()) {
 					feedbackLines.push(result.stderr.trim());
 					continue;
 				}
 				if (result.exitCode !== 0) {
-					ctx.ui.notify(`Post-tool hook error (${entry.config.command.split("/").at(-1)}): ${result.stderr}`, "error");
+					notifyHookMessage(ctx, `Post-tool hook error (${entry.config.command.split("/").at(-1)}): ${result.stderr}`, "error");
 					continue;
 				}
+				reportHookDiagnostic(ctx, "Post-tool hook", result);
 				const parsed = decodeGeneric(result.stdout, hookName);
 				if (parsed.block && parsed.reason) {
 					feedbackLines.push(parsed.reason);
