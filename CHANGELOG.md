@@ -8,6 +8,38 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [8.0.0] - 2026-10-23
+
+### Changed
+
+- Automatic lint and test hooks report findings without blocking edits, agent
+  completion, or requesting another model turn. Safety and permission guards
+  retain their deny behavior. Explicit commands and CI remain strict.
+- Focused Python, Go, and JS checks use their owning project and prepared runtime,
+  including uv workspaces and inherited JS workspace configuration. uv does not
+  sync or install dependencies.
+- Partial, unavailable, zero-test, and unmeasured runs are not reported as verified
+  passes. Failed, skipped, and incomplete work stays pending; unchanged failed
+  attempts are quiet until inputs or execution settings change.
+- Tool execution, environment probes, discovery, and captured output are bounded.
+  Cancellation stops nested process groups. Invalid metadata or unavailable
+  targets never fall back to linting unrelated files.
+- Tracking is scoped by worktree, session, and cwd; parallel edits append
+  atomically. Private legacy caches are not reused.
+- Pi receives trusted cwd/session metadata and bounded diagnostics without forced
+  continuations. Context startup tolerates malformed helper results, and failed
+  desktop notifications report their exit status before text fallback.
+
+### Upgrade
+
+1. Before upgrading, add explicit test/lint CI or pre-commit gates if you relied on
+   automatic hooks to enforce quality. Hook findings no longer stop agents.
+2. Reload or restart sessions after updating the package so cached hook paths and
+   extensions are refreshed.
+3. After repairing an external environment without code edits, retry the reported
+   command directly or set `TEST_RUNNER_FULL=1` for an explicit full check.
+
+
 ## [7.0.0] - 2026-10-21
 
 ### Removed
