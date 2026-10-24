@@ -8,6 +8,18 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [8.0.2] - 2026-10-24
+
+### Fixed
+
+- Disable shared GitHub Actions tool and dependency caches in CI, the canary,
+  and reusable runtime smoke, including release validation. Release checks no
+  longer restore cached tool state from earlier Actions runs.
+- Pin Agent Bundler v0.7.2, which disables cached Bun executables during its
+  release validation. Hook behavior and Pi extension exports are unchanged.
+
+
+
 ## [8.0.1] - 2026-10-24
 
 First published 8.x release. The v8.0.0 tag was not published after CI validation failed.
