@@ -8,7 +8,9 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
-## [8.0.0] - 2026-10-23
+## [8.0.1] - 2026-10-24
+
+First published 8.x release. The v8.0.0 tag was not published after CI validation failed.
 
 ### Changed
 
@@ -39,6 +41,11 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 3. After repairing an external environment without code edits, retry the reported
    command directly or set `TEST_RUNNER_FULL=1` for an explicit full check.
 
+[Changes since v7.0.0](https://github.com/alexei-led/cc-thingz/compare/v7.0.0...v8.0.1)
+
+## [8.0.0] - 2026-10-23
+
+Not published. Changes are included in 8.0.1.
 
 ## [7.0.0] - 2026-10-21
 
