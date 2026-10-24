@@ -1473,7 +1473,10 @@ SH
 	touch vitest.config.ts web/vitest.config.ts
 	printf 'test("works", () => {})\n' >web/tests/foo.test.ts
 	for runner in node_modules/.bin/vitest web/node_modules/.bin/vitest; do
-		printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$PWD|$*" >>vitest.calls\n' >"$runner"
+		cat >"$runner" <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$PWD|$*" >>vitest.calls
+SH
 		chmod +x "$runner"
 	done
 	write_state s_js_local web/tests/foo.test.ts

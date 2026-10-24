@@ -976,7 +976,8 @@ JSON
 JSON
 	[ "$status" -eq 0 ]
 	grep -q 'pkg/one.py' ruff.calls
-	! grep -q 'pkg/two.py' ruff.calls
+	run grep -q 'pkg/two.py' ruff.calls
+	[ "$status" -eq 1 ]
 }
 
 @test "smart-lint: an unavailable edit target never formats unrelated dirty files" {
