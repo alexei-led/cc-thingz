@@ -609,7 +609,11 @@ def test_make_check_is_non_mutating_and_release_packages_artifacts() -> None:
     shell_job = ci_workflow[
         ci_workflow.index("  lint-shell:") : ci_workflow.index("  lint-markdown:")
     ]
-    assert "make test-shell" in shell_job
+    assert "make lint-shell test-shell" in shell_job
+    assert "uv sync --frozen --all-groups --extra test" in shell_job
+    assert "- uses: actions/setup-python@" in shell_job
+    assert "- uses: actions/setup-go@" in shell_job
+    assert "- uses: oven-sh/setup-bun@" in shell_job
     assert "test-shell" in makefile.split("ci:", 1)[1].split("\n\n", 1)[0]
     assert "scripts/setup/install-bats.sh" in shell_job
     assert "scripts/setup/install-bats.sh" in release_workflow
