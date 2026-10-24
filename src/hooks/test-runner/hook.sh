@@ -226,7 +226,7 @@ finish_hook() {
 	exit 0
 }
 
-# shellcheck disable=SC2329 # Invoked by the EXIT trap, including unexpected failures.
+# shellcheck disable=SC2317,SC2329 # Invoked by the EXIT trap, including unexpected failures.
 unexpected_hook_exit() {
 	local code="$1"
 	[[ "$code" -eq 0 ]] || log_warn "Test hook internal error (exit $code); results incomplete, agent may continue"
@@ -596,7 +596,7 @@ run_with_deadline() {
 	rm -f "$timeout_flag" "$overflow_flag"
 	(
 		cmd_pid="" watchdog_pid=""
-		# shellcheck disable=SC2329 # Invoked by the cancellation traps in this subshell.
+		# shellcheck disable=SC2317,SC2329 # Invoked by the cancellation traps in this subshell.
 		cancel_test_jobs() {
 			# These jobs have separate process groups, outside the adapter's
 			# hook group. An adapter cancellation must not orphan them.
@@ -845,7 +845,7 @@ add_existing_file() {
 	[[ -f "$candidate" ]] && printf '%s\n' "$candidate"
 }
 
-# shellcheck disable=SC2329 # Invoked as a function command by run_with_deadline.
+# shellcheck disable=SC2317,SC2329 # Invoked as a function command by run_with_deadline.
 uv_pytest_prefix_args() {
 	[[ -f pyproject.toml ]] || return 1
 	command_exists python3 || return 1
@@ -1161,7 +1161,7 @@ find_python_tests_for_source() {
 	done <"$index"
 }
 
-# shellcheck disable=SC2329 # Invoked under the shared command deadline.
+# shellcheck disable=SC2317,SC2329 # Invoked under the shared command deadline.
 index_python_tests() (
 	set -o pipefail
 	find . -type d \( -name .git -o -name .venv -o -name venv -o -name node_modules -o -name vendor -o -name dist -o -name build -o -name .tox -o -name __pycache__ \) -prune -o \

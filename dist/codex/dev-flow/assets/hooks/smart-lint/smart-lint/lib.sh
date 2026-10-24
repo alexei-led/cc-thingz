@@ -619,7 +619,7 @@ run_with_timeout() (
 		return 125
 	}
 	local marker="${tmp}.timedout" overflow="${tmp}.overflow" pid="" watcher=""
-	# shellcheck disable=SC2329 # Invoked by cancellation traps in this subshell.
+	# shellcheck disable=SC2317,SC2329 # Invoked by cancellation traps in this subshell.
 	cancel_lint_command() {
 		[[ -z "$watcher" ]] || kill -KILL -- "-$watcher" 2>/dev/null
 		if [[ -n "$pid" ]]; then
