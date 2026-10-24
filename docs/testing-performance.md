@@ -47,21 +47,18 @@ Bats also runs in `make ci`. CI installs Bats 1.14.0 from its pinned release
 commit, not the older Ubuntu package. This adds coverage, so end-to-end CI timing
 is not an equal-work comparison with v6.20.0.
 
-External Actions are pinned to current stable release commits. Go caches in
-read-only CI use `.agentbundler-version` as the dependency key. Runtime smoke
-uses the locked npm download cache. Release validation and publication keep
-caches disabled. Superseded branch CI runs are cancelled, not release runs.
+External Actions are pinned to release commits. CI, the canary, reusable runtime
+smoke, and publication disable shared GitHub Actions tool and dependency caches.
+Release validation cannot restore a toolchain or dependency cache saved by a
+previous CI run. This trades repeated downloads for cache isolation. Lockfiles
+and integrity checks still apply. Superseded branch CI runs are cancelled, not
+release runs.
 
 The comparison baseline is
 [CI run 37295181502](https://github.com/alexei-led/cc-thingz/actions/runs/37295181502):
 Tests 48 s, Config Validation 25 s, Lint Python 24 s, Lint TypeScript 12 s,
 Test TypeScript 38 s. CI Success completed 72 s after the first job started.
 Job times overlap, so their sum is not pipeline latency.
-
-`actionlint` passes. `zizmor` still flags the read-only CI caches as potential
-cache poisoning because that workflow uploads advisory evaluation reports.
-Those reports are not executable release inputs. Publishing uses separate,
-uncached jobs. These low-confidence warnings are not reported as a clean scan.
 
 The baseline [release run](https://github.com/alexei-led/cc-thingz/actions/runs/37295181100)
 took 93 s for validation, including 56 s for `make ci`. Cloud after-times require

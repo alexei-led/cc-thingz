@@ -16,14 +16,17 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: 1.26.x
-          cache-dependency-path: .agentbundler-version
+          cache: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
-          cache: npm
-          cache-dependency-path: tests/vendor-smoke/package-lock.json
+          package-manager-cache: false
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          enable-cache: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          no-cache: true
       - run: bun install --frozen-lockfile
       - run: scripts/setup/install-agbun.sh
       - name: Install core runtimes
