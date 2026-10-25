@@ -42,6 +42,16 @@ HOOK_EDITED_FILES=()
 
 log_debug() { [[ "$CLAUDE_HOOKS_DEBUG" == "1" ]] && echo -e "${CYAN}[DEBUG]${NC} $*" >&2; }
 log_info() { echo -e "${BLUE}[INFO]${NC} $*" >&2; }
+# "No tool applies here" is not a failed check. Pi turns every stderr line from
+# a successful hook into a visible notice, so keep it on the transcript targets
+# and out of Pi's status line unless debugging.
+log_unsupported() {
+	if [[ "${SMART_LINT_PI_RUNTIME:-0}" == "1" ]]; then
+		log_debug "unsupported: $*"
+	else
+		log_info "unsupported: $*"
+	fi
+}
 report_incomplete() {
 	SMART_LINT_INCOMPLETE_COUNT=$((SMART_LINT_INCOMPLETE_COUNT + 1))
 	log_info "incomplete: $*"
@@ -325,7 +335,9 @@ add_error() {
 
 print_summary_and_exit() {
 	local unsupported
-	for unsupported in "${SMART_LINT_UNSUPPORTED[@]}"; do report_incomplete "$unsupported"; done
+	# A file type with no installed tool has nothing to check; counting it as
+	# an incomplete run reported every docs edit as a broken check.
+	for unsupported in "${SMART_LINT_UNSUPPORTED[@]}"; do log_unsupported "$unsupported"; done
 	if [[ "${#ERRORS[@]}" -gt 0 ]]; then
 		echo -e "${RED}❌ ${#ERRORS[@]} check problem(s) (advisory):${NC}" >&2
 		for err in "${ERRORS[@]}"; do echo -e "$err" >&2; done
@@ -334,8 +346,14 @@ print_summary_and_exit() {
 		echo -e "${YELLOW}⚠️ Style checks incomplete: ${SMART_LINT_TIMEOUT_COUNT} timed out, ${SMART_LINT_INCOMPLETE_COUNT} unavailable or failed${NC}" >&2
 	elif [[ "${#ERRORS[@]}" -eq 0 ]]; then
 		if [[ "$SMART_LINT_LINT_RAN" -eq 0 ]]; then
-			log_info "unsupported: no lint checks completed"
-		else
+			if project_fallback_enabled; then
+				log_unsupported "no lint checks completed"
+			else
+				log_unsupported "no focused linter ran; project fallback requires HOOK_PROJECT_FALLBACK=1"
+			fi
+		elif [[ "${SMART_LINT_PI_RUNTIME:-0}" != "1" && "${#SMART_LINT_UNSUPPORTED[@]}" -eq 0 ]]; then
+			# A pass line is a claim about every selected type, so it is
+			# only true when none of them was skipped.
 			echo -e "${PROJECT_TYPE} project ${GREEN}✅ Style OK${NC}" >&2
 		fi
 	fi
@@ -824,12 +842,7 @@ run_make_lint_fallback() {
 }
 
 run_lint_fallbacks() {
-	if ! project_fallback_enabled; then
-		if [[ "$SMART_LINT_LINT_RAN" -eq 0 ]]; then
-			log_info "unsupported: no focused linter ran; project fallback requires HOOK_PROJECT_FALLBACK=1"
-		fi
-		return 0
-	fi
+	project_fallback_enabled || return 0
 	local before="$SMART_LINT_LINT_RUNS" errors="${#ERRORS[@]}" incomplete="$SMART_LINT_INCOMPLETE_COUNT" timed_out="$SMART_LINT_TIMEOUT_COUNT"
 	run_package_lint_fallback
 	run_make_lint_fallback

@@ -7,7 +7,11 @@ todos, or logs. Retention belongs to user-managed maintenance.
 
 Post-edit lint and Stop tests use focused checks by default. Missing support is
 reported as skipped or unsupported rather than passing or silently running a
-whole-project command. Set `HOOK_PROJECT_FALLBACK=1` to opt into existing project
+whole-project command. A file type with no installed tool is unsupported, not a
+failed or incomplete check, and the lint pass line is only printed when every
+selected type was checked. Pi omits that status text because it surfaces every
+successful-hook stderr line as a notice; lint problems, timeouts, and genuine gaps
+still appear. Set `HOOK_PROJECT_FALLBACK=1` to opt into existing project
 Make/package fallback commands; `TEST_RUNNER_FULL=1` explicitly requests full tests.
 These options are declared in the portable hook environment.
 
@@ -51,8 +55,9 @@ bypass attempt suppression and explicitly request full tests. An attempted check
 not recorded as a pass.
 
 The portable Pi adapter supplies trusted project/session metadata and displays
-bounded diagnostics without scheduling a model turn, with stderr fallback in
-headless mode. Long messages keep both their beginning and final outcome;
+hook diagnostics as informational notices and hook failures as errors, bounded and
+non-blocking, without scheduling a model turn, with stderr fallback in headless
+mode. Long messages keep both their beginning and final outcome;
 terminal-control sequences are removed. The optional compatibility runner also
 separates launch/cancellation errors from hook-authored decisions. Explicit exit-2
 control decisions in user-configured hooks keep their existing semantics; shipped

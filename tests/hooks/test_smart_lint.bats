@@ -693,7 +693,8 @@ SH
 	[ "$status" -eq 0 ]
 	[ ! -f yarn.args ]
 	[[ "$output" == *"unsupported: no focused linter ran"* ]]
-	[[ "$output" == *"Style checks incomplete"* ]]
+	# A file type with no installed tool is not a failed check.
+	[[ "$output" != *"Style checks incomplete"* ]]
 	[[ "$output" != *"Style OK"* ]]
 }
 
@@ -947,8 +948,27 @@ SH
 {"cwd":"$WORK_DIR","tool_input":{"patch":"*** Begin Patch\n*** Update File: pkg/one.py\n*** Update File: pkg/two.rs\n*** End Patch"}}
 JSON
 	[ "$status" -eq 0 ]
+	[[ "$output" == *"unsupported: No focused rust lint check completed"* ]]
+	# An unchecked language is not a failed check, and it blocks the pass claim.
+	[[ "$output" != *"incomplete"* ]]
 	[[ "$output" != *"Style OK"* ]]
-	[[ "$output" == *"incomplete"* ]]
+}
+
+@test "smart-lint: a markdown edit with no markdown tooling stays silent on Pi" {
+	cd "$WORK_DIR" || exit
+	git init -q
+	git config user.email test@example.com
+	git config user.name Test
+	mkdir -p bin
+	touch notes.md
+	run env PATH="$WORK_DIR/bin:/usr/bin:/bin" bash "$HOOK" <<<"{\"event\":\"post-tool\",\"piEvent\":{\"cwd\":\"$WORK_DIR\",\"session_id\":\"s_markdown\",\"input\":{\"file_path\":\"notes.md\"}}}"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'"decision":"allow"'* ]]
+	# Pi shows every stderr line from a successful hook, so an edit with no
+	# applicable tool must produce nothing to read.
+	[[ "$output" != *"unsupported"* ]]
+	[[ "$output" != *"incomplete"* ]]
+	[[ "$output" != *"Style OK"* ]]
 }
 
 @test "smart-lint: malformed input never falls back to unrelated dirty files" {

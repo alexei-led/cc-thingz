@@ -273,11 +273,14 @@ function report(error: unknown, hook: HookDescriptor, reporter: RuntimeOptions["
   notify(context, `Pi hook "${hook.identity}" failed: ${normalizedError.message}`, "error");
 }
 
+// Successful hooks write advisory diagnostics to stderr (Claude-shaped
+// hooks do this by design). Treat that as information: a warning badge on a
+// clean run trains users to ignore the channel, which hides real failures.
 function reportAdvisory(hook: HookDescriptor, stderr: string, context: PiEventContext): void {
-  notify(context, `Pi hook "${hook.identity}" wrote to stderr: ${stderr}`, "warning");
+  notify(context, `Pi hook "${hook.identity}": ${stderr}`, "info");
 }
 
-function notify(context: PiEventContext, message: string, type: "warning" | "error"): void {
+function notify(context: PiEventContext, message: string, type: "info" | "error"): void {
   const plain = stripVTControlCharacters(message).trim();
   const marker = "\n…\n";
   const head = Math.floor((MAX_REPORT_MESSAGE_LENGTH - marker.length) / 2);
