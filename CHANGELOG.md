@@ -8,6 +8,23 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [8.0.3] - 2026-10-25
+
+### Fixed
+
+- A file type with no installed lint tool is no longer counted as an incomplete
+  check. Editing Markdown where no Markdown linter exists stops reporting
+  "Style checks incomplete", and the pass line only prints when every selected
+  type was checked.
+- Pi receives no lint status text from a successful hook. Lint problems,
+  timeouts, and genuine gaps still appear; Claude, Codex, Copilot, and Grok keep
+  the transcript status lines.
+- Pin Agent Bundler v0.7.3, which reports successful-hook stderr as an
+  informational Pi notice instead of a warning. Hook failures keep error
+  severity.
+
+[Changes since v8.0.2](https://github.com/alexei-led/cc-thingz/compare/v8.0.2...v8.0.3)
+
 ## [8.0.2] - 2026-10-24
 
 ### Fixed
@@ -17,8 +34,6 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
   longer restore cached tool state from earlier Actions runs.
 - Pin Agent Bundler v0.7.2, which disables cached Bun executables during its
   release validation. Hook behavior and Pi extension exports are unchanged.
-
-
 
 ## [8.0.1] - 2026-10-24
 
@@ -103,7 +118,6 @@ Not published. Changes are included in 8.0.1.
    with your caller's output contract.
 4. Restart the agent after updating. Plan-exec needs native pi-subagents, not
    Bridge; preserve Bridge while another consumer or unresolved operation needs it.
-
 
 ## [6.20.5] - 2026-10-21
 
@@ -258,7 +272,6 @@ See [cleanup policy](docs/git-cleanup.md).
 
 Unpublished release preparation, superseded by 6.19.1.
 
-
 ## [6.18.1] - 2026-10-04
 
 ### Fixed
@@ -299,7 +312,6 @@ Before upgrading, use Pi 1.0.2 or newer within 1.x; earlier hosts are unsupporte
 Keep `node` on `PATH` for async SessionEnd hooks, or those hooks log an error and
 skip. Call `ask_user_question` directly rather than from Code Mode. Consumers of
 its display text must now parse answer JSON. Reload or restart Pi after updating.
-
 
 ## [6.17.0] - 2026-09-30
 
