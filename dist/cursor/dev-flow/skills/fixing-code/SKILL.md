@@ -15,23 +15,25 @@ applying them.
 
 ## Hard rules
 
-- No fix without a reproducible pass/fail signal. If you cannot reproduce, ask for the missing artifact (logs, payload, trace, repro steps, environment) instead of patching on a guess. Ask before adding temporary instrumentation.
+- Reproduce the failure when feasible. If it cannot be reproduced, patch only an evidenced contract violation; add regression coverage and report the reproduction gap. Otherwise ask for the missing artifact rather than patching a guess. Ask before adding temporary instrumentation.
 - No destructive git (hard reset, clean, force push, checkout over local changes) and no `--no-verify`.
 - Never disable assertions, skip fast tests, lower lint severity, or ignore files to make a check pass or run faster. Clear caches only when a stale cache is the diagnosed cause.
 - Fix the requested failure first; ask before expanding to unrelated failures.
 
 ## Outcome
 
-- **Repro**: the fastest reliable failing signal, best a failing test at the behavior seam; otherwise a script, replayed payload, or small harness around the real path.
+- **Repro**: the fastest reliable failing signal, best a failing test at the behavior seam; otherwise a script, replayed payload, or small harness around the real path. If unavailable, report the gap and use evidenced contract violations instead.
 - **Root cause**: traced from the failing boundary to the first bad state or contract mismatch, with evidence (`file:line`, symptom, tool).
 - **Regression test** at the seam where the user saw the bug. If only a shallow seam exists, say so rather than adding a fake-confidence helper test.
 - Remove temporary probes or promote them to regression tests.
 - Browser-only symptoms go to browser-automation unless a cheaper CLI or unit signal exists.
 - If a code-graph tool (GitNexus, codegraph) is installed and fresh, use it to find callers or impact before changing widely used code.
 
-Done when the original repro passes, the regression test passes (or the missing
-seam is reported), and the relevant build/test/lint checks pass on what you
-changed, or you name each check that did not run and why.
+Done when the original repro passes, or its absence is reported with the
+contract evidence and a passing regression test. Report a missing test seam;
+without a repro, stop rather than patch when regression coverage is unavailable.
+Relevant build/test/lint checks must pass, or each check that did not run must
+be named with its reason.
 
 ## Report
 
