@@ -53,6 +53,21 @@
         "The output avoids rewriting for tone without identifying behavioral issues.",
         "The output produces findings that can be verified or tested."
       ]
+    },
+    {
+      "id": "harness-is-not-model-identity",
+      "name": "a harness without model metadata stays generic",
+      "prompt": "Select model context for an instruction file intended for Claude Code, sometimes launched through ce. No --model argument, model frontmatter, target-sidecar model, or parent model metadata is present. Give the context and reason only, not a scored audit.",
+      "files": [
+        "references/model-context.md"
+      ],
+      "expected_output": "Use generic model context because the harness and launcher do not establish a selected provider, model or deployment. Do not apply Anthropic-specific guidance or invent a backend.",
+      "assertions": [
+        "The output selects generic model context.",
+        "The output distinguishes the client or launcher from the selected provider and model.",
+        "The output does not infer Anthropic from Claude Code or ce.",
+        "The output does not assert a server-confirmed backend from missing metadata."
+      ]
     }
   ]
 }
