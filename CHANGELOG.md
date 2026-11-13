@@ -8,6 +8,22 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [8.0.4] - 2026-11-13
+
+### Changed
+
+- Instruction reviews no longer infer the model provider from the client. Pi,
+  Claude Code, and other clients can use different providers or routers.
+- Code review and skill-authoring guidance no longer require a fixed command
+  count or report template. Fix guidance allows a contract-evidenced correction
+  without an incident repro only when regression coverage is available.
+
+### Verification
+
+- A small paired execution pilot covered fixes, read-only reviews, missing
+  evidence, and provider selection. It is not evidence of a general cost or
+  quality gain; automatic skill activation and long tasks were not evaluated.
+
 ## [8.0.3] - 2026-10-25
 
 ### Fixed
