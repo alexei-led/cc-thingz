@@ -86,14 +86,6 @@ with `bodyPatch.mode: "sections"`. Use `mode: "replace"` only for a deliberate
 full fork: it discards the whole base body, including its reference links.
 `references/repo-conventions.md` has the patch mechanics.
 
-## Output
+## Report
 
-```markdown
-## Skill Change
-
-- `path` — created | changed | proposed: <what and why>
-
-Routing: model-invoked | user-invoked; triggers <terms>; NOT for <neighbors or none>
-Checks: <check>: passed | failed | not run (<reason>)
-Follow-up: <scoring run, docs update, or none>
-```
+Summarize the changes, routing decisions, and checks; name any follow-up.

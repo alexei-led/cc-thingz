@@ -14,13 +14,12 @@ Use the first match:
 - `--model <name>` from the user.
 - `model` in the target sidecar (`.agentbundler/targets/<target>.json`
   `frontmatterPatch`) or in the file's own frontmatter.
-- The target the file renders for: Claude → Anthropic, Codex → OpenAI,
-  Grok → xAI. Pi, Copilot, and Cursor run many models → generic.
 - The parent entrypoint, for support files.
-- Generic.
+- Generic. A target or harness does not establish the provider or model: Pi,
+  Claude Code, and other clients can use routers or alternative providers.
 
 A base `SKILL.md` or agent file ships to every target, so its default context is
-generic. Report `Model context: <family or generic> — source <arg|sidecar|target|parent|generic>`.
+generic. Report `Model context: <family or generic> — source <arg|sidecar|parent|generic>`.
 An unknown alias resolves to generic; report the alias and set confidence to
 medium.
 
@@ -35,34 +34,9 @@ medium.
 
 ## Family guidance
 
-Anthropic:
-
-- Thinking is adaptive and effort is a setting. Flag think-harder exhortations
-  and requests to write out internal reasoning.
-- State the result and what done means rather than every intermediate step.
-- For research or analysis, ask it to mark what it could not confirm and where
-  it looked.
-- Prompts that worked on the previous generation are the baseline; change them
-  only where evaluation shows a gap.
-
-OpenAI:
-
-- Keep instructions concise and consistent. Procedural rules written for smaller
-  tiers can over-constrain the flagship tier.
-- State the result, the completion boundary, and which ambiguities need a
-  question; otherwise it may stop at a first pass or ask too often.
-- Specify length and structure when they matter; it tends toward long,
-  formatted answers.
-- Calibrate verification: once required checks pass, repeat them only after a
-  change or failure. Repeated demands to verify produce redundant checks.
-
-xAI:
-
-- Reasoning effort is a setting; prompts need no think-harder text.
-- Published prompting guidance is thin. Score with the universal rubric and say
-  that model-specific confidence is limited.
-
-Generic:
-
-- Apply the universal rubric only. Lower confidence rather than guess when a
-  model-specific issue is likely.
+Family names alone do not establish a release's prompting behavior, controls,
+or deployment. Apply the universal rubric; use a resolved model's documented
+guidance only where relevant. Lower confidence rather than guess when a
+model-specific issue is likely. Keep API controls and conversation state in the
+host integration, not behavioral instructions. Do not infer the served model
+from a configured alias or silently substitute another record.

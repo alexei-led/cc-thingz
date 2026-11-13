@@ -41,9 +41,8 @@ Use the scope the user named. Otherwise ask one question offering:
 - branch compared to the default branch
 - specific files or a PR diff
 
-Use one git or PR command for the whole review. Without command access, work
-from the supplied diff and files, and ask for them if absent. No changes in
-scope: report `Nothing to review.`
+Without command access, work from the supplied diff and files, and ask for
+them if absent. No changes in scope: report `Nothing to review.`
 
 ## Modes
 
