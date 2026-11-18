@@ -8,6 +8,16 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [8.0.5] - 2026-11-18
+
+### Fixed
+
+- Pi's Git guard no longer starts Python for non-Git shell commands solely
+  because the hook identity contains `git`. This reduces unnecessary hook
+  work; Git commands still receive the same safety checks.
+
+[Changes since v8.0.4](https://github.com/alexei-led/cc-thingz/compare/v8.0.4...v8.0.5)
+
 ## [8.0.4] - 2026-11-13
 
 ### Changed

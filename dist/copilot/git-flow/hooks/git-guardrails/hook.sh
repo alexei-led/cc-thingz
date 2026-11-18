@@ -75,6 +75,13 @@ HOOK_CWD=${HOOK_CWD:-$PWD}
 
 [[ -z "$COMMAND" ]] && exit 0
 
+# Pi includes "git" in the hook identity even when the command does not.
+# Scan the decoded command again so metadata cannot force the Python path.
+UNQUOTED_FOR_SCAN=${COMMAND//[\\\"\']/}
+if [[ "$UNQUOTED_FOR_SCAN" != *[Gg][Ii][Tt]* ]]; then
+	exit 0
+fi
+
 deny() {
 	local rule=$1 cleanup_hint=$2
 	local message="dangerous git command: $COMMAND"
