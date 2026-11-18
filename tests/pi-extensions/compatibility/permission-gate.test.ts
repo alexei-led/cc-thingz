@@ -18,6 +18,7 @@ function setup() {
 
 	const pi = {
 		on: (event: string, handler: Handler) => handlers.set(event, handler),
+		registerCommand: () => {},
 		events: {
 			emit: (_channel: string, payload: unknown) => {
 				const p = payload as HookPayload;

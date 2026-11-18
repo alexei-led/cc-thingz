@@ -136,6 +136,53 @@ hook-supplied replacements are checked again. Nonmatching commands pass.
 This is a Bash warning heuristic, not a shell parser or sandbox. It does not
 cover arbitrary deletion methods, MCP calls, or non-Bash tools.
 
+### Bash permission rules
+
+Add optional rules to user `~/.pi/agent/settings.json` or trusted project
+`.pi/settings.json`. Rules are read at session start; reload or restart to
+apply changes. For example, this project rule permits remote commands on one VM:
+
+```json
+{
+  "permissionGate": {
+    "allow": [
+      {
+        "match": "Bash(gcloud compute ssh reflex-kroo-01 --zone us-central1-a --project doit-reflex --quiet --command *)",
+        "headless": true
+      }
+    ]
+  }
+}
+```
+
+This permits any remote command, including `sudo`, with the remote account's
+privileges. Review the client and SSH configuration as well as the VM and
+account. The extension does not prove remote identity or client behavior.
+
+`Bash(...)` matches the complete literal argument list. A standalone `*`
+matches exactly one nonempty argument that does not begin with `-`; it cannot
+be the executable. Other words are literal. Flag order and spelling matter.
+Quote the remote payload as one argument; local pipelines, redirections,
+substitutions, variables, globs, and other unsupported syntax require approval.
+With rules configured, unsupported syntax blocks without UI, even if no warning
+pattern matches. With user deny rules, unsupported syntax is blocked even with
+UI because the gate cannot determine whether a deny applies. When an executable
+has an allow rule, its other invocations require approval even if no warning
+pattern matches. Filter output outside Bash instead of appending a pipeline.
+
+A user `deny` list uses the same format and takes precedence over allow rules.
+Projects can add allows only, and only while trusted. `headless: true` permits
+a rule to waive the warning without UI. An absent or malformed project policy
+adds no allows; malformed user policy blocks Bash. Inspect rules with
+`/permissions`. Hook denies and timeouts still block matching commands.
+
+These rules are a warning-gate convenience, **not a security boundary**. Pi
+runs the original command through its configured shell after `tool_call`;
+shell startup, `shellCommandPrefix`, executable lookup, or later extensions
+may change what executes. Deny rules match invocation shapes, not all ways to
+perform an action. Other tools and explicit hook approvals are outside this
+matcher. Use OS isolation and trusted shell/client configuration where needed.
+
 `Stop` and `StopFailure` retain their `agent_end` behavior. Idle notifications
 run only on `agent_settled`, after automatic retries and queued continuations.
 `PreCompact` and `PostCompact` receive `trigger: event.reason` (`manual`,
