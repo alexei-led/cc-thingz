@@ -14,6 +14,18 @@ FIXTURES="$BATS_TEST_DIRNAME/fixtures"
 	[ "$status" -eq 0 ]
 }
 
+@test "git-guardrails: Pi metadata does not force Python for a non-git command" {
+	run bash "$HOOK" "/nonexistent/decide.py" <<<'{"event":"pre-tool","hook":"hook/git-guardrails","piEvent":{"input":{"command":"pwd"}}}'
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "git-guardrails: escaped git in a Pi command is blocked" {
+	run bash "$HOOK" "$DECIDE" <<<'{"event":"pre-tool","hook":"hook/git-guardrails","piEvent":{"input":{"command":"g\\it reset --hard"}}}'
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'"decision":"deny"'* ]]
+}
+
 @test "git-guardrails: git reset --hard is blocked (exits 2)" {
 	run bash "$HOOK" "$DECIDE" <"$FIXTURES/git_guardrails_dangerous.json" 2>&1
 	[ "$status" -eq 2 ]
