@@ -600,6 +600,8 @@ def test_make_check_is_non_mutating_and_release_packages_artifacts() -> None:
         ci_workflow.index("  test:") : ci_workflow.index("  test-typescript:")
     ]
     assert "- uses: oven-sh/setup-bun@" in test_job
+    assert "- uses: actions/setup-node@" in test_job
+    assert "node-version-file: .node-version" in test_job
     assert "- run: bun install --frozen-lockfile" in test_job
     assert (
         "- run: make lint-python validate check-generated skill-evals-prepare test"
@@ -610,7 +612,7 @@ def test_make_check_is_non_mutating_and_release_packages_artifacts() -> None:
         ci_workflow.index("  lint-shell:") : ci_workflow.index("  lint-markdown:")
     ]
     assert "make lint-shell test-shell" in shell_job
-    assert "uv sync --frozen --all-groups --extra test" in shell_job
+    assert "uv sync --locked --all-groups --extra test" in shell_job
     assert "- uses: actions/setup-python@" in shell_job
     assert "- uses: actions/setup-go@" in shell_job
     assert "- uses: oven-sh/setup-bun@" in shell_job
@@ -651,7 +653,9 @@ def test_make_check_is_non_mutating_and_release_packages_artifacts() -> None:
     )
     assert "            --version" not in release_workflow
     assert "previous_tag=" not in release_workflow
-    assert release_workflow.count("- run: uv sync --all-groups --extra test") == 2
+    assert (
+        release_workflow.count("- run: uv sync --locked --all-groups --extra test") == 2
+    )
     assert "sudo apt-get install --yes shellcheck" in release_workflow
     assert "go install mvdan.cc/sh/v3/cmd/shfmt@v3.13.1" in release_workflow
     project = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text())

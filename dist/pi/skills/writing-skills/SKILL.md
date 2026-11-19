@@ -67,7 +67,8 @@ These follow the agentskills.io specification:
   `haiku`) in a sidecar only where the harness needs a value.
 - Headers, lists, and code blocks carry structure. Use a table when it is the
   clearest form.
-- Specify an output shape only when another tool or agent parses it.
+- Specify an output shape only when a consumer parses it or when readers
+  need consistent state, evidence, or next actions.
 - A skill that changes code ends with the done line below instead of long
   verification or final-response sections. A skill that may run in a read-only
   role carries the read-only line.

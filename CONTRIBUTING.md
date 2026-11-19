@@ -25,8 +25,10 @@ installation documentation.
 
 ## Prerequisites
 
+Use the Bun and Node versions in `.bun-version` and `.node-version` to match CI.
+
 ```bash
-uv sync --all-groups
+uv sync --locked --all-groups --extra test
 bun install --frozen-lockfile
 scripts/setup/install-agbun.sh
 agbun package --help # must support deterministic target archives

@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import os
 import subprocess
 from pathlib import Path
 
 from conftest import REPO_ROOT
+from git_helpers import git, init_repo
 
 SETUP_SCRIPT = (
     REPO_ROOT
@@ -26,31 +26,6 @@ def run_setup(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
         text=True,
         check=False,
     )
-
-
-def git(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    env = os.environ.copy()
-    env.update({"GIT_AUTHOR_NAME": "Test", "GIT_AUTHOR_EMAIL": "test@example.com"})
-    env.update(
-        {"GIT_COMMITTER_NAME": "Test", "GIT_COMMITTER_EMAIL": "test@example.com"}
-    )
-    return subprocess.run(
-        ["git", *args],
-        cwd=repo,
-        env=env,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-
-
-def init_repo(path: Path) -> Path:
-    path.mkdir()
-    git(path, "init", "-b", "main")
-    (path / "README.md").write_text("hello\n")
-    git(path, "add", "README.md")
-    git(path, "commit", "-m", "init")
-    return path.resolve()
 
 
 def test_uses_managed_root_with_space_in_repo_path(tmp_path: Path) -> None:
@@ -83,6 +58,4 @@ def test_checks_out_existing_local_branch(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr + result.stdout
     worktree = repo.with_name(f"{repo.name}.worktrees") / "feature-existing"
     assert worktree.is_dir()
-    assert (
-        git(worktree, "branch", "--show-current").stdout.strip() == "feature/existing"
-    )
+    assert git(worktree, "branch", "--show-current") == "feature/existing"

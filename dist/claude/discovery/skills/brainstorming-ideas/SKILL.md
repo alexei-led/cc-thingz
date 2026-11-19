@@ -11,7 +11,6 @@ questions recorded, and no implementation task list produced.
 ## Session rules
 
 - Do not implement or change files until the user explicitly approves that scope.
-
 - Ask one question at a time, with a recommendation. Use the runtime's
   interactive question tool when available (single-select, multi-select, or
   free text) or short labeled options otherwise; always include an Other choice.
@@ -27,14 +26,10 @@ create or change them only with user approval, for a resolved term or decision.
 
 ## Modes
 
-- **Explore an idea.** If no topic was given, ask for one. Narrow until the problem
-  fits one sentence: trigger, actor, what it builds on or replaces, non-goals, and
-  the strongest constraint. State assumptions and ask which are wrong. As soon as
-  the problem is stated, propose 2-3 approaches, each with what it is, its
-  trade-offs, risks, and when it wins; name the decision criteria and mark one
-  recommendation. Refine the chosen design only as far as the problem needs
-  (architecture, data flow, interface, error handling, testing), confirming with
-  the user as you go.
+- **Explore an idea.** Compare two or three viable approaches against the goal
+  and strongest constraints. State the assumptions that affect the trade-offs,
+  recommend one approach, and ask only the next question that could change the
+  decision. If there is no topic, ask for one.
 - **Grill or debate.** A draft plan, a named trade-off such as "X vs Y", or a set
   of assumptions is already bounded; ask for a plan only when nothing concrete was
   named. For a named trade-off, lead with a side-by-side comparison and your take,
@@ -82,8 +77,5 @@ Domain docs: <updates or none>
 ### Claude tools
 
 - Ask each question in its own `AskUserQuestion` call: single-select for one path, multi-select for several risks, constraints, or goals, and `allowOther` for custom answers.
-- Track sessions longer than two steps with `TaskCreate` and `TaskUpdate`.
-- For a broad scan, spawn one read-only subagent: "Quick scan only. Find structure, conventions, and tests for: <idea>. Return 5 bullets with file paths. Do not edit." Otherwise use `Read`, `Grep`, `Glob` directly.
 - For research the user asked for, use `WebSearch` and `WebFetch` with a scoped query. If web access is unavailable, say so and continue from local context.
 - Use `Write` or `Edit` only after the user approves the exact design note, `CONTEXT.md` entry, or ADR.
-- At the end, offer the next step: create a worktree, create a plan, save the design note, or stop.

@@ -18,5 +18,6 @@
   "timeoutMilliseconds": 10000,
   "asynchronous": false,
   "failurePolicy": "closed",
+  "environment": ["CLAUDE_HOOK_CONFIG"],
   "order": 30
 }

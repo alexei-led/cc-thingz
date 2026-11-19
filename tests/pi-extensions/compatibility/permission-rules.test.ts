@@ -95,6 +95,11 @@ describe("permission rules", () => {
 			reason: "Blocked by user permission rule",
 		});
 	});
+	it("still enforces explicit user denies for terminal tools", async () => {
+		const run = await setup({ permissionGate: { deny: [{ match: "Bash(herdr agent prompt worker *)" }] } }, undefined);
+		expect(await run("herdr agent prompt worker 'hello'")).toMatchObject({ block: true, reason: "Blocked by user permission rule" });
+	});
+
 	it("cannot bypass a user deny with opaque shell syntax", async () => {
 		const run = await setup({ permissionGate: { deny: [{ match: "Bash(sudo *)" }] } }, undefined, true, { hasUI: true, choice: "Yes" });
 		expect(await run("echo ok; sudo whoami")).toMatchObject({ block: true, reason: "Unrecognized shell syntax cannot be checked against deny rules" });

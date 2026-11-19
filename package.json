@@ -1,6 +1,6 @@
 {
   "name": "cc-thingz",
-  "version": "8.1.0",
+  "version": "8.1.1",
   "private": true,
   "description": "Portable skills, agents, hooks, and Pi extensions for Claude Code, Codex CLI, Copilot, Cursor, Grok, and Pi.",
   "license": "MIT",
@@ -17,7 +17,7 @@
     "@earendil-works/pi-coding-agent": "^1.0.2",
     "@earendil-works/pi-tui": "^1.0.2",
     "@types/bun": "latest",
-    "markdownlint-cli2": "^0.23.1",
+    "markdownlint-cli2": "^0.23.3",
     "typebox": "*"
   },
   "peerDependencies": {

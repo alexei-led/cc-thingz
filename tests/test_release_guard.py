@@ -124,6 +124,9 @@ def test_release_guard_hook_uses_closed_shell_launcher() -> None:
     [
         "gh release view v6.13.0 --repo alexei-led/cc-thingz",
         "gh release list --repo alexei-led/cc-thingz",
+        "gh release list --repo alexei-led/cc-thingz | head",
+        "gh release view v6.13.0 >/tmp/notes && gh release list",
+        "echo gh release create is documented here",
         "gh release create v6.13.0 --dry-run",
         "gh release create v6.13.0 --repo alexei-led/cc-thingz --dry-run",
     ],

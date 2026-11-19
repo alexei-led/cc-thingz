@@ -25,6 +25,14 @@ def git(cwd: Path, *args: str) -> str:
     ).stdout.strip()
 
 
+def init_repo(path: Path, branch: str = "main") -> Path:
+    git(path.parent, "init", "-q", "-b", branch, str(path))
+    (path / "file.txt").write_text("base\n", encoding="utf-8")
+    git(path, "add", "file.txt")
+    git(path, "commit", "-qm", "base")
+    return path.resolve()
+
+
 def create_cleanup_clone(tmp_path: Path) -> Path:
     """Import the same real commit graph in one process, without checkout churn."""
     origin = tmp_path / "origin"

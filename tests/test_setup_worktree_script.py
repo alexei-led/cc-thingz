@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 from conftest import REPO_ROOT
+from git_helpers import git, init_repo
 
 SCRIPT = (
     REPO_ROOT
@@ -38,26 +39,10 @@ def run(
     )
 
 
-def git(repo: Path, *args: str, env: dict[str, str] | None = None) -> str:
-    result = run(["git", *args], repo, env=env)
-    assert result.returncode == 0, result.stdout
-    return result.stdout
-
-
 def write_commit(repo: Path, filename: str, content: str, message: str) -> None:
     (repo / filename).write_text(content)
     git(repo, "add", filename)
     git(repo, "commit", "-m", message)
-
-
-def init_repo(tmp_path: Path, base: str) -> Path:
-    repo = tmp_path / f"repo-{base}"
-    result = run(["git", "init", "-b", base, str(repo)], tmp_path)
-    assert result.returncode == 0, result.stdout
-    git(repo, "config", "user.email", "test@example.com")
-    git(repo, "config", "user.name", "Test User")
-    write_commit(repo, "file.txt", "base\n", "base")
-    return repo
 
 
 def make_exit_stub(tmp_path: Path, name: str, exit_code: int) -> dict[str, str]:
@@ -76,7 +61,7 @@ def test_failing_baseline_tests_still_prints_ready_and_exits_zero(
     """Pin: a failing baseline test command must not swallow the
     WORKTREE READY summary — pre-fix, `set -euo pipefail` aborted the script
     before the summary printed, hiding the worktree path."""
-    repo = init_repo(tmp_path, "main")
+    repo = init_repo(tmp_path / "repo-main")
     write_commit(repo, "Makefile", "test:\n\t@exit 1\n", "add failing test target")
 
     result = run([str(SCRIPT), "--test", "feature"], repo)
@@ -93,7 +78,7 @@ def test_failing_dependency_setup_still_prints_ready_but_exits_nonzero(
     """A failed dependency setup still leaves a usable worktree behind, so
     the summary (with its path) must print; the setup step is what actually
     failed though, so the script reports that via a non-zero exit."""
-    repo = init_repo(tmp_path, "main")
+    repo = init_repo(tmp_path / "repo-main")
     write_commit(repo, "Cargo.toml", '[package]\nname = "x"\n', "add cargo project")
     env = make_exit_stub(tmp_path, "cargo", 1)
 
@@ -108,7 +93,7 @@ def test_failing_dependency_setup_still_prints_ready_but_exits_nonzero(
 def test_successful_setup_and_tests_print_ready_and_exit_zero(
     tmp_path: Path,
 ) -> None:
-    repo = init_repo(tmp_path, "main")
+    repo = init_repo(tmp_path / "repo-main")
     write_commit(repo, "Makefile", "test:\n\t@true\n", "add passing test target")
 
     result = run([str(SCRIPT), "--test", "feature"], repo)
@@ -131,7 +116,7 @@ def test_successful_setup_and_tests_print_ready_and_exit_zero(
 def test_setup_uses_frozen_project_manager(
     tmp_path: Path, manager: str, lockfile: str, version: str, expected: str
 ) -> None:
-    repo = init_repo(tmp_path, "main")
+    repo = init_repo(tmp_path / "repo-main")
     write_commit(
         repo,
         "package.json",
@@ -157,7 +142,7 @@ def test_setup_uses_frozen_project_manager(
 def test_setup_refuses_conflicting_manager_without_removing_worktree(
     tmp_path: Path,
 ) -> None:
-    repo = init_repo(tmp_path, "main")
+    repo = init_repo(tmp_path / "repo-main")
     write_commit(repo, "package.json", '{"packageManager":"pnpm@10.0.0"}', "package")
     write_commit(repo, "package-lock.json", "locked\n", "lock")
 
@@ -171,7 +156,7 @@ def test_setup_refuses_conflicting_manager_without_removing_worktree(
 
 
 def test_reports_base_divergence_without_resetting_or_fetching(tmp_path: Path) -> None:
-    repo = init_repo(tmp_path, "main")
+    repo = init_repo(tmp_path / "repo-main")
     git(repo, "branch", "tracking")
     git(repo, "branch", "--set-upstream-to=tracking", "main")
     write_commit(repo, "ahead.txt", "ahead\n", "ahead")
@@ -185,7 +170,7 @@ def test_reports_base_divergence_without_resetting_or_fetching(tmp_path: Path) -
 
 
 def test_python_setup_and_tests_use_uv(tmp_path: Path) -> None:
-    repo = init_repo(tmp_path, "main")
+    repo = init_repo(tmp_path / "repo-main")
     write_commit(repo, "pyproject.toml", '[project]\nname="fixture"\n', "python")
     env = make_exit_stub(tmp_path, "uv", 0)
     (tmp_path / "bin" / "uv").write_text('#!/bin/sh\necho "UV $*"\n')
@@ -198,7 +183,7 @@ def test_python_setup_and_tests_use_uv(tmp_path: Path) -> None:
 
 
 def test_setup_refuses_missing_lock_without_running_installer(tmp_path: Path) -> None:
-    repo = init_repo(tmp_path, "main")
+    repo = init_repo(tmp_path / "repo-main")
     write_commit(repo, "package.json", '{"packageManager":"npm@10.0.0"}', "package")
     result = run([str(SCRIPT), "--setup", "feature"], repo)
     assert result.returncode == 1
@@ -207,7 +192,7 @@ def test_setup_refuses_missing_lock_without_running_installer(tmp_path: Path) ->
 
 
 def test_requirements_setup_uses_worktree_virtualenv(tmp_path: Path) -> None:
-    repo = init_repo(tmp_path, "main")
+    repo = init_repo(tmp_path / "repo-main")
     write_commit(repo, "requirements.txt", "pytest==8.0.0\n", "requirements")
     env = make_exit_stub(tmp_path, "uv", 0)
     (tmp_path / "bin" / "uv").write_text('#!/bin/sh\necho "UV $*"\n')
