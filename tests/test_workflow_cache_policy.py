@@ -28,5 +28,7 @@ def test_workflows_do_not_use_shared_actions_caches(workflow_path: Path) -> None
             if action in CACHE_INPUTS:
                 name, disabled = CACHE_INPUTS[action]
                 assert inputs.get(name) is disabled, location
+            if action == "oven-sh/setup-bun":
+                assert inputs.get("bun-version-file") == ".bun-version", location
             if action in {"actions/setup-node", "actions/setup-python"}:
                 assert not inputs.get("cache"), location

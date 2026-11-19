@@ -4,8 +4,9 @@ NODE_VERSION ?= $(shell cat .node-version 2>/dev/null || echo 24)
 SKILL_EVAL_ROOT ?= /tmp/cc-thingz-skill-eval-root
 SKILL_EVAL_WORKSPACE ?= /tmp/cc-thingz-skill-eval-workspace
 SKILL_EVAL_INCLUDE ?= **
-SKILL_EVAL_TARGET ?= gpt-6-luna
-SKILL_EVAL_JUDGE ?= gpt-6-luna
+SKILL_EVAL_TARGET ?=
+SKILL_EVAL_JUDGE ?= $(SKILL_EVAL_TARGET)
+export SKILL_EVAL_TARGET SKILL_EVAL_JUDGE
 SKILL_EVAL_LOG_FORMAT ?= jsonl
 SKILL_EVAL_LOG_FILE ?= $(SKILL_EVAL_WORKSPACE)/events.jsonl
 SKILL_EVAL_REPORT ?= $(SKILL_EVAL_WORKSPACE)/summary.md
@@ -25,8 +26,8 @@ PLUGIN_EVAL_MAX_COST ?= 1.00
 lint: lint-python lint-shell lint-markdown lint-typescript ## Run all linters (modern tools when available)
 
 lint-python: ## Lint Python files with ruff
-	uv run ruff check .
-	uv run ruff format --check .
+	uv run --locked ruff check .
+	uv run --locked ruff format --check .
 
 lint-shell: ## Lint shell scripts and Bats fixtures with the same tools as CI
 	@command -v shellcheck >/dev/null 2>&1 || { echo "shellcheck not installed"; exit 1; }
@@ -49,7 +50,7 @@ lint-typescript: ## Lint and type-check Pi extension TypeScript
 
 PYTEST_WORKERS ?= auto
 PYTEST_ARGS ?= --durations=15
-PYTEST = uv run --extra test python -m pytest tests/ -n $(PYTEST_WORKERS) --dist worksteal $(PYTEST_ARGS)
+PYTEST = uv run --locked --extra test python -m pytest tests/ -n $(PYTEST_WORKERS) --dist worksteal $(PYTEST_ARGS)
 
 # Excludes two kinds of slow suite: real-git/worktree/package-install
 # end-to-end tests, and hook-validation suites that fork a subprocess (bash,
@@ -93,11 +94,13 @@ test-ts-fast: ## Run Bun TypeScript tests, skipping the real-subprocess timeout 
 	bun test tests/pi-extensions --isolate --path-ignore-patterns='**/dispatch.timeout.test.ts'
 
 skill-evals-prepare: ## Build temporary Agent Skills eval tree under /tmp
-	uv run python scripts/evals/prepare-skill-evals.py --out $(SKILL_EVAL_ROOT)
+	uv run --locked python scripts/evals/prepare-skill-evals.py --out $(SKILL_EVAL_ROOT)
 
 skill-evals: skill-evals-prepare ## Run paid Agent Skills evals and print fix-focused summary
 	@set -u; \
 	if [ -f .env ]; then set -a; . ./.env; set +a; fi; \
+	test -n "$${SKILL_EVAL_TARGET:-}" || { echo "SKILL_EVAL_TARGET missing" >&2; exit 2; }; \
+	test -n "$${SKILL_EVAL_JUDGE:-}" || SKILL_EVAL_JUDGE="$$SKILL_EVAL_TARGET"; \
 	test -n "$${OPENAI_API_KEY:-}" || { echo "OPENAI_API_KEY missing"; exit 2; }; \
 	mkdir -p $(SKILL_EVAL_WORKSPACE); \
 	baseline_flag=""; \
@@ -108,8 +111,8 @@ skill-evals: skill-evals-prepare ## Run paid Agent Skills evals and print fix-fo
 		--include '$(SKILL_EVAL_INCLUDE)' \
 		--workspace $(SKILL_EVAL_WORKSPACE) \
 		$$baseline_flag \
-		--target $(SKILL_EVAL_TARGET) \
-		--judge $(SKILL_EVAL_JUDGE) \
+		--target "$$SKILL_EVAL_TARGET" \
+		--judge "$$SKILL_EVAL_JUDGE" \
 		--base-url https://api.openai.com/v1 \
 		--api-key-env OPENAI_API_KEY \
 		--concurrency $(SKILL_EVAL_CONCURRENCY) \
@@ -119,7 +122,7 @@ skill-evals: skill-evals-prepare ## Run paid Agent Skills evals and print fix-fo
 		--strict \
 		$$report_flag; \
 	status=$$?; \
-	uv run python scripts/evals/summarize-skill-evals.py $(SKILL_EVAL_WORKSPACE) --markdown $(SKILL_EVAL_REPORT) || true; \
+	uv run --locked python scripts/evals/summarize-skill-evals.py $(SKILL_EVAL_WORKSPACE) --markdown $(SKILL_EVAL_REPORT) || true; \
 	if [ "$(SKILL_EVAL_STRICT)" = "0" ]; then exit 0; fi; \
 	exit $$status
 
@@ -127,11 +130,11 @@ skill-evals-fast: ## Fast paid skill eval loop: no baseline, no HTML, higher con
 	$(MAKE) skill-evals SKILL_EVAL_BASELINE=0 SKILL_EVAL_HTML_REPORT=0 SKILL_EVAL_CONCURRENCY=8 SKILL_EVAL_STRICT=0
 
 skill-evals-summary: ## Print summary for latest skill eval workspace
-	uv run python scripts/evals/summarize-skill-evals.py $(SKILL_EVAL_WORKSPACE) --markdown $(SKILL_EVAL_REPORT)
+	uv run --locked python scripts/evals/summarize-skill-evals.py $(SKILL_EVAL_WORKSPACE) --markdown $(SKILL_EVAL_REPORT)
 
 plugin-evals-prepare: ## Build a temp `claude plugin eval` tree for PLUGIN_EVAL_PACKAGE=<name>
 	@test -n "$(PLUGIN_EVAL_PACKAGE)" || { echo "set PLUGIN_EVAL_PACKAGE=<package>, e.g. git-flow" >&2; exit 2; }
-	uv run python scripts/evals/prepare-plugin-evals.py \
+	uv run --locked python scripts/evals/prepare-plugin-evals.py \
 		--package $(PLUGIN_EVAL_PACKAGE) --out $(PLUGIN_EVAL_ROOT)/$(PLUGIN_EVAL_PACKAGE)
 
 plugin-evals: plugin-evals-prepare ## Run claude plugin eval (paid) for PLUGIN_EVAL_PACKAGE=<name>; pass EXTRA_ARGS for --case/--tag/etc
@@ -152,13 +155,13 @@ plugin-evals: plugin-evals-prepare ## Run claude plugin eval (paid) for PLUGIN_E
 validate: validate-genericity validate-executables validate-hooks check-agbun ## Validate canonical sources and Agent Bundler availability
 
 validate-genericity: ## Reject Claude-only tokens in vendor-neutral base SKILL.md/AGENT.md
-	uv run python scripts/validate/validate_genericity.py
+	uv run --locked python scripts/validate/validate_genericity.py
 
 validate-hooks: ## Check every generated hook config: events, matchers, and referenced files
-	uv run python scripts/validate/validate_hooks.py
+	uv run --locked python scripts/validate/validate_hooks.py
 
 lint-instructions: ## Lint agent/skill instructions (advisory)
-	@uv run python src/skills/reviewing-instructions/scripts/lint-instructions.py
+	@uv run --locked python src/skills/reviewing-instructions/scripts/lint-instructions.py
 
 validate-executables: ## Check shell + Python entry scripts have executable bit
 	@fail=0; \
@@ -173,8 +176,8 @@ validate-executables: ## Check shell + Python entry scripts have executable bit
 
 .PHONY: fmt
 fmt: ## Auto-format Python, JavaScript/TypeScript, and shell files
-	uv run ruff check --fix .
-	uv run ruff format .
+	uv run --locked ruff check --fix .
+	uv run --locked ruff format .
 	@scripts/tooling/js-tools.sh format
 	find src scripts -name '*.sh' -exec shfmt -i 0 -w {} +
 	shfmt -i 0 -w scripts/git-hooks/pre-commit scripts/git-hooks/pre-push scripts/release/release-tag
@@ -205,14 +208,14 @@ ci: lint validate check-generated ## Validate generated output, then run Python 
 
 .PHONY: doctor
 doctor: ## Inspect installed plugins without changing configuration
-	uv run python scripts/diagnostics/doctor.py
+	uv run --locked python scripts/diagnostics/doctor.py
 
 # --- Setup ---
 
 .PHONY: setup
 setup: ## Install repo-tracked git hooks (pre-commit + pre-push) and dev deps
 	git config core.hooksPath scripts/git-hooks
-	uv sync --extra test
+	uv sync --locked --extra test
 	@echo "Setup complete — git hooks active via core.hooksPath=scripts/git-hooks"
 
 # --- Push ---

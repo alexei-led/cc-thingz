@@ -37,7 +37,7 @@ jobs:
         with:
           version: latest
           enable-cache: false
-      - run: uv sync --all-groups --extra test
+      - run: uv sync --locked --all-groups --extra test
       - name: Install shell tooling
         run: |
           sudo apt-get update
@@ -47,6 +47,7 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           no-cache: true
+          bun-version-file: .bun-version
       - run: bun install --frozen-lockfile
       - name: Install Agent Bundler
         run: scripts/setup/install-agbun.sh
@@ -79,7 +80,7 @@ jobs:
         with:
           version: latest
           enable-cache: false
-      - run: uv sync --all-groups --extra test
+      - run: uv sync --locked --all-groups --extra test
       - name: Validate notes-only repair inputs
         if: github.event_name == 'workflow_dispatch'
         env:
@@ -140,7 +141,7 @@ jobs:
           RELEASE_ROOT: ${{ github.event_name == 'workflow_dispatch' && 'release-target' || '.' }}
           NOTES_CHANGELOG: ${{ github.event_name == 'workflow_dispatch' && 'notes-source/CHANGELOG.md' || 'CHANGELOG.md' }}
         run: |
-          uv run python src/skills/releasing-code/scripts/release_notes.py check-release \
+          uv run --locked python src/skills/releasing-code/scripts/release_notes.py check-release \
             --root "$RELEASE_ROOT" \
             --tag "$RELEASE_TAG" \
             --changelog "$NOTES_CHANGELOG"
@@ -152,7 +153,7 @@ jobs:
         run: |
           gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
             --json tagName,name,body,isDraft,isPrerelease,assets > "$RUNNER_TEMP/release-before.json"
-          uv run python src/skills/releasing-code/scripts/release_notes.py \
+          uv run --locked python src/skills/releasing-code/scripts/release_notes.py \
             check-release-identity \
             --identity "$RUNNER_TEMP/release-before.json" \
             --tag "$RELEASE_TAG" \
@@ -216,7 +217,7 @@ jobs:
             changelog=notes-source/CHANGELOG.md
             packages_dir=release-target/src/.agentbundler/packages
           fi
-          uv run scripts/release/generate-release-notes.py \
+          uv run --locked scripts/release/generate-release-notes.py \
             --tag "$RELEASE_TAG" \
             --repository "$GITHUB_REPOSITORY" \
             --changelog "$changelog" \
@@ -239,7 +240,7 @@ jobs:
         run: |
           gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
             --json tagName,name,body,isDraft,isPrerelease,assets > "$RUNNER_TEMP/release-after.json"
-          uv run python src/skills/releasing-code/scripts/release_notes.py \
+          uv run --locked python src/skills/releasing-code/scripts/release_notes.py \
             check-release-identity \
             --identity "$RUNNER_TEMP/release-after.json" \
             --tag "$RELEASE_TAG" \
