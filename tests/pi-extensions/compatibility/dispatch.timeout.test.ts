@@ -83,7 +83,7 @@ describe("async SessionEnd — independent supervisor", () => {
 		const pidFile = join(dir, "pid");
 		let pid: number | undefined;
 		try {
-			runShutdownHookAsync(makeEntry(`bash -c 'trap "" TERM; echo $$ > "${pidFile}"; exec sleep 30' & wait`, 3), "{}");
+			runShutdownHookAsync(makeEntry(`bash -c 'trap "" TERM; echo $$ > "${pidFile}.tmp"; mv "${pidFile}.tmp" "${pidFile}"; exec sleep 30' & wait`, 3), "{}");
 			const readyDeadline = Date.now() + 2000;
 			while (!existsSync(pidFile) && Date.now() < readyDeadline) await Bun.sleep(10);
 			pid = Number(readFileSync(pidFile, "utf8").trim());
