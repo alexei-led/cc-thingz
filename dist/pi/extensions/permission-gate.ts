@@ -6,7 +6,7 @@
  */
 
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { loadPolicy, matchesRule, parseLiteralCommand, parseOutputPipeline, type Policy } from "./shared/permission-rules.js";
+import { isSafeInputFilter, loadPolicy, matchesRule, parseLiteralCommand, parseOutputPipeline, type Policy } from "./shared/permission-rules.js";
 import { invokeSyntheticHook, type SyntheticHookInvocationResult, toCcToolName } from "./shared/hook-bridge.js";
 
 export default function (pi: ExtensionAPI) {
@@ -92,10 +92,20 @@ export default function (pi: ExtensionAPI) {
 		const pipeline = hasRules ? parseOutputPipeline(commandRaw) : undefined;
 		const words = hasRules ? (parseLiteralCommand(commandRaw) ?? pipeline?.words) : undefined;
 		const ruleMatch = words && effective.allow.find((rule) => matchesRule(rule, words));
-		const unrecognized = hasRules && (!words || (!!pipeline && !ruleMatch));
-		if (words && effective.deny.some((rule) => matchesRule(rule, words, true) || (!!pipeline && matchesRule(rule, pipeline.filter, true))))
+		const unrecognized =
+			hasRules &&
+			(!words ||
+				(!!pipeline &&
+					(!ruleMatch ||
+						!pipeline.filters.every(
+							(filter) => isSafeInputFilter(filter) || effective.allow.some((rule) => matchesRule(rule, filter) && (ctx.hasUI || rule.headless)),
+						))));
+		if (
+			words &&
+			effective.deny.some((rule) => matchesRule(rule, words, true) || (!!pipeline && pipeline.filters.some((filter) => matchesRule(rule, filter, true))))
+		)
 			return deny("Blocked by user permission rule");
-		const allowed = ruleMatch && (ctx.hasUI || ruleMatch.headless);
+		const allowed = !unrecognized && ruleMatch && (ctx.hasUI || ruleMatch.headless);
 		const isDangerous = dangerousPatterns.some((p) => p.test(commandRaw));
 		const restrictedExecutable = words && effective.allow.some((rule) => rule.words[0] === words[0]);
 		if (!isDangerous && !restrictedExecutable && !unrecognized) return undefined;

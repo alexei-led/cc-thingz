@@ -66,10 +66,9 @@ describe("permission rules", () => {
 		`${prefix} "$(sudo whoami)"`,
 		`${prefix} 'sudo whoami'; echo x`,
 		`${prefix} x;whoami`,
-		`${prefix} x|cat`,
+		`${prefix} x|sh`,
 		`${prefix} x&&whoami`,
 		`${prefix} x>out`,
-		`${prefix} 'sudo whoami' | cat`,
 		`${prefix} 'sudo whoami' && whoami`,
 		`${prefix} 'sudo whoami' > out`,
 		`${prefix} \`sudo whoami\``,
@@ -99,7 +98,7 @@ describe("permission rules", () => {
 		"| tail -10001",
 		"| tail -35 > out",
 		"| tail -35; whoami",
-		"| tail -35 | cat",
+		"| tail -35 | sh",
 		"| tail -n $(whoami)",
 		"> out | tail -35",
 		"2>out | tail -35",
@@ -120,6 +119,38 @@ describe("permission rules", () => {
 			responder: (payload) => payload.onResult(payload.hookEventName === "PermissionRequest" ? { behavior: "deny", reason: "hook denied" } : {}),
 		});
 		expect(await run(`${prefix} 'sudo whoami' | tail -35`)).toEqual({ block: true, reason: "hook denied" });
+	});
+	it("allows a chain of read-only stdin filters", async () => {
+		const run = await setup({ permissionGate: { allow: [grant] } }, undefined);
+		expect(await run(`${prefix} 'sudo whoami' 2>&1 | grep -v 'WARNING' | tail -35 | wc -l`)).toBeUndefined();
+	});
+	it.each(["| cat", "| grep -v 'WARNING'", "| grep -E -i 'warn|error'", "| wc -l"])("allows read-only stdin filters: %s", async (suffix) => {
+		const run = await setup({ permissionGate: { allow: [grant] } }, undefined);
+		expect(await run(`${prefix} 'sudo whoami' ${suffix}`)).toBeUndefined();
+	});
+	it.each([
+		"| grep -f /etc/passwd",
+		"| grep foo /etc/passwd",
+		"| grep --include=x foo",
+		"| wc /etc/passwd",
+		"| cat /etc/passwd",
+		"| grep $(whoami)",
+		"| sh",
+		"| grep -v x >out",
+	])("blocks unapproved filter behavior: %s", async (suffix) => {
+		const run = await setup({ permissionGate: { allow: [grant] } }, undefined);
+		expect(await run(`${prefix} 'sudo whoami' ${suffix}`)).toMatchObject({ block: true });
+	});
+	it("allows explicitly permitted pipeline stages and honors their denies", async () => {
+		const sort = { match: "Bash(sort -u)", headless: true };
+		const run = await setup({ permissionGate: { allow: [grant, sort] } }, undefined);
+		expect(await run(`${prefix} 'sudo whoami' | sort -u | head -10`)).toBeUndefined();
+		const denied = await setup({ permissionGate: { allow: [grant, sort], deny: [{ match: sort.match }] } }, undefined);
+		expect(await denied(`${prefix} 'sudo whoami' | sort -u`)).toMatchObject({ block: true, reason: "Blocked by user permission rule" });
+	});
+	it("requires headless approval for explicitly permitted pipeline stages", async () => {
+		const run = await setup({ permissionGate: { allow: [grant, { match: "Bash(sort -u)" }] } }, undefined);
+		expect(await run(`${prefix} 'sudo whoami' | sort -u`)).toMatchObject({ block: true });
 	});
 	it("does not allow a different target or extra flag", async () => {
 		const run = await setup({ permissionGate: { allow: [grant] } }, undefined);

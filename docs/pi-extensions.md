@@ -164,9 +164,12 @@ account. The extension does not prove remote identity or client behavior.
 matches exactly one nonempty argument; in allow rules it must not begin with
 `-`, while deny rules also match option arguments. It cannot be the executable. Other words are literal. Flag order and spelling matter.
 Quote the remote payload as one argument. A matching allow rule also permits
-one local `head` or `tail` filter, optionally preceded by `2>&1`; the filter
-accepts no arguments, `-N`, or `-n N` (N at most 10000), and no file paths.
-User deny rules also apply to the filter. Other local pipelines, redirections,
+a pipeline of up to eight local stdin filters, with optional `2>&1` before
+pipes. Built-in filters are `cat`, `wc`, `grep`, `head`, and `tail`, with a
+restricted set of arguments and no input file paths. `head` and `tail` accept
+no arguments, `-N`, or `-n N` (N at most 10000). Other pipeline stages require
+their own allow rule; in headless mode each such rule needs `headless: true`.
+User deny rules and hook vetoes apply to every stage. Other redirections,
 substitutions, variables, globs, and unsupported syntax require approval.
 With rules configured, unsupported syntax blocks without UI, even if no warning
 pattern matches. With user deny rules, unsupported syntax is blocked even with
