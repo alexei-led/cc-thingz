@@ -34,6 +34,7 @@ async function setup(
 		hasUI?: boolean;
 		choice?: string;
 		responder?: (payload: any) => void;
+		notify?: (message: string, level?: string) => void;
 	} = {},
 ) {
 	if (userConfig !== undefined) writeFileSync(join(user, "settings.json"), JSON.stringify(userConfig));
@@ -49,7 +50,7 @@ async function setup(
 		isProjectTrusted: () => trusted,
 		hasUI: options.hasUI ?? false,
 		sessionManager: { getSessionId: () => "s" },
-		ui: { select: mock(async () => options.choice ?? "No"), notify: mock() },
+		ui: { select: mock(async () => options.choice ?? "No"), notify: options.notify ?? mock() },
 	};
 	await handlers.get("session_start")!({}, ctx);
 	return (command: string) => handlers.get("tool_call")!({ toolName: "bash", input: { command } }, ctx);
@@ -64,6 +65,10 @@ describe("permission rules", () => {
 	it.each([
 		`${prefix} "$(sudo whoami)"`,
 		`${prefix} 'sudo whoami'; echo x`,
+		`${prefix} x;whoami`,
+		`${prefix} x|cat`,
+		`${prefix} x&&whoami`,
+		`${prefix} x>out`,
 		`${prefix} 'sudo whoami' | cat`,
 		`${prefix} 'sudo whoami' && whoami`,
 		`${prefix} 'sudo whoami' > out`,
@@ -106,6 +111,20 @@ describe("permission rules", () => {
 		});
 		expect(await run("sudo whoami | cat")).toEqual({ block: true, reason: "hook denied" });
 		expect(events).toEqual(["PermissionRequest", "PermissionDenied"]);
+	});
+	it.each([
+		[{ deny: [{ match: "Bash(git push)" }] }, "git push"],
+		[{ allow: [grant] }, "echo ok; git push"],
+	])("rejects hook patches that violate configured rules", async (permissionGate, patch) => {
+		const run = await setup({ permissionGate }, undefined, true, {
+			responder: (payload) => payload.onResult(payload.hookEventName === "PermissionRequest" ? { behavior: "allow", updatedInput: { command: patch } } : {}),
+		});
+		expect(await run("sudo whoami")).toEqual({ block: true, reason: "PermissionRequest hook returned an unsafe command patch" });
+	});
+	it("notifies at session start when user rules are invalid", async () => {
+		const notify = mock();
+		await setup({ permissionGate: { deny: "bad" } }, undefined, true, { hasUI: true, notify });
+		expect(notify).toHaveBeenCalledWith(expect.stringContaining("Invalid user permission policy"), "error");
 	});
 	it("notifies hooks when rules deny", async () => {
 		const events: string[] = [];

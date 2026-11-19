@@ -131,8 +131,9 @@ also be listed here, or they run twice.
 `permission-gate` uses the runner's synthetic PermissionRequest and
 PermissionDenied events. Recursive `rm` flags (`-rf`, `-fr`, split `-f -r`, `-R`,
 `--recursive`), `sudo`, and `chmod/chown 777` trigger confirmation unless a hook
-explicitly allows or denies them. Without UI or a hook allow, they fail closed;
-hook-supplied replacements are checked again. Without configured permission rules,
+or matching permission rule allows them. Without UI, a hook allow or a
+`headless` allow rule is required; otherwise they fail closed. Hooks can deny
+commands, and hook-supplied replacements are checked again. Without configured permission rules,
 nonmatching commands pass. This is an approval aid, not a sandbox. It does not
 cover arbitrary deletion methods, MCP calls, or non-Bash tools.
 

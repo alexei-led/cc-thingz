@@ -15,7 +15,7 @@ export default function (pi: ExtensionAPI) {
 	pi.on("session_start", async (_event, ctx) => {
 		userPolicy = loadPolicy(ctx.cwd, false);
 		policy = ctx.isProjectTrusted() ? loadPolicy(ctx.cwd, true) : userPolicy;
-		if (ctx.hasUI && policy.warning) ctx.ui.notify(policy.warning, "warning");
+		if (ctx.hasUI && (policy.error || policy.warning)) ctx.ui.notify(policy.error || policy.warning || "", policy.error ? "error" : "warning");
 		if (ctx.hasUI && policy.allow.some((rule) => rule.source === "project"))
 			ctx.ui.notify("Project permission rules are active. Use /permissions to inspect them.", "warning");
 	});
