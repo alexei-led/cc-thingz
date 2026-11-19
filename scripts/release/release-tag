@@ -196,21 +196,22 @@ git rev-parse --verify --quiet HEAD^ >/dev/null || {
 	echo "ERROR: finalize requires a committed release revision" >&2
 	exit 1
 }
-changed_files=$(git diff-tree --no-commit-id --name-only -r HEAD)
+release_revision=$(git log --first-parent -1 --format=%H -- CHANGELOG.md)
+changed_files=$(git diff-tree --no-commit-id --name-only -r -m --first-parent "$release_revision")
 for required_file in CHANGELOG.md agentbundle.json pyproject.toml uv.lock package.json src/skills/browser-automation/scripts/package.json; do
 	if ! grep -Fxq "$required_file" <<<"$changed_files"; then
-		echo "ERROR: HEAD is not the release commit; missing committed change: $required_file" >&2
+		echo "ERROR: latest changelog commit is not a release commit; missing committed change: $required_file" >&2
 		exit 1
 	fi
 done
 for file in "${PACKAGE_JSONS[@]}"; do
 	if ! grep -Fxq "$file" <<<"$changed_files"; then
-		echo "ERROR: HEAD is not the release commit; package version manifest is not committed: $file" >&2
+		echo "ERROR: latest changelog commit is not a release commit; package version manifest is not committed: $file" >&2
 		exit 1
 	fi
 done
 if ! grep -q '^dist/' <<<"$changed_files"; then
-	echo "ERROR: HEAD is not the release commit; generated dist/ output is not committed" >&2
+	echo "ERROR: latest changelog commit is not a release commit; generated dist/ output is not committed" >&2
 	exit 1
 fi
 

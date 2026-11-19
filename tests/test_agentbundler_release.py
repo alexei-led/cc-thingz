@@ -1022,6 +1022,27 @@ Path("uv.lock").write_text(
         check=True,
     ).stdout.strip()
 
+    subprocess.run(["git", "branch", "release-side"], cwd=tmp_path, check=True)
+    subprocess.run(
+        ["git", "checkout", "-qb", "mainline", "HEAD^"], cwd=tmp_path, check=True
+    )
+    subprocess.run(
+        ["git", "merge", "--no-ff", "-qm", "merge release", "release-side"],
+        cwd=tmp_path,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "commit", "--allow-empty", "-qm", "post-release fix"],
+        cwd=tmp_path,
+        check=True,
+    )
+    release_commit = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=True,
+        text=True,
+    ).stdout.strip()
     finalized = subprocess.run(
         ["bash", str(script), "finalize", "v1.2.3"],
         cwd=tmp_path,

@@ -143,7 +143,9 @@ Prepare with `scripts/release/release-tag prepare vX.Y.Z` or
 and a blank version section; it does not commit, tag, or push. Write and review the notes,
 then commit all release changes. Run
 `scripts/release/release-tag finalize vX.Y.Z` or
-`make release-finalize V=X.Y.Z` on that clean commit. Finalization validates the
+`make release-finalize V=X.Y.Z` on the clean release commit or its reviewed
+merged descendant. Finalization verifies that the latest first-parent changelog
+commit contains the release manifests and generated output, validates the
 notes and version identity, runs the non-mutating `make check` generated-drift
 gate, and creates a local annotated tag; it does not push. It rejects an existing
 local or remote tag and never moves one. It does not rerun the full test suite:
