@@ -5,9 +5,8 @@
  * Provides /permissions; this is an approval aid, not a sandbox.
  */
 
-import { basename } from "node:path";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { isSafeInputFilter, loadPolicy, matchesRule, parseLiteralCommand, parseOutputPipeline, type Policy } from "./shared/permission-rules.js";
+import { loadPolicy, matchesRule, parseLiteralCommand, type Policy } from "./shared/permission-rules.js";
 import { invokeSyntheticHook, type SyntheticHookInvocationResult, toCcToolName } from "./shared/hook-bridge.js";
 import { hasWarningText, inspectShellWarnings } from "./shared/shell-warnings.js";
 
@@ -85,24 +84,12 @@ export default function (pi: ExtensionAPI) {
 			return { block: true, reason: denied.retry ? `${reason} (hook signaled retry is allowed)` : reason };
 		};
 		if (effective.error) return deny(effective.error);
-		const hasRules = effective.allow.length > 0 || effective.deny.length > 0;
 		const inspection = inspectShellWarnings(commandRaw);
-		const ruleRelevant = effective.allow.some((rule) => inspection.executables.some((name) => basename(name) === basename(rule.words[0])));
-		const pipeline = hasRules ? parseOutputPipeline(commandRaw) : undefined;
-		const words = hasRules ? (parseLiteralCommand(commandRaw) ?? pipeline?.words) : undefined;
-		const ruleMatch = words && effective.allow.find((rule) => matchesRule(rule, words));
-		const unrecognized =
-			(!words && (ruleRelevant || effective.deny.length > 0)) ||
-			(!!pipeline && (ruleRelevant || !!ruleMatch || effective.deny.length > 0) && (!ruleMatch || !pipeline.filters.every(isSafeInputFilter)));
-		if (
-			words &&
-			effective.deny.some((rule) => matchesRule(rule, words, true) || (!!pipeline && pipeline.filters.some((filter) => matchesRule(rule, filter, true))))
-		)
-			return deny("Blocked by user permission rule");
-		const allowed = !unrecognized && words && effective.allow.some((rule) => matchesRule(rule, words) && (ctx.hasUI || rule.headless));
-		const isDangerous = inspection.dangerous;
-		const restrictedExecutable = ruleRelevant;
-		const needsConfirmation = isDangerous || restrictedExecutable || unrecognized;
+		const matchesDeny = (commands: string[][]) => effective.deny.some((rule) => commands.some((words) => matchesRule(rule, words, true)));
+		if (matchesDeny(inspection.commands)) return deny("Blocked by user permission rule");
+		const words = parseLiteralCommand(commandRaw);
+		const allowed = words && effective.allow.some((rule) => matchesRule(rule, words) && (ctx.hasUI || rule.headless));
+		const needsConfirmation = inspection.dangerous;
 		// Keep hook eligibility even when the built-in warning was a literal-text false positive.
 		if (!hasWarningText(commandRaw) && !needsConfirmation) return undefined;
 
@@ -113,16 +100,11 @@ export default function (pi: ExtensionAPI) {
 			const reason = requestHook.reason || requestHook.message || "Permission denied by hook";
 			return deny(reason);
 		}
-		if (unrecognized && effective.deny.length > 0) return deny("Unrecognized shell syntax cannot be checked against deny rules");
 		if (requestHook.behavior === "allow") {
 			if (requestHook.updatedInput && typeof requestHook.updatedInput.command === "string") {
 				const updatedCommand = requestHook.updatedInput.command;
-				const updatedWords = hasRules ? parseLiteralCommand(updatedCommand) : undefined;
-				if (
-					(hasRules && !updatedWords) ||
-					(updatedWords && effective.deny.some((rule) => matchesRule(rule, updatedWords, true))) ||
-					inspectShellWarnings(updatedCommand).dangerous
-				) {
+				const updated = inspectShellWarnings(updatedCommand);
+				if (!updatedCommand.trim() || matchesDeny(updated.commands) || updated.dangerous) {
 					return deny("PermissionRequest hook returned an unsafe command patch");
 				}
 				event.input.command = updatedCommand;
@@ -136,11 +118,8 @@ export default function (pi: ExtensionAPI) {
 
 		if (allowed || !needsConfirmation) return undefined;
 
-		if (!ctx.hasUI)
-			return deny(unrecognized ? "Unrecognized shell syntax blocked (no UI for confirmation)" : "Dangerous command blocked (no UI for confirmation)");
-
-		const label = unrecognized ? "Unrecognized shell syntax" : "Dangerous command";
-		const choice = await ctx.ui.select(`⚠️ ${label}:\n\n  ${commandRaw}\n\nAllow?`, ["Yes", "No"]);
+		if (!ctx.hasUI) return deny("Dangerous command blocked (no UI for confirmation)");
+		const choice = await ctx.ui.select(`⚠️ Dangerous command:\n\n  ${commandRaw}\n\nAllow?`, ["Yes", "No"]);
 		if (choice === "Yes") {
 			return undefined;
 		}

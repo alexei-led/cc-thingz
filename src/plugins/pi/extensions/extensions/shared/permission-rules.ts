@@ -100,50 +100,6 @@ export function parseLiteralCommand(command: string): string[] | undefined {
 	return words;
 }
 
-export function parseOutputPipeline(command: string): { words: string[]; filters: string[][] } | undefined {
-	const segments: string[] = [];
-	let start = 0;
-	let quote: "'" | '"' | undefined;
-	for (let i = 0; i < command.length; i++) {
-		const char = command[i];
-		if (quote === "'") {
-			if (char === "'") quote = undefined;
-		} else if (char === "\\") {
-			i++;
-		} else if (quote === '"') {
-			if (char === '"') quote = undefined;
-		} else if (char === "'" || char === '"') {
-			quote = char;
-		} else if (char === "|") {
-			segments.push(command.slice(start, i).replace(/[ \t]+2>&1[ \t]*$/, ""));
-			start = i + 1;
-		}
-	}
-	if (segments.length === 0 || segments.length > 8 || quote) return undefined;
-	segments.push(command.slice(start));
-	const stages = segments.map((segment) => parseLiteralCommand(segment.trim()));
-	if (stages.some((stage) => !stage)) return undefined;
-	const [words, ...filters] = stages as string[][];
-	return { words, filters };
-}
-
-export function isSafeInputFilter(words: string[]): boolean {
-	const [name, ...args] = words;
-	if (name === "cat") return args.length === 0;
-	if (name === "wc") return args.every((arg) => /^-[clmwL]+$/.test(arg));
-	if (name === "grep") {
-		let i = 0;
-		while (i < args.length && /^-[ivFEncwx]+$/.test(args[i])) i++;
-		const separator = args[i] === "--";
-		if (separator) i++;
-		return i === args.length - 1 && !!args[i] && (separator || !args[i].startsWith("-"));
-	}
-	if (name !== "head" && name !== "tail") return false;
-	if (args.length === 0) return true;
-	const count = args.length === 1 && /^-[0-9]+$/.test(args[0]) ? args[0].slice(1) : args.length === 2 && args[0] === "-n" ? args[1] : undefined;
-	return count !== undefined && /^[0-9]+$/.test(count) && Number.isSafeInteger(Number(count)) && Number(count) <= 10000;
-}
-
 export function matchesRule(rule: Rule, words: string[], deny = false): boolean {
 	return (
 		rule.words.length === words.length && rule.words.every((word, i) => (word === "*" ? !!words[i] && (deny || !words[i].startsWith("-")) : word === words[i]))

@@ -2,7 +2,15 @@ import { basename } from "node:path";
 
 const recursiveRm = /\brm\s+(?:(?:-[a-zA-Z]+|--[a-z]+(?:-[a-z]+)*)\s+)*(?:-[a-zA-Z]*[rR][a-zA-Z]*|--recursive)(?=\s|$)/;
 const rawPatterns = [recursiveRm, /\bsudo\b/i, /\b(chmod|chown)\b.*777/i];
-const indirectRunners = new Set(["time", "nohup", "timeout", "nice", "stdbuf", "ionice", "doas", "xargs", "find"]);
+const runnerValueFlags: Record<string, readonly string[]> = {
+	time: [],
+	nohup: [],
+	timeout: ["-s", "--signal", "-k", "--kill-after"],
+	nice: ["-n", "--adjustment"],
+	stdbuf: ["-i", "-o", "-e", "--input", "--output", "--error"],
+	ionice: ["-c", "-n", "-p", "-P", "-u", "--class", "--classdata", "--pid", "--pgid", "--uid"],
+	xargs: ["-n", "-P", "-L", "-s", "-E", "-I", "--max-args", "--max-procs", "--max-lines", "--max-chars", "--eof", "--replace"],
+};
 
 export function hasWarningText(command: string): boolean {
 	return rawPatterns.some((pattern) => pattern.test(command));
@@ -10,9 +18,9 @@ export function hasWarningText(command: string): boolean {
 
 // Warning classification only: never use this permissive scan to grant a rule.
 // Interpreter source is opaque. Shell expansions retain the conservative raw check.
-export function inspectShellWarnings(command: string): { dangerous: boolean; executables: string[] } {
+export function inspectShellWarnings(command: string): { dangerous: boolean; commands: string[][] } {
 	let dangerous = false;
-	const executables: string[] = [];
+	const commands: string[][] = [];
 	const words: string[] = [];
 	let word = "";
 	let active = false;
@@ -25,6 +33,7 @@ export function inspectShellWarnings(command: string): { dangerous: boolean; exe
 	};
 	const finishCommand = () => {
 		finishWord();
+		if (words.length > 0) commands.push([...words]);
 		let i = 0;
 		while (i < words.length) {
 			const redirect = /^\d*(?:[<>]{1,2}|[<>]&)(.*)$/.exec(words[i]);
@@ -38,28 +47,66 @@ export function inspectShellWarnings(command: string): { dangerous: boolean; exe
 			}
 			const wrapper = basename(words[i]);
 			if (wrapper === "env") {
-				executables.push(words[i]);
 				i++;
-				while (["-i", "--ignore-environment", "--"].includes(words[i])) i++;
+				while (i < words.length && words[i].startsWith("-")) {
+					if (words[i] === "-S" || words[i] === "--split-string") {
+						const nested = inspectShellWarnings(words.slice(i + 1).join(" "));
+						dangerous ||= nested.dangerous;
+						commands.push(...nested.commands);
+						i = words.length;
+						break;
+					}
+					i += words[i] === "-u" || words[i] === "--unset" ? 2 : 1;
+				}
 				continue;
 			}
 			if (wrapper === "command" || wrapper === "exec") {
-				executables.push(words[i]);
 				i++;
-				while (words[i] === "--" || (wrapper === "command" && words[i] === "-p")) i++;
+				while (i < words.length) {
+					if (wrapper === "exec" && words[i] === "-a") {
+						i += 2;
+						continue;
+					}
+					if (words[i] === "--" || (wrapper === "command" ? words[i] === "-p" : ["-c", "-l"].includes(words[i]))) {
+						i++;
+						continue;
+					}
+					break;
+				}
+				continue;
+			}
+			if (Object.hasOwn(runnerValueFlags, wrapper)) {
+				i++;
+				while (i < words.length && words[i].startsWith("-")) {
+					if (words[i] === "--") {
+						i++;
+						break;
+					}
+					i += runnerValueFlags[wrapper].includes(words[i]) ? 2 : 1;
+				}
+				if (wrapper === "timeout") i++;
 				continue;
 			}
 			break;
 		}
 		const executable = words[i];
 		if (executable) {
-			executables.push(executable);
+			if (i > 0) commands.push(words.slice(i));
 			const name = basename(executable);
 			const args = words.slice(i + 1);
-			// Keep unknown runner semantics conservative rather than parsing their flags.
-			if (indirectRunners.has(name) || name.startsWith("-")) {
-				executables.push(...args);
-				dangerous ||= hasWarningText(words.slice(i).join(" "));
+			if (name === "find") {
+				for (let j = 0; j < args.length; j++) {
+					if (!["-exec", "-execdir", "-ok", "-okdir"].includes(args[j])) continue;
+					const end = args.findIndex((arg, index) => index > j && (arg === ";" || arg === "+"));
+					const source = args
+						.slice(j + 1, end < 0 ? undefined : end)
+						.map((arg) => "'" + arg.replaceAll("'", "'\\''") + "'")
+						.join(" ");
+					const nested = inspectShellWarnings(source);
+					dangerous ||= nested.dangerous;
+					commands.push(...nested.commands);
+					j = end < 0 ? args.length : end;
+				}
 			}
 			if (
 				name === "sudo" ||
@@ -131,7 +178,8 @@ export function inspectShellWarnings(command: string): { dangerous: boolean; exe
 						let line = command.slice(cursor, lineEnd);
 						if (doc.stripTabs) line = line.replace(/^\t+/, "");
 						if (line === doc.delimiter) {
-							if (!doc.quoted) dangerous ||= hasWarningText(command.slice(bodyStart, cursor));
+							const body = command.slice(bodyStart, cursor);
+							if (!doc.quoted && /\$\(|`/.test(body)) dangerous ||= hasWarningText(body);
 							i = lineEnd;
 							found = true;
 							break;
@@ -152,5 +200,5 @@ export function inspectShellWarnings(command: string): { dangerous: boolean; exe
 	}
 	finishCommand();
 	if (quote) dangerous ||= hasWarningText(command);
-	return { dangerous, executables };
+	return { dangerous, commands };
 }

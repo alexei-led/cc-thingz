@@ -222,6 +222,8 @@ describe("permission-gate / tool_call", () => {
 		"a{#b; sudo whoami",
 		"env -S 'sudo whoami'",
 		"exec -a example sudo whoami",
+		"exec -c sudo whoami",
+		"exec -a example -c sudo whoami",
 		"stdbuf -oL sudo whoami",
 		"ionice -c 2 sudo whoami",
 		"echo ${#files[@]}; rm -rf build",
@@ -259,6 +261,7 @@ describe("permission-gate / tool_call", () => {
 	it.each([
 		"python -c 'text = \"sudo rm -rf /example\"'",
 		"node -e 'console.log(\"sudo\")'",
+		"uv run --no-project python - <<PY\ntext = 'sudo'\nprint(text)\nPY",
 		"printf '%s' 'sudo rm -rf /example'",
 		"rg -F 'sudo' README.md",
 		"cd /tmp && uv run --no-project python - <<'PY'\ntext = 'sudo'\nPY\nmake check",
