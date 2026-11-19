@@ -387,7 +387,6 @@ def test_pi_runtime_parser_dependencies_are_rendered() -> None:
     )
     expected = {
         "web-tree-sitter": "0.25.10",
-        "tree-sitter-bash": "0.25.1",
     }
     assert metadata["dependencies"] == expected
     for path in ("package.json", "dist/pi/package.json"):

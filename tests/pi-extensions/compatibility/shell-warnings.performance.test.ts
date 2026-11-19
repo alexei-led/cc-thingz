@@ -1,6 +1,13 @@
 import { expect, it } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { inspectShellWarnings } from "../../../src/plugins/pi/extensions/extensions/shared/shell-warnings.js";
+
+it("checks obvious warning text when input exceeds the parse limit", () => {
+	const padding = "x".repeat(256 * 1024);
+	expect(inspectShellWarnings(padding).dangerous).toBe(false);
+	expect(inspectShellWarnings(`${padding}; sudo true`).dangerous).toBe(true);
+});
 
 it("returns promptly for deeply nested unterminated substitutions", () => {
 	const modulePath = fileURLToPath(new URL("../../../src/plugins/pi/extensions/extensions/shared/shell-warnings.ts", import.meta.url));

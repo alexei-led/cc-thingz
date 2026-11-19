@@ -1,5 +1,5 @@
-import { createRequire } from "node:module";
 import { basename } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Language, Parser, type Node } from "web-tree-sitter";
 import { parseLiteralCommand } from "./literal-command.js";
 
@@ -37,7 +37,7 @@ const runnerValueFlags: Record<string, readonly string[]> = {
 };
 
 await Parser.init();
-const language = await Language.load(createRequire(import.meta.url).resolve("tree-sitter-bash/tree-sitter-bash.wasm"));
+const language = await Language.load(fileURLToPath(new URL("./tree-sitter-bash.wasm", import.meta.url)));
 const parser = new Parser().setLanguage(language);
 
 type Inspection = { dangerous: boolean; commands: string[][] };
@@ -49,7 +49,11 @@ export function hasWarningText(command: string): boolean {
 
 function literal(node: Node): string | undefined {
 	if (node.hasError || node.isMissing || !["command_name", "word", "number", "raw_string", "string", "concatenation"].includes(node.type)) return undefined;
-	const words = parseLiteralCommand("argument " + node.text);
+	const text =
+		node.type === "word" || node.type === "command_name" || (node.type === "concatenation" && !/['"`$]/.test(node.text))
+			? node.text.replace(/\\([a-zA-Z0-9_./:@%+=,{}-])/g, "$1").replace(/[{}]/g, (c) => `'${c}'`)
+			: node.text;
+	const words = parseLiteralCommand("argument " + text);
 	return words?.length === 2 ? words[1] : undefined;
 }
 
@@ -77,7 +81,7 @@ function inspectInvocation(words: Words, result: Inspection, depth = 0): void {
 				if (words[i] === "-S" || words[i] === "--split-string" || attached) {
 					const source = attached ? words[i]?.slice("--split-string=".length) : words[i + 1];
 					const split = source === undefined ? undefined : parseLiteralCommand(`env ${source}`)?.slice(1);
-					if (split) inspectInvocation([...split, ...words.slice(i + (attached ? 1 : 2))], result, depth + 1);
+					if (split) inspectInvocation(["env", ...split, ...words.slice(i + (attached ? 1 : 2))], result, depth + 1);
 					return;
 				}
 				i += words[i] === "-u" || words[i] === "--unset" ? 2 : 1;
@@ -142,15 +146,16 @@ function inspectInvocation(words: Words, result: Inspection, depth = 0): void {
 // This is never used to grant an exception: only the strict literal parser does that.
 export function inspectShellWarnings(command: string): Inspection {
 	const result: Inspection = { dangerous: false, commands: [] };
-	if (Buffer.byteLength(command, "utf8") > MAX_COMMAND_BYTES) return result;
+	if (Buffer.byteLength(command, "utf8") > MAX_COMMAND_BYTES) return { dangerous: hasWarningText(command), commands: [] };
 	let tree;
 	try {
 		const deadline = performance.now() + MAX_PARSE_MS;
 		tree = parser.parse(command, null, { progressCallback: () => performance.now() >= deadline });
-		if (!tree) return result;
+		if (!tree) return { dangerous: hasWarningText(command), commands: [] };
+		const traversalDeadline = performance.now() + MAX_PARSE_MS;
 		const pending = [tree.rootNode];
 		let visited = 0;
-		while (pending.length > 0 && visited++ < MAX_NODES && performance.now() < deadline) {
+		while (pending.length > 0 && visited++ < MAX_NODES && performance.now() < traversalDeadline) {
 			const node = pending.pop();
 			if (!node) continue;
 			// Recovery can mislabel heredoc/source text as commands. Keep only the valid prefix.
@@ -164,6 +169,8 @@ export function inspectShellWarnings(command: string): Inspection {
 						for (const redirect of node.parent.namedChildren) {
 							if (redirect.type === "file_redirect") {
 								for (const argument of redirect.childrenForFieldName("destination").slice(1)) arguments_.push(argument);
+							} else if (redirect.type === "heredoc_redirect") {
+								for (const argument of redirect.childrenForFieldName("argument")) arguments_.push(argument);
 							}
 						}
 					}
@@ -174,6 +181,7 @@ export function inspectShellWarnings(command: string): Inspection {
 			const children = node.namedChildren;
 			for (let i = children.length - 1; i >= 0; i--) pending.push(children[i]);
 		}
+		if (pending.length > 0 && (visited >= MAX_NODES || performance.now() >= traversalDeadline)) result.dangerous ||= hasWarningText(command);
 		return result;
 	} finally {
 		tree?.delete();

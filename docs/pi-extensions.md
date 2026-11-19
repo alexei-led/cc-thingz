@@ -7,8 +7,8 @@ The native extensions require Pi **1.0.2 or later in the 1.x series**. The
 repository-root peer contracts use `^1.0.2`; Agent Bundler does not render peer
 dependencies into the target-root archive manifest, so archive users must check
 the host version themselves. The lockfiles record the tested baseline. The permission gate also requires the
-pinned `web-tree-sitter` and `tree-sitter-bash` runtime packages declared in the
-Pi manifest. Managed Git installs resolve those dependencies automatically.
+pinned `web-tree-sitter` runtime package and a bundled `tree-sitter-bash`
+WASM grammar. Managed Git installs resolve the runtime dependency automatically.
 
 ## Registered extensions
 
@@ -147,8 +147,9 @@ Adding an allow rule does not restrict other invocations of the same executable.
 The built-in blacklist warns on recognizable local `sudo`, recursive `rm`,
 and `chmod/chown` modes ending in `777`. It checks recognized commands in
 pipelines and command chains. It recognizes common runner prefixes such as
-`xargs` and `timeout`, and executable actions in `find`. Local expansions retain
-conservative warning checks. Unknown syntax is not itself a warning.
+`xargs` and `timeout`, and executable actions in `find`. Commands inside local
+command substitutions and unquoted heredocs are inspected; an executable
+produced by an expansion is not classified. Unknown syntax is not itself a warning.
 
 Quoted arguments, interpreter source, and quoted heredoc bodies are data to the
 outer shell, not executable commands. Literal warning words inside them do not

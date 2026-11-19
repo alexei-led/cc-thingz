@@ -235,6 +235,10 @@ describe("permission-gate / tool_call", () => {
 	it.each([
 		"sudo rm -rf /var",
 		"rm -rf /tmp",
+		"\\rm -rf build",
+		"find . | xargs -I{} rm -rf {}",
+		"env -S '-i sudo whoami'",
+		"rm <<'EOF' -rf ./build\nEOF",
 		"rm -fr /tmp",
 		"rm -f -r /tmp",
 		"rm -R /tmp",

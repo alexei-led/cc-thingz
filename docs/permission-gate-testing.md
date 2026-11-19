@@ -31,19 +31,21 @@ a warning. OS permissions and isolation are the enforcement boundary.
   Keep redirection metadata while scanning; do not confuse a quoted `>`
   argument with an actual redirection.
 
-Shell structure is parsed by pinned `web-tree-sitter` and `tree-sitter-bash`
-WASM packages. The application only classifies literal executable/argument
+Shell structure is parsed by pinned `web-tree-sitter` and the bundled
+`tree-sitter-bash` WASM grammar. The application only classifies literal executable/argument
 nodes and common runner conventions. It does not execute expansions or infer
 safety from raw-string wildcards. Input size, parse time, traversal, and nested
 runner inspection are bounded. The valid prefix before a syntax error can be
 inspected; recovered or unsupported text is not treated as executable code.
-Unknown structures are not an automatic denial.
+Unknown structures are not an automatic denial. If a size or time budget is
+exhausted, a raw warning-text fallback can produce false positives and does not
+reconstruct explicit deny candidates.
 
 Maintained grammar handling avoids duplicating comment, quoting, and heredoc
 parsing in application code. The shared runtime dependencies are declared in
 aggregate metadata and rendered to the root compatibility and Pi archive
-manifests. The grammar uses its prebuilt WASM file; no local native grammar
-build is required. Archive tests prepare production dependencies and verify
+manifests. The pinned grammar is bundled as a prebuilt WASM file with its MIT
+license; no native grammar install or build is required. Archive tests prepare production dependencies and verify
 that the actual native Pi loader exposes the permission command.
 
 ## Tests
