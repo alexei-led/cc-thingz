@@ -358,7 +358,7 @@ def test_pi_release_archive_installs_in_isolated_project(
         (project / ".pi" / package).resolve() for package in settings["packages"]
     }
     rpc = subprocess.run(
-        [pi, "--mode", "rpc", "--no-session", "--no-mcp", "--approve"],
+        [pi, "--mode", "rpc", "--no-session", "--approve"],
         cwd=project,
         env=environment,
         input='{"id":"archive-probe","type":"get_commands"}\n',
