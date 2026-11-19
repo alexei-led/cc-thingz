@@ -245,7 +245,7 @@ describe("permission-gate / tool_call", () => {
 	it("keeps hook vetoes for source-text false positives", async () => {
 		const { handlers, setResponder } = setup();
 		setResponder((payload) => payload.onResult?.(payload.hookEventName === "PermissionRequest" ? { behavior: "deny", reason: "hook policy" } : {}));
-		expect(await handlers.get("tool_call")!({ toolName: "bash", input: { command: "python -c \'print(\"sudo\")\'" } }, makeCtx(false))).toEqual({
+		expect(await handlers.get("tool_call")!({ toolName: "bash", input: { command: "python -c 'print(\"sudo\")'" } }, makeCtx(false))).toEqual({
 			block: true,
 			reason: "hook policy",
 		});
