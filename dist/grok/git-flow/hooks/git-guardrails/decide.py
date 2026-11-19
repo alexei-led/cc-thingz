@@ -272,6 +272,27 @@ def is_branch_force_delete_cluster(arg: str) -> bool:
     return "D" in letters or ("d" in letters and "f" in letters)
 
 
+def normalize_guarded_options(subcommand: str, args: list[str]) -> list[str]:
+    guarded = {
+        "clean": ("--force",),
+        "branch": ("--delete", "--force"),
+        "push": ("--force", "--force-with-lease", "--mirror"),
+        "restore": ("--worktree",),
+    }.get(subcommand, ())
+    result = []
+    after_separator = False
+    for arg in args:
+        if arg == "--":
+            after_separator = True
+        elif not after_separator and arg.startswith("--") and "=" not in arg:
+            matches = [option for option in guarded if option.startswith(arg)]
+            if matches and arg not in guarded:
+                # Treat ambiguous prefixes as dangerous.
+                arg = max(matches, key=len)
+        result.append(arg)
+    return result
+
+
 def classify(subcommand: str, args: list[str]) -> tuple[str, list[str] | str | None]:
     """Evaluates one git subcommand's argv against the destructive-op
     table. Returns (kind, info):
@@ -709,7 +730,10 @@ def project_policy(directory: str, projects: dict) -> dict:
     if result.returncode != 0:
         return {}
     entry = projects.get(os.path.realpath(result.stdout.rstrip("\n")))
-    return entry if isinstance(entry, dict) else {}
+    if not isinstance(entry, dict):
+        return {}
+    policy = entry.get("gitGuardrails")
+    return policy if isinstance(policy, dict) else {}
 
 
 def evaluate_git_call(
@@ -728,7 +752,7 @@ def evaluate_git_call(
         return
     subcommand, args = remaining[0], remaining[1:]
 
-    project = project_policy(directory, ctx.projects) if overall_trusted else {}
+    project = project_policy(directory, ctx.projects) if ctx.trusted else {}
     if isinstance(project.get("allowForcePush"), bool):
         allow_force_push = project["allowForcePush"]
     if project.get("cleanupPolicy") in ("strict", "relaxed"):
@@ -746,7 +770,7 @@ def evaluate_git_call(
     if subcommand == "push" and allow_force_push:
         return
 
-    kind, info = classify(subcommand, args)
+    kind, info = classify(subcommand, normalize_guarded_options(subcommand, args))
     is_cleanup_subcommand = subcommand in CLEANUP_SUBCOMMANDS
     if kind == "safe":
         return

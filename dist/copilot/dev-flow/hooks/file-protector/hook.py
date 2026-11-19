@@ -49,22 +49,27 @@ _PATCH_FILE_RE = re.compile(
 )
 
 
-def _load_policy() -> tuple[Path, dict]:
+def _load_policy() -> tuple[Path, dict, dict]:
     config = Path(
         os.environ.get("CLAUDE_HOOK_CONFIG") or Path.home() / ".claude/hook-config.json"
     ).expanduser()
     try:
         decoded = json.loads(config.read_text(encoding="utf-8"))
     except FileNotFoundError:
-        return config, {}
+        return config, {}, {}
     except (ValueError, OSError) as exc:
         print(
             f"WARNING: Cannot read file-protector policy {config}: {exc}",
             file=sys.stderr,
         )
-        return config, {}
+        return config, {}, {}
     policy = decoded.get("fileProtector") if isinstance(decoded, dict) else None
-    return config, policy if isinstance(policy, dict) else {}
+    projects = decoded.get("projects") if isinstance(decoded, dict) else None
+    return (
+        config,
+        policy if isinstance(policy, dict) else {},
+        projects if isinstance(projects, dict) else {},
+    )
 
 
 def _patterns(policy: dict, field: str, default: list[str]) -> list[str]:
@@ -117,13 +122,11 @@ def _deny(path: str, rule: str, pi_runtime: bool) -> None:
     raise SystemExit(2)
 
 
-def _project_policy(policy: dict, cwd: Path) -> tuple[Path, dict | None]:
-    projects = policy.get("projects")
-    if isinstance(projects, dict):
-        for root in (cwd, *cwd.parents):
-            entry = projects.get(str(root))
-            if isinstance(entry, dict):
-                return root, entry
+def _project_policy(projects: dict, cwd: Path) -> tuple[Path, dict | None]:
+    for root in (cwd, *cwd.parents):
+        entry = projects.get(str(root))
+        if isinstance(entry, dict) and isinstance(entry.get("fileProtector"), dict):
+            return root, entry["fileProtector"]
     return cwd, None
 
 
@@ -153,9 +156,10 @@ def _check_path(
     pi_runtime: bool,
 ) -> None:
     requested = Path(path).expanduser()
-    candidate = cwd / requested
+    raw_candidate = cwd / requested
+    candidate = Path(os.path.abspath(raw_candidate))
     try:
-        resolved = candidate.resolve()
+        resolved = raw_candidate.resolve()
         config_target = config.resolve()
     except (OSError, ValueError, RuntimeError):
         _deny(path, "cannot resolve file or policy path", pi_runtime)
@@ -234,8 +238,8 @@ def main() -> None:
         or payload.get("cwd")
     )
     cwd = Path(cwd_value).resolve() if isinstance(cwd_value, str) else Path.cwd()
-    config, policy = _load_policy()
-    root, project = _project_policy(policy, cwd)
+    config, policy, projects = _load_policy()
+    root, project = _project_policy(projects, cwd)
 
     paths = [
         value

@@ -333,7 +333,9 @@ def test_codex_multi_file_patch_safe_allowed(home: Path) -> None:
 def project_config(home: Path, root: Path, policy: dict, **user: object) -> Path:
     path = home / "guardrails.json"
     path.write_text(
-        json.dumps({"fileProtector": {**user, "projects": {str(root): policy}}}),
+        json.dumps(
+            {"fileProtector": user, "projects": {str(root): {"fileProtector": policy}}}
+        ),
         encoding="utf-8",
     )
     return path
@@ -348,6 +350,7 @@ def test_project_profile_allows_only_exact_local_file(home: Path) -> None:
         return _run({"cwd": str(root), "tool_input": {"path": path}}, home, config)[0]
 
     assert check("fixtures/demo.pem") == 0
+    assert check("fixtures/../fixtures/demo.pem") == 0
     assert check("fixtures/other.pem") == 2
     assert check(str(config)) == 2
     alias = root / "fixtures" / "demo.pem"

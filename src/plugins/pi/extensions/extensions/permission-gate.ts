@@ -39,9 +39,9 @@ export default function (pi: ExtensionAPI) {
 	];
 
 	function needsDangerConfirmation(command: string, words = parseLiteralCommand(command)): boolean {
-		// Literal display commands do not execute their arguments. Keep the
-		// conservative matcher for other commands, including shell wrappers.
-		if (words?.[0] === "echo" || words?.[0] === "printf") return false;
+		// Terminal tools can submit text or commands to other sessions. Do not
+		// mistake their literal payload for a local shell invocation.
+		if (words && ["echo", "printf", "agtermctl", "herdr"].includes(words[0])) return false;
 		return dangerousPatterns.some((pattern) => pattern.test(command));
 	}
 

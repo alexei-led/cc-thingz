@@ -15,23 +15,23 @@ every possible way to run a command or edit a file.
 
 Edit `~/.claude/hook-config.json`, or set `CLAUDE_HOOK_CONFIG` to an absolute
 path outside the project in the environment that starts the agent. Both hooks
-read this file, including on Pi. Git hook settings require `jq`.
+read this file, including on Pi. Git hook settings require `jq`. The top-level `gitGuardrails` and
+`fileProtector` objects contain user defaults; `projects` groups both hooks
+under one user-owned checkout profile.
 Use the canonical absolute checkout path (for example, from `pwd -P` at the
 checkout root) for each project profile:
 
 ```json
 {
   "gitGuardrails": {
-    "cleanupPolicy": "strict",
-    "projects": {
-      "/home/dev/work/sandbox": {
-        "blockPatterns": ["^git push .*production"]
-      }
-    }
+    "cleanupPolicy": "strict"
   },
-  "fileProtector": {
-    "projects": {
-      "/home/dev/work/sandbox": {
+  "projects": {
+    "/home/dev/work/sandbox": {
+      "gitGuardrails": {
+        "blockPatterns": ["^git push .*production"]
+      },
+      "fileProtector": {
         "allowPaths": ["tests/fixtures/demo.pem"],
         "protectedPatterns": ["^settings/local-auth[.]ini$"]
       }

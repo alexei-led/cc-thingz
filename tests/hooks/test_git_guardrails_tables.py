@@ -45,6 +45,9 @@ MUST_BLOCK = [
     ("bash -c 'git push --force'", "force push wrapped in bash -c"),
     ("git -C d branch -D unmerged", "unmerged branch via -C"),
     ("git clean -fdx", "clean with combined short flags"),
+    ("git clean --for -d", "abbreviated force"),
+    ("git branch --del --for feature", "abbreviated delete and force"),
+    ("git push --mir", "abbreviated mirror"),
     ("git clean -f -- -n", "dry-run-looking path is not an option"),
     ("git clean -n --no-dry-run -f", "dry-run explicitly negated"),
     ("git restore --staged --worktree .", "restore affects working files"),
@@ -257,9 +260,9 @@ def test_project_git_policy_follows_actual_worktree(tmp_path: Path) -> None:
     config.write_text(
         json.dumps(
             {
-                "gitGuardrails": {
-                    "projects": {
-                        str(root): {
+                "projects": {
+                    str(root): {
+                        "gitGuardrails": {
                             "allowForcePush": True,
                             "blockPatterns": ["^git push .*main"],
                         }
@@ -273,6 +276,9 @@ def test_project_git_policy_follows_actual_worktree(tmp_path: Path) -> None:
 
     assert run_hook("git push --force origin feature", nested, env).returncode == 0
     assert run_hook("git push --force origin main", nested, env).returncode == 2
+    assert (
+        run_hook("git -c core.pager=cat push origin main", nested, env).returncode == 2
+    )
     assert run_hook("git push --force origin feature", other, env).returncode == 2
     assert (
         run_hook(
@@ -280,3 +286,52 @@ def test_project_git_policy_follows_actual_worktree(tmp_path: Path) -> None:
         ).returncode
         == 2
     )
+
+
+def test_missing_jq_still_decodes_complete_command(tmp_path: Path) -> None:
+    import sys
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    (bin_dir / "python3").symlink_to(sys.executable)
+    (bin_dir / "bash").symlink_to("/bin/bash")
+    result = run_hook('echo "ok"; git reset --hard', tmp_path, {"PATH": str(bin_dir)})
+    assert result.returncode == 2, result.stderr
+
+
+def test_unicode_escaped_git_is_decoded(tmp_path: Path) -> None:
+    from git_helpers import DECIDE, ENV, HOOK
+
+    result = subprocess.run(
+        ["/bin/bash", str(HOOK), str(DECIDE)],
+        input=r'{"tool_input":{"command":"g\u0069t reset --hard"}}',
+        env=ENV,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 2, result.stderr
+
+
+def test_missing_jq_keeps_pi_deny_protocol(tmp_path: Path) -> None:
+    import sys
+
+    from git_helpers import DECIDE, ENV, HOOK
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    (bin_dir / "python3").symlink_to(sys.executable)
+    result = subprocess.run(
+        ["/bin/bash", str(HOOK), str(DECIDE)],
+        input=json.dumps(
+            {"event": "pre-tool", "piEvent": {"input": {"command": "git reset --hard"}}}
+        ),
+        env={**ENV, "PATH": str(bin_dir)},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)["decision"] == "deny"

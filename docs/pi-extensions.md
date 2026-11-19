@@ -134,8 +134,10 @@ PermissionDenied events. Recursive `rm` flags (`-rf`, `-fr`, split `-f -r`, `-R`
 or matching permission rule allows them. Without UI, a hook allow or a
 `headless` allow rule is required; otherwise they fail closed. Hooks can deny
 commands, and hook-supplied replacements are checked again. Without configured permission rules,
-nonmatching commands pass. Literal `echo` and `printf` arguments do not
-trigger the built-in danger warning. See [hook policy](hook-policy.md) for
+nonmatching commands pass. Literal `echo`, `printf`, `agtermctl`, and `herdr` arguments do not
+trigger the built-in danger warning. Terminal tools can execute commands or
+send input in other sessions; confirm destructive or external actions before
+using them. Explicit rules and other hook denials still apply. See [hook policy](hook-policy.md) for
 Git and file protection settings. This is an approval aid, not a sandbox. It does not
 cover arbitrary deletion methods, MCP calls, or non-Bash tools.
 

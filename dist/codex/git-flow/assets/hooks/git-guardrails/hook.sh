@@ -41,7 +41,7 @@ IFS= read -r -d '' INPUT || true
 # bash 3.2 has no `${x,,}`; a per-letter bracket class keeps this a single
 # pattern match, so the fast path still forks nothing extra.
 UNQUOTED_FOR_SCAN=${INPUT//[\\\"\']/}
-if [[ "$UNQUOTED_FOR_SCAN" != *[Gg][Ii][Tt]* ]]; then
+if [[ "$UNQUOTED_FOR_SCAN" != *[Gg][Ii][Tt]* && "$INPUT" != *\\u* ]]; then
 	exit 0
 fi
 
@@ -68,8 +68,28 @@ if command -v jq >/dev/null 2>&1; then
 		' 2>/dev/null || true
 	)
 	PI_RUNTIME=${PI_RUNTIME:-0}
+elif command -v python3 >/dev/null 2>&1; then
+	{
+		IFS= read -r -d '' PI_RUNTIME || true
+		IFS= read -r -d '' COMMAND || true
+		IFS= read -r -d '' HOOK_CWD || true
+	} < <(printf '%s' "$INPUT" | python3 -c '
+import json, sys
+try:
+    payload = json.load(sys.stdin)
+    pi = payload.get("piEvent")
+    is_pi = payload.get("event") == "pre-tool" and isinstance(pi, dict)
+    event = pi if is_pi else payload
+    tool_input = event.get("input", {}) if is_pi else event.get("tool_input", {})
+    vendor = payload.get("vendorEvent") or {}
+    values = (int(is_pi), tool_input.get("command", ""), event.get("cwd") or vendor.get("cwd") or payload.get("cwd") or "")
+    sys.stdout.write("".join(str(value) + "\0" for value in values))
+except (ValueError, AttributeError, TypeError):
+    pass
+')
 else
-	COMMAND=$(printf '%s' "$INPUT" | sed -n 's/.*"command"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+	echo "BLOCKED: jq or python3 is required to analyze git commands" >&2
+	exit 2
 fi
 HOOK_CWD=${HOOK_CWD:-$PWD}
 
@@ -86,8 +106,15 @@ deny() {
 	local rule=$1 cleanup_hint=$2
 	local message="dangerous git command: $COMMAND"
 	if [[ "$PI_RUNTIME" == "1" ]]; then
-		printf '{"decision":"deny","reason":%s}\n' \
-			"$(printf '%s\nPattern: %s\n%s' "$message" "$rule" "Safe merged cleanup is automatic. For a cleanup exception, explain the commits/files at risk and ask once. After explicit user consent, retry that exact target with git -c cc-thingz.cleanupApproved=<full-tip-oid>. This does not authorize reset, clean, or force-push." | jq -Rsa .)"
+		if command -v jq >/dev/null 2>&1; then
+			printf '{"decision":"deny","reason":%s}\n' \
+				"$(printf '%s\nPattern: %s' "$message" "$rule" | jq -Rsa .)"
+		elif command -v python3 >/dev/null 2>&1; then
+			printf '%s\nPattern: %s' "$message" "$rule" | python3 -c 'import json,sys; print(json.dumps({"decision":"deny","reason":sys.stdin.read()}))'
+		else
+			echo "BLOCKED: $message ($rule)" >&2
+			exit 2
+		fi
 		exit 0
 	fi
 	echo "BLOCKED: $message" >&2
@@ -112,7 +139,7 @@ if [[ -f "$CONFIG_FILE" ]] && command -v jq >/dev/null 2>&1; then
 		jq -r '
 			(if ."git-guardrails".allow_force_push == true or .gitGuardrails.allowForcePush == true then "1" else "0" end),
 			(."git-guardrails".cleanup_policy // .gitGuardrails.cleanupPolicy // ""),
-			((.gitGuardrails.projects // {}) | tojson),
+			((.projects // {}) | tojson),
 			(."git-guardrails".block_patterns[]? // .gitGuardrails.blockPatterns[]? // empty)
 		' "$CONFIG_FILE" 2>/dev/null || true
 	)
