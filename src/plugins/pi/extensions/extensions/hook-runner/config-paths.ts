@@ -2,7 +2,7 @@
  * Filesystem paths and placeholder constants used across hook-runner config.
  */
 
-import { homedir } from "node:os";
+import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -15,9 +15,7 @@ export const PI_HOOKS_DIR_PLACEHOLDER = "${PI_HOOKS_DIR}";
 export const PKG_DIR_PLACEHOLDER = "${PKG_DIR}";
 export const FORCED_RELOAD_DEBOUNCE_MS = 500;
 
-export function agentDir(): string {
-	return process.env.PI_CODING_AGENT_DIR || join(homedir(), ".pi", "agent");
-}
+export const agentDir = getAgentDir;
 
 export function projectHooksConfigPath(cwd: string): string {
 	return join(cwd, ".pi", "hooks.json");

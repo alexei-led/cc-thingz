@@ -132,8 +132,8 @@ also be listed here, or they run twice.
 PermissionDenied events. Recursive `rm` flags (`-rf`, `-fr`, split `-f -r`, `-R`,
 `--recursive`), `sudo`, and `chmod/chown 777` trigger confirmation unless a hook
 explicitly allows or denies them. Without UI or a hook allow, they fail closed;
-hook-supplied replacements are checked again. Nonmatching commands pass.
-This is a Bash warning heuristic, not a shell parser or sandbox. It does not
+hook-supplied replacements are checked again. Without configured permission rules,
+nonmatching commands pass. This is an approval aid, not a sandbox. It does not
 cover arbitrary deletion methods, MCP calls, or non-Bash tools.
 
 ### Bash permission rules

@@ -1,7 +1,5 @@
 import { beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 
-mock.module("@earendil-works/pi-coding-agent", () => ({}));
-
 const { default: permissionGate } = await import("../../../src/plugins/pi/extensions/extensions/permission-gate.ts");
 
 type Handler = (event: { toolName: string; input: Record<string, unknown> }, ctx: any) => Promise<unknown>;
@@ -129,7 +127,10 @@ describe("permission-gate / tool_call", () => {
 		const { handlers, setResponder } = setup();
 		const handler = handlers.get("tool_call")!;
 		setResponder((payload) => {
-			if (payload.hookEventName !== "PermissionRequest") return;
+			if (payload.hookEventName !== "PermissionRequest") {
+				payload.onResult?.({});
+				return;
+			}
 			payload.onResult?.({
 				behavior: "allow",
 				updatedInput: { command: "echo sanitized" },
@@ -151,6 +152,8 @@ describe("permission-gate / tool_call", () => {
 					behavior: "allow",
 					updatedInput: { command: "rm -fr /tmp" },
 				});
+			} else {
+				payload.onResult?.({});
 			}
 		});
 
@@ -165,7 +168,10 @@ describe("permission-gate / tool_call", () => {
 		const { handlers, setResponder } = setup();
 		const handler = handlers.get("tool_call")!;
 		setResponder((payload) => {
-			if (payload.hookEventName !== "PermissionRequest") return;
+			if (payload.hookEventName !== "PermissionRequest") {
+				payload.onResult?.({});
+				return;
+			}
 			payload.onResult?.({
 				behavior: "allow",
 				updatedInput: { notACommand: 42 },

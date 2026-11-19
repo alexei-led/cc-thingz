@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { homedir } from "node:os";
+import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import { join } from "node:path";
 
 export type Rule = { match: string; headless: boolean; words: string[]; source: "user" | "project" };
@@ -24,7 +24,7 @@ function readPolicy(path: string, project: boolean): Policy {
 		if ((error as NodeJS.ErrnoException).code === "ENOENT") return { allow: [], deny: [] };
 		throw error;
 	}
-	const settings: unknown = JSON.parse(input);
+	const settings: unknown = JSON.parse(input.replace(/^\uFEFF/, ""));
 	if (!settings || typeof settings !== "object" || Array.isArray(settings)) throw new Error("settings must be an object");
 	const gate = (settings as Record<string, unknown>).permissionGate;
 	if (gate === undefined) return { allow: [], deny: [] };
@@ -40,7 +40,7 @@ function readPolicy(path: string, project: boolean): Policy {
 }
 
 export function loadPolicy(cwd: string, trusted: boolean): Policy {
-	const agentDir = process.env.PI_CODING_AGENT_DIR || join(homedir(), ".pi", "agent");
+	const agentDir = getAgentDir();
 	let user: Policy;
 	try {
 		user = readPolicy(join(agentDir, "settings.json"), false);
