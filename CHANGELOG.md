@@ -8,6 +8,32 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [8.1.1] - 2026-11-19
+
+### Fixed
+
+- Pi's Bash grants now accept bounded stdin-only filter pipelines, including
+  `2>&1 | tail -35`. Each stage is checked; separate grants are not implicitly
+  composed into pipeline approval.
+- Quoted interpreter source, search text, and quoted heredoc bodies no longer
+  trigger built-in warnings merely for containing dangerous command words.
+  Unrelated developer scripts are not restricted by adding an SSH grant.
+- Direct dangerous commands still warn through common wrappers, expansions, and
+  redirections. Hook vetoes, deny rules, and eligible headless grants remain
+  effective.
+
+### Security
+
+- Interpreter source, shell `-c` payloads, and remote effects are not inspected.
+  They can perform destructive actions without a built-in warning. Use explicit
+  hooks or OS isolation when stronger enforcement is required.
+
+### Upgrade
+
+- Reload or restart Pi after updating to activate the new gate.
+
+[Changes since v8.1.0](https://github.com/alexei-led/cc-thingz/compare/v8.1.0...v8.1.1)
+
 ## [8.1.0] - 2026-11-19
 
 ### Added

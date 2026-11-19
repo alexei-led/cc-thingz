@@ -250,6 +250,14 @@ describe("permission rules", () => {
 		const run = await setup(undefined, { permissionGate: { allow: [grant] } });
 		expect(await run("rg -F 'sudo' README.md | head -20")).toBeUndefined();
 	});
+	it.each([
+		"sed -n 1,120p tools/core/_finding_spend.py; echo '=====ESTIMATE'; sed -n 1,140p tools/core/_facts_finding_estimate.py",
+		"rg -n 'def compute_estimate|def .*estimate' tools/core/_finding_estimate.py | head -30",
+		"rg -n 'set-finding-estimate|set_finding_estimate|refresh-finding-estimate|finding-estimate' --glob '!node_modules' --glob '!.gitnexus' . | head -40; echo '=== candidate-pricing job'; ls setup/cron/jobs/*/ | head -80",
+	])("does not obstruct the reported read-only inspection: %s", async (command) => {
+		const run = await setup(undefined, { permissionGate: { allow: [grant] } });
+		expect(await run(command)).toBeUndefined();
+	});
 	it("does not let SSH grants obstruct unrelated developer scripts", async () => {
 		const run = await setup(undefined, { permissionGate: { allow: [grant] } });
 		const command =
