@@ -84,7 +84,7 @@ function inspectInvocation(words: Words, result: Inspection, depth = 0): void {
 					if (split) inspectInvocation(["env", ...split, ...words.slice(i + (attached ? 1 : 2))], result, depth + 1);
 					return;
 				}
-				i += words[i] === "-u" || words[i] === "--unset" ? 2 : 1;
+				i += ["-u", "--unset", "-C", "--chdir", "-a", "--argv0", "-P"].includes(words[i] ?? "") ? 2 : 1;
 			}
 			continue;
 		}
