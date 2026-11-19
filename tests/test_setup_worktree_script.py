@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 from conftest import REPO_ROOT
-from git_helpers import init_repo
+from git_helpers import git, init_repo
 
 SCRIPT = (
     REPO_ROOT
@@ -37,12 +37,6 @@ def run(
         check=False,
         env=merged_env,
     )
-
-
-def git(repo: Path, *args: str, env: dict[str, str] | None = None) -> str:
-    result = run(["git", *args], repo, env=env)
-    assert result.returncode == 0, result.stdout
-    return result.stdout
 
 
 def write_commit(repo: Path, filename: str, content: str, message: str) -> None:
