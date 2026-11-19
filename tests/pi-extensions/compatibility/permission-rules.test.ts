@@ -141,10 +141,10 @@ describe("permission rules", () => {
 		const run = await setup({ permissionGate: { allow: [grant] } }, undefined);
 		expect(await run(`${prefix} 'sudo whoami' ${suffix}`)).toMatchObject({ block: true });
 	});
-	it("allows explicitly permitted pipeline stages and honors their denies", async () => {
+	it("does not compose arbitrary allow rules into pipeline approval", async () => {
 		const sort = { match: "Bash(sort -u)", headless: true };
 		const run = await setup({ permissionGate: { allow: [grant, sort] } }, undefined);
-		expect(await run(`${prefix} 'sudo whoami' | sort -u | head -10`)).toBeUndefined();
+		expect(await run(`${prefix} 'sudo whoami' | sort -u | head -10`)).toMatchObject({ block: true });
 		const denied = await setup({ permissionGate: { allow: [grant, sort], deny: [{ match: sort.match }] } }, undefined);
 		expect(await denied(`${prefix} 'sudo whoami' | sort -u`)).toMatchObject({ block: true, reason: "Blocked by user permission rule" });
 	});
@@ -162,7 +162,9 @@ describe("permission rules", () => {
 	});
 	it("honors project trust and user deny precedence", async () => {
 		const command = `${prefix} 'sudo whoami'`;
-		expect(await (await setup(undefined, { permissionGate: { allow: [grant] } }, false))(command)).toMatchObject({ block: true });
+		expect(await (await setup(undefined, { permissionGate: { allow: [{ match: "Bash(sudo whoami)", headless: true }] } }, false))("sudo whoami")).toMatchObject(
+			{ block: true },
+		);
 		expect(await (await setup({ permissionGate: { deny: [grant] } }, { permissionGate: { allow: [grant] } }))(command)).toMatchObject({
 			block: true,
 			reason: "Blocked by user permission rule",
@@ -228,6 +230,16 @@ describe("permission rules", () => {
 	it("allows trusted project rules", async () => {
 		const run = await setup(undefined, { permissionGate: { allow: [grant] } });
 		expect(await run(`${prefix} 'sudo whoami'`)).toBeUndefined();
+	});
+	it("does not let SSH grants obstruct unrelated inspection pipelines", async () => {
+		const run = await setup(undefined, { permissionGate: { allow: [grant] } });
+		expect(await run("rg -F \'sudo\' README.md | head -20")).toBeUndefined();
+	});
+	it("does not let SSH grants obstruct unrelated developer scripts", async () => {
+		const run = await setup(undefined, { permissionGate: { allow: [grant] } });
+		const command =
+			"cd /tmp && uv run --no-project python - <<\'PY\'\nfrom pathlib import Path\np = Path(\'notes.md\')\ns = \'sudo -i -u reflex\'\np.write_text(s)\nPY\nmake fmt && make build && bun test";
+		expect(await run(command)).toBeUndefined();
 	});
 	it("fails closed on invalid user policy", async () => {
 		const run = await setup({ permissionGate: { deny: "bad" } }, undefined);

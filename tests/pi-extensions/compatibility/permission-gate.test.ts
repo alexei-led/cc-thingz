@@ -212,6 +212,16 @@ describe("permission-gate / tool_call", () => {
 		"rm --recursive /tmp",
 		"sudo whoami",
 		"chmod 777 /tmp",
+		"cd /tmp && sudo whoami",
+		"printf ok | sudo tee /tmp/log",
+		"/usr/bin/sudo whoami",
+		"env FOO=bar sudo whoami",
+		"env -i sudo whoami",
+		"command -- sudo whoami",
+		"echo $(sudo whoami)",
+		'echo "$(sudo whoami)"',
+		"cat <<EOF\n$(sudo whoami)\nEOF",
+		"python - <<'PY'\ntext = 'sudo'\nPY\nsudo whoami",
 	])("blocks %s without a UI", async (command) => {
 		const { handlers } = setup();
 		const handler = handlers.get("tool_call")!;
@@ -219,6 +229,25 @@ describe("permission-gate / tool_call", () => {
 		expect(result).toMatchObject({
 			block: true,
 			reason: expect.stringContaining("no UI"),
+		});
+	});
+
+	it.each([
+		"python -c 'text = \"sudo rm -rf /example\"'",
+		"node -e 'console.log(\"sudo\")'",
+		"printf '%s' 'sudo rm -rf /example'",
+		"rg -F 'sudo' README.md",
+		"cd /tmp && uv run --no-project python - <<'PY'\ntext = 'sudo'\nPY\nmake check",
+	])("does not warn on developer source and data: %s", async (command) => {
+		const { handlers } = setup();
+		expect(await handlers.get("tool_call")!({ toolName: "bash", input: { command } }, makeCtx(false))).toBeUndefined();
+	});
+	it("keeps hook vetoes for source-text false positives", async () => {
+		const { handlers, setResponder } = setup();
+		setResponder((payload) => payload.onResult?.(payload.hookEventName === "PermissionRequest" ? { behavior: "deny", reason: "hook policy" } : {}));
+		expect(await handlers.get("tool_call")!({ toolName: "bash", input: { command: "python -c \'print(\"sudo\")\'" } }, makeCtx(false))).toEqual({
+			block: true,
+			reason: "hook policy",
 		});
 	});
 

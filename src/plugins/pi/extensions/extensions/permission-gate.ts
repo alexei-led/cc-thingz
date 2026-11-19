@@ -8,6 +8,7 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { isSafeInputFilter, loadPolicy, matchesRule, parseLiteralCommand, parseOutputPipeline, type Policy } from "./shared/permission-rules.js";
 import { invokeSyntheticHook, type SyntheticHookInvocationResult, toCcToolName } from "./shared/hook-bridge.js";
+import { hasWarningText, inspectShellWarnings } from "./shared/shell-warnings.js";
 
 export default function (pi: ExtensionAPI) {
 	let policy: Policy = { allow: [], deny: [] };
@@ -32,11 +33,6 @@ export default function (pi: ExtensionAPI) {
 			ctx.ui.notify(lines.join("\n") || "No permission-gate rules.", "info");
 		},
 	});
-	const dangerousPatterns = [
-		/\brm\s+(?:(?:-[a-zA-Z]+|--[a-z]+(?:-[a-z]+)*)\s+)*(?:-[a-zA-Z]*[rR][a-zA-Z]*|--recursive)(?=\s|$)/,
-		/\bsudo\b/i,
-		/\b(chmod|chown)\b.*777/i,
-	];
 
 	async function invokeHook(
 		ctx: ExtensionContext,
@@ -89,26 +85,25 @@ export default function (pi: ExtensionAPI) {
 		};
 		if (effective.error) return deny(effective.error);
 		const hasRules = effective.allow.length > 0 || effective.deny.length > 0;
+		const inspection = inspectShellWarnings(commandRaw);
+		const ruleRelevant = effective.allow.some((rule) => inspection.executables.includes(rule.words[0]));
 		const pipeline = hasRules ? parseOutputPipeline(commandRaw) : undefined;
 		const words = hasRules ? (parseLiteralCommand(commandRaw) ?? pipeline?.words) : undefined;
 		const ruleMatch = words && effective.allow.find((rule) => matchesRule(rule, words));
 		const unrecognized =
-			hasRules &&
-			(!words ||
-				(!!pipeline &&
-					(!ruleMatch ||
-						!pipeline.filters.every(
-							(filter) => isSafeInputFilter(filter) || effective.allow.some((rule) => matchesRule(rule, filter) && (ctx.hasUI || rule.headless)),
-						))));
+			(!words && (ruleRelevant || effective.deny.length > 0)) ||
+			(!!pipeline && (ruleRelevant || effective.deny.length > 0) && (!ruleMatch || !pipeline.filters.every(isSafeInputFilter)));
 		if (
 			words &&
 			effective.deny.some((rule) => matchesRule(rule, words, true) || (!!pipeline && pipeline.filters.some((filter) => matchesRule(rule, filter, true))))
 		)
 			return deny("Blocked by user permission rule");
 		const allowed = !unrecognized && ruleMatch && (ctx.hasUI || ruleMatch.headless);
-		const isDangerous = dangerousPatterns.some((p) => p.test(commandRaw));
+		const isDangerous = inspection.dangerous;
 		const restrictedExecutable = words && effective.allow.some((rule) => rule.words[0] === words[0]);
-		if (!isDangerous && !restrictedExecutable && !unrecognized) return undefined;
+		const needsConfirmation = isDangerous || restrictedExecutable || unrecognized;
+		// Keep hook eligibility even when the built-in warning was a literal-text false positive.
+		if (!hasWarningText(commandRaw) && !needsConfirmation) return undefined;
 
 		const requestHook = await invokeHook(ctx, "PermissionRequest", {
 			command: commandRaw,
@@ -125,7 +120,7 @@ export default function (pi: ExtensionAPI) {
 				if (
 					(hasRules && !updatedWords) ||
 					(updatedWords && effective.deny.some((rule) => matchesRule(rule, updatedWords, true))) ||
-					dangerousPatterns.some((pattern) => pattern.test(updatedCommand))
+					inspectShellWarnings(updatedCommand).dangerous
 				) {
 					return deny("PermissionRequest hook returned an unsafe command patch");
 				}
@@ -138,7 +133,7 @@ export default function (pi: ExtensionAPI) {
 			return undefined;
 		}
 
-		if (allowed) return undefined;
+		if (allowed || !needsConfirmation) return undefined;
 
 		if (!ctx.hasUI)
 			return deny(unrecognized ? "Unrecognized shell syntax blocked (no UI for confirmation)" : "Dangerous command blocked (no UI for confirmation)");

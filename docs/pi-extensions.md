@@ -128,14 +128,24 @@ Configure personal messaging, notification, and review integrations at user
 scope. Portable hooks already dispatched by `agentbundler-hooks.ts` must not
 also be listed here, or they run twice.
 
-`permission-gate` uses the runner's synthetic PermissionRequest and
-PermissionDenied events. Recursive `rm` flags (`-rf`, `-fr`, split `-f -r`, `-R`,
-`--recursive`), `sudo`, and `chmod/chown 777` trigger confirmation unless a hook
-or matching permission rule allows them. Without UI, a hook allow or a
-`headless` allow rule is required; otherwise they fail closed. Hooks can deny
-commands, and hook-supplied replacements are checked again. Without configured permission rules,
-nonmatching commands pass. This is an approval aid, not a sandbox. It does not
-cover arbitrary deletion methods, MCP calls, or non-Bash tools.
+`permission-gate` warns on recognizable local shell invocations of `sudo`,
+recursive `rm`, and `chmod/chown 777`. Quoted arguments, interpreter source,
+and quoted heredoc bodies are not searched as executable shell code. For
+example, Python source containing the string `"sudo"` does not itself trigger
+the built-in confirmation. Commands following the heredoc still get checked;
+local substitutions and unquoted heredocs retain conservative text checks.
+
+This developer-friendly default deliberately does not inspect Python, Node,
+other interpreters, shell `-c` payloads, or remote programs for indirect effects.
+A script can still delete files or launch privileged commands without a built-in
+warning. This is approval assistance, not a sandbox or a complete shell parser.
+
+The original text-based triggers still dispatch PermissionRequest hooks, even
+when the built-in warning is suppressed. Hook vetoes and timeouts remain in
+force. A recognized warning requires a UI confirmation, a hook allow, or an
+eligible permission rule; headless rules must explicitly permit headless use.
+Hook-supplied command replacements are checked again. Non-Bash tools and
+arbitrary deletion methods remain outside this gate.
 
 ### Bash permission rules
 
@@ -168,14 +178,17 @@ a pipeline of up to eight local stdin filters, with optional `2>&1` before
 pipes. Built-in filters are `cat`, `wc`, `grep`, `head`, and `tail`, with a
 restricted set of arguments and no input file paths. `head` and `tail` accept
 no arguments, `-N`, or `-n N` (N at most 10000). Other pipeline stages require
-their own allow rule; in headless mode each such rule needs `headless: true`.
+confirmation even if they have separate allow rules; those grants are not
+implicitly composed.
 User deny rules and hook vetoes apply to every stage. Other redirections,
 substitutions, variables, globs, and unsupported syntax require approval.
-With rules configured, unsupported syntax blocks without UI, even if no warning
-pattern matches. With user deny rules, unsupported syntax is blocked even with
-UI because the gate cannot determine whether a deny applies. When an executable
-has an allow rule, its other invocations require approval even if no warning
-pattern matches. Filter output outside Bash for pipelines not listed above.
+Unsupported syntax involving a rule-targeted executable requires confirmation
+and blocks headless. Unrelated developer scripts keep the default behavior;
+adding an SSH allow rule does not turn every Bash command into an allowlist.
+With user deny rules, unsupported syntax is blocked even with UI because the
+gate cannot determine whether a deny applies. When a recognized executable has
+an allow rule, its other invocations require approval even without a warning.
+Filter output outside Bash for pipelines not listed above.
 
 A user `deny` list uses the same format and takes precedence over allow rules.
 Projects can add allows only, and only while trusted. `headless: true` permits
