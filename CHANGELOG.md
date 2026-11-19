@@ -8,28 +8,6 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
-## [8.1.1] - 2026-11-19
-
-### Fixed
-
-- Git guardrails allow clean previews and index-only unstaging. Custom block
-  patterns remain effective when force-push is allowed.
-- File protection permits ordinary credential-related source filenames and
-  checks resolved paths and both sides of unified diffs.
-- Pi does not prompt for dangerous-looking text in literal display,
-  `agtermctl`, or `herdr` commands. Explicit denies and other hooks remain
-  effective. Read-only release queries can be piped or chained.
-
-### Changed
-
-- Configure Git and file protections together per checkout in a user-owned
-  [hook policy](docs/hook-policy.md). The `evolving-config` skill explains
-  the settings and their risks.
-- Paid skill evals use a configured target. Set `SKILL_EVAL_TARGET` locally
-  or as a repository variable for CI.
-
-[Changes since v8.1.0](https://github.com/alexei-led/cc-thingz/compare/v8.1.0...v8.1.1)
-
 ## [8.1.0] - 2026-11-19
 
 ### Added
