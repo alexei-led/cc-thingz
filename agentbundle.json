@@ -26,7 +26,7 @@
       "name": "Alexei Ledenev"
     },
     "description": "Portable skills, agents, hooks, and Pi-native extensions for coding agents.",
-    "version": "8.1.1"
+    "version": "8.2.0"
   },
   "composition": [
     {
@@ -47,7 +47,7 @@
       "aggregate": {
         "identity": "cc-thingz",
         "metadata": {
-          "version": "8.1.1",
+          "version": "8.2.0",
           "description": "Skills, agents, hooks, and native extensions for Pi",
           "keywords": [
             "coding-agent",
@@ -55,7 +55,10 @@
             "agents",
             "hooks",
             "pi-extensions"
-          ]
+          ],
+          "dependencies": {
+            "web-tree-sitter": "0.25.10"
+          }
         }
       },
       "skillPreamble": "<!-- Pi platform guidance -->\n<!-- Use installed tool names. Discover callable tools before batching independent calls in codemode; model-only UI/orchestration tools must be called directly. -->\n<!-- Read required skill/instruction files through direct read when exposed or through Code Mode. If an optional pruning extension is installed, verify its output protection semantics; do not assume nested-path protection. Code Mode composes calls; subagents or controllers own durable workflows. Async subagents notify natively: yield rather than poll. -->"

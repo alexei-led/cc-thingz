@@ -235,6 +235,15 @@ describe("permission-gate / tool_call", () => {
 	it.each([
 		"sudo rm -rf /var",
 		"rm -rf /tmp",
+		"\\rm -rf build",
+		"find . | xargs -I{} rm -rf {}",
+		"env -S '-i sudo whoami'",
+		"env -C /tmp sudo whoami",
+		"env --chdir /tmp sudo whoami",
+		"env -a process sudo whoami",
+		"env --argv0 process sudo whoami",
+		"env -P /usr/bin sudo whoami",
+		"rm <<'EOF' -rf ./build\nEOF",
 		"rm -fr /tmp",
 		"rm -f -r /tmp",
 		"rm -R /tmp",
@@ -242,6 +251,55 @@ describe("permission-gate / tool_call", () => {
 		"rm --recursive /tmp",
 		"sudo whoami",
 		"chmod 777 /tmp",
+		"cd /tmp && sudo whoami",
+		"sudo whoami; echo $(unterminated",
+		"out=$(\n# don't fail\ncat f || true\n)\nsudo whoami",
+		"echo $(printf '\\\\'); sudo whoami",
+		"printf ok | sudo tee /tmp/log",
+		"/usr/bin/sudo whoami",
+		"env FOO=bar sudo whoami",
+		"env -i sudo whoami",
+		"command -- sudo whoami",
+		"echo ${#PATH}; sudo whoami",
+		"a{#b; sudo whoami",
+		"env -S 'sudo whoami'",
+		"exec -a example sudo whoami",
+		"exec -c sudo whoami",
+		"exec -a example -c sudo whoami",
+		"stdbuf -oL sudo whoami",
+		"ionice -c 2 sudo whoami",
+		"echo ${#files[@]}; rm -rf build",
+		"time sudo whoami",
+		"time rm -rf build",
+		"rm ./build -rf",
+		"/usr/bin/time -f '%E' sudo whoami",
+		"xargs -a /tmp/list sudo whoami",
+		'echo "${name:-$(sudo whoami)}"',
+		"echo `sudo whoami`",
+		"nohup sudo whoami",
+		"timeout 5 sudo whoami",
+		"nice rm -rf build",
+		"find . | xargs rm -rf",
+		"find . -name x -exec rm -rf {} +",
+		"find . -exec echo {} \\; -exec rm -rf {} +",
+		"find . -exec echo \\; -exec sudo ls \\;",
+		"< /dev/null sudo whoami",
+		"sudo>/dev/null whoami",
+		"sudo</dev/null whoami",
+		"sudo 2>/dev/null whoami",
+		"/usr/bin/sudo>/dev/null whoami",
+		"2>/dev/null sudo whoami",
+		"chmod 1777 /tmp/example",
+		"chmod 2777 /tmp/example",
+		"chmod 4777 /tmp/example",
+		"chmod 7777 /tmp/example",
+		"echo $(sudo whoami)",
+		'echo "$(sudo whoami)"',
+		"cat <<EOF\n$(sudo whoami)\nEOF",
+		"cat <<<'fixture'\nsudo whoami",
+		"cat <<-'EOF'\n\tfixture\n\tEOF\nsudo whoami",
+		"'su''do' whoami",
+		"python - <<'PY'\ntext = 'sudo'\nPY\nsudo whoami",
 	])("blocks %s without a UI", async (command) => {
 		const { handlers } = setup();
 		const handler = handlers.get("tool_call")!;
@@ -249,6 +307,26 @@ describe("permission-gate / tool_call", () => {
 		expect(result).toMatchObject({
 			block: true,
 			reason: expect.stringContaining("no UI"),
+		});
+	});
+
+	it.each([
+		"python -c 'text = \"sudo rm -rf /example\"'",
+		"node -e 'console.log(\"sudo\")'",
+		"uv run --no-project python - <<PY\ntext = 'sudo'\nprint(text)\nPY",
+		"printf '%s' 'sudo rm -rf /example'",
+		"rg -F 'sudo' README.md",
+		"cd /tmp && uv run --no-project python - <<'PY'\ntext = 'sudo'\nPY\nmake check",
+	])("does not warn on developer source and data: %s", async (command) => {
+		const { handlers } = setup();
+		expect(await handlers.get("tool_call")!({ toolName: "bash", input: { command } }, makeCtx(false))).toBeUndefined();
+	});
+	it("keeps hook vetoes for source-text false positives", async () => {
+		const { handlers, setResponder } = setup();
+		setResponder((payload) => payload.onResult?.(payload.hookEventName === "PermissionRequest" ? { behavior: "deny", reason: "hook policy" } : {}));
+		expect(await handlers.get("tool_call")!({ toolName: "bash", input: { command: "python -c 'print(\"sudo\")'" } }, makeCtx(false))).toEqual({
+			block: true,
+			reason: "hook policy",
 		});
 	});
 

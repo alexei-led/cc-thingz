@@ -6,7 +6,9 @@ root compatibility manifest whose resource paths point into `dist/pi`.
 The native extensions require Pi **1.0.2 or later in the 1.x series**. The
 repository-root peer contracts use `^1.0.2`; Agent Bundler does not render peer
 dependencies into the target-root archive manifest, so archive users must check
-the host version themselves. The lockfiles record the tested baseline.
+the host version themselves. The lockfiles record the tested baseline. The permission gate also requires the
+pinned `web-tree-sitter` runtime package and a bundled `tree-sitter-bash`
+WASM grammar. Managed Git installs resolve the runtime dependency automatically.
 
 ## Registered extensions
 
@@ -23,13 +25,19 @@ separately if you want the packaged `cc-thingz.*` agents:
 
 ```bash
 pi install npm:pi-subagents
-pi install ./cc-thingz-pi.tgz -l
+pi install git:github.com/alexei-led/cc-thingz@v8.2.0
 ```
 
 The native extensions, skills, and hooks work without `pi-subagents`; only the
 packaged agent definitions require its runtime.
 
-For local development through the repository root:
+Pi 1.0.2 cannot load a `.tgz` path directly as an extension package. To test a
+release archive, extract it to an isolated directory and prepare dependencies
+with `npm install --omit=dev --ignore-scripts`. Then point an isolated Pi
+configuration at that directory.
+Use published Git tags for normal managed installations.
+
+For isolated local development testing through the repository root:
 
 ```bash
 make build
@@ -128,65 +136,84 @@ Configure personal messaging, notification, and review integrations at user
 scope. Portable hooks already dispatched by `agentbundler-hooks.ts` must not
 also be listed here, or they run twice.
 
-`permission-gate` uses the runner's synthetic PermissionRequest and
-PermissionDenied events. Recursive `rm` flags (`-rf`, `-fr`, split `-f -r`, `-R`,
-`--recursive`), `sudo`, and `chmod/chown 777` trigger confirmation unless a hook
-or matching permission rule allows them. Without UI, a hook allow or a
-`headless` allow rule is required; otherwise they fail closed. Hooks can deny
-commands, and hook-supplied replacements are checked again. Without configured permission rules,
-nonmatching commands pass. Literal `echo`, `printf`, `agtermctl`, and `herdr` arguments do not
-trigger the built-in danger warning. Terminal tools can execute commands or
-send input in other sessions; confirm destructive or external actions before
-using them. Explicit rules and other hook denials still apply. See [hook policy](hook-policy.md) for
-Git and file protection settings. This is an approval aid, not a sandbox. It does not
-cover arbitrary deletion methods, MCP calls, or non-Bash tools.
+See [hook policy](hook-policy.md) for the separate Git and file protection settings.
 
-### Bash permission rules
+### Blacklist-only Bash warnings
 
-Add optional rules to user `~/.pi/agent/settings.json` or trusted project
-`.pi/settings.json`. Rules are read at session start; reload or restart to
-apply changes. For example, this project rule permits remote commands on one VM:
+Normal commands pass by default. The gate does not maintain a safe-command list,
+restrict pipeline filters, or block a command just because its syntax is unknown.
+Adding an allow rule does not restrict other invocations of the same executable.
+
+The built-in blacklist warns on recognizable local `sudo`, recursive `rm`,
+and `chmod/chown` modes ending in `777`. It checks recognized commands in
+pipelines and command chains. It recognizes common runner prefixes such as
+`xargs` and `timeout`, and executable actions in `find`. Commands inside local
+command substitutions and unquoted heredocs are inspected; an executable
+produced by an expansion is not classified. Unknown syntax is not itself a warning.
+
+Quoted arguments, interpreter source, and quoted heredoc bodies are data to the
+outer shell, not executable commands. Literal warning words inside them do not
+trigger built-in confirmation. Unquoted heredocs are checked for local expansion
+hazards; recognized commands after a heredoc still get checked. Python, Node, shell `-c`
+payloads, and remote programs are intentionally not inspected for indirect
+effects. They can delete files or launch privileged commands without a built-in
+warning. This is an approval aid, not a sandbox. Bounded Tree-sitter parsing
+recognizes shell syntax, but unsupported syntax, parse recovery, or exhausted
+inspection budgets can leave later actions unclassified rather than blocking
+normal work.
+
+Text triggers still dispatch PermissionRequest hooks when a built-in warning is
+suppressed, except for the existing literal display/terminal exemption for
+`echo`, `printf`, `agtermctl`, and `herdr`. Explicit denies run first; other hook
+vetoes and timeouts remain in force.
+A recognized warning needs UI confirmation, a hook allow, or an eligible exact
+exception. Without UI or an eligible exception, the warning blocks.
+
+[Design sources, real-session tests, and verification limits](permission-gate-testing.md)
+describe how this behavior is checked.
+
+### Optional warning exceptions and explicit denies
+
+Use `permissionGate` in user `~/.pi/agent/settings.json` or trusted project
+`.pi/settings.json`. Reload or restart to apply changes. For example, this
+trusted-project exception permits one exact cleanup invocation:
 
 ```json
 {
   "permissionGate": {
     "allow": [
-      {
-        "match": "Bash(gcloud compute ssh reflex-kroo-01 --zone us-central1-a --project doit-reflex --quiet --command *)",
-        "headless": true
-      }
+      { "match": "Bash(rm -rf ./build)", "headless": true }
     ]
   }
 }
 ```
 
-This permits any remote command, including `sudo`, with the remote account's
-privileges. Review the client and SSH configuration as well as the VM and
-account. The extension does not prove remote identity or client behavior.
+An allow rule only waives a warning for a complete literal invocation. It does
+not make other commands forbidden. A standalone `*` matches one nonempty
+argument, not a shell-string tail; in allow rules that argument must not begin
+with `-`. Separate exceptions are not automatically composed across pipelines
+or command chains.
 
-`Bash(...)` matches the complete literal argument list. A standalone `*`
-matches exactly one nonempty argument that does not begin with `-`; it cannot
-be the executable. Other words are literal. Flag order and spelling matter.
-Quote the remote payload as one argument; local pipelines, redirections,
-substitutions, variables, globs, and other unsupported syntax require approval.
-With rules configured, unsupported syntax blocks without UI, even if no warning
-pattern matches. With user deny rules, unsupported syntax is blocked even with
-UI because the gate cannot determine whether a deny applies. When an executable
-has an allow rule, its other invocations require approval even if no warning
-pattern matches. Filter output outside Bash instead of appending a pipeline.
+A user `deny` list uses the same format and blocks positively matched command
+shapes, including recognized commands within chains and pipelines. Denies win
+over allows. Deny matching accepts option arguments for `*`. Unmatched or
+unrecognized syntax does not itself trigger a denial. These rules cannot enforce
+a program-wide ban across every shell encoding or interpreter.
 
-A user `deny` list uses the same format and takes precedence over allow rules.
-Projects can add allows only, and only while trusted. `headless: true` permits
-a rule to waive the warning without UI. An absent or malformed project policy
-adds no allows; malformed user policy blocks Bash. Inspect rules with
-`/permissions`. Hook denies and timeouts still block matching commands.
+Projects can add allows only, and only while trusted. An absent or malformed
+project policy adds no exceptions; malformed user policy reports an error and
+blocks Bash until repaired. `/permissions` shows effective rules and their source.
+Hook-supplied replacements are checked again against the blacklist and user
+denies.
 
-These rules are a warning-gate convenience, **not a security boundary**. Pi
-runs the original command through its configured shell after `tool_call`;
-shell startup, `shellCommandPrefix`, executable lookup, or later extensions
-may change what executes. Deny rules match invocation shapes, not all ways to
-perform an action. Other tools and explicit hook approvals are outside this
-matcher. Use OS isolation and trusted shell/client configuration where needed.
+Existing SSH grants may remain, but are not required merely because a quoted
+remote payload contains `sudo`. They are not a destination ACL: use cloud IAM
+and SSH access controls for that.
+
+Pi runs the original command through its configured shell after `tool_call`.
+Shell startup, `shellCommandPrefix`, executable lookup, or later extensions may
+change execution. Use OS isolation for enforcement; this gate does not cover
+arbitrary deletion methods, MCP calls, or non-Bash tools.
 
 `Stop` and `StopFailure` retain their `agent_end` behavior. Idle notifications
 run only on `agent_settled`, after automatic retries and queued continuations.

@@ -6,8 +6,10 @@
  */
 
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { loadPolicy, matchesRule, parseLiteralCommand, type Policy } from "./shared/permission-rules.js";
+import { loadPolicy, matchesRule, type Policy } from "./shared/permission-rules.js";
+import { parseLiteralCommand } from "./shared/literal-command.js";
 import { invokeSyntheticHook, type SyntheticHookInvocationResult, toCcToolName } from "./shared/hook-bridge.js";
+import { hasWarningText, inspectShellWarnings } from "./shared/shell-warnings.js";
 
 export default function (pi: ExtensionAPI) {
 	let policy: Policy = { allow: [], deny: [] };
@@ -32,18 +34,6 @@ export default function (pi: ExtensionAPI) {
 			ctx.ui.notify(lines.join("\n") || "No permission-gate rules.", "info");
 		},
 	});
-	const dangerousPatterns = [
-		/\brm\s+(?:(?:-[a-zA-Z]+|--[a-z]+(?:-[a-z]+)*)\s+)*(?:-[a-zA-Z]*[rR][a-zA-Z]*|--recursive)(?=\s|$)/,
-		/\bsudo\b/i,
-		/\b(chmod|chown)\b.*777/i,
-	];
-
-	function needsDangerConfirmation(command: string, words = parseLiteralCommand(command)): boolean {
-		// Terminal tools can submit text or commands to other sessions. Do not
-		// mistake their literal payload for a local shell invocation.
-		if (words && ["echo", "printf", "agtermctl", "herdr"].includes(words[0])) return false;
-		return dangerousPatterns.some((pattern) => pattern.test(command));
-	}
 
 	async function invokeHook(
 		ctx: ExtensionContext,
@@ -95,14 +85,15 @@ export default function (pi: ExtensionAPI) {
 			return { block: true, reason: denied.retry ? `${reason} (hook signaled retry is allowed)` : reason };
 		};
 		if (effective.error) return deny(effective.error);
-		const hasRules = effective.allow.length > 0 || effective.deny.length > 0;
-		const words = hasRules ? parseLiteralCommand(commandRaw) : undefined;
-		const unrecognized = hasRules && !words;
-		if (words && effective.deny.some((rule) => matchesRule(rule, words))) return deny("Blocked by user permission rule");
-		const allowed = words && effective.allow.find((rule) => matchesRule(rule, words) && (ctx.hasUI || rule.headless));
-		const isDangerous = needsDangerConfirmation(commandRaw, words);
-		const restrictedExecutable = words && effective.allow.some((rule) => rule.words[0] === words[0]);
-		if (!isDangerous && !restrictedExecutable && !unrecognized) return undefined;
+		const inspection = inspectShellWarnings(commandRaw);
+		const matchesDeny = (commands: string[][]) => effective.deny.some((rule) => commands.some((words) => matchesRule(rule, words, true)));
+		if (matchesDeny(inspection.commands)) return deny("Blocked by user permission rule");
+		const words = parseLiteralCommand(commandRaw);
+		const allowed = words && effective.allow.some((rule) => matchesRule(rule, words) && (ctx.hasUI || rule.headless));
+		const needsConfirmation = inspection.dangerous;
+		// Preserve the published display/terminal exemption without bypassing explicit denies.
+		const displayOnly = words && ["echo", "printf", "agtermctl", "herdr"].includes(words[0]);
+		if (!needsConfirmation && (displayOnly || !hasWarningText(commandRaw))) return undefined;
 
 		const requestHook = await invokeHook(ctx, "PermissionRequest", {
 			command: commandRaw,
@@ -111,16 +102,11 @@ export default function (pi: ExtensionAPI) {
 			const reason = requestHook.reason || requestHook.message || "Permission denied by hook";
 			return deny(reason);
 		}
-		if (unrecognized && effective.deny.length > 0) return deny("Unrecognized shell syntax cannot be checked against deny rules");
 		if (requestHook.behavior === "allow") {
 			if (requestHook.updatedInput && typeof requestHook.updatedInput.command === "string") {
 				const updatedCommand = requestHook.updatedInput.command;
-				const updatedWords = hasRules ? parseLiteralCommand(updatedCommand) : undefined;
-				if (
-					(hasRules && !updatedWords) ||
-					(updatedWords && effective.deny.some((rule) => matchesRule(rule, updatedWords))) ||
-					needsDangerConfirmation(updatedCommand, updatedWords)
-				) {
+				const updated = inspectShellWarnings(updatedCommand);
+				if (!updatedCommand.trim() || matchesDeny(updated.commands) || updated.dangerous) {
 					return deny("PermissionRequest hook returned an unsafe command patch");
 				}
 				event.input.command = updatedCommand;
@@ -132,13 +118,10 @@ export default function (pi: ExtensionAPI) {
 			return undefined;
 		}
 
-		if (allowed) return undefined;
+		if (allowed || !needsConfirmation) return undefined;
 
-		if (!ctx.hasUI)
-			return deny(unrecognized ? "Unrecognized shell syntax blocked (no UI for confirmation)" : "Dangerous command blocked (no UI for confirmation)");
-
-		const label = unrecognized ? "Unrecognized shell syntax" : "Dangerous command";
-		const choice = await ctx.ui.select(`⚠️ ${label}:\n\n  ${commandRaw}\n\nAllow?`, ["Yes", "No"]);
+		if (!ctx.hasUI) return deny("Dangerous command blocked (no UI for confirmation)");
+		const choice = await ctx.ui.select(`⚠️ Dangerous command:\n\n  ${commandRaw}\n\nAllow?`, ["Yes", "No"]);
 		if (choice === "Yes") {
 			return undefined;
 		}

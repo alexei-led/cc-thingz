@@ -161,13 +161,15 @@ See [Repository-root compatibility](docs/root-compatibility.md) for local paths,
 verification, limitations, and migration details. Install `npm:pi-subagents`
 separately when using the packaged `cc-thingz.*` agents in Pi.
 
-The Pi archive is directly installable. Install `pi-subagents` separately only
-when using the packaged `cc-thingz.*` agents:
+Install the published Pi package from its Git tag. Install `pi-subagents`
+separately only when using the packaged `cc-thingz.*` agents:
 
 ```bash
-pi install npm:pi-subagents -l
-pi install ./alexei-led-cc-thingz-pi.tgz -l
+pi install npm:pi-subagents
+pi install git:github.com/alexei-led/cc-thingz@v8.2.0
 ```
+
+For release archive testing, see [Pi package](docs/pi-extensions.md).
 
 For a local release rehearsal:
 
