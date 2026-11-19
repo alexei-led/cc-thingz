@@ -8,6 +8,26 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [8.1.0] - 2026-11-19
+
+### Added
+
+- Pi's Bash permission gate accepts optional literal `Bash(...)` allow and deny
+  rules in user or trusted project settings. A constrained `*` matches one
+  argument; user denies take precedence and headless allows require an explicit
+  setting. Unsupported shell syntax does not match a grant.
+- `/permissions` shows active rules and their source. Hook denials remain in
+  effect, including when shell syntax cannot be parsed.
+
+### Security
+
+- Permission rules are approval assistance, not a sandbox. Pi's shell
+  configuration and later extensions can still affect command execution.
+  Arbitrary deletion methods, MCP calls, and non-Bash tools remain outside this
+  gate.
+
+[Changes since v8.0.5](https://github.com/alexei-led/cc-thingz/compare/v8.0.5...v8.1.0)
+
 ## [8.0.5] - 2026-11-18
 
 ### Fixed

@@ -39,7 +39,7 @@ lint-shell: ## Lint shell scripts and Bats fixtures with the same tools as CI
 	shfmt -i 0 -d scripts/git-hooks/pre-commit scripts/git-hooks/pre-push scripts/release/release-tag
 
 lint-markdown: ## Lint Markdown files
-	bunx --no-install markdownlint-cli2 '**/*.md' '!**/node_modules/**' '!.pi-subagents/**'
+	bunx --no-install markdownlint-cli2 '**/*.md' '!**/node_modules/**' '!.pi-subagents/**' '!.revmux/**'
 
 lint-typescript: ## Lint and type-check Pi extension TypeScript
 	@scripts/tooling/js-tools.sh lint
