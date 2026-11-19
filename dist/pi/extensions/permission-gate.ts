@@ -5,6 +5,7 @@
  * Provides /permissions; this is an approval aid, not a sandbox.
  */
 
+import { basename } from "node:path";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { isSafeInputFilter, loadPolicy, matchesRule, parseLiteralCommand, parseOutputPipeline, type Policy } from "./shared/permission-rules.js";
 import { invokeSyntheticHook, type SyntheticHookInvocationResult, toCcToolName } from "./shared/hook-bridge.js";
@@ -86,7 +87,7 @@ export default function (pi: ExtensionAPI) {
 		if (effective.error) return deny(effective.error);
 		const hasRules = effective.allow.length > 0 || effective.deny.length > 0;
 		const inspection = inspectShellWarnings(commandRaw);
-		const ruleRelevant = effective.allow.some((rule) => inspection.executables.includes(rule.words[0]));
+		const ruleRelevant = effective.allow.some((rule) => inspection.executables.some((name) => basename(name) === basename(rule.words[0])));
 		const pipeline = hasRules ? parseOutputPipeline(commandRaw) : undefined;
 		const words = hasRules ? (parseLiteralCommand(commandRaw) ?? pipeline?.words) : undefined;
 		const ruleMatch = words && effective.allow.find((rule) => matchesRule(rule, words));
@@ -100,7 +101,7 @@ export default function (pi: ExtensionAPI) {
 			return deny("Blocked by user permission rule");
 		const allowed = !unrecognized && words && effective.allow.some((rule) => matchesRule(rule, words) && (ctx.hasUI || rule.headless));
 		const isDangerous = inspection.dangerous;
-		const restrictedExecutable = words && effective.allow.some((rule) => rule.words[0] === words[0]);
+		const restrictedExecutable = ruleRelevant;
 		const needsConfirmation = isDangerous || restrictedExecutable || unrecognized;
 		// Keep hook eligibility even when the built-in warning was a literal-text false positive.
 		if (!hasWarningText(commandRaw) && !needsConfirmation) return undefined;

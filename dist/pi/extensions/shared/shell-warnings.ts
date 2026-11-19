@@ -38,11 +38,13 @@ export function inspectShellWarnings(command: string): { dangerous: boolean; exe
 			}
 			const wrapper = basename(words[i]);
 			if (wrapper === "env") {
+				executables.push(words[i]);
 				i++;
 				while (["-i", "--ignore-environment", "--"].includes(words[i])) i++;
 				continue;
 			}
 			if (wrapper === "command" || wrapper === "exec") {
+				executables.push(words[i]);
 				i++;
 				while (words[i] === "--" || (wrapper === "command" && words[i] === "-p")) i++;
 				continue;
@@ -55,7 +57,10 @@ export function inspectShellWarnings(command: string): { dangerous: boolean; exe
 			const name = basename(executable);
 			const args = words.slice(i + 1);
 			// Keep unknown runner semantics conservative rather than parsing their flags.
-			if (indirectRunners.has(name) || name.startsWith("-")) dangerous ||= hasWarningText(words.slice(i).join(" "));
+			if (indirectRunners.has(name) || name.startsWith("-")) {
+				executables.push(...args);
+				dangerous ||= hasWarningText(words.slice(i).join(" "));
+			}
 			if (
 				name === "sudo" ||
 				(name === "rm" && recursiveRm.test([name, ...args].join(" "))) ||
@@ -105,6 +110,12 @@ export function inspectShellWarnings(command: string): { dangerous: boolean; exe
 				i += match[0].length - 1;
 				continue;
 			}
+		}
+		if (c === "<" || c === ">") {
+			if (active && !/^\d+$/.test(word)) finishWord();
+			word += c;
+			active = true;
+			continue;
 		}
 		if (c === " " || c === "\t") finishWord();
 		else if (";|&\n(){}".includes(c) && !(c === "&" && /[<>]/.test(command[i - 1] ?? ""))) {

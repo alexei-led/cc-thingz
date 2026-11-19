@@ -164,6 +164,17 @@ describe("permission rules", () => {
 		const run = await setup({ permissionGate: { allow: [grant] } }, undefined);
 		expect(await run(redirect + prefix.replace("reflex-kroo-01", "other") + " 'whoami'")).toMatchObject({ block: true });
 	});
+	it.each(["cd /tmp && timeout 5 gcloud version", "/usr/bin/gcloud version; true", "env -u HOME gcloud version", "timeout 5 gcloud version"])(
+		"keeps rule scope around wrapped or path-qualified targets: %s",
+		async (command) => {
+			const run = await setup({ permissionGate: { allow: [grant] } }, undefined);
+			expect(await run(command)).toMatchObject({ block: true });
+		},
+	);
+	it("keeps rule scope around skipped wrappers", async () => {
+		const run = await setup({ permissionGate: { allow: [{ match: "Bash(env X=1 tool)", headless: true }] } }, undefined);
+		expect(await run("env X=2 tool >out")).toMatchObject({ block: true });
+	});
 	it("honors project trust and user deny precedence", async () => {
 		const command = `${prefix} 'sudo whoami'`;
 		expect(await (await setup(undefined, { permissionGate: { allow: [{ match: "Bash(sudo whoami)", headless: true }] } }, false))("sudo whoami")).toMatchObject(
