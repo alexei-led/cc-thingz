@@ -170,12 +170,13 @@ class Ctx:
     """Tracks the working directory `cd` would leave a statement in, and
     whether that directory can still be trusted for merge verification."""
 
-    def __init__(self, cwd: str, trusted: bool) -> None:
+    def __init__(self, cwd: str, trusted: bool, projects: dict | None = None) -> None:
         self.cwd = cwd
         self.trusted = trusted
+        self.projects = projects or {}
 
     def copy(self) -> Ctx:
-        return Ctx(self.cwd, self.trusted)
+        return Ctx(self.cwd, self.trusted, self.projects)
 
 
 def handle_cd(base: str, rest: list[str], ctx: Ctx) -> None:
@@ -271,6 +272,27 @@ def is_branch_force_delete_cluster(arg: str) -> bool:
     return "D" in letters or ("d" in letters and "f" in letters)
 
 
+def normalize_guarded_options(subcommand: str, args: list[str]) -> list[str]:
+    guarded = {
+        "clean": ("--force",),
+        "branch": ("--delete", "--force"),
+        "push": ("--force", "--force-with-lease", "--mirror"),
+        "restore": ("--worktree",),
+    }.get(subcommand, ())
+    result = []
+    after_separator = False
+    for arg in args:
+        if arg == "--":
+            after_separator = True
+        elif not after_separator and arg.startswith("--") and "=" not in arg:
+            matches = [option for option in guarded if option.startswith(arg)]
+            if matches and arg not in guarded:
+                # Treat ambiguous prefixes as dangerous.
+                arg = max(matches, key=len)
+        result.append(arg)
+    return result
+
+
 def classify(subcommand: str, args: list[str]) -> tuple[str, list[str] | str | None]:
     """Evaluates one git subcommand's argv against the destructive-op
     table. Returns (kind, info):
@@ -285,6 +307,15 @@ def classify(subcommand: str, args: list[str]) -> tuple[str, list[str] | str | N
             return "block", "git reset --hard"
         return "safe", None
     if subcommand == "clean":
+        options = args[: args.index("--")] if "--" in args else args
+        # Accept explicit previews only when no option can negate dry-run.
+        flags = [opt for opt in options if opt.startswith("-")]
+        if any(opt in ("-n", "--dry-run") for opt in flags) and all(
+            opt
+            in ("-n", "--dry-run", "-f", "--force", "-d", "-x", "-X", "-q", "--quiet")
+            for opt in flags
+        ):
+            return "safe", None
         if "--force" in args or any(is_short_force_cluster(a) for a in args):
             return "block", "git clean --force"
         return "safe", None
@@ -326,6 +357,10 @@ def classify(subcommand: str, args: list[str]) -> tuple[str, list[str] | str | N
             return "block", "git switch --discard-changes"
         return "safe", None
     if subcommand == "restore":
+        options = args[: args.index("--")] if "--" in args else args
+        # Only the standard index-only unstage, without alternate sources or modes.
+        if options and options[0] in ("-S", "--staged") and options[1:] in ([], ["."]):
+            return "safe", None
         if "." in args:
             return "block", "git restore . (or --source ... .)"
         return "safe", None
@@ -688,6 +723,19 @@ def load_patterns(raw: str) -> list[tuple[re.Pattern[str], str]]:
     return patterns
 
 
+def project_policy(directory: str, projects: dict) -> dict:
+    if not projects:
+        return {}
+    result = run_git(directory, "rev-parse", "--show-toplevel")
+    if result.returncode != 0:
+        return {}
+    entry = projects.get(os.path.realpath(result.stdout.rstrip("\n")))
+    if not isinstance(entry, dict):
+        return {}
+    policy = entry.get("gitGuardrails")
+    return policy if isinstance(policy, dict) else {}
+
+
 def evaluate_git_call(
     git_tokens: list[str],
     ctx: Ctx,
@@ -704,17 +752,25 @@ def evaluate_git_call(
         return
     subcommand, args = remaining[0], remaining[1:]
 
+    project = project_policy(directory, ctx.projects) if ctx.trusted else {}
+    if isinstance(project.get("allowForcePush"), bool):
+        allow_force_push = project["allowForcePush"]
+    if project.get("cleanupPolicy") in ("strict", "relaxed"):
+        cleanup_policy = project["cleanupPolicy"]
+    project_patterns = project.get("blockPatterns")
+    if isinstance(project_patterns, list):
+        patterns = patterns + load_patterns(
+            "\n".join(line for line in project_patterns if isinstance(line, str))
+        )
     statement_text = "git " + " ".join(remaining)
     for compiled, original in patterns:
-        if allow_force_push and "push" in original:
-            continue
         if compiled.search(statement_text):
             blocks.append((original, subcommand in CLEANUP_SUBCOMMANDS))
 
     if subcommand == "push" and allow_force_push:
         return
 
-    kind, info = classify(subcommand, args)
+    kind, info = classify(subcommand, normalize_guarded_options(subcommand, args))
     is_cleanup_subcommand = subcommand in CLEANUP_SUBCOMMANDS
     if kind == "safe":
         return
@@ -894,9 +950,10 @@ def decide(
     allow_force_push: bool,
     patterns: list[tuple[re.Pattern[str], str]],
     cleanup_policy: str = "strict",
+    projects: dict | None = None,
 ) -> tuple[str, bool] | None:
     tokens = tokenize(strip_heredocs(command))
-    ctx = Ctx(cwd, True)
+    ctx = Ctx(cwd, True, projects)
     blocks: list[tuple[str, bool]] = []
     walk(tokens, ctx, patterns, allow_force_push, cleanup_policy, 0, blocks, set())
     return blocks[0] if blocks else None
@@ -912,7 +969,15 @@ def main() -> None:
     patterns = load_patterns(os.environ.get("GG_PATTERNS", ""))
 
     try:
-        result = decide(command, cwd, allow_force_push, patterns, cleanup_policy)
+        projects = json.loads(os.environ.get("GG_PROJECTS") or "{}")
+        result = decide(
+            command,
+            cwd,
+            allow_force_push,
+            patterns,
+            cleanup_policy,
+            projects if isinstance(projects, dict) else None,
+        )
     except ParseError:
         result = ("could not safely parse this command (failing closed)", False)
 

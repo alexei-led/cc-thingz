@@ -174,14 +174,24 @@ def check_command(command: str) -> str | None:
         return None
     segments = _split_segments(tokens)
     release_segments = [segment for segment in segments if _is_release_command(segment)]
-    if len(segments) > 1 and release_segments:
+    mutates = [
+        segment
+        for segment in release_segments
+        if len(segment) > 2
+        and segment[2] not in READ_ONLY_COMMANDS | {"help", "--help"}
+    ]
+    if len(segments) > 1 and mutates:
         raise GuardError(
             "compound shell commands containing GitHub releases are unsupported; "
             "run one direct release command at a time"
         )
-    if release_segments:
-        _validate_publish(release_segments[0])
-    elif _find_wrapped_release_mutation(tokens):
+    if mutates:
+        _validate_publish(mutates[0])
+    elif any(
+        _find_wrapped_release_mutation(segment)
+        for segment in segments
+        if not _is_release_command(segment)
+    ):
         raise GuardError(
             "wrapped GitHub release commands are unsupported; run one direct gh command"
         )

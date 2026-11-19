@@ -140,6 +140,11 @@ Supported assertion types: `tool-called`, `tool-not-called`, `tool-arg-equals`, 
 
 ## Local commands
 
+Set `SKILL_EVAL_TARGET` to an available OpenAI model before running paid evals.
+The judge uses that model unless `SKILL_EVAL_JUDGE` is set. CI reads the
+repository variable `SKILL_EVAL_TARGET`; if it is unset, the advisory eval
+reports a warning instead of calling a model.
+
 Run all local skill eval fixtures:
 
 ```bash
@@ -201,8 +206,8 @@ Use `SKILL_EVAL_LOG_FORMAT=pretty` only for small one-skill runs. The upstream `
 
 Defaults:
 
-- target: `gpt-6-luna`
-- judge: `gpt-6-luna`
+- target: required `SKILL_EVAL_TARGET`
+- judge: target model, or `SKILL_EVAL_JUDGE` when set
 - workspace: `/tmp/cc-thingz-skill-eval-workspace`
 - prepared root: `/tmp/cc-thingz-skill-eval-root`
 - skill source: Agent Bundler's Claude package output; Pi uses local validation

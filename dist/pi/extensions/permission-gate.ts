@@ -90,8 +90,9 @@ export default function (pi: ExtensionAPI) {
 		const words = parseLiteralCommand(commandRaw);
 		const allowed = words && effective.allow.some((rule) => matchesRule(rule, words) && (ctx.hasUI || rule.headless));
 		const needsConfirmation = inspection.dangerous;
-		// Keep hook eligibility even when the built-in warning was a literal-text false positive.
-		if (!hasWarningText(commandRaw) && !needsConfirmation) return undefined;
+		// Preserve the published display/terminal exemption without bypassing explicit denies.
+		const displayOnly = words && ["echo", "printf", "agtermctl", "herdr"].includes(words[0]);
+		if (!needsConfirmation && (displayOnly || !hasWarningText(commandRaw))) return undefined;
 
 		const requestHook = await invokeHook(ctx, "PermissionRequest", {
 			command: commandRaw,

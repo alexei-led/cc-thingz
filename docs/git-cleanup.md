@@ -76,7 +76,8 @@ repository changes are not a security boundary.
 ```
 
 Set it in `~/.claude/hook-config.json`, or export `GG_CLEANUP_POLICY=relaxed`
-for one harness session. The default is `strict`.
+for one harness session. The default is `strict`. To tune only one worktree,
+use a [project profile](hook-policy.md#user-settings-and-project-profiles).
 
 In `relaxed` mode `git branch -D` and `git worktree remove --force` skip the
 merge proof and the one-shot marker. Structural rails still block: the current

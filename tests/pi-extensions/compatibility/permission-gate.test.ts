@@ -73,6 +73,36 @@ describe("permission-gate / tool_call", () => {
 		expect(ctx.ui.select).not.toHaveBeenCalled();
 	});
 
+	it.each(["echo 'sudo is required'", "printf '%s' 'rm -rf /tmp'", "echo 'chmod 777'"])("allows literal display arguments headlessly: %s", async (command) => {
+		const { handlers, setResponder } = setup();
+		const responder = mock();
+		setResponder(responder);
+		const result = await handlers.get("tool_call")!({ toolName: "bash", input: { command } }, makeCtx(false));
+		expect(result).toBeUndefined();
+		expect(responder).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		"agtermctl tree --json",
+		"agtermctl session new --name worker --command 'sudo whoami'",
+		"agtermctl session type --target abc --text 'sudo whoami'",
+		"agtermctl session text --target abc",
+		"herdr pane split --current --direction right --no-focus",
+		"herdr pane read 123 --source recent-unwrapped",
+		"herdr agent prompt worker 'Review sudo usage'",
+		"herdr pane run 123 'sudo whoami'",
+	])("allows literal terminal control commands by default: %s", async (command) => {
+		const { handlers } = setup();
+		const result = await handlers.get("tool_call")!({ toolName: "bash", input: { command } }, makeCtx(false));
+		expect(result).toBeUndefined();
+	});
+
+	it.each(["agtermctl tree; sudo whoami", "herdr pane read 123 && sudo whoami"])("does not exempt separate shell commands: %s", async (command) => {
+		const { handlers } = setup();
+		const result = await handlers.get("tool_call")!({ toolName: "bash", input: { command } }, makeCtx(false));
+		expect(result).toMatchObject({ block: true });
+	});
+
 	it.each(["rm -f /tmp/file", "rm -- -rf", "rm --recursive-file", "rm -rf-file"])(
 		"does not confuse operand tokens with recursive flags: %s",
 		async (command) => {

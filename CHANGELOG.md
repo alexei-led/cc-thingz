@@ -12,25 +12,21 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ### Fixed
 
-- Pi's Bash grants now accept bounded stdin-only filter pipelines, including
-  `2>&1 | tail -35`. Each stage is checked; separate grants are not implicitly
-  composed into pipeline approval.
-- Quoted interpreter source, search text, and quoted heredoc bodies no longer
-  trigger built-in warnings merely for containing dangerous command words.
-  Unrelated developer scripts are not restricted by adding an SSH grant.
-- Direct dangerous commands still warn through common wrappers, expansions, and
-  redirections. Hook vetoes, deny rules, and eligible headless grants remain
-  effective.
+- Git guardrails allow clean previews and index-only unstaging. Custom block
+  patterns remain effective when force-push is allowed.
+- File protection permits ordinary credential-related source filenames and
+  checks resolved paths and both sides of unified diffs.
+- Pi does not prompt for dangerous-looking text in literal display,
+  `agtermctl`, or `herdr` commands. Explicit denies and other hooks remain
+  effective. Read-only release queries can be piped or chained.
 
-### Security
+### Changed
 
-- Interpreter source, shell `-c` payloads, and remote effects are not inspected.
-  They can perform destructive actions without a built-in warning. Use explicit
-  hooks or OS isolation when stronger enforcement is required.
-
-### Upgrade
-
-- Reload or restart Pi after updating to activate the new gate.
+- Configure Git and file protections together per checkout in a user-owned
+  [hook policy](docs/hook-policy.md). The `evolving-config` skill explains
+  the settings and their risks.
+- Paid skill evals use a configured target. Set `SKILL_EVAL_TARGET` locally
+  or as a repository variable for CI.
 
 [Changes since v8.1.0](https://github.com/alexei-led/cc-thingz/compare/v8.1.0...v8.1.1)
 

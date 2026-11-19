@@ -123,6 +123,10 @@ describe("real Bash developer-flow smoke", () => {
 });
 
 describe("permission exceptions and explicit denies", () => {
+	it("preserves explicit denies for terminal tools", async () => {
+		const run = await setup({ permissionGate: { deny: [{ match: "Bash(herdr agent prompt worker *)" }] } }, undefined);
+		expect(await run("herdr agent prompt worker 'hello'")).toEqual({ block: true, reason: "Blocked by user permission rule" });
+	});
 	it("allows an exact eligible exception to a built-in warning", async () => {
 		const run = await setup({ permissionGate: { allow: [localGrant] } }, undefined);
 		expect(await run("sudo whoami")).toBeUndefined();

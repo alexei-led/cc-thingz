@@ -82,6 +82,19 @@
         "The output stays review-only rather than changing MCP server config on its own.",
         "The output asks for confirmation before changing MCP server config."
       ]
+    },
+    {
+      "id": "tune-project-protections",
+      "name": "tune project protections",
+      "prompt": "In cc-thingz, my project needs one test fixture PEM writable but other keys protected; I also want to block pushes to production in this checkout. How should I configure and verify that without affecting other projects?",
+      "expected_output": "The response uses one user-owned projects profile keyed by the canonical checkout root, an exact file exception, and an additive Git block pattern. It explains precedence and risk, asks before editing user settings, and validates harmless allowed and blocked cases without running a destructive command.",
+      "assertions": [
+        "The output identifies a user-owned hook policy and one project profile keyed by the canonical absolute checkout path.",
+        "The output uses an exact project-relative allowPaths exception for the fixture rather than globally clearing protected file rules.",
+        "The output configures an additive gitGuardrails blockPatterns rule for production pushes.",
+        "The output asks before editing user policy and explains that hooks are not a sandbox.",
+        "The output verifies allowed, blocked, and other-project behavior without executing a destructive command."
+      ]
     }
   ]
 }

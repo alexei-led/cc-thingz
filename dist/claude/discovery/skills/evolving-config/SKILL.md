@@ -1,5 +1,5 @@
 ---
-{"allowed-tools":["Read","Edit","Write","Grep","Glob","WebSearch","WebFetch","AskUserQuestion"],"argument-hint":"[--fix] [scope]","context":"fork","description":"Audit and improve AI coding-agent configuration. Use when reviewing or changing Claude Code, Pi, Codex, Copilot, Cursor, Grok, skill, agent, hook, MCP, permission, package, or generated-export setup. Default is review-only; fixes require explicit user approval or --fix. NOT for score-only instruction review or prompt lint; use reviewing-instructions. NOT for application config, git hygiene, code bugs, ordinary docs, or generated files without their source.","name":"evolving-config","user-invocable":true}
+{"allowed-tools":["Read","Edit","Write","Grep","Glob","WebSearch","WebFetch","AskUserQuestion"],"argument-hint":"[--fix] [scope]","context":"fork","description":"Audit and improve AI coding-agent configuration. Use when reviewing or changing Claude Code, Pi, Codex, Copilot, Cursor, Grok, skill, agent, hook, MCP, permission, package, generated-export, Git guardrail, or file-protector setup. Default is review-only; fixes require explicit user approval or --fix. NOT for score-only instruction review or prompt lint; use reviewing-instructions. NOT for application config, git hygiene, code bugs, ordinary docs, or generated files without their source.","name":"evolving-config","user-invocable":true}
 ---
 
 # Evolving Agent Configuration
@@ -41,6 +41,8 @@ first and continue here for broader review or authorized changes.
 - `references/platforms/other-targets.md` — read when the audit covers Copilot,
   Cursor, or Grok packages.
 - `references/apply-fixes.md` — read only in fix mode.
+- `references/hook-policy.md` — read when tuning cc-thingz Git guardrails or
+  file protection for a user or a project.
 
 ## Scope
 

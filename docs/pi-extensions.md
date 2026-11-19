@@ -128,6 +128,8 @@ Configure personal messaging, notification, and review integrations at user
 scope. Portable hooks already dispatched by `agentbundler-hooks.ts` must not
 also be listed here, or they run twice.
 
+See [hook policy](hook-policy.md) for the separate Git and file protection settings.
+
 ### Blacklist-only Bash warnings
 
 Normal commands pass by default. The gate does not maintain a safe-command list,
@@ -148,8 +150,10 @@ payloads, and remote programs are intentionally not inspected for indirect
 effects. They can delete files or launch privileged commands without a built-in
 warning. This is an approval aid, not a sandbox or a complete shell parser.
 
-The original text triggers still dispatch PermissionRequest hooks, even when a
-built-in warning is suppressed. Hook vetoes and timeouts remain in force.
+Text triggers still dispatch PermissionRequest hooks when a built-in warning is
+suppressed, except for the existing literal display/terminal exemption for
+`echo`, `printf`, `agtermctl`, and `herdr`. Explicit denies run first; other hook
+vetoes and timeouts remain in force.
 A recognized warning needs UI confirmation, a hook allow, or an eligible exact
 exception. Without UI or an eligible exception, the warning blocks.
 
