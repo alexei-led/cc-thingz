@@ -92,13 +92,13 @@ export default function (pi: ExtensionAPI) {
 		const ruleMatch = words && effective.allow.find((rule) => matchesRule(rule, words));
 		const unrecognized =
 			(!words && (ruleRelevant || effective.deny.length > 0)) ||
-			(!!pipeline && (ruleRelevant || effective.deny.length > 0) && (!ruleMatch || !pipeline.filters.every(isSafeInputFilter)));
+			(!!pipeline && (ruleRelevant || !!ruleMatch || effective.deny.length > 0) && (!ruleMatch || !pipeline.filters.every(isSafeInputFilter)));
 		if (
 			words &&
 			effective.deny.some((rule) => matchesRule(rule, words, true) || (!!pipeline && pipeline.filters.some((filter) => matchesRule(rule, filter, true))))
 		)
 			return deny("Blocked by user permission rule");
-		const allowed = !unrecognized && ruleMatch && (ctx.hasUI || ruleMatch.headless);
+		const allowed = !unrecognized && words && effective.allow.some((rule) => matchesRule(rule, words) && (ctx.hasUI || rule.headless));
 		const isDangerous = inspection.dangerous;
 		const restrictedExecutable = words && effective.allow.some((rule) => rule.words[0] === words[0]);
 		const needsConfirmation = isDangerous || restrictedExecutable || unrecognized;

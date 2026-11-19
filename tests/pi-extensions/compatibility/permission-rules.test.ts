@@ -160,6 +160,10 @@ describe("permission rules", () => {
 		expect(await run(`${prefix.replace("reflex-kroo-01", "other")} 'whoami'`)).toMatchObject({ block: true });
 		expect(await run(`${prefix} 'whoami'\${IFS}--ssh-flag=-V`)).toMatchObject({ block: true });
 	});
+	it.each(["< /dev/null ", "2>/dev/null ", "2>&1 "])("does not bypass rule scope with leading redirection: %s", async (redirect) => {
+		const run = await setup({ permissionGate: { allow: [grant] } }, undefined);
+		expect(await run(redirect + prefix.replace("reflex-kroo-01", "other") + " 'whoami'")).toMatchObject({ block: true });
+	});
 	it("honors project trust and user deny precedence", async () => {
 		const command = `${prefix} 'sudo whoami'`;
 		expect(await (await setup(undefined, { permissionGate: { allow: [{ match: "Bash(sudo whoami)", headless: true }] } }, false))("sudo whoami")).toMatchObject(
@@ -244,6 +248,19 @@ describe("permission rules", () => {
 	it("fails closed on invalid user policy", async () => {
 		const run = await setup({ permissionGate: { deny: "bad" } }, undefined);
 		expect(await run("echo ok")).toMatchObject({ block: true });
+	});
+	it.each(["env X=1 tool", "command tool", "exec tool"])("does not let a wrapper grant approve unsafe pipeline stages: %s", async (base) => {
+		const wrapped = { match: `Bash(${base})`, headless: true };
+		const run = await setup({ permissionGate: { allow: [wrapped] } }, undefined);
+		expect(await run(`${base} | sudo whoami`)).toMatchObject({ block: true });
+		expect(await run(`${base} | tail -35`)).toBeUndefined();
+	});
+	it.each(["", " | tail -35"])("accepts a later eligible headless grant: %s", async (suffix) => {
+		const run = await setup(
+			{ permissionGate: { allow: [{ match: "Bash(gcloud *)" }] } },
+			{ permissionGate: { allow: [{ match: "Bash(gcloud version)", headless: true }] } },
+		);
+		expect(await run("gcloud version" + suffix)).toBeUndefined();
 	});
 	it("requires explicit headless permission", async () => {
 		const run = await setup({ permissionGate: { allow: [{ match: grant.match }] } }, undefined);

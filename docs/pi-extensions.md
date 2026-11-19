@@ -133,7 +133,8 @@ recursive `rm`, and `chmod/chown 777`. Quoted arguments, interpreter source,
 and quoted heredoc bodies are not searched as executable shell code. For
 example, Python source containing the string `"sudo"` does not itself trigger
 the built-in confirmation. Commands following the heredoc still get checked;
-local substitutions and unquoted heredocs retain conservative text checks.
+local expansions, unquoted heredocs, and complex command runners such as
+`xargs`, `find`, `time`, and `timeout` retain conservative text checks.
 
 This developer-friendly default deliberately does not inspect Python, Node,
 other interpreters, shell `-c` payloads, or remote programs for indirect effects.

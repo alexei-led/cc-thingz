@@ -2,6 +2,7 @@ import { basename } from "node:path";
 
 const recursiveRm = /\brm\s+(?:(?:-[a-zA-Z]+|--[a-z]+(?:-[a-z]+)*)\s+)*(?:-[a-zA-Z]*[rR][a-zA-Z]*|--recursive)(?=\s|$)/;
 const rawPatterns = [recursiveRm, /\bsudo\b/i, /\b(chmod|chown)\b.*777/i];
+const indirectRunners = new Set(["time", "nohup", "timeout", "nice", "stdbuf", "ionice", "doas", "xargs", "find"]);
 
 export function hasWarningText(command: string): boolean {
 	return rawPatterns.some((pattern) => pattern.test(command));
@@ -26,6 +27,11 @@ export function inspectShellWarnings(command: string): { dangerous: boolean; exe
 		finishWord();
 		let i = 0;
 		while (i < words.length) {
+			const redirect = /^\d*(?:[<>]{1,2}|[<>]&)(.*)$/.exec(words[i]);
+			if (redirect) {
+				i += redirect[1] ? 1 : 2;
+				continue;
+			}
 			if (/^[a-zA-Z_][a-zA-Z0-9_]*=/.test(words[i]) || ["if", "then", "elif", "else", "do", "while", "until", "!"].includes(words[i])) {
 				i++;
 				continue;
@@ -48,10 +54,12 @@ export function inspectShellWarnings(command: string): { dangerous: boolean; exe
 			executables.push(executable);
 			const name = basename(executable);
 			const args = words.slice(i + 1);
+			// Keep unknown runner semantics conservative rather than parsing their flags.
+			if (indirectRunners.has(name) || name.startsWith("-")) dangerous ||= hasWarningText(words.slice(i).join(" "));
 			if (
 				name === "sudo" ||
 				(name === "rm" && recursiveRm.test([name, ...args].join(" "))) ||
-				((name === "chmod" || name === "chown") && args.some((arg) => /^0?777$/.test(arg)))
+				((name === "chmod" || name === "chown") && args.some((arg) => /^[0-7]?777$/.test(arg)))
 			)
 				dangerous = true;
 		}
@@ -75,7 +83,7 @@ export function inspectShellWarnings(command: string): { dangerous: boolean; exe
 		if (quote === '"') {
 			if (c === '"') quote = undefined;
 			else word += c;
-			if (c === "`" || (c === "$" && command[i + 1] === "(")) dangerous ||= hasWarningText(command.slice(i));
+			if (c === "`" || (c === "$" && ["(", "{"].includes(command[i + 1]))) dangerous ||= hasWarningText(command.slice(i));
 			continue;
 		}
 		if (c === "'" || c === '"') {
@@ -83,8 +91,8 @@ export function inspectShellWarnings(command: string): { dangerous: boolean; exe
 			active = true;
 			continue;
 		}
-		if (c === "`" || (c === "$" && command[i + 1] === "(")) dangerous ||= hasWarningText(command.slice(i));
-		if (c === "#" && !active) {
+		if (c === "`" || (c === "$" && ["(", "{"].includes(command[i + 1]))) dangerous ||= hasWarningText(command.slice(i));
+		if (c === "#" && !active && (i === 0 || /[\s;|&()]/.test(command[i - 1]))) {
 			const end = command.indexOf("\n", i);
 			i = end === -1 ? command.length : end - 1;
 			continue;
@@ -99,7 +107,7 @@ export function inspectShellWarnings(command: string): { dangerous: boolean; exe
 			}
 		}
 		if (c === " " || c === "\t") finishWord();
-		else if (";|&\n(){}".includes(c)) {
+		else if (";|&\n(){}".includes(c) && !(c === "&" && /[<>]/.test(command[i - 1] ?? ""))) {
 			finishCommand();
 			if (c === "\n") {
 				for (const doc of heredocs.splice(0)) {
