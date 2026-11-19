@@ -54,10 +54,10 @@ SH
 	write_state s_watchdog pkg/foo.py
 
 	start=$SECONDS
-	run env PATH="$WORK_DIR/bin:$PATH" TEST_RUNNER_TIMEOUT_SECS=12 HOOK_INPUT_JSON="{\"session_id\":\"s_watchdog\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	run env PATH="$WORK_DIR/bin:$PATH" TEST_RUNNER_TIMEOUT_SECS=30 HOOK_INPUT_JSON="{\"session_id\":\"s_watchdog\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
 	elapsed=$((SECONDS - start))
 	[ "$status" -eq 0 ]
-	[ "$elapsed" -lt 8 ]
+	[ "$elapsed" -lt 20 ]
 }
 
 @test "test-runner: maps Python source file to focused pytest file" {

@@ -40,9 +40,11 @@ mock.module("../../../src/plugins/pi/extensions/extensions/shared/hook-bridge.js
 	invokeSyntheticHook: (pi: ExtensionAPI, ctx: ExtensionContext, request: Parameters<InvokeHookFn>[2]) => invokeHookImpl(pi, ctx, request),
 }));
 
+mock.module("@earendil-works/pi-coding-agent", () => ({
+	getAgentDir: () => process.env.PI_CODING_AGENT_DIR || "/tmp/test-home/.pi/agent",
+}));
 mock.module("@earendil-works/pi-agent-core", () => ({}));
 mock.module("@earendil-works/pi-ai", () => ({}));
-mock.module("@earendil-works/pi-coding-agent", () => ({}));
 mock.module("@earendil-works/pi-tui", () => ({
 	Key: {
 		ctrlAlt: (_key: string) => "ctrl-alt",
