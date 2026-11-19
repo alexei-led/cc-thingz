@@ -175,6 +175,7 @@ describe("permission exceptions and explicit denies", () => {
 		"printf ok | git push",
 		"env git push",
 		"env -S git push",
+		"find . -exec git push \\;",
 		"env -S '-i git push'",
 		"\\git push",
 		"env --split-string=git push",

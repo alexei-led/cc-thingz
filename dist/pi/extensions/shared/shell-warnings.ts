@@ -51,7 +51,7 @@ function literal(node: Node): string | undefined {
 	if (node.hasError || node.isMissing || !["command_name", "word", "number", "raw_string", "string", "concatenation"].includes(node.type)) return undefined;
 	const text =
 		node.type === "word" || node.type === "command_name" || (node.type === "concatenation" && !/['"`$]/.test(node.text))
-			? node.text.replace(/\\([a-zA-Z0-9_./:@%+=,{}-])/g, "$1").replace(/[{}]/g, (c) => `'${c}'`)
+			? node.text.replace(/\\([a-zA-Z0-9_./:@%+=,{};-])/g, "$1").replace(/[{};]/g, (c) => `'${c}'`)
 			: node.text;
 	const words = parseLiteralCommand("argument " + text);
 	return words?.length === 2 ? words[1] : undefined;

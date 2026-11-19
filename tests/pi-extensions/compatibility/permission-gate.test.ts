@@ -276,6 +276,8 @@ describe("permission-gate / tool_call", () => {
 		"nice rm -rf build",
 		"find . | xargs rm -rf",
 		"find . -name x -exec rm -rf {} +",
+		"find . -exec echo {} \\; -exec rm -rf {} +",
+		"find . -exec echo \\; -exec sudo ls \\;",
 		"< /dev/null sudo whoami",
 		"sudo>/dev/null whoami",
 		"sudo</dev/null whoami",
