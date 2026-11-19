@@ -106,28 +106,31 @@ fi
 ALLOW_FORCE_PUSH=0
 CLEANUP_POLICY=${GG_CLEANUP_POLICY:-strict}
 PATTERNS=""
+PROJECTS="{}"
 if [[ -f "$CONFIG_FILE" ]] && command -v jq >/dev/null 2>&1; then
 	CONFIG_JQ=$(
 		jq -r '
 			(if ."git-guardrails".allow_force_push == true or .gitGuardrails.allowForcePush == true then "1" else "0" end),
 			(."git-guardrails".cleanup_policy // .gitGuardrails.cleanupPolicy // ""),
+			((.gitGuardrails.projects // {}) | tojson),
 			(."git-guardrails".block_patterns[]? // .gitGuardrails.blockPatterns[]? // empty)
 		' "$CONFIG_FILE" 2>/dev/null || true
 	)
 	if [[ -n "$CONFIG_JQ" ]]; then
 		# Line 1 is the force-push flag, line 2 the cleanup policy, and the
-		# rest are block patterns (one per line).
+		# line 3 is scoped project policy, and the rest are block patterns.
 		ALLOW_FORCE_PUSH=$(printf '%s\n' "$CONFIG_JQ" | sed -n '1p')
 		CONFIG_POLICY=$(printf '%s\n' "$CONFIG_JQ" | sed -n '2p')
 		case "$CONFIG_POLICY" in
 		relaxed | strict) CLEANUP_POLICY=$CONFIG_POLICY ;;
 		esac
-		PATTERNS=$(printf '%s\n' "$CONFIG_JQ" | sed -n '3,$p')
+		PROJECTS=$(printf '%s\n' "$CONFIG_JQ" | sed -n '3p')
+		PATTERNS=$(printf '%s\n' "$CONFIG_JQ" | sed -n '4,$p')
 	fi
 fi
 
 set +e
-DECISION=$(GG_COMMAND="$COMMAND" GG_CWD="$HOOK_CWD" GG_ALLOW_FORCE_PUSH="$ALLOW_FORCE_PUSH" GG_CLEANUP_POLICY="$CLEANUP_POLICY" GG_PATTERNS="$PATTERNS" python3 "$DECIDE_PY")
+DECISION=$(GG_COMMAND="$COMMAND" GG_CWD="$HOOK_CWD" GG_ALLOW_FORCE_PUSH="$ALLOW_FORCE_PUSH" GG_CLEANUP_POLICY="$CLEANUP_POLICY" GG_PATTERNS="$PATTERNS" GG_PROJECTS="$PROJECTS" python3 "$DECIDE_PY")
 DECIDE_STATUS=$?
 set -e
 

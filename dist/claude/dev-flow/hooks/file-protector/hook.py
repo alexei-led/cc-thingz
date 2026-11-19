@@ -4,20 +4,9 @@
 Handles Claude Code and Codex single-file tool payloads and
 patch-based tools (Codex apply_patch, which may touch multiple files per call).
 
-Configuration (~/.claude/hook-config.json, fileProtector section):
-  protectedPatterns  — list of regex strings; matched files are blocked (exit 2)
-  warnPatterns       — list of regex strings; matched files emit a warning and
-                       are allowed. Defaults cover .env* and .envrc, which
-                       agents must edit during ordinary setup work
-  lockFilePatterns   — list of regex strings; matched files emit a warning (exit 0)
-  A path matching both protectedPatterns and warnPatterns is blocked.
-
-Project-local configuration (nearest ancestor `.claude/file-protector.json`):
-  excludePatterns    — regex strings exempted from the global protected patterns.
-                       This file must be committed with the project and applies
-                       only to absolute paths below its nearest project root.
-
-Falls back to hardcoded defaults when the config file is absent or malformed.
+User policy: fileProtector in CLAUDE_HOOK_CONFIG or ~/.claude/hook-config.json.
+Per-project profiles in the user policy can add protections and exempt exact
+paths from built-in rules. Repository files cannot override explicit user rules.
 
 Exit codes:
   0  allow
@@ -27,35 +16,19 @@ Exit codes:
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from pathlib import Path
 
-_CONFIG_FILE = Path.home() / ".claude" / "hook-config.json"
-_PROJECT_CONFIG_NAME = ".claude/file-protector.json"
+_DEFAULT_WARN = [r"(?:^|/)\.env(?:rc|\.[^/]*)?$"]
 
-_DEFAULT_WARN: list[str] = [
-    r"\.env$",
-    r"\.env\.",
-    r"/\.env$",
-    r"\.envrc$",
-]
-
-_DEFAULT_PROTECTED: list[str] = [
-    r"secrets/",
-    r"secret[s]?\.",
-    r"\.key$",
-    r"\.pem$",
-    r"\.p12$",
-    r"\.pfx$",
-    r"\.ssh/",
-    r"id_rsa",
-    r"id_ed25519",
-    r"credentials",
-    r"password",
-    r"\.secret$",
-    r"api[_-]?key",
-    r"auth[_-]?token",
+_DEFAULT_PROTECTED = [
+    r"(?:^|/)(?:secrets|\.ssh)/",
+    r"\.(?:key|pem|p12|pfx|secret)$",
+    r"(?:^|/)id_(?:rsa|ed25519|ecdsa|dsa)$",
+    r"(?:^|/)(?:secret[s]?|(?:[\w-]+[_-])?(?:credentials|password)|"
+    r"api[_-]?key|auth[_-]?token)(?:\.(?:txt|json|yaml|yml|conf|env|toml))?$",
 ]
 
 _DEFAULT_LOCKS: list[str] = [
@@ -71,28 +44,33 @@ _DEFAULT_LOCKS: list[str] = [
 
 # Patch header patterns for apply_patch (Codex custom format + unified diff)
 _PATCH_FILE_RE = re.compile(
-    r"^\*\*\* (?:(?:Update|Add|Delete) File|Move to): (.+)$|^\+\+\+ b/(.+)$",
+    r"^\*\*\* (?:(?:Update|Add|Delete) File|Move to): (.+)$|^(?:--- a/|\+\+\+ b/)(.+)$",
     re.MULTILINE,
 )
 
 
-def _load_patterns(section: str, default: list[str]) -> list[str]:
-    if not _CONFIG_FILE.is_file():
-        return default
+def _load_policy() -> tuple[Path, dict]:
+    config = Path(
+        os.environ.get("CLAUDE_HOOK_CONFIG") or Path.home() / ".claude/hook-config.json"
+    ).expanduser()
     try:
-        cfg = json.loads(_CONFIG_FILE.read_text())
-    except (json.JSONDecodeError, OSError, UnicodeDecodeError):
-        return default
-    if not isinstance(cfg, dict):
-        return default
-    protector = cfg.get("fileProtector")
-    if not isinstance(protector, dict):
-        return default
-    patterns = protector.get(section)
-    if patterns is None:
-        return default
-    if isinstance(patterns, list) and all(isinstance(item, str) for item in patterns):
-        return patterns
+        decoded = json.loads(config.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return config, {}
+    except (ValueError, OSError) as exc:
+        print(
+            f"WARNING: Cannot read file-protector policy {config}: {exc}",
+            file=sys.stderr,
+        )
+        return config, {}
+    policy = decoded.get("fileProtector") if isinstance(decoded, dict) else None
+    return config, policy if isinstance(policy, dict) else {}
+
+
+def _patterns(policy: dict, field: str, default: list[str]) -> list[str]:
+    value = policy.get(field)
+    if isinstance(value, list) and all(isinstance(item, str) for item in value):
+        return value
     return default
 
 
@@ -126,77 +104,107 @@ def _safe_search(pattern: str, path: str) -> bool:
         return False
 
 
-def _deny(path: str, pattern: str, pi_runtime: bool) -> None:
-    message = f"Cannot modify sensitive file: {path} (matched {pattern})"
+def _deny(path: str, rule: str, pi_runtime: bool) -> None:
+    message = f"Cannot modify sensitive file: {path} ({rule})"
     if pi_runtime:
         print(json.dumps({"decision": "deny", "reason": message}))
         raise SystemExit(0)
     print(f"BLOCKED: {message}", file=sys.stderr)
     print(
-        "To customize: edit ~/.claude/hook-config.json"
-        " (fileProtector.protectedPatterns)",
+        "To customize: edit fileProtector in your user hook-config.json",
         file=sys.stderr,
     )
     raise SystemExit(2)
 
 
-def _project_excludes(path: str) -> list[str]:
-    """Load excludes from the nearest project config, if the path is absolute."""
-    candidate = Path(path).expanduser()
-    if not candidate.is_absolute():
-        return []
-    candidate = candidate.resolve(strict=False)
-    for parent in (candidate.parent, *candidate.parents):
-        config = parent / _PROJECT_CONFIG_NAME
-        if not config.is_file():
-            continue
+def _project_policy(policy: dict, cwd: Path) -> tuple[Path, dict | None]:
+    projects = policy.get("projects")
+    if isinstance(projects, dict):
+        for root in (cwd, *cwd.parents):
+            entry = projects.get(str(root))
+            if isinstance(entry, dict):
+                return root, entry
+    return cwd, None
+
+
+def _legacy_exception(path: Path, name: str) -> bool:
+    for parent in path.parents:
+        config = parent / ".claude/file-protector.json"
         try:
-            decoded = json.loads(config.read_text())
-            value = (
-                decoded.get("excludePatterns", []) if isinstance(decoded, dict) else []
-            )
-        except (json.JSONDecodeError, OSError, UnicodeDecodeError):
-            return []
-        if isinstance(value, list) and all(isinstance(x, str) for x in value):
-            return value
-        return []
-    return []
+            policy = json.loads(config.read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            continue
+        except (ValueError, OSError):
+            return False
+        patterns = (
+            _patterns(policy, "excludePatterns", []) if isinstance(policy, dict) else []
+        )
+        return any(_safe_search(pattern, name) for pattern in patterns)
+    return False
 
 
 def _check_path(
     path: str,
-    protected: list[str],
-    warn: list[str],
-    locks: list[str],
+    cwd: Path,
+    config: Path,
+    policy: dict,
+    root: Path,
+    project: dict | None,
     pi_runtime: bool,
 ) -> None:
-    """Check one path and emit the Agent Bundler Pi decision when needed."""
-    excludes = _project_excludes(path)
-    excluded = any(_safe_search(exclude, path) for exclude in excludes)
-    if not excluded:
-        for pattern in protected:
-            if _safe_search(pattern, path):
-                _deny(path, pattern, pi_runtime)
-        for pattern in warn:
-            if _safe_search(pattern, path):
-                print(
-                    f"WARNING: Modifying sensitive file: {path} (matched {pattern})",
-                    file=sys.stderr,
-                )
-                print(
-                    "Review the change before committing; never commit secrets.",
-                    file=sys.stderr,
-                )
-                break
+    requested = Path(path).expanduser()
+    candidate = cwd / requested
+    try:
+        resolved = candidate.resolve()
+        config_target = config.resolve()
+    except (OSError, ValueError, RuntimeError):
+        _deny(path, "cannot resolve file or policy path", pi_runtime)
+        return
+    if resolved == config_target:
+        _deny(path, "user hook policy", pi_runtime)
+    names = (path, str(candidate), str(resolved))
 
-    for pattern in locks:
-        if _safe_search(pattern, path):
+    is_local = candidate.is_relative_to(root) and resolved.is_relative_to(root)
+    relative = resolved.relative_to(root).as_posix() if is_local else None
+    protected = _patterns(policy, "protectedPatterns", _DEFAULT_PROTECTED)
+    if is_local:
+        for pattern in _patterns(project or {}, "protectedPatterns", []):
+            if _safe_search(pattern, relative or "") or _safe_search(
+                pattern, candidate.relative_to(root).as_posix()
+            ):
+                _deny(path, f"project rule: {pattern}", pi_runtime)
+    for pattern in protected:
+        if not any(_safe_search(pattern, name) for name in names):
+            continue
+        if protected is _DEFAULT_PROTECTED and candidate == resolved:
+            if relative in _patterns(project or {}, "allowPaths", []):
+                break
+            if (
+                project is None
+                and requested.is_absolute()
+                and policy.get("allowLegacyProjectExcludes", True) is True
+                and _legacy_exception(resolved, path)
+            ):
+                break
+        source = "default rule" if protected is _DEFAULT_PROTECTED else "user rule"
+        _deny(path, f"{source}: {pattern}", pi_runtime)
+
+    warnings = _patterns(policy, "warnPatterns", _DEFAULT_WARN)
+    for pattern in warnings:
+        if any(_safe_search(pattern, name) for name in names):
+            print(
+                f"WARNING: Modifying sensitive file: {path} (matched {pattern})",
+                file=sys.stderr,
+            )
+            break
+    for pattern in _patterns(policy, "lockFilePatterns", _DEFAULT_LOCKS):
+        if any(_safe_search(pattern, name) for name in names):
             print(f"WARNING: Modifying lock file: {path}", file=sys.stderr)
             print(
                 "Lock files should typically be auto-generated by package managers",
                 file=sys.stderr,
             )
-            return
+            break
 
 
 def main() -> None:
@@ -204,6 +212,9 @@ def main() -> None:
         payload = json.loads(sys.stdin.read() or "{}")
     except json.JSONDecodeError:
         sys.exit(0)
+
+    if not isinstance(payload, dict):
+        return
 
     pi_runtime = payload.get("event") == "pre-tool" and isinstance(
         payload.get("piEvent"), dict
@@ -215,17 +226,27 @@ def main() -> None:
     )
     if not isinstance(tool_input, dict):
         tool_input = {}
-    protected = _load_patterns("protectedPatterns", _DEFAULT_PROTECTED)
-    warn = _load_patterns("warnPatterns", _DEFAULT_WARN)
-    locks = _load_patterns("lockFilePatterns", _DEFAULT_LOCKS)
+    event = payload["piEvent"] if pi_runtime else {}
+    vendor = payload.get("vendorEvent")
+    cwd_value = (
+        event.get("cwd")
+        or (vendor.get("cwd") if isinstance(vendor, dict) else None)
+        or payload.get("cwd")
+    )
+    cwd = Path(cwd_value).resolve() if isinstance(cwd_value, str) else Path.cwd()
+    config, policy = _load_policy()
+    root, project = _project_policy(policy, cwd)
 
-    path = tool_input.get("file_path") or tool_input.get("path") or ""
-    if path:
-        _check_path(path, protected, warn, locks, pi_runtime)
-    else:
-        patch = tool_input.get("patch") or ""
-        for changed_path in _extract_patch_paths(patch):
-            _check_path(changed_path, protected, warn, locks, pi_runtime)
+    paths = [
+        value
+        for key in ("file_path", "path")
+        if isinstance(value := tool_input.get(key), str) and value
+    ]
+    patch = tool_input.get("patch")
+    if isinstance(patch, str):
+        paths.extend(_extract_patch_paths(patch))
+    for path in dict.fromkeys(paths):
+        _check_path(path, cwd, config, policy, root, project, pi_runtime)
 
     if pi_runtime:
         print('{"decision":"allow"}')

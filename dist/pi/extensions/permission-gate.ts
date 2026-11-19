@@ -38,6 +38,13 @@ export default function (pi: ExtensionAPI) {
 		/\b(chmod|chown)\b.*777/i,
 	];
 
+	function needsDangerConfirmation(command: string, words = parseLiteralCommand(command)): boolean {
+		// Literal display commands do not execute their arguments. Keep the
+		// conservative matcher for other commands, including shell wrappers.
+		if (words?.[0] === "echo" || words?.[0] === "printf") return false;
+		return dangerousPatterns.some((pattern) => pattern.test(command));
+	}
+
 	async function invokeHook(
 		ctx: ExtensionContext,
 		hookEventName: "PermissionRequest" | "PermissionDenied",
@@ -93,7 +100,7 @@ export default function (pi: ExtensionAPI) {
 		const unrecognized = hasRules && !words;
 		if (words && effective.deny.some((rule) => matchesRule(rule, words))) return deny("Blocked by user permission rule");
 		const allowed = words && effective.allow.find((rule) => matchesRule(rule, words) && (ctx.hasUI || rule.headless));
-		const isDangerous = dangerousPatterns.some((p) => p.test(commandRaw));
+		const isDangerous = needsDangerConfirmation(commandRaw, words);
 		const restrictedExecutable = words && effective.allow.some((rule) => rule.words[0] === words[0]);
 		if (!isDangerous && !restrictedExecutable && !unrecognized) return undefined;
 
@@ -112,7 +119,7 @@ export default function (pi: ExtensionAPI) {
 				if (
 					(hasRules && !updatedWords) ||
 					(updatedWords && effective.deny.some((rule) => matchesRule(rule, updatedWords))) ||
-					dangerousPatterns.some((pattern) => pattern.test(updatedCommand))
+					needsDangerConfirmation(updatedCommand, updatedWords)
 				) {
 					return deny("PermissionRequest hook returned an unsafe command patch");
 				}

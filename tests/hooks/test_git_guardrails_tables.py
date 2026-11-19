@@ -5,11 +5,12 @@ of hook logs, or a bypass the rewrite must still catch.
 
 from __future__ import annotations
 
+import json
 import subprocess
 from pathlib import Path
 
 import pytest
-from git_helpers import run_hook
+from git_helpers import init_repo, run_hook
 
 DECIDE = Path(__file__).resolve().parents[2] / "src/hooks/git-guardrails/decide.py"
 
@@ -44,6 +45,9 @@ MUST_BLOCK = [
     ("bash -c 'git push --force'", "force push wrapped in bash -c"),
     ("git -C d branch -D unmerged", "unmerged branch via -C"),
     ("git clean -fdx", "clean with combined short flags"),
+    ("git clean -f -- -n", "dry-run-looking path is not an option"),
+    ("git clean -n --no-dry-run -f", "dry-run explicitly negated"),
+    ("git restore --staged --worktree .", "restore affects working files"),
     ("git push origin +main", "+refspec force push"),
     (
         "GIT_SSH_COMMAND=x git push --force",
@@ -144,6 +148,9 @@ MUST_ALLOW = [
     ("git merge --ff-only origin/master", "plain merge --ff-only"),
     ("git worktree remove ../fix-foo", "worktree remove without force"),
     ("git checkout -- README.md", "checkout of a path after --"),
+    ("git clean -n -f", "explicit clean dry-run"),
+    ("git restore --staged .", "index-only unstage"),
+    ("git restore -S -- .", "explicit index-only pathspec"),
     (
         "git checkout --conflict=merge -- f",
         "checkout --conflict=merge is not --force",
@@ -220,3 +227,56 @@ def test_shell_payload_and_fast_path(
     assert result.returncode == exit_code, result.stderr
     if exit_code == 2:
         assert "BLOCKED:" in result.stderr
+
+
+def test_force_push_setting_preserves_explicit_block_patterns(tmp_path: Path) -> None:
+    config = tmp_path / "hook-config.json"
+    pattern = "^git push .*protected"
+    config.write_text(
+        json.dumps(
+            {"gitGuardrails": {"allowForcePush": True, "blockPatterns": [pattern]}}
+        ),
+        encoding="utf-8",
+    )
+    env = {"CLAUDE_HOOK_CONFIG": str(config)}
+
+    allowed = run_hook("git push --force origin sandbox", tmp_path, env)
+    assert allowed.returncode == 0, allowed.stderr
+
+    blocked = run_hook("git push --force origin protected", tmp_path, env)
+    assert blocked.returncode == 2, blocked.stderr
+    assert pattern in blocked.stderr
+
+
+def test_project_git_policy_follows_actual_worktree(tmp_path: Path) -> None:
+    root = init_repo(tmp_path / "project")
+    other = init_repo(tmp_path / "other")
+    nested = root / "src"
+    nested.mkdir()
+    config = tmp_path / "hook-config.json"
+    config.write_text(
+        json.dumps(
+            {
+                "gitGuardrails": {
+                    "projects": {
+                        str(root): {
+                            "allowForcePush": True,
+                            "blockPatterns": ["^git push .*main"],
+                        }
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    env = {"CLAUDE_HOOK_CONFIG": str(config)}
+
+    assert run_hook("git push --force origin feature", nested, env).returncode == 0
+    assert run_hook("git push --force origin main", nested, env).returncode == 2
+    assert run_hook("git push --force origin feature", other, env).returncode == 2
+    assert (
+        run_hook(
+            "git -C ../../other push --force origin feature", nested, env
+        ).returncode
+        == 2
+    )

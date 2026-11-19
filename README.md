@@ -9,6 +9,8 @@
 Portable skills, agents, hooks, and Pi-native extensions for Claude Code, Codex
 CLI, GitHub Copilot, Cursor, Grok, and Pi. Gemini is retired.
 
+See [hook policy](docs/hook-policy.md) to tune Git and file protections per project.
+
 ## Build
 
 Requires Agent Bundler with `build`, `check`, and `package`, plus support for

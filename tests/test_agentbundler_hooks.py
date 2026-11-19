@@ -157,10 +157,12 @@ for (const [command, configured] of cases) {
     assert json.loads(configured["stdout"])["decision"] == "deny"
 
 
-def test_pi_decision_guards_emit_runtime_protocol() -> None:
+def test_pi_decision_guards_emit_runtime_protocol(tmp_path: Path) -> None:
+    env = {**os.environ, "CLAUDE_HOOK_CONFIG": str(tmp_path / "hook-config.json")}
     file_protector = subprocess.run(
         ["python3", "src/hooks/file-protector/hook.py"],
         cwd=REPO_ROOT,
+        env=env,
         input='{"event":"pre-tool","piEvent":{"input":{"path":"server.key"}}}',
         capture_output=True,
         check=True,
@@ -169,6 +171,7 @@ def test_pi_decision_guards_emit_runtime_protocol() -> None:
     env_edit = subprocess.run(
         ["python3", "src/hooks/file-protector/hook.py"],
         cwd=REPO_ROOT,
+        env=env,
         input='{"event":"pre-tool","piEvent":{"input":{"path":".env"}}}',
         capture_output=True,
         check=True,
@@ -181,6 +184,7 @@ def test_pi_decision_guards_emit_runtime_protocol() -> None:
             "src/hooks/git-guardrails/decide.py",
         ],
         cwd=REPO_ROOT,
+        env=env,
         input='{"event":"pre-tool","piEvent":{"input":{"command":"git reset --hard"}}}',
         capture_output=True,
         check=True,

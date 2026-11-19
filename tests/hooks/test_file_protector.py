@@ -35,8 +35,13 @@ def home(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def _run(payload: dict, home: Path | None = None) -> tuple[int, str]:
+def _run(
+    payload: dict, home: Path | None = None, config: Path | None = None
+) -> tuple[int, str]:
     env = os.environ.copy()
+    env.pop("CLAUDE_HOOK_CONFIG", None)
+    if config is not None:
+        env["CLAUDE_HOOK_CONFIG"] = str(config)
     if home:
         env["HOME"] = str(home)
     result = subprocess.run(
@@ -73,6 +78,10 @@ def _patch(patch: str, home: Path | None = None) -> tuple[int, str]:
         "Makefile",
         "config/settings.yaml",
         "scripts/deploy.sh",
+        "src/password-validator.ts",
+        "src/credentials.py",
+        "id_ed25519.pub",
+        "docs/secrets.md",
     ],
 )
 def test_safe_paths_allowed(path: str, home: Path) -> None:
@@ -321,78 +330,89 @@ def test_codex_multi_file_patch_safe_allowed(home: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_project_exclude_allows_selected_source_file(tmp_path: Path) -> None:
-    project = tmp_path / "project"
-    (project / ".claude").mkdir(parents=True)
-    (project / ".claude" / "file-protector.json").write_text(
-        json.dumps({"excludePatterns": [r"/api/deploy/credentials\.py$"]})
+def project_config(home: Path, root: Path, policy: dict, **user: object) -> Path:
+    path = home / "guardrails.json"
+    path.write_text(
+        json.dumps({"fileProtector": {**user, "projects": {str(root): policy}}}),
+        encoding="utf-8",
     )
-    path = str(project / "api" / "deploy" / "credentials.py")
-    rc, err = _single(path, tmp_path)
-    assert rc == 0
-    assert err == ""
+    return path
 
 
-def test_project_exclude_does_not_disable_other_protected_files(tmp_path: Path) -> None:
-    project = tmp_path / "project"
-    (project / ".claude").mkdir(parents=True)
-    (project / ".claude" / "file-protector.json").write_text(
-        json.dumps({"excludePatterns": [r"/api/deploy/credentials\.py$"]})
-    )
-    rc, err = _single(str(project / "server.key"), tmp_path)
+def test_project_profile_allows_only_exact_local_file(home: Path) -> None:
+    root = (home / "project").resolve()
+    (root / "fixtures").mkdir(parents=True)
+    config = project_config(home, root, {"allowPaths": ["fixtures/demo.pem"]})
+
+    def check(path: str) -> int:
+        return _run({"cwd": str(root), "tool_input": {"path": path}}, home, config)[0]
+
+    assert check("fixtures/demo.pem") == 0
+    assert check("fixtures/other.pem") == 2
+    assert check(str(config)) == 2
+    alias = root / "fixtures" / "demo.pem"
+    alias.symlink_to(home / "private.pem")
+    assert check("fixtures/demo.pem") == 2
+
+
+@pytest.mark.parametrize("explicit_user", [True, False])
+def test_project_exception_never_overrides_an_explicit_deny(
+    home: Path, explicit_user: bool
+) -> None:
+    root = (home / "project").resolve()
+    root.mkdir()
+    policy = {"allowPaths": ["demo.pem"]}
+    user = {}
+    if explicit_user:
+        user["protectedPatterns"] = [r"demo\.pem$"]
+    else:
+        policy["protectedPatterns"] = [r"^demo\.pem$"]
+    config = project_config(home, root, policy, **user)
+
+    rc, err = _run({"cwd": str(root), "tool_input": {"path": "demo.pem"}}, home, config)
+
     assert rc == 2
-    assert "BLOCKED" in err
+    assert ("user rule" if explicit_user else "project rule") in err
 
 
-def test_project_exclude_is_nearest_ancestor_only(tmp_path: Path) -> None:
-    project = tmp_path / "project"
-    nested = project / "nested"
-    (project / ".claude").mkdir(parents=True)
-    nested.mkdir()
-    (project / ".claude" / "file-protector.json").write_text(
-        json.dumps({"excludePatterns": [r"credentials\.py$"]})
+def test_legacy_exclusions_can_be_disabled_or_superseded(home: Path) -> None:
+    root = home / "project"
+    (root / ".claude").mkdir(parents=True)
+    (root / ".claude" / "file-protector.json").write_text(
+        json.dumps({"excludePatterns": [".*"]}), encoding="utf-8"
     )
-    rc, err = _single(str(nested / "api" / "credentials.py"), tmp_path)
-    assert rc == 0
-    assert err == ""
+    path = str(root / "fixture.pem")
+    payload = {"cwd": str(root), "tool_input": {"path": path}}
+    assert _run(payload, home)[0] == 0
 
+    config = project_config(home, root.resolve(), {})
+    assert _run(payload, home, config)[0] == 2
 
-def test_project_exclude_cannot_escape_with_parent_path(tmp_path: Path) -> None:
-    project = tmp_path / "project"
-    (project / ".claude").mkdir(parents=True)
-    (project / ".claude" / "file-protector.json").write_text(
-        json.dumps({"excludePatterns": [r"credentials\\.py$"]})
+    config.write_text(
+        json.dumps({"fileProtector": {"allowLegacyProjectExcludes": False}})
     )
-    outside = project / "api" / "deploy" / ".." / ".." / "outside" / "credentials.py"
-    rc, err = _single(str(outside), tmp_path)
+    assert _run(payload, home, config)[0] == 2
+
+    config = project_config(home, root.resolve(), {}, protectedPatterns=[r"\.pem$"])
+    assert _run(payload, home, config)[0] == 2
+
+
+def test_protects_resolved_target_when_editing_an_alias(home: Path) -> None:
+    root = home / "project"
+    root.mkdir()
+    (root / "alias.txt").symlink_to(root / "private.pem")
+
+    rc, err = _run({"cwd": str(root), "tool_input": {"path": "alias.txt"}}, home)
+
     assert rc == 2
-    assert "BLOCKED" in err
+    assert "default rule" in err
 
 
-def test_malformed_project_exclude_values_do_not_crash_hook(tmp_path: Path) -> None:
-    project = tmp_path / "project"
-    (project / ".claude").mkdir(parents=True)
-    config = project / ".claude" / "file-protector.json"
-    for value in [[], None, "credentials\\.py$"]:
-        config.write_text(json.dumps(value))
-        rc, err = _single(str(project / "credentials.py"), tmp_path)
-        assert rc == 2
-        assert "BLOCKED" in err
-    config.write_bytes(b"{\xff")
-    rc, err = _single(str(project / "credentials.py"), tmp_path)
+def test_unified_diff_checks_source_on_delete(home: Path) -> None:
+    rc, err = _patch("--- a/private.pem\n+++ /dev/null\n@@ -1 +0,0 @@\n-old\n", home)
+
     assert rc == 2
-    assert "BLOCKED" in err
-
-
-def test_relative_paths_do_not_use_project_excludes(tmp_path: Path) -> None:
-    project = tmp_path / "project"
-    (project / ".claude").mkdir(parents=True)
-    (project / ".claude" / "file-protector.json").write_text(
-        json.dumps({"excludePatterns": [r"credentials\\.py$"]})
-    )
-    rc, err = _single("credentials.py", tmp_path)
-    assert rc == 2
-    assert "BLOCKED" in err
+    assert "private.pem" in err
 
 
 # ---------------------------------------------------------------------------
