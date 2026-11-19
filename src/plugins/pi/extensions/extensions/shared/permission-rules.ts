@@ -100,6 +100,19 @@ export function parseLiteralCommand(command: string): string[] | undefined {
 	return words;
 }
 
-export function matchesRule(rule: Rule, words: string[]): boolean {
-	return rule.words.length === words.length && rule.words.every((word, i) => (word === "*" ? !!words[i] && !words[i].startsWith("-") : word === words[i]));
+export function parseOutputPipeline(command: string): { words: string[]; filter: string[] } | undefined {
+	const match = /^(.*?)[ \t]+(?:2>&1[ \t]*)?\|[ \t]*(head|tail)(?:[ \t]+(-[0-9]+|-n[ \t]+[0-9]+))?[ \t]*$/s.exec(command);
+	if (!match) return undefined;
+	const words = parseLiteralCommand(match[1]);
+	if (!words) return undefined;
+	const filter = [match[2], ...(match[3]?.split(/[ \t]+/) ?? [])];
+	const count = filter.length === 3 ? filter[2] : filter[1]?.slice(1);
+	if (count !== undefined && (!Number.isSafeInteger(Number(count)) || Number(count) > 10000)) return undefined;
+	return { words, filter };
+}
+
+export function matchesRule(rule: Rule, words: string[], deny = false): boolean {
+	return (
+		rule.words.length === words.length && rule.words.every((word, i) => (word === "*" ? !!words[i] && (deny || !words[i].startsWith("-")) : word === words[i]))
+	);
 }

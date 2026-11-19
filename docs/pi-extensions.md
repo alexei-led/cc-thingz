@@ -161,15 +161,18 @@ privileges. Review the client and SSH configuration as well as the VM and
 account. The extension does not prove remote identity or client behavior.
 
 `Bash(...)` matches the complete literal argument list. A standalone `*`
-matches exactly one nonempty argument that does not begin with `-`; it cannot
-be the executable. Other words are literal. Flag order and spelling matter.
-Quote the remote payload as one argument; local pipelines, redirections,
-substitutions, variables, globs, and other unsupported syntax require approval.
+matches exactly one nonempty argument; in allow rules it must not begin with
+`-`, while deny rules also match option arguments. It cannot be the executable. Other words are literal. Flag order and spelling matter.
+Quote the remote payload as one argument. A matching allow rule also permits
+one local `head` or `tail` filter, optionally preceded by `2>&1`; the filter
+accepts no arguments, `-N`, or `-n N` (N at most 10000), and no file paths.
+User deny rules also apply to the filter. Other local pipelines, redirections,
+substitutions, variables, globs, and unsupported syntax require approval.
 With rules configured, unsupported syntax blocks without UI, even if no warning
 pattern matches. With user deny rules, unsupported syntax is blocked even with
 UI because the gate cannot determine whether a deny applies. When an executable
 has an allow rule, its other invocations require approval even if no warning
-pattern matches. Filter output outside Bash instead of appending a pipeline.
+pattern matches. Filter output outside Bash for pipelines not listed above.
 
 A user `deny` list uses the same format and takes precedence over allow rules.
 Projects can add allows only, and only while trusted. `headless: true` permits

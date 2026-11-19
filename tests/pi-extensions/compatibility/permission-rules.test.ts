@@ -79,6 +79,48 @@ describe("permission rules", () => {
 		const run = await setup({ permissionGate: { allow: [grant] } }, undefined);
 		expect(await run(command)).toMatchObject({ block: true });
 	});
+	it("allows a permitted SSH command piped to a bounded local tail", async () => {
+		const run = await setup({ permissionGate: { allow: [grant] } }, undefined);
+		expect(await run(`${prefix} 'sudo -i -u reflex\nreflex-aws-capability-matrix --help' 2>&1 | tail -35`)).toBeUndefined();
+	});
+	it("allows the project wildcard-instance rule with the reported pipeline", async () => {
+		const wildcard = { match: "Bash(gcloud compute ssh * --zone us-central1-a --project doit-reflex --quiet --command *)", headless: true };
+		const run = await setup(undefined, { permissionGate: { allow: [wildcard] } });
+		expect(await run(`${prefix} 'sudo -i -u reflex\nreflex-aws-capability-matrix --help' 2>&1 | tail -35`)).toBeUndefined();
+	});
+	it.each(["| tail", "| head -35", "2>&1 | tail -n 35", "| head -n 0"])("allows a safe output filter: %s", async (suffix) => {
+		const run = await setup({ permissionGate: { allow: [grant] } }, undefined);
+		expect(await run(`${prefix} 'sudo whoami' ${suffix}`)).toBeUndefined();
+	});
+	it.each([
+		"| tail -f",
+		"| tail /etc/passwd",
+		"| tail -35 /etc/passwd",
+		"| tail -10001",
+		"| tail -35 > out",
+		"| tail -35; whoami",
+		"| tail -35 | cat",
+		"| tail -n $(whoami)",
+		"> out | tail -35",
+		"2>out | tail -35",
+	])("blocks unsafe output syntax: %s", async (suffix) => {
+		const run = await setup({ permissionGate: { allow: [grant] } }, undefined);
+		expect(await run(`${prefix} 'sudo whoami' ${suffix}`)).toMatchObject({ block: true });
+	});
+	it.each(["Bash(tail -35)", "Bash(tail *)"])("honors an output filter deny: %s", async (pattern) => {
+		const run = await setup({ permissionGate: { allow: [grant], deny: [{ match: pattern }] } }, undefined);
+		expect(await run(`${prefix} 'sudo whoami' 2>&1 | tail -35`)).toMatchObject({ block: true, reason: "Blocked by user permission rule" });
+	});
+	it("does not authorize an unmatched command with a safe output filter", async () => {
+		const run = await setup({ permissionGate: { allow: [grant] } }, undefined);
+		expect(await run(`${prefix.replace("reflex-kroo-01", "other")} 'sudo whoami' | tail -35`)).toMatchObject({ block: true });
+	});
+	it("keeps hook denies for a permitted pipeline", async () => {
+		const run = await setup({ permissionGate: { allow: [grant] } }, undefined, true, {
+			responder: (payload) => payload.onResult(payload.hookEventName === "PermissionRequest" ? { behavior: "deny", reason: "hook denied" } : {}),
+		});
+		expect(await run(`${prefix} 'sudo whoami' | tail -35`)).toEqual({ block: true, reason: "hook denied" });
+	});
 	it("does not allow a different target or extra flag", async () => {
 		const run = await setup({ permissionGate: { allow: [grant] } }, undefined);
 		expect(await run(`${prefix.replace("reflex-kroo-01", "other")} 'sudo whoami'`)).toMatchObject({ block: true });

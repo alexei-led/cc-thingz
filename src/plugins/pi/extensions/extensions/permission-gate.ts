@@ -6,7 +6,7 @@
  */
 
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { loadPolicy, matchesRule, parseLiteralCommand, type Policy } from "./shared/permission-rules.js";
+import { loadPolicy, matchesRule, parseLiteralCommand, parseOutputPipeline, type Policy } from "./shared/permission-rules.js";
 import { invokeSyntheticHook, type SyntheticHookInvocationResult, toCcToolName } from "./shared/hook-bridge.js";
 
 export default function (pi: ExtensionAPI) {
@@ -89,10 +89,13 @@ export default function (pi: ExtensionAPI) {
 		};
 		if (effective.error) return deny(effective.error);
 		const hasRules = effective.allow.length > 0 || effective.deny.length > 0;
-		const words = hasRules ? parseLiteralCommand(commandRaw) : undefined;
-		const unrecognized = hasRules && !words;
-		if (words && effective.deny.some((rule) => matchesRule(rule, words))) return deny("Blocked by user permission rule");
-		const allowed = words && effective.allow.find((rule) => matchesRule(rule, words) && (ctx.hasUI || rule.headless));
+		const pipeline = hasRules ? parseOutputPipeline(commandRaw) : undefined;
+		const words = hasRules ? (parseLiteralCommand(commandRaw) ?? pipeline?.words) : undefined;
+		const ruleMatch = words && effective.allow.find((rule) => matchesRule(rule, words));
+		const unrecognized = hasRules && (!words || (!!pipeline && !ruleMatch));
+		if (words && effective.deny.some((rule) => matchesRule(rule, words, true) || (!!pipeline && matchesRule(rule, pipeline.filter, true))))
+			return deny("Blocked by user permission rule");
+		const allowed = ruleMatch && (ctx.hasUI || ruleMatch.headless);
 		const isDangerous = dangerousPatterns.some((p) => p.test(commandRaw));
 		const restrictedExecutable = words && effective.allow.some((rule) => rule.words[0] === words[0]);
 		if (!isDangerous && !restrictedExecutable && !unrecognized) return undefined;
@@ -111,7 +114,7 @@ export default function (pi: ExtensionAPI) {
 				const updatedWords = hasRules ? parseLiteralCommand(updatedCommand) : undefined;
 				if (
 					(hasRules && !updatedWords) ||
-					(updatedWords && effective.deny.some((rule) => matchesRule(rule, updatedWords))) ||
+					(updatedWords && effective.deny.some((rule) => matchesRule(rule, updatedWords, true))) ||
 					dangerousPatterns.some((pattern) => pattern.test(updatedCommand))
 				) {
 					return deny("PermissionRequest hook returned an unsafe command patch");
