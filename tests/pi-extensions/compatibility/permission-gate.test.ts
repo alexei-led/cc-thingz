@@ -259,6 +259,11 @@ describe("permission-gate / tool_call", () => {
 		"echo ${#files[@]}; rm -rf build",
 		"time sudo whoami",
 		"time rm -rf build",
+		"rm ./build -rf",
+		"/usr/bin/time -f '%E' sudo whoami",
+		"xargs -a /tmp/list sudo whoami",
+		'echo "${name:-$(sudo whoami)}"',
+		"echo `sudo whoami`",
 		"nohup sudo whoami",
 		"timeout 5 sudo whoami",
 		"nice rm -rf build",
@@ -277,6 +282,9 @@ describe("permission-gate / tool_call", () => {
 		"echo $(sudo whoami)",
 		'echo "$(sudo whoami)"',
 		"cat <<EOF\n$(sudo whoami)\nEOF",
+		"cat <<<'fixture'\nsudo whoami",
+		"cat <<-'EOF'\n\tfixture\n\tEOF\nsudo whoami",
+		"'su''do' whoami",
 		"python - <<'PY'\ntext = 'sudo'\nPY\nsudo whoami",
 	])("blocks %s without a UI", async (command) => {
 		const { handlers } = setup();

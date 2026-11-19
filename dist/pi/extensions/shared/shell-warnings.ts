@@ -3,36 +3,132 @@ import { basename } from "node:path";
 const recursiveRm = /\brm\s+(?:(?:-[a-zA-Z]+|--[a-z]+(?:-[a-z]+)*)\s+)*(?:-[a-zA-Z]*[rR][a-zA-Z]*|--recursive)(?=\s|$)/;
 const rawPatterns = [recursiveRm, /\bsudo\b/i, /\b(chmod|chown)\b.*777/i];
 const runnerValueFlags: Record<string, readonly string[]> = {
-	time: [],
+	time: ["-f", "-o", "--format", "--output"],
 	nohup: [],
 	timeout: ["-s", "--signal", "-k", "--kill-after"],
 	nice: ["-n", "--adjustment"],
 	stdbuf: ["-i", "-o", "-e", "--input", "--output", "--error"],
 	ionice: ["-c", "-n", "-p", "-P", "-u", "--class", "--classdata", "--pid", "--pgid", "--uid"],
-	xargs: ["-n", "-P", "-L", "-s", "-E", "-I", "--max-args", "--max-procs", "--max-lines", "--max-chars", "--eof", "--replace"],
+	xargs: [
+		"-n",
+		"-P",
+		"-L",
+		"-s",
+		"-E",
+		"-I",
+		"-a",
+		"-d",
+		"--arg-file",
+		"--delimiter",
+		"--max-args",
+		"--max-procs",
+		"--max-lines",
+		"--max-chars",
+		"--eof",
+		"--replace",
+	],
 };
 
 export function hasWarningText(command: string): boolean {
 	return rawPatterns.some((pattern) => pattern.test(command));
 }
 
-// Warning classification only: never use this permissive scan to grant a rule.
-// Interpreter source is opaque. Shell expansions retain the conservative raw check.
-export function inspectShellWarnings(command: string): { dangerous: boolean; commands: string[][] } {
+function readExpansion(source: string, start: number): { body: string; end: number } | undefined {
+	const backtick = source[start] === "`";
+	const open = backtick ? "`" : source[start + 1];
+	const close = backtick ? "`" : open === "(" ? ")" : "}";
+	const bodyStart = start + (backtick ? 1 : 2);
+	let depth = 1;
+	let quote: "'" | '"' | undefined;
+	for (let i = bodyStart; i < source.length; i++) {
+		const c = source[i];
+		if (c === "\\") {
+			i++;
+			continue;
+		}
+		if (backtick && c === "`") return { body: source.slice(bodyStart, i), end: i };
+		if (quote === "'") {
+			if (c === "'") quote = undefined;
+			continue;
+		}
+		if (c === "`" || (c === "$" && ["(", "{"].includes(source[i + 1]))) {
+			const nested = readExpansion(source, i);
+			if (nested) {
+				i = nested.end;
+				continue;
+			}
+		}
+		if (c === "'" || c === '"') {
+			if (!quote) quote = c;
+			else if (quote === c) quote = undefined;
+			continue;
+		}
+		if (!quote) {
+			if (c === open) depth++;
+			if (c === close && --depth === 0) return { body: source.slice(bodyStart, i), end: i };
+		}
+	}
+	return undefined;
+}
+
+function readHeredoc(source: string, start: number): { delimiter: string; quoted: boolean; stripTabs: boolean; end: number } | undefined {
+	const operator = /^<<(-?)[ \t]*/.exec(source.slice(start));
+	if (!operator || source[start + 2] === "<") return undefined;
+	let delimiter = "";
+	let quoted = false;
+	let quote: "'" | '"' | undefined;
+	let i = start + operator[0].length;
+	for (; i < source.length; i++) {
+		const c = source[i];
+		if (quote) {
+			if (c === quote) quote = undefined;
+			else if (quote === '"' && c === "\\" && ["$", "`", '"', "\\", "\n"].includes(source[i + 1])) {
+				if (source[++i] !== "\n") delimiter += source[i];
+			} else delimiter += c;
+		} else if (c === "'" || c === '"') {
+			quoted = true;
+			quote = c;
+		} else if (c === "\\") {
+			quoted = true;
+			if (source[++i] !== "\n") delimiter += source[i] ?? "";
+		} else if (/[\s;|&()<>]/.test(c)) break;
+		else delimiter += c;
+	}
+	return (delimiter || quoted) && !quote ? { delimiter, quoted, stripTabs: operator[1] === "-", end: i - 1 } : undefined;
+}
+
+// Warning/deny classification only. The stricter literal parser alone grants exceptions.
+// Interpreter source is opaque; substitutions are inspected as local shell commands.
+export function inspectShellWarnings(command: string, context: "shell" | "parameter" | "heredoc" = "shell"): { dangerous: boolean; commands: string[][] } {
 	let dangerous = false;
 	const commands: string[][] = [];
 	const words: string[] = [];
+	const redirects: boolean[] = [];
+	let redirect = false;
 	let word = "";
 	let active = false;
 	let quote: "'" | '"' | undefined;
 	const heredocs: Array<{ delimiter: string; quoted: boolean; stripTabs: boolean }> = [];
 	const finishWord = () => {
-		if (active) words.push(word);
+		if (active) {
+			words.push(word);
+			redirects.push(redirect);
+		}
 		word = "";
+		redirect = false;
 		active = false;
 	};
 	const finishCommand = () => {
 		finishWord();
+		const argv: string[] = [];
+		for (let j = 0; context === "shell" && j < words.length; j++) {
+			if (redirects[j]) {
+				const operator = /^\d*(?:[<>]&|[<>]{1,2})(.*)$/.exec(words[j]);
+				if (operator && !operator[1]) j++;
+			} else argv.push(words[j]);
+		}
+		words.splice(0, words.length, ...argv);
+		redirects.length = 0;
 		if (words.length > 0) commands.push([...words]);
 		let i = 0;
 		while (i < words.length) {
@@ -110,7 +206,10 @@ export function inspectShellWarnings(command: string): { dangerous: boolean; com
 			}
 			if (
 				name === "sudo" ||
-				(name === "rm" && recursiveRm.test([name, ...args].join(" "))) ||
+				(name === "rm" &&
+					args
+						.slice(0, args.includes("--") ? args.indexOf("--") : undefined)
+						.some((arg) => arg === "--recursive" || (/^-[a-zA-Z]+$/.test(arg) && /[rR]/.test(arg)))) ||
 				((name === "chmod" || name === "chown") && args.some((arg) => /^[0-7]?777$/.test(arg)))
 			)
 				dangerous = true;
@@ -132,34 +231,45 @@ export function inspectShellWarnings(command: string): { dangerous: boolean; com
 			i++;
 			continue;
 		}
+		if (c === "`" || (c === "$" && ["(", "{"].includes(command[i + 1]))) {
+			const expansion = readExpansion(command, i);
+			if (expansion) {
+				const nested = inspectShellWarnings(expansion.body, command[i + 1] === "{" ? "parameter" : "shell");
+				dangerous ||= nested.dangerous;
+				commands.push(...nested.commands);
+				word += command.slice(i, expansion.end + 1);
+				active = true;
+				i = expansion.end;
+				continue;
+			}
+		}
 		if (quote === '"') {
 			if (c === '"') quote = undefined;
 			else word += c;
-			if (c === "`" || (c === "$" && ["(", "{"].includes(command[i + 1]))) dangerous ||= hasWarningText(command.slice(i));
 			continue;
 		}
-		if (c === "'" || c === '"') {
+		if (context !== "heredoc" && (c === "'" || c === '"')) {
 			quote = c;
 			active = true;
 			continue;
 		}
-		if (c === "`" || (c === "$" && ["(", "{"].includes(command[i + 1]))) dangerous ||= hasWarningText(command.slice(i));
-		if (c === "#" && !active && (i === 0 || /[\s;|&()]/.test(command[i - 1]))) {
+		if (context !== "heredoc" && c === "#" && !active && (i === 0 || /[\s;|&()]/.test(command[i - 1]))) {
 			const end = command.indexOf("\n", i);
 			i = end === -1 ? command.length : end - 1;
 			continue;
 		}
-		if (c === "<" && command[i + 1] === "<") {
-			const match = /^<<(-?)[ \t]*(?:'([^'\n]+)'|"([^"\n]+)"|([a-zA-Z_][a-zA-Z0-9_]*))/.exec(command.slice(i));
-			if (match) {
+		if (context !== "heredoc" && c === "<" && command[i + 1] === "<" && command[i - 1] !== "<") {
+			const doc = readHeredoc(command, i);
+			if (doc) {
 				finishWord();
-				heredocs.push({ delimiter: match[2] ?? match[3] ?? match[4], quoted: !!(match[2] || match[3]), stripTabs: match[1] === "-" });
-				i += match[0].length - 1;
+				heredocs.push(doc);
+				i = doc.end;
 				continue;
 			}
 		}
 		if (c === "<" || c === ">") {
 			if (active && !/^\d+$/.test(word)) finishWord();
+			redirect = true;
 			word += c;
 			active = true;
 			continue;
@@ -179,7 +289,11 @@ export function inspectShellWarnings(command: string): { dangerous: boolean; com
 						if (doc.stripTabs) line = line.replace(/^\t+/, "");
 						if (line === doc.delimiter) {
 							const body = command.slice(bodyStart, cursor);
-							if (!doc.quoted && /\$\(|`/.test(body)) dangerous ||= hasWarningText(body);
+							if (!doc.quoted) {
+								const nested = inspectShellWarnings(body, "heredoc");
+								dangerous ||= nested.dangerous;
+								commands.push(...nested.commands);
+							}
 							i = lineEnd;
 							found = true;
 							break;
@@ -188,7 +302,11 @@ export function inspectShellWarnings(command: string): { dangerous: boolean; com
 						cursor = end + 1;
 					}
 					if (!found) {
-						dangerous ||= hasWarningText(command.slice(bodyStart));
+						if (!doc.quoted) {
+							const nested = inspectShellWarnings(command.slice(bodyStart), "heredoc");
+							dangerous ||= nested.dangerous;
+							commands.push(...nested.commands);
+						}
 						i = command.length;
 					}
 				}
@@ -199,6 +317,5 @@ export function inspectShellWarnings(command: string): { dangerous: boolean; com
 		}
 	}
 	finishCommand();
-	if (quote) dangerous ||= hasWarningText(command);
 	return { dangerous, commands };
 }

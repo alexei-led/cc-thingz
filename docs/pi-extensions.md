@@ -157,6 +157,9 @@ vetoes and timeouts remain in force.
 A recognized warning needs UI confirmation, a hook allow, or an eligible exact
 exception. Without UI or an eligible exception, the warning blocks.
 
+[Design sources, real-session tests, and verification limits](permission-gate-testing.md)
+describe how this behavior is checked.
+
 ### Optional warning exceptions and explicit denies
 
 Use `permissionGate` in user `~/.pi/agent/settings.json` or trusted project

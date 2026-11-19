@@ -85,6 +85,16 @@ const developerCommands = [
 	"env -u HOME gcloud version",
 	"echo ok # sudo is just a comment",
 	"find . -name 'sudo' -print",
+	'printf "%s" "$(rg -F sudo README.md | head -1)"',
+	'printf "%s" "$(node -e \'console.log(\\"sudo\\")\')" current',
+	"printf '%s' `printf sudo`",
+	'printf "%s" "${name:-sudo}"',
+	'printf "%s" "${#sudo}"',
+	"python - <<P\"Y\"\ntext = 'sudo'\nPY",
+	"cat <<''\nsudo is data\n\necho done",
+	"node - <<<'console.log(\"sudo\")'",
+	"python - <<\\PY\ntext = 'sudo'\nPY",
+	"python - <<-'PY'\n\ttext = 'sudo'\n\tPY",
 	"find . -name 'sudo' -exec echo {} +",
 	"timeout 5 python -c 'print(\"sudo\")'",
 	"printf '%s' 'sudo' | xargs -0 grep sudo",
@@ -155,13 +165,26 @@ describe("permission exceptions and explicit denies", () => {
 		const run = await setup(undefined, { permissionGate: { allow: [localGrant] } });
 		expect(await run("sudo whoami")).toBeUndefined();
 	});
-	it.each(["git push", "echo ok; git push", "printf ok | git push", "env git push", "timeout 5 git push"])(
-		"denies a positively matched invocation: %s",
-		async (command) => {
-			const run = await setup({ permissionGate: { deny: [gitDeny] } }, undefined, true, { hasUI: true, choice: "Yes" });
-			expect(await run(command)).toEqual({ block: true, reason: "Blocked by user permission rule" });
-		},
-	);
+	it.each([
+		"git push",
+		"echo ok; git push",
+		"printf ok | git push",
+		"env git push",
+		"timeout 5 git push",
+		"git push>/dev/null",
+		"git push 2>/dev/null",
+		"git push >out",
+		'echo "$(git push)"',
+		"cat <<END\n$(git push)\nEND",
+	])("denies a positively matched invocation: %s", async (command) => {
+		const run = await setup({ permissionGate: { deny: [gitDeny] } }, undefined, true, { hasUI: true, choice: "Yes" });
+		expect(await run(command)).toEqual({ block: true, reason: "Blocked by user permission rule" });
+	});
+	it("does not strip literal redirection characters from deny arguments", async () => {
+		const run = await setup({ permissionGate: { deny: [{ match: "Bash(printf)" }] } }, undefined);
+		expect(await run("printf '>'")).toBeUndefined();
+		expect(await run("printf '<'")).toBeUndefined();
+	});
 	it("does not match a deny inside quoted source", async () => {
 		const run = await setup({ permissionGate: { deny: [gitDeny] } }, undefined);
 		expect(await run("python -c 'print(\"git push\")'")).toBeUndefined();
