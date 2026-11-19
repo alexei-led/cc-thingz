@@ -31,11 +31,20 @@ a warning. OS permissions and isolation are the enforcement boundary.
   Keep redirection metadata while scanning; do not confuse a quoted `>`
   argument with an actual redirection.
 
-The scanner deliberately recognizes a limited set of shell structures and
-common runner argument conventions. It never executes expansions or infers
-that a command is safe from a raw-string wildcard. Unsupported structures are
-not an automatic denial. No shell-parser dependency or general policy language
-is required for these warning semantics.
+Shell structure is parsed by pinned `web-tree-sitter` and `tree-sitter-bash`
+WASM packages. The application only classifies literal executable/argument
+nodes and common runner conventions. It does not execute expansions or infer
+safety from raw-string wildcards. Input size, parse time, traversal, and nested
+runner inspection are bounded. The valid prefix before a syntax error can be
+inspected; recovered or unsupported text is not treated as executable code.
+Unknown structures are not an automatic denial.
+
+Maintained grammar handling avoids duplicating comment, quoting, and heredoc
+parsing in application code. The shared runtime dependencies are declared in
+aggregate metadata and rendered to the root compatibility and Pi archive
+manifests. The grammar uses its prebuilt WASM file; no local native grammar
+build is required. Archive tests prepare production dependencies and verify
+that the actual native Pi loader exposes the permission command.
 
 ## Tests
 
@@ -44,7 +53,8 @@ Run the focused contract and real-session tests:
 ```bash
 bun test tests/pi-extensions/compatibility/permission-gate.test.ts \
   tests/pi-extensions/compatibility/permission-rules.test.ts \
-  tests/pi-extensions/compatibility/permission-gate.session.test.ts --isolate
+  tests/pi-extensions/compatibility/permission-gate.session.test.ts \
+  tests/pi-extensions/compatibility/shell-warnings.performance.test.ts --isolate
 ```
 
 The contracts cover:
@@ -57,6 +67,8 @@ The contracts cover:
 - Direct dangerous controls, flags after operands, explicit denies in compound
   commands, trust, headless eligibility, UI refusal/approval, hook vetoes, and
   validation of hook-supplied replacements.
+- Malformed nested substitutions in a separate process with a hard deadline,
+  so a scanner regression cannot hang the test runner or a live session.
 
 The real-session fixture uses Pi's actual `AgentSession`, extension dispatcher,
 hook runner, Bash backend, and nested `executeTool` path. Only the model stream,

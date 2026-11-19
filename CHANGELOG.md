@@ -8,6 +8,41 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [8.2.0] - 2026-11-19
+
+### Changed
+
+- Pi's default Bash gate is blacklist-only. Normal developer commands, unknown
+  syntax, pipelines, redirects, and globs no longer require an allowlist.
+  Adding an SSH grant does not restrict unrelated commands or other invocations
+  of the same executable.
+- Allow rules are exact warning exceptions. Explicitly matched user denies and
+  configured hook vetoes still take precedence.
+- Bounded Tree-sitter Bash/WASM parsing handles shell syntax instead of a
+  handwritten quote parser. Managed installs resolve its pinned runtime
+  dependencies automatically.
+
+### Fixed
+
+- Quoted Python/Node source, heredoc data, search patterns, and harmless command
+  substitutions no longer trigger built-in warnings merely for containing
+  dangerous words.
+- Recognized local privilege commands, recursive removals, and world-writable
+  mode changes still warn through common runners, command chains, and
+  redirections. Deny matching distinguishes real redirections from quoted data.
+- Real Pi session tests cover direct and nested tool calls, UI and headless
+  decisions, hook vetoes, and actual Bash execution against harmless fixtures.
+
+### Security and upgrade
+
+- Reload or restart Pi after updating.
+- Do not use allow rules as command-family or destination restrictions.
+  Interpreter code, remote effects, and unrecognized shell encodings can perform
+  destructive actions without a warning. Use explicit hooks, cloud access
+  controls, or OS isolation when enforcement is required.
+
+[Changes since v8.1.1](https://github.com/alexei-led/cc-thingz/compare/v8.1.1...v8.2.0)
+
 ## [8.1.1] - 2026-11-19
 
 ### Fixed

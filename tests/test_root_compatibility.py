@@ -279,7 +279,7 @@ def test_repository_root_pi_package_loads_commands_from_local_path(
     rpc, commands = _pi_rpc_commands(pi, environment, project)
     assert rpc.returncode == 0, rpc.stderr
     names = {command["name"] for command in commands}
-    assert {"plan", "skill:fixing-code"} <= names
+    assert {"permissions", "plan", "skill:fixing-code"} <= names
     fixing_code = next(
         command for command in commands if command["name"] == "skill:fixing-code"
     )
@@ -441,6 +441,7 @@ def test_repository_root_pi_package_loads_from_git_checkout(tmp_path: Path) -> N
         rpc, commands = _pi_rpc_commands(pi, environment, tmp_path)
         assert rpc.returncode == 0, rpc.stderr
         assert {
+            "permissions",
             "plan",
             "subagents-doctor",
             "skill:fixing-code",

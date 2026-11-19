@@ -6,7 +6,9 @@ root compatibility manifest whose resource paths point into `dist/pi`.
 The native extensions require Pi **1.0.2 or later in the 1.x series**. The
 repository-root peer contracts use `^1.0.2`; Agent Bundler does not render peer
 dependencies into the target-root archive manifest, so archive users must check
-the host version themselves. The lockfiles record the tested baseline.
+the host version themselves. The lockfiles record the tested baseline. The permission gate also requires the
+pinned `web-tree-sitter` and `tree-sitter-bash` runtime packages declared in the
+Pi manifest. Managed Git installs resolve those dependencies automatically.
 
 ## Registered extensions
 
@@ -23,13 +25,19 @@ separately if you want the packaged `cc-thingz.*` agents:
 
 ```bash
 pi install npm:pi-subagents
-pi install ./cc-thingz-pi.tgz -l
+pi install git:github.com/alexei-led/cc-thingz@v8.2.0
 ```
 
 The native extensions, skills, and hooks work without `pi-subagents`; only the
 packaged agent definitions require its runtime.
 
-For local development through the repository root:
+Pi 1.0.2 cannot load a `.tgz` path directly as an extension package. To test a
+release archive, extract it to an isolated directory and prepare dependencies
+with `npm install --omit=dev --ignore-scripts`. Then point an isolated Pi
+configuration at that directory.
+Use published Git tags for normal managed installations.
+
+For isolated local development testing through the repository root:
 
 ```bash
 make build
@@ -145,10 +153,13 @@ conservative warning checks. Unknown syntax is not itself a warning.
 Quoted arguments, interpreter source, and quoted heredoc bodies are data to the
 outer shell, not executable commands. Literal warning words inside them do not
 trigger built-in confirmation. Unquoted heredocs are checked for local expansion
-hazards; commands after a heredoc still get checked. Python, Node, shell `-c`
+hazards; recognized commands after a heredoc still get checked. Python, Node, shell `-c`
 payloads, and remote programs are intentionally not inspected for indirect
 effects. They can delete files or launch privileged commands without a built-in
-warning. This is an approval aid, not a sandbox or a complete shell parser.
+warning. This is an approval aid, not a sandbox. Bounded Tree-sitter parsing
+recognizes shell syntax, but unsupported syntax, parse recovery, or exhausted
+inspection budgets can leave later actions unclassified rather than blocking
+normal work.
 
 Text triggers still dispatch PermissionRequest hooks when a built-in warning is
 suppressed, except for the existing literal display/terminal exemption for

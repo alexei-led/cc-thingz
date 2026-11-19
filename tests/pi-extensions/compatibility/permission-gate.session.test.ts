@@ -53,6 +53,8 @@ const dangerous = [
 	"echo ${#PATH}; sudo forbidden",
 	"find setup -name '*.py' -exec rm -rf {} +",
 	"sudo>/dev/null forbidden",
+	"out=$(\n# don't fail\ncat missing || true\n)\nsudo forbidden",
+	"echo $(printf '\\\\'); sudo forbidden",
 	"cat <<<'fixture'\nsudo forbidden",
 	"timeout 5 sudo forbidden",
 ];
@@ -112,7 +114,10 @@ hookSpecificOutput:{hookEventName:"PermissionRequest",decision:{behavior:"deny",
 					compaction: { enabled: false },
 					retry: { enabled: false },
 					shellCommandPrefix: "export HOME=" + quote(root) + "; export PATH=" + quote(join(root, "bin")) + ':"$PATH"',
-					permissionGate: { allow: [{ match: "Bash(sudo approved)", headless: true }], deny: [{ match: "Bash(git push)" }] },
+					permissionGate: {
+						allow: [{ match: "Bash(sudo approved)", headless: true }],
+						deny: [{ match: "Bash(git push)" }, { match: "Bash(git push --force)" }],
+					},
 				}),
 			);
 			mkdirSync(join(root, ".pi"));
@@ -234,7 +239,14 @@ hookSpecificOutput:{hookEventName:"PermissionRequest",decision:{behavior:"deny",
 					expect(selections).toBe(before);
 					expect(readFileSync(marker, "utf8")).toBe("");
 				}
-				for (const value of [...dangerous, "git push", "git push>/dev/null", "git push 2>/dev/null", "fixture-read 'sudo hook-veto'"]) {
+				for (const value of [
+					...dangerous,
+					"git push",
+					"git push>/dev/null",
+					"git push 2>/dev/null",
+					"git commit -m \"$(cat <<'EOF'\nDon't break things\nEOF\n)\" && git push --force",
+					"fixture-read 'sudo hook-veto'",
+				]) {
 					const before = selections;
 					await run(value, true);
 					expect(selections).toBe(before + (hasUI && dangerous.includes(value) ? 1 : 0));

@@ -331,18 +331,67 @@ def test_pi_release_archive_installs_in_isolated_project(
         }
     )
     archive = release_artifacts / "alexei-led-cc-thingz-pi.tgz"
+    extracted = tmp_path / "release"
+    extracted.mkdir()
+    with tarfile.open(archive) as package:
+        package.extractall(extracted, filter="data")
+    npm = shutil.which("npm")
+    if npm is None:
+        pytest.skip("npm is needed to prepare archive runtime dependencies")
     subprocess.run(
-        [pi, "install", str(archive), "-l", "--approve"],
+        [npm, "install", "--omit=dev", "--ignore-scripts", "--no-audit", "--no-fund"],
+        cwd=extracted,
+        env=environment,
+        check=True,
+        timeout=90,
+    )
+    subprocess.run(
+        [pi, "install", str(extracted), "-l", "--approve"],
         cwd=project,
         env=environment,
         check=True,
+        timeout=30,
     )
 
     settings = json.loads((project / ".pi/settings.json").read_text())
-    assert any(
-        package.endswith("alexei-led-cc-thingz-pi.tgz")
-        for package in settings["packages"]
+    assert extracted.resolve() in {
+        (project / ".pi" / package).resolve() for package in settings["packages"]
+    }
+    rpc = subprocess.run(
+        [pi, "--mode", "rpc", "--no-session", "--no-mcp", "--approve"],
+        cwd=project,
+        env=environment,
+        input='{"id":"archive-probe","type":"get_commands"}\n',
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
+    assert rpc.returncode == 0, rpc.stderr
+    response = next(
+        json.loads(line)
+        for line in rpc.stdout.splitlines()
+        if json.loads(line).get("id") == "archive-probe"
+    )
+    assert response["success"]
+    assert {"permissions", "plan"} <= {
+        command["name"] for command in response["data"]["commands"]
+    }
+
+
+def test_pi_runtime_parser_dependencies_are_rendered() -> None:
+    bundle = json.loads((REPO_ROOT / "agentbundle.json").read_text())
+    metadata = next(
+        entry["aggregate"]["metadata"]
+        for entry in bundle["composition"]
+        if entry["target"] == "pi"
+    )
+    expected = {
+        "web-tree-sitter": "0.25.10",
+        "tree-sitter-bash": "0.25.1",
+    }
+    assert metadata["dependencies"] == expected
+    for path in ("package.json", "dist/pi/package.json"):
+        assert json.loads((REPO_ROOT / path).read_text())["dependencies"] == expected
 
 
 def test_generated_target_inventory_matches_supported_contract() -> None:

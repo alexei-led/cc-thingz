@@ -6,7 +6,8 @@
  */
 
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { loadPolicy, matchesRule, parseLiteralCommand, type Policy } from "./shared/permission-rules.js";
+import { loadPolicy, matchesRule, type Policy } from "./shared/permission-rules.js";
+import { parseLiteralCommand } from "./shared/literal-command.js";
 import { invokeSyntheticHook, type SyntheticHookInvocationResult, toCcToolName } from "./shared/hook-bridge.js";
 import { hasWarningText, inspectShellWarnings } from "./shared/shell-warnings.js";
 

@@ -79,12 +79,16 @@ const developerCommands = [
 	"rg pattern . | sort -u | uniq -c | head -50",
 	"rg pattern . > results.txt",
 	"some-developer-tool --flag value && another-tool",
+	"echo $(unterminated",
 	"gcloud compute ssh another --project another --command 'hostname'",
 	"cd /tmp && timeout 5 gcloud version",
 	"/usr/bin/gcloud version; true",
 	"env -u HOME gcloud version",
 	"echo ok # sudo is just a comment",
 	"find . -name 'sudo' -print",
+	"chmod 644 777",
+	"chown 1000 777",
+	"env --split-string='FOO=1 printf' sudo",
 	'printf "%s" "$(rg -F sudo README.md | head -1)"',
 	'printf "%s" "$(node -e \'console.log(\\"sudo\\")\')" current',
 	"printf '%s' `printf sudo`",
@@ -170,10 +174,15 @@ describe("permission exceptions and explicit denies", () => {
 		"echo ok; git push",
 		"printf ok | git push",
 		"env git push",
+		"env -S git push",
+		"env --split-string=git push",
+		"env -S 'VAR=value git' push",
 		"timeout 5 git push",
 		"git push>/dev/null",
 		"git push 2>/dev/null",
 		"git push >out",
+		"git >out push",
+		"git 2>/dev/null push",
 		'echo "$(git push)"',
 		"cat <<END\n$(git push)\nEND",
 	])("denies a positively matched invocation: %s", async (command) => {
@@ -188,6 +197,14 @@ describe("permission exceptions and explicit denies", () => {
 	it("does not match a deny inside quoted source", async () => {
 		const run = await setup({ permissionGate: { deny: [gitDeny] } }, undefined);
 		expect(await run("python -c 'print(\"git push\")'")).toBeUndefined();
+	});
+	it("keeps denied commands visible after substitutions containing heredoc apostrophes", async () => {
+		const run = await setup({ permissionGate: { deny: [{ match: "Bash(git push --force)" }] } }, undefined);
+		const command = `git commit -m "$(cat <<'EOF'
+Don't break things
+EOF
+)" && git push --force`;
+		expect(await run(command)).toEqual({ block: true, reason: "Blocked by user permission rule" });
 	});
 	it("preserves user deny precedence over project allow", async () => {
 		const run = await setup({ permissionGate: { deny: [{ match: localGrant.match }] } }, { permissionGate: { allow: [localGrant] } });
