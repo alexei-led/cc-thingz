@@ -185,6 +185,11 @@ Use the separate pi-tasks package for task tracking. The compatibility runner
 has no personal defaults; configure messaging, notifications, and plan review
 at user scope. Portable Agent Bundler hooks must not be registered twice.
 
+The notification hook uses agterm-native banners inside agterm; clicking a banner
+returns to the session, not a particular split pane. Enable agterm notification
+banners. If delivery fails or banners are disabled, the hook falls back to
+`terminal-notifier`, which can activate agterm but cannot select its session.
+
 The package command, flat per-agent sidecars, safe Pi hook environments, native
 extension assets, and Codex project-agent profiles require a compatible
 installed Agent Bundler pinned in `.agentbundler-version`.
