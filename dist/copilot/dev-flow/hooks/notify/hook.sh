@@ -5,6 +5,7 @@
 # Input JSON fields (CC only): transcript_path, permission_mode
 #
 # Env vars used:
+#   AGTERM_ENABLED, AGTERM_SESSION_ID             - agterm session notification
 #   CLAUDE_CODE_VERSION                            - Claude Code detection (title fallback)
 #   KITTY_LISTEN_ON, KITTY_PID, KITTY_WINDOW_ID  - kitty detection + navigation
 #   TMUX, TMUX_PANE                                - tmux server + pane targeting
@@ -87,6 +88,16 @@ permission_prompt) sound_flag=(-sound Funk) ;;
 idle_prompt) sound_flag=(-sound default) ;;
 esac
 
+# agterm owns banner clicks and selects the originating session.
+if [[ "${AGTERM_ENABLED:-}" == "1" && -n "${AGTERM_SESSION_ID:-}" ]] && command -v agtermctl &>/dev/null; then
+	agterm_args=(notify "$message" --title "$title" --target "$AGTERM_SESSION_ID" --json)
+	[[ -n "${AGTERM_WINDOW_ID:-}" ]] && agterm_args+=(--window "$AGTERM_WINDOW_ID")
+	if agterm_result=$(agtermctl "${agterm_args[@]}" 2>/dev/null) &&
+		jq -e '.ok == true and (.result.text // "") == ""' <<<"$agterm_result" >/dev/null 2>&1; then
+		exit 0
+	fi
+fi
+
 # --- Fallback if no terminal-notifier ---
 if ! command -v terminal-notifier &>/dev/null; then
 	echo "📢 $title: $message" >&2
@@ -135,7 +146,9 @@ elif [[ -n "${KITTY_PID:-}" ]]; then
 fi
 kitty_socket_path="${kitty_socket#unix:}"
 
-if [[ -n "$kitty_socket" && -S "$kitty_socket_path" ]]; then
+if [[ "${AGTERM_ENABLED:-}" == "1" ]]; then
+	BUNDLE_ID="com.umputun.agterm"
+elif [[ -n "$kitty_socket" && -S "$kitty_socket_path" ]]; then
 	BUNDLE_ID="net.kovidgoyal.kitty"
 elif [[ "$tmux_client_term" == *kitty* ]]; then
 	BUNDLE_ID="net.kovidgoyal.kitty"

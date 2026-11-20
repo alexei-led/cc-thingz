@@ -9,9 +9,16 @@ import subprocess
 import textwrap
 from pathlib import Path
 
+import pytest
 from conftest import REPO_ROOT
 
 HOOK = REPO_ROOT / "src" / "hooks" / "notify" / "hook.sh"
+
+
+@pytest.fixture(autouse=True)
+def _clear_agterm_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    for name in ("AGTERM_ENABLED", "AGTERM_SESSION_ID", "AGTERM_WINDOW_ID"):
+        monkeypatch.delenv(name, raising=False)
 
 
 def _bin_without_jq(tmp: Path) -> Path:
@@ -414,3 +421,50 @@ def test_notifier_failure_is_reported_without_failing_hook(tmp_path: Path) -> No
     assert proc.returncode == 0
     assert "delivery failed (exit 7)" in proc.stderr
     assert "Ready" in proc.stderr
+
+
+def test_agterm_notification_targets_session_and_window(tmp_path: Path) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    args_file = tmp_path / "args"
+    _write_executable(
+        bin_dir / "agtermctl",
+        f"#!/bin/sh\nprintf '%s\\n' \"$@\" > {shlex.quote(str(args_file))}\n"
+        + 'echo \'{"ok":true,"result":{}}\'\n',
+    )
+    env = os.environ.copy()
+    env.update(
+        PATH=f"{bin_dir}:{env['PATH']}",
+        AGTERM_ENABLED="1",
+        AGTERM_SESSION_ID="session-1",
+        AGTERM_WINDOW_ID="window-1",
+    )
+    proc = _run({"title": "Pi", "message": "Ready"}, tmp_path, env)
+    assert proc.returncode == 0
+    args = args_file.read_text().splitlines()
+    assert args[:2] == ["notify", "Ready"]
+    assert _arg_after(args, "--target") == "session-1"
+    assert _arg_after(args, "--window") == "window-1"
+
+
+def test_agterm_disabled_banner_falls_back(tmp_path: Path) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    args_file = tmp_path / "notifier"
+    _write_terminal_notifier(bin_dir, args_file)
+    _write_executable(
+        bin_dir / "agtermctl",
+        '#!/bin/sh\nprintf \'%s\\n\' \'{"ok":true,"result":{"text":"banners off"}}\'\n',
+    )
+    env = os.environ.copy()
+    env.update(
+        PATH=f"{bin_dir}:{env['PATH']}",
+        AGTERM_ENABLED="1",
+        AGTERM_SESSION_ID="session-1",
+    )
+    proc = _run({"title": "Pi", "message": "Ready"}, tmp_path, env)
+    assert proc.returncode == 0
+    assert (
+        _arg_after(args_file.read_text().splitlines(), "-activate")
+        == "com.umputun.agterm"
+    )
