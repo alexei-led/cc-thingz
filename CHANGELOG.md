@@ -8,6 +8,15 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [8.2.1] - 2026-11-20
+
+### Fixed
+
+- Notifications in agterm return to the originating session when clicked.
+  Enable macOS notifications for agterm; split-pane selection is not supported.
+
+[Changes since v8.2.0](https://github.com/alexei-led/cc-thingz/compare/v8.2.0...v8.2.1)
+
 ## [8.2.0] - 2026-11-19
 
 ### Changed
