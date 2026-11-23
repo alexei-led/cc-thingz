@@ -391,6 +391,7 @@ def test_generated_pi_adapter_uses_project_context_and_session_state(
         )
         tool.chmod(0o755)
     env["HOOK_AUDIT_PROJECT"] = str(tmp_path)
+    env["SKIP_TESTS"] = "0"
     script = r"""
 import adapter from "./dist/pi/extensions/agentbundler-hooks.ts";
 const handlers = new Map();

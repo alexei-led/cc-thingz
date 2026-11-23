@@ -35,6 +35,7 @@ import type {
 
 import { HOOK_RUNNER_INVOKE_CHANNEL, type SyntheticHookInvocationRequest, toCcToolName } from "../shared/hook-bridge.js";
 import { decodeGeneric } from "./cc-protocol.js";
+import { configureAutomaticTests } from "./automatic-tests.js";
 import { loadConfig, resolvedConfig, shouldForceReloadForConfigChange } from "./config.js";
 import {
 	matchingGroups,
@@ -203,6 +204,7 @@ export default function (pi: ExtensionAPI): void {
 
 	// --- SessionStart → SessionStart (+ InstructionsLoaded snapshot) ---
 	pi.on("session_start", async (event: SessionStartEvent, ctx: ExtensionContext) => {
+		configureAutomaticTests(ctx);
 		if (event.reason === "reload") return;
 		loadConfig(ctx.cwd);
 		lastHookCwd = ctx.cwd;
@@ -395,6 +397,7 @@ export default function (pi: ExtensionAPI): void {
 
 	// --- before_agent_start → CwdChanged + UserPromptSubmit ---
 	pi.on("before_agent_start", async (event: BeforeAgentStartEvent, ctx: ExtensionContext): Promise<BeforeAgentStartEventResult | undefined> => {
+		configureAutomaticTests(ctx);
 		if (lastHookCwd && lastHookCwd !== ctx.cwd) {
 			loadConfig(ctx.cwd);
 			const cwdHookName: HookEventName = "CwdChanged";

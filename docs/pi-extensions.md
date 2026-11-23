@@ -121,6 +121,18 @@ The model-facing text contains the answer JSON, including machine values.
 - These flows work with TUI and RPC clients. Escape/cancellation stops subsequent
   questions. Empty input is an empty answer, not cancellation.
 
+## Automatic tests
+
+The Stop test runner is disabled by default. To enable focused automatic tests
+in a trusted Pi project, add `"automaticTests": true` to its `.pi/settings.json`.
+Remove the setting or set it to `false` to disable the runner. The setting is
+read from the session working directory before each turn. It does not run
+`make check` or replace explicit tests, Git hooks, or CI.
+
+For Claude Code, set `"env": {"SKIP_TESTS": "0"}` in the project's
+`.claude/settings.local.json`. Automatic results are advisory; the agent must
+choose and report relevant verification. The hook still starts when disabled.
+
 ## Portable hooks
 
 `hooks/hooks.v1.json` and `agentbundler-hooks.ts` handle portable session-start,

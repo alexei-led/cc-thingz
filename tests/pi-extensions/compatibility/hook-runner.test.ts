@@ -152,6 +152,7 @@ mock.module("node:fs", () => ({
 
 mock.module("node:os", () => ({ homedir: () => "/tmp/test-home" }));
 mock.module("@earendil-works/pi-coding-agent", () => ({
+	CONFIG_DIR_NAME: ".pi",
 	getAgentDir: () => process.env.PI_CODING_AGENT_DIR || "/tmp/test-home/.pi/agent",
 }));
 

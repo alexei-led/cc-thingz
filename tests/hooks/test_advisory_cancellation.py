@@ -39,7 +39,7 @@ def test_cancelled_advisory_hook_stops_its_tool_group(
     if hook_name == "smart-lint":
         payload["tool_input"] = {"file_path": source}
     hook = REPO_ROOT / "src/hooks" / hook_name / "hook.sh"
-    env = {**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}"}
+    env = {**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}", "SKIP_TESTS": "0"}
     proc = subprocess.Popen(
         ["bash", str(hook)],
         cwd=tmp_path,
@@ -119,7 +119,7 @@ def test_advisory_hook_caps_tool_output_and_terminates_the_tool(
     payload = {"cwd": str(tmp_path), "session_id": "overflow"}
     if hook_name == "smart-lint":
         payload["tool_input"] = {"file_path": source}
-    env = {**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}"}
+    env = {**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}", "SKIP_TESTS": "0"}
     proc = subprocess.Popen(
         ["bash", str(REPO_ROOT / "src/hooks" / hook_name / "hook.sh")],
         cwd=tmp_path,

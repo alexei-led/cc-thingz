@@ -24,7 +24,7 @@ make ci       # lint + validate + check + test + test-ts
 - `make build`, `make check`, and `make ci` need the sandbox disabled: the uv cache at `~/.cache/uv` is restricted in the Claude Code sandbox.
 - `make build` needs the `agbun` version pinned in `.agentbundler-version`; `scripts/setup/install-agbun.sh` installs it.
 - Commit regenerated `dist/` and root manifests together with the `src/` change.
-- Done means `make fmt` leaves no diff and `make ci` passes.
+- Run checks relevant to the changed behavior and generated output. Run `make ci` for broad changes or when preparing a release; report checks not run. PR CI runs the applicable full checks.
 
 ## Where things live
 
