@@ -3,6 +3,7 @@
 HOOK="$BATS_TEST_DIRNAME/../../src/hooks/test-runner/hook.sh"
 
 setup() {
+	export SKIP_TESTS=0
 	unset PI_SUBAGENT_CHILD
 	WORK_DIR="${BATS_TEST_TMPDIR:-$(mktemp -d)}"
 	mkdir -p "$WORK_DIR"
@@ -1788,4 +1789,10 @@ JSON
 	[[ "$output" == *"Focused tests passed"* ]]
 	[ ! -f uv.lock ]
 	[ ! -d api/.venv ]
+}
+
+@test "test-runner: disabled by default" {
+	run env -u SKIP_TESTS HOOK_INPUT_JSON="{\"session_id\":\"default_off\",\"cwd\":\"$WORK_DIR\"}" bash "$HOOK"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Tests skipped"* ]]
 }

@@ -2089,7 +2089,7 @@ main() {
 	RUN_ATTEMPT_FINGERPRINT=$(attempt_fingerprint)
 	log_debug "TEST_RUNNER_TIMEOUT_SECS=$TEST_RUNNER_TIMEOUT_SECS"
 
-	if [[ "${SKIP_TESTS:-}" == "1" ]] || [[ -f ".notests" ]]; then
+	if [[ "${SKIP_TESTS:-1}" != "0" ]] || [[ -f ".notests" ]]; then
 		echo -e "${CYAN}⏭ Tests skipped${NC}" >&2
 		# An explicit skip is not verification; leave pending work intact.
 		finish_hook 0
