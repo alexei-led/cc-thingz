@@ -8,6 +8,24 @@ major = breaking config/hook changes, minor = new skills/features, patch = fixes
 
 ## [Unreleased]
 
+## [8.3.0] - 2026-11-23
+
+
+### Changed
+
+- The bundled Stop hook skips automatic tests by default across all targets,
+  including Codex. Explicit tests, lint hooks, Git hooks, and CI are unchanged.
+
+### Upgrade
+
+- If you relied on automatic focused tests, opt in after upgrading. In a
+  trusted Pi project, set `"automaticTests": true` in `.pi/settings.json`.
+  In Claude Code, set `"env": {"SKIP_TESTS": "0"}` in the project's
+  `.claude/settings.local.json`. Other targets can pass `SKIP_TESTS=0` to the
+  hook. Without an opt-in, the Stop hook does not run tests.
+
+[Changes since v8.2.1](https://github.com/alexei-led/cc-thingz/compare/v8.2.1...v8.3.0)
+
 ## [8.2.1] - 2026-11-20
 
 ### Fixed
